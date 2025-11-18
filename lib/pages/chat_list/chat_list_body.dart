@@ -120,14 +120,16 @@ class ChatListViewBody extends StatelessWidget {
                               ),
                       ),
                     ],
-                    if (!controller.isSearchMode &&
-                        AppSettings.showPresences.value)
-                      GestureDetector(
-                        onLongPress: () => controller.dismissStatusList(),
-                        child: StatusMessageList(
-                          onStatusEdit: controller.setStatus,
-                        ),
-                      ),
+                    // Remove the contact banner in the chat list;
+                    // this is ugly and a distraction on mobile.
+                    // if (!controller.isSearchMode &&
+                    //     AppSettings.showPresences.value)
+                    //   GestureDetector(
+                    //     onLongPress: () => controller.dismissStatusList(),
+                    //     child: StatusMessageList(
+                    //       onStatusEdit: controller.setStatus,
+                    //     ),
+                    //   ),
                     if (client.rooms.isNotEmpty && !controller.isSearchMode)
                       SizedBox(
                         height: 64,
