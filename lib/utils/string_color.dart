@@ -29,6 +29,16 @@ extension StringColor on String {
 
   Color get lightColorAvatar {
     _colorCache[this] ??= {};
-    return _colorCache[this]![0.45] ??= _getColorLight(0.45);
+    final color = _colorCache[this]![0.45] ??= _getColorLight(0.45);
+
+    // Color correction parameters - adjust these to tune the colors
+    const saturationCorrection = 1.0; // 0.0-1.0, lower = less saturated
+    const lightnessCorrection = 1.0; // > 1.0 = lighter, < 1.0 = darker
+
+    final hsl = HSLColor.fromColor(color);
+    final correctedHsl = hsl.withSaturation((hsl.saturation * saturationCorrection).clamp(0.0, 1.0))
+        .withLightness((hsl.lightness * lightnessCorrection).clamp(0.0, 1.0));
+
+    return correctedHsl.toColor();
   }
 }
