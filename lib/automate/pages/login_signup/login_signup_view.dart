@@ -10,10 +10,14 @@ class LoginSignupView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
 
     return LoginScaffold(
       appBar: AppBar(
-        title: const Text('Login / Sign Up'),
+        title: Text(
+          '登录 / 注册',
+          style: textTheme.titleLarge,
+        ),
         centerTitle: true,
       ),
       body: Builder(
@@ -23,7 +27,7 @@ class LoginSignupView extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: <Widget>[
                 const SizedBox(height: 32),
-                
+
                 // Product Logo
                 Hero(
                   tag: 'product-logo',
@@ -32,9 +36,9 @@ class LoginSignupView extends StatelessWidget {
                     height: 120,
                   ),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Phone Number Input
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -45,45 +49,60 @@ class LoginSignupView extends StatelessWidget {
                     controller: controller.phoneController,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
-                    autofillHints: controller.loading 
-                        ? null 
+                    style: textTheme.titleMedium,
+                    autofillHints: controller.loading
+                        ? null
                         : [AutofillHints.telephoneNumber],
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.phone_outlined),
+                      prefixIcon: Icon(
+                        Icons.phone_outlined,
+                        size: 32,
+                        color: theme.colorScheme.primary,
+                      ),
                       errorText: controller.phoneError,
-                      hintText: '+1 234 567 8900',
-                      labelText: 'Phone Number',
+                      hintText: '请输入您的手机号...',
+                      hintStyle: textTheme.bodyLarge?.copyWith(
+                        color: theme.hintColor,
+                      ),
                       suffixIcon: controller.codeSent
-                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          ? Icon(
+                              Icons.check_circle,
+                              color: theme.colorScheme.tertiary,
+                              size: 32,
+                            )
                           : null,
                     ),
                   ),
                 ),
-                
                 const SizedBox(height: 16),
-                
+
                 // Request Code Button (shown only if code not sent yet)
                 if (!controller.codeSent)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: OutlinedButton(
-                      onPressed: controller.loading 
-                          ? null 
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: controller.loading
+                          ? null
                           : controller.requestVerificationCode,
                       child: controller.loading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
+                              height: 24,
+                              width: 24,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Send Verification Code'),
+                          : Text(
+                              '发送验证码',
+                              style: textTheme.titleMedium,
+                            ),
                     ),
                   ),
-                
+
+                // Verification Code Input
                 if (controller.codeSent) ...[
-                  const SizedBox(height: 8),
-                  
-                  // Verification Code Input
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: TextField(
@@ -92,21 +111,27 @@ class LoginSignupView extends StatelessWidget {
                       controller: controller.codeController,
                       keyboardType: TextInputType.number,
                       textInputAction: TextInputAction.done,
-                      autofillHints: controller.loading 
-                          ? null 
+                      style: textTheme.titleMedium,
+                      autofillHints: controller.loading
+                          ? null
                           : [AutofillHints.oneTimeCode],
                       onSubmitted: (_) => controller.verifyAndLogin(),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.verified_user_outlined),
+                        prefixIcon: Icon(
+                          Icons.verified_user_outlined,
+                          size: 32,
+                          color: theme.colorScheme.primary,
+                        ),
                         errorText: controller.codeError,
-                        hintText: '123456',
-                        labelText: 'Verification Code',
+                        hintText: '请输入验证码...',
+                        hintStyle: textTheme.bodyLarge?.copyWith(
+                          color: theme.hintColor,
+                        ),
                       ),
                     ),
                   ),
-                  
                   const SizedBox(height: 8),
-                  
+
                   // Resend Code Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -114,32 +139,35 @@ class LoginSignupView extends StatelessWidget {
                       onPressed: controller.loading
                           ? null
                           : controller.requestVerificationCode,
-                      child: const Text('Resend Code'),
+                      child: Text(
+                        '重新发送验证码',
+                        style: textTheme.titleSmall,
+                      ),
                     ),
                   ),
+
+                  const SizedBox(height: 32),
                 ],
-                
-                const SizedBox(height: 32),
-                
+
                 // EULA Agreement Checkbox
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: CheckboxListTile(
                     value: controller.agreedToEula,
-                    onChanged: controller.loading 
-                        ? null 
+                    onChanged: controller.loading
+                        ? null
                         : (_) => controller.toggleEulaAgreement(),
                     controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text(
-                      'I agree to the End User License Agreement (EULA)',
-                      style: TextStyle(fontSize: 14),
+                    title: Text(
+                      '我同意《最终用户许可协议》',
+                      style: textTheme.titleMedium,
                     ),
-                    dense: true,
+                    dense: false,
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Submit Button (shown only after code is sent)
                 if (controller.codeSent)
                   Padding(
@@ -148,24 +176,29 @@ class LoginSignupView extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: theme.colorScheme.onPrimary,
-                        minimumSize: const Size.fromHeight(48),
+                        minimumSize: const Size.fromHeight(56),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: controller.loading || !controller.agreedToEula
                           ? null
                           : controller.verifyAndLogin,
                       child: controller.loading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
+                              height: 24,
+                              width: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
                               ),
                             )
-                          : const Text('Verify and Continue'),
+                          : Text(
+                              '验证并继续',
+                              style: TextStyle(
+                                fontSize: textTheme.titleMedium?.fontSize,
+                              ),
+                            ),
                     ),
                   ),
-                
+
                 const SizedBox(height: 32),
               ],
             ),

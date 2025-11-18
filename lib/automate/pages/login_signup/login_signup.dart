@@ -30,12 +30,12 @@ class LoginSignupController extends State<LoginSignup> {
 
   void requestVerificationCode() async {
     if (phoneController.text.isEmpty) {
-      setState(() => phoneError = 'Please enter your phone number');
+      setState(() => phoneError = '请输入您的手机号');
       return;
     }
     
     if (!phoneController.text.isPhoneNumber) {
-      setState(() => phoneError = 'Please enter a valid phone number');
+      setState(() => phoneError = '请输入正确的手机号');
       return;
     }
 
@@ -56,7 +56,7 @@ class LoginSignupController extends State<LoginSignup> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification code sent!')),
+          const SnackBar(content: Text('已发送验证码！')),
         );
       }
     } catch (e) {
@@ -69,18 +69,18 @@ class LoginSignupController extends State<LoginSignup> {
 
   void verifyAndLogin() async {
     if (phoneController.text.isEmpty) {
-      setState(() => phoneError = 'Please enter your phone number');
+      setState(() => phoneError = '请输入您的手机号');
       return;
     }
 
     if (codeController.text.isEmpty) {
-      setState(() => codeError = 'Please enter verification code');
+      setState(() => codeError = '请输入验证码');
       return;
     }
 
     if (!agreedToEula) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please agree to the EULA to continue')),
+        const SnackBar(content: Text('请同意用户协议')),
       );
       return;
     }
