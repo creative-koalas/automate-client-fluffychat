@@ -18,6 +18,7 @@ import 'package:fluffychat/pages/chat_search/chat_search_page.dart';
 import 'package:fluffychat/pages/device_settings/device_settings.dart';
 import 'package:fluffychat/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:fluffychat/pages/invitation_selection/invitation_selection.dart';
+import 'package:fluffychat/automate/pages/login_signup/login_signup.dart';
 import 'package:fluffychat/pages/login/login.dart';
 import 'package:fluffychat/pages/new_group/new_group.dart';
 import 'package:fluffychat/pages/new_private_chat/new_private_chat.dart';
@@ -64,7 +65,20 @@ abstract class AppRoutes {
       redirect: (context, state) =>
           Matrix.of(context).widget.clients.any((client) => client.isLogged())
               ? '/rooms'
-              : '/home',
+              // FIXME: Temporarily changed to /loginsignup for testing
+              // : '/home',
+              : '/login-signup',
+    ),
+    // FIXME: Temporary route for testing login-signup page
+    GoRoute(
+      path: '/login-signup',
+      pageBuilder: (context, state) => defaultPageBuilder(
+        context,
+        state,
+        const LoginSignup(),
+      ),
+      // FIXME: Redirect commented out for testing
+      // redirect: loggedInRedirect,
     ),
     GoRoute(
       path: '/home',
