@@ -89,8 +89,8 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   Future<void> sendMessage() async {
-    final text = messageController.text.trim();
-    if (text.isEmpty || isLoading || isStreaming) return;
+    final text = messageController.text;
+    if (isLoading || isStreaming) return;
 
     // Add user message
     _addMessage(

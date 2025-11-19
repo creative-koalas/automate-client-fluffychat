@@ -242,7 +242,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 }
 
-class _InputArea extends StatelessWidget {
+class _InputArea extends StatefulWidget {
   final OnboardingChatbotController controller;
   final ThemeData theme;
   final TextTheme textTheme;
@@ -254,13 +254,41 @@ class _InputArea extends StatelessWidget {
   });
 
   @override
+  State<_InputArea> createState() => _InputAreaState();
+}
+
+class _InputAreaState extends State<_InputArea> {
+  bool hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.messageController.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.messageController.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final newHasText = widget.controller.messageController.text.isNotEmpty;
+    if (newHasText != hasText) {
+      setState(() {
+        hasText = newHasText;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: widget.theme.colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: theme.dividerColor,
+            color: widget.theme.dividerColor,
             width: 0.5,
           ),
         ),
@@ -278,55 +306,69 @@ class _InputArea extends StatelessWidget {
                   maxHeight: 120,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
+                  color: widget.theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: theme.dividerColor,
+                    color: widget.theme.dividerColor,
                     width: 0.5,
                   ),
                 ),
                 child: TextField(
-                  controller: controller.messageController,
+                  controller: widget.controller.messageController,
                   maxLines: null,
                   textInputAction: TextInputAction.newline,
-                  style: textTheme.bodyLarge,
-                  enabled: !controller.isLoading && !controller.isStreaming,
+                  style: widget.textTheme.bodyLarge,
+                  enabled: !widget.controller.isLoading && !widget.controller.isStreaming,
                   decoration: InputDecoration(
                     hintText: '输入消息...',
-                    hintStyle: textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    hintStyle: widget.textTheme.bodyLarge?.copyWith(
+                      color: widget.theme.colorScheme.onSurfaceVariant,
                     ),
                     border: InputBorder.none,
+                    isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                      horizontal: 8,
+                      vertical: 6,
                     ),
                   ),
-                  onSubmitted: (_) => controller.sendMessage(),
+                  onSubmitted: (_) => widget.controller.sendMessage(),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            // Send Button
-            Material(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(4),
-              child: InkWell(
-                onTap: (controller.isLoading || controller.isStreaming)
-                    ? null
-                    : controller.sendMessage,
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.send,
-                    color: theme.colorScheme.onPrimary,
-                    size: 20,
-                  ),
-                ),
-              ),
+            // Animated Send Button
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment: Alignment.centerRight,
+              child: hasText
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 8),
+                        Material(
+                          color: widget.theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(4),
+                          child: InkWell(
+                            onTap: (widget.controller.isLoading || widget.controller.isStreaming)
+                                ? null
+                                : widget.controller.sendMessage,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '发送',
+                                style: widget.textTheme.bodyLarge?.copyWith(
+                                  color: widget.theme.colorScheme.onPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),
