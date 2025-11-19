@@ -19,6 +19,7 @@ import 'package:fluffychat/pages/device_settings/device_settings.dart';
 import 'package:fluffychat/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:fluffychat/pages/invitation_selection/invitation_selection.dart';
 import 'package:fluffychat/automate/pages/login_signup/login_signup.dart';
+import 'package:fluffychat/automate/pages/onboarding_chatbot/onboarding_chatbot.dart';
 import 'package:fluffychat/pages/login/login.dart';
 import 'package:fluffychat/pages/new_group/new_group.dart';
 import 'package:fluffychat/pages/new_private_chat/new_private_chat.dart';
@@ -79,6 +80,15 @@ abstract class AppRoutes {
       ),
       // FIXME: Redirect commented out for testing
       // redirect: loggedInRedirect,
+    ),
+    GoRoute(
+      path: '/onboarding-chatbot',
+      pageBuilder: (context, state) => defaultPageBuilder(
+        context,
+        state,
+        const OnboardingChatbot(),
+      ),
+      redirect: loggedInRedirect,
     ),
     GoRoute(
       path: '/home',

@@ -4,7 +4,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fluffychat/widgets/matrix.dart';
+import 'package:fluffychat/automate/backend.dart';
 import 'login_signup_view.dart';
 
 class LoginSignup extends StatefulWidget {
@@ -17,7 +19,8 @@ class LoginSignup extends StatefulWidget {
 class LoginSignupController extends State<LoginSignup> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController codeController = TextEditingController();
-  
+  final AutomateBackend backend = AutomateBackend();
+
   String? phoneError;
   String? codeError;
   bool loading = false;
@@ -45,15 +48,14 @@ class LoginSignupController extends State<LoginSignup> {
     });
 
     try {
-      // TODO: Implement phone verification code request
-      // This would typically call your backend API to send an SMS
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      
+      // Call backend API to send verification code
+      await backend.sendVerificationCode(phoneController.text);
+
       setState(() {
         codeSent = true;
         loading = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已发送验证码！')),
@@ -92,21 +94,28 @@ class LoginSignupController extends State<LoginSignup> {
     });
 
     try {
-      // TODO: Implement phone verification and login logic
-      // This would verify the code and either login or create a new account
       final matrix = Matrix.of(context);
-      
-      // Simulate verification
-      await Future.delayed(const Duration(seconds: 1));
-      
-      // Here you would typically:
-      // 1. Verify the phone number and code with your backend
-      // 2. Get authentication credentials
-      // 3. Login or register the user using matrix.getLoginClient()
-      
+
+      // Verify the phone number and code with backend
+      final authResponse = await backend.verifyCode(
+        phoneController.text,
+        codeController.text,
+      );
+
+      // TODO: Use authResponse.token to login or register the user
+      // This would typically involve calling matrix.getLoginClient() with
+      // the credentials obtained from the backend
+
       if (mounted) {
         setState(() => loading = false);
-        // Navigation would happen automatically after successful login
+
+        // Redirect to onboarding chatbot if it's a new user
+        if (authResponse.isNewUser) {
+          context.go('/onboarding-chatbot');
+        } else {
+          // For existing users, navigate to rooms
+          context.go('/rooms');
+        }
       }
     } catch (e) {
       setState(() {
@@ -120,6 +129,7 @@ class LoginSignupController extends State<LoginSignup> {
   void dispose() {
     phoneController.dispose();
     codeController.dispose();
+    backend.dispose();
     super.dispose();
   }
 

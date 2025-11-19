@@ -1,0 +1,334 @@
+import 'package:flutter/material.dart';
+import 'package:fluffychat/config/themes.dart';
+import 'onboarding_chatbot.dart';
+
+class OnboardingChatbotView extends StatelessWidget {
+  final OnboardingChatbotController controller;
+
+  const OnboardingChatbotView(this.controller, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top bar with contact name
+            Container(
+              height: 56,
+              alignment: Alignment.center,
+              child: Text(
+                '小考拉',
+                style: TextStyle(
+                  fontSize: textTheme.titleLarge?.fontSize != null &&
+                          textTheme.titleMedium?.fontSize != null
+                      ? (textTheme.titleLarge!.fontSize! +
+                              textTheme.titleMedium!.fontSize!) /
+                          2
+                      : textTheme.titleMedium?.fontSize,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            // Messages List
+            Expanded(
+              child: ListView.builder(
+                controller: controller.scrollController,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                itemCount: controller.messages.length,
+                itemBuilder: (context, index) {
+                  final message = controller.messages[index];
+                  return _MessageBubble(
+                    message: message,
+                    theme: theme,
+                    textTheme: textTheme,
+                  );
+                },
+              ),
+            ),
+
+            // Loading Indicator
+            if (controller.isLoading && !controller.isStreaming)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    _TypingIndicator(),
+                  ],
+                ),
+              ),
+
+            // Input Area
+            _InputArea(
+              controller: controller,
+              theme: theme,
+              textTheme: textTheme,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  final ChatMessage message;
+  final ThemeData theme;
+  final TextTheme textTheme;
+
+  const _MessageBubble({
+    required this.message,
+    required this.theme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.isUser;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            // AI Avatar
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(
+                Icons.smart_toy,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          // Message Content
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? theme.bubbleColor
+                    : theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.shadowColor.withOpacity(0.05),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Text(
+                message.text.isEmpty ? ' ' : message.text,
+                style: textTheme.bodyLarge?.copyWith(
+                  color: isUser
+                      ? theme.onBubbleColor
+                      : theme.colorScheme.onSurface,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            // User Avatar
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(
+                Icons.person,
+                color: theme.colorScheme.secondary,
+                size: 24,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatefulWidget {
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (index) {
+          return AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final delay = index * 0.2;
+              final value = (_controller.value - delay) % 1.0;
+              final opacity = value < 0.5 ? (value * 2) : (2 - value * 2);
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withOpacity(opacity.clamp(0.3, 1.0)),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              );
+            },
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _InputArea extends StatelessWidget {
+  final OnboardingChatbotController controller;
+  final ThemeData theme;
+  final TextTheme textTheme;
+
+  const _InputArea({
+    required this.controller,
+    required this.theme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.dividerColor,
+            width: 0.5,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Text Input
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(
+                  maxHeight: 120,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: theme.dividerColor,
+                    width: 0.5,
+                  ),
+                ),
+                child: TextField(
+                  controller: controller.messageController,
+                  maxLines: null,
+                  textInputAction: TextInputAction.newline,
+                  style: textTheme.bodyLarge,
+                  enabled: !controller.isLoading && !controller.isStreaming,
+                  decoration: InputDecoration(
+                    hintText: '输入消息...',
+                    hintStyle: textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  onSubmitted: (_) => controller.sendMessage(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Send Button
+            Material(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(4),
+              child: InkWell(
+                onTap: (controller.isLoading || controller.isStreaming)
+                    ? null
+                    : controller.sendMessage,
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.send,
+                    color: theme.colorScheme.onPrimary,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
