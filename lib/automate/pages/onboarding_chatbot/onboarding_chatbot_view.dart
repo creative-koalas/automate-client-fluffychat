@@ -93,12 +93,13 @@ class _MessageBubble extends StatelessWidget {
     final isUser = message.isUser;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isUser) const SizedBox(width: 48),
           if (!isUser) ...[
             // AI Avatar
             Container(
@@ -121,7 +122,7 @@ class _MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 12,
-                vertical: 10,
+                vertical: 8,
               ),
               decoration: BoxDecoration(
                 color: isUser
@@ -164,6 +165,7 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
           ],
+          if (!isUser) const SizedBox(width: 48),
         ],
       ),
     );
