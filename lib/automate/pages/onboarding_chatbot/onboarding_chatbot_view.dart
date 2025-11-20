@@ -291,15 +291,6 @@ class _InputAreaState extends State<_InputArea> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: widget.theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: widget.theme.dividerColor,
-            width: 0.5,
-          ),
-        ),
-      ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: SafeArea(
         top: false,
@@ -402,8 +393,9 @@ class _SuggestionBubbles extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    // Show loading skeleton
-    if (controller.isLoadingSuggestions) {
+    // Show loading skeleton when loading or extending with no suggestions
+    if (controller.isLoadingSuggestions ||
+        (controller.isExtendingTree && controller.currentSuggestions.isEmpty)) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: SingleChildScrollView(
@@ -483,8 +475,8 @@ class _SuggestionBubble extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          constraints: const BoxConstraints(minWidth: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          constraints: const BoxConstraints(minWidth: 100),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Center(
             child: Text(
               text,
@@ -522,7 +514,7 @@ class _SkeletonBubbleState extends State<_SkeletonBubble>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(
+    _animation = Tween<double>(begin: 0.5, end: 0.9).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -539,12 +531,13 @@ class _SkeletonBubbleState extends State<_SkeletonBubble>
       animation: _animation,
       builder: (context, child) {
         return Container(
-          width: 80,
-          height: 32,
+          constraints: const BoxConstraints(minWidth: 100),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: widget.theme.colorScheme.surfaceContainerHighest
                 .withOpacity(_animation.value),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
         );
       },
