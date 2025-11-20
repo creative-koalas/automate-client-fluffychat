@@ -206,27 +206,47 @@ class AutomateBackend {
   }
 
   /// Mock implementation of getSuggestions
+  /// If anchoring is empty: create NEW tree with given depth
+  /// If anchoring has structure: EXTEND the tree by adding depth levels to terminal nodes
   Map<String, dynamic> _mockGetSuggestions({
     required String currentInput,
     required int depth,
     required int branchingFactor,
     required Map<String, dynamic> anchoringSuggestions,
   }) {
-    // If no anchoring provided, use default initial suggestions
-    final anchors = anchoringSuggestions.isEmpty
-        ? {'我想': null, '我要': null, '帮我': null}
-        : anchoringSuggestions;
+    // If no anchoring provided, create a new tree from scratch
+    if (anchoringSuggestions.isEmpty) {
+      final defaultAnchors = {'我想': null, '我要': null, '帮我': null};
+      return _buildNewTree(
+        anchors: defaultAnchors,
+        depth: depth,
+        branchingFactor: branchingFactor,
+        currentInput: currentInput,
+      );
+    }
 
-    // Build suggestion tree based on anchoring suggestions
-    // IMPORTANT: Always return a tree with the same keys as anchoring
+    // Otherwise, extend the existing tree structure
+    return _extendTree(
+      tree: anchoringSuggestions,
+      depth: depth,
+      branchingFactor: branchingFactor,
+      currentInput: currentInput,
+    );
+  }
+
+  /// Build a completely new tree
+  Map<String, dynamic> _buildNewTree({
+    required Map<String, dynamic> anchors,
+    required int depth,
+    required int branchingFactor,
+    required String currentInput,
+  }) {
     final result = <String, dynamic>{};
 
     for (final anchor in anchors.keys) {
       if (depth <= 1) {
-        // Last level, no children (terminal nodes)
         result[anchor] = null;
       } else {
-        // Generate children based on context (depth > 1 means we add children)
         result[anchor] = _generateMockSuggestionChildren(
           parent: anchor,
           currentInput: currentInput,
@@ -236,7 +256,49 @@ class AutomateBackend {
       }
     }
 
-    print('[Mock] depth=$depth, anchors=${anchors.keys.toList()}, result keys=${result.keys.toList()}');
+    print('[Mock/New] depth=$depth, keys=${result.keys.toList()}');
+    return result;
+  }
+
+  /// Extend an existing tree by adding levels to terminal nodes
+  Map<String, dynamic> _extendTree({
+    required Map<String, dynamic> tree,
+    required int depth,
+    required int branchingFactor,
+    required String currentInput,
+  }) {
+    final result = <String, dynamic>{};
+
+    for (final key in tree.keys) {
+      final value = tree[key];
+
+      if (value == null) {
+        // Terminal node - extend it by adding new children
+        if (depth <= 0) {
+          result[key] = null;
+        } else {
+          result[key] = _generateMockSuggestionChildren(
+            parent: key,
+            currentInput: currentInput,
+            depth: depth,
+            branchingFactor: branchingFactor,
+          );
+        }
+      } else if (value is Map<String, dynamic>) {
+        // Non-terminal node - recursively extend its children
+        result[key] = _extendTree(
+          tree: value,
+          depth: depth,
+          branchingFactor: branchingFactor,
+          currentInput: currentInput,
+        );
+      } else {
+        // Unknown structure, keep as-is
+        result[key] = value;
+      }
+    }
+
+    print('[Mock/Extend] depth=$depth, keys=${result.keys.toList()}');
     return result;
   }
 
