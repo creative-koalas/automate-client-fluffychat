@@ -430,11 +430,14 @@ class _SuggestionBubbles extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: controller.currentSuggestions.map((suggestion) {
+          children: controller.currentSuggestions.asMap().entries.map((entry) {
+            final index = entry.key;
+            final suggestion = entry.value;
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _SuggestionBubble(
                 text: suggestion,
+                index: index,
                 onTap: () => controller.onSuggestionClick(suggestion),
                 theme: theme,
                 textTheme: textTheme,
@@ -449,12 +452,21 @@ class _SuggestionBubbles extends StatelessWidget {
 
 class _SuggestionBubble extends StatelessWidget {
   final String text;
+  final int index;
   final VoidCallback onTap;
   final ThemeData theme;
   final TextTheme textTheme;
 
+  // Color list for bubbles
+  static const List<Color> colorList = [
+    Color(0xFFEF5350), // Red
+    Color(0xFF66BB6A), // Green
+    Color(0xFF42A5F5), // Blue
+  ];
+
   const _SuggestionBubble({
     required this.text,
+    required this.index,
     required this.onTap,
     required this.theme,
     required this.textTheme,
@@ -462,18 +474,24 @@ class _SuggestionBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bubbleColor = colorList[index % colorList.length];
+
     return Material(
-      color: theme.colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(20),
+      color: bubbleColor,
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            text,
-            style: textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
+          constraints: const BoxConstraints(minWidth: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          child: Center(
+            child: Text(
+              text,
+              style: textTheme.bodyLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
