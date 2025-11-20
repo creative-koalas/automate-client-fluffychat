@@ -135,6 +135,167 @@ class AutomateBackend {
     }
   }
 
+  /// Get input suggestions for autocomplete
+  ///
+  /// API Design:
+  /// POST /api/v1/chat/suggestions
+  /// Request body: {
+  ///   "previous_messages": [
+  ///     {"role": "user", "content": "..."},
+  ///     {"role": "assistant", "content": "..."}
+  ///   ],
+  ///   "current_input": "我今天",
+  ///   "depth": 2,
+  ///   "branching_factor": 3,
+  ///   "anchoring_suggestions": {
+  ///     "吃了": null,
+  ///     "心情": null,
+  ///     "想要": null
+  ///   }
+  /// }
+  ///
+  /// Response: {
+  ///   "suggestions": {
+  ///     "吃了": {"苹果": null, "香蕉": null, "梨": null},
+  ///     "心情": {"很好": null, "很糟": null, "还可以": null},
+  ///     "想要": {"出去玩": null, "学习": null, "上班": null}
+  ///   }
+  /// }
+  Future<Map<String, dynamic>> getSuggestions({
+    required List<Map<String, String>> previousMessages,
+    required String currentInput,
+    required int depth,
+    required int branchingFactor,
+    required Map<String, dynamic> anchoringSuggestions,
+  }) async {
+    // TODO: Implement actual API call
+    // Simulate API delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    // For now, using mock implementation
+    return _mockGetSuggestions(
+      currentInput: currentInput,
+      depth: depth,
+      branchingFactor: branchingFactor,
+      anchoringSuggestions: anchoringSuggestions,
+    );
+
+    /* Actual implementation:
+    final url = Uri.parse('$baseUrl/api/v1/chat/suggestions');
+    final response = await _httpClient.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'previous_messages': previousMessages,
+        'current_input': currentInput,
+        'depth': depth,
+        'branching_factor': branchingFactor,
+        'anchoring_suggestions': anchoringSuggestions,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw AutomateBackendException(
+        'Failed to get suggestions: ${response.statusCode}',
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    return data['suggestions'] as Map<String, dynamic>;
+    */
+  }
+
+  /// Mock implementation of getSuggestions
+  Map<String, dynamic> _mockGetSuggestions({
+    required String currentInput,
+    required int depth,
+    required int branchingFactor,
+    required Map<String, dynamic> anchoringSuggestions,
+  }) {
+    // Build suggestion tree based on anchoring suggestions
+    // IMPORTANT: Always return a tree with the same keys as anchoring
+    final result = <String, dynamic>{};
+
+    for (final anchor in anchoringSuggestions.keys) {
+      if (depth <= 1) {
+        // Last level, no children (terminal nodes)
+        result[anchor] = null;
+      } else {
+        // Generate children based on context (depth > 1 means we add children)
+        result[anchor] = _generateMockSuggestionChildren(
+          parent: anchor,
+          currentInput: currentInput,
+          depth: depth - 1,
+          branchingFactor: branchingFactor,
+        );
+      }
+    }
+
+    print('[Mock] depth=$depth, anchors=${anchoringSuggestions.keys.toList()}, result keys=${result.keys.toList()}');
+    return result;
+  }
+
+  /// Generate mock suggestion children
+  Map<String, dynamic> _generateMockSuggestionChildren({
+    required String parent,
+    required String currentInput,
+    required int depth,
+    required int branchingFactor,
+  }) {
+    // Predefined suggestion patterns based on common Chinese phrases
+    final suggestionPatterns = {
+      '吃了': ['苹果', '香蕉', '梨', '西瓜', '葡萄', '橙子'],
+      '喝了': ['水', '茶', '咖啡', '果汁', '牛奶', '可乐'],
+      '心情': ['很好', '很糟', '还可以', '不错', '一般', '糟透了'],
+      '想要': ['出去玩', '学习', '上班', '休息', '睡觉', '运动'],
+      '去了': ['公园', '商场', '学校', '公司', '医院', '图书馆'],
+      '看了': ['电影', '书', '电视', '新闻', '比赛', '展览'],
+      '买了': ['衣服', '食物', '书籍', '电子产品', '日用品', '礼物'],
+      '见了': ['朋友', '家人', '同事', '老师', '医生', '客户'],
+    };
+
+    final children = suggestionPatterns[parent] ??
+        ['选项1', '选项2', '选项3', '选项4', '选项5', '选项6'];
+
+    final result = <String, dynamic>{};
+    final count = branchingFactor < children.length
+        ? branchingFactor
+        : children.length;
+
+    for (int i = 0; i < count; i++) {
+      final child = children[i];
+      if (depth <= 1) {
+        result[child] = null;
+      } else {
+        // For deeper levels, generate more generic suggestions
+        result[child] = _generateGenericSuggestions(
+          depth: depth - 1,
+          branchingFactor: branchingFactor,
+        );
+      }
+    }
+
+    return result;
+  }
+
+  /// Generate generic suggestions for deeper levels
+  Map<String, dynamic> _generateGenericSuggestions({
+    required int depth,
+    required int branchingFactor,
+  }) {
+    final generic = ['了', '的', '很开心', '很满意', '不太好', '还行'];
+    final result = <String, dynamic>{};
+    final count = branchingFactor < generic.length
+        ? branchingFactor
+        : generic.length;
+
+    for (int i = 0; i < count; i++) {
+      result[generic[i]] = depth <= 1 ? null : <String, dynamic>{};
+    }
+
+    return result;
+  }
+
   /// Send verification code via SMS
   ///
   /// API Design:

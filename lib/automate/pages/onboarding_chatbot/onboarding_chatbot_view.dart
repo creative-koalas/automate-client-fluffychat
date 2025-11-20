@@ -64,6 +64,13 @@ class OnboardingChatbotView extends StatelessWidget {
                 ),
               ),
 
+            // Suggestion Bubbles
+            _SuggestionBubbles(
+              controller: controller,
+              theme: theme,
+              textTheme: textTheme,
+            ),
+
             // Input Area
             _InputArea(
               controller: controller,
@@ -373,6 +380,156 @@ class _InputAreaState extends State<_InputArea> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SuggestionBubbles extends StatelessWidget {
+  final OnboardingChatbotController controller;
+  final ThemeData theme;
+  final TextTheme textTheme;
+
+  const _SuggestionBubbles({
+    required this.controller,
+    required this.theme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Don't show suggestions while AI is responding
+    if (controller.isLoading || controller.isStreaming) {
+      return const SizedBox.shrink();
+    }
+
+    // Show loading skeleton
+    if (controller.isLoadingSuggestions) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(3, (index) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _SkeletonBubble(theme: theme),
+              );
+            }),
+          ),
+        ),
+      );
+    }
+
+    // Show actual suggestions
+    if (controller.currentSuggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: controller.currentSuggestions.map((suggestion) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _SuggestionBubble(
+                text: suggestion,
+                onTap: () => controller.onSuggestionClick(suggestion),
+                theme: theme,
+                textTheme: textTheme,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionBubble extends StatelessWidget {
+  final String text;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  final TextTheme textTheme;
+
+  const _SuggestionBubble({
+    required this.text,
+    required this.onTap,
+    required this.theme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            text,
+            style: textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonBubble extends StatefulWidget {
+  final ThemeData theme;
+
+  const _SkeletonBubble({required this.theme});
+
+  @override
+  State<_SkeletonBubble> createState() => _SkeletonBubbleState();
+}
+
+class _SkeletonBubbleState extends State<_SkeletonBubble>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: 80,
+          height: 32,
+          decoration: BoxDecoration(
+            color: widget.theme.colorScheme.surfaceContainerHighest
+                .withOpacity(_animation.value),
+            borderRadius: BorderRadius.circular(20),
+          ),
+        );
+      },
     );
   }
 }

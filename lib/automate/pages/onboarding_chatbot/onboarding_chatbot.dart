@@ -25,10 +25,30 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   bool isStreaming = false;
   StreamSubscription<String>? streamSubscription;
 
+  // Suggestion state - tree at current level
+  Map<String, dynamic>? suggestionTree;
+  bool isLoadingSuggestions = false;
+  bool isExtendingTree = false; // Track background extension
+  String lastInputForSuggestions = '';
+
+  // Derived from tree - no separate state needed
+  List<String> get currentSuggestions {
+    if (suggestionTree == null || suggestionTree!.isEmpty) return [];
+    return suggestionTree!.keys.toList();
+  }
+
+  // Suggestion tree parameters
+  static const int initialSuggestionDepth = 3; // Initial tree depth (3 levels: 3 + 9 + 27 = 39 nodes)
+  static const int suggestionBranchingFactor = 3; // Branching factor
+  static const int minRemainingDepth = 1; // Extend when only 1 level remains
+  static const int extensionDepth = 2; // Extend by 2 levels each time
+
   @override
   void initState() {
     super.initState();
     _sendInitialGreeting();
+    messageController.addListener(_onInputChanged);
+    _loadInitialSuggestions();
   }
 
   void _sendInitialGreeting() async {
@@ -142,8 +162,195 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     }
   }
 
+  // Suggestion methods
+
+  void _onInputChanged() {
+    final currentInput = messageController.text;
+
+    // If input changed by user (not by suggestion click), invalidate suggestions
+    if (currentInput != lastInputForSuggestions) {
+      _invalidateAndReloadSuggestions();
+    }
+  }
+
+  Future<void> _loadInitialSuggestions() async {
+    setState(() => isLoadingSuggestions = true);
+
+    try {
+      final anchoring = {
+        '我想': null,
+        '我要': null,
+        '帮我': null,
+      };
+
+      final result = await backend.getSuggestions(
+        previousMessages: _getPreviousMessages(),
+        currentInput: messageController.text,
+        depth: initialSuggestionDepth,
+        branchingFactor: suggestionBranchingFactor,
+        anchoringSuggestions: anchoring,
+      );
+
+      if (mounted) {
+        setState(() {
+          suggestionTree = result;
+          lastInputForSuggestions = messageController.text;
+          isLoadingSuggestions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => isLoadingSuggestions = false);
+      }
+    }
+  }
+
+  Future<void> _invalidateAndReloadSuggestions() async {
+    // Clear current suggestions
+    setState(() {
+      suggestionTree = null;
+      isLoadingSuggestions = true;
+    });
+
+    // Reload with new input
+    try {
+      final anchoring = {
+        '我想': null,
+        '我要': null,
+        '帮我': null,
+      };
+
+      final result = await backend.getSuggestions(
+        previousMessages: _getPreviousMessages(),
+        currentInput: messageController.text,
+        depth: initialSuggestionDepth,
+        branchingFactor: suggestionBranchingFactor,
+        anchoringSuggestions: anchoring,
+      );
+
+      if (mounted) {
+        setState(() {
+          suggestionTree = result;
+          lastInputForSuggestions = messageController.text;
+          isLoadingSuggestions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => isLoadingSuggestions = false);
+      }
+    }
+  }
+
+  void onSuggestionClick(String suggestion) {
+    // Add suggestion to input
+    final newText = messageController.text + suggestion;
+
+    // Update lastInputForSuggestions BEFORE changing text to prevent listener from invalidating
+    lastInputForSuggestions = newText;
+    messageController.text = newText;
+
+    // Cut the tree - replace with the clicked suggestion's subtree
+    setState(() {
+      if (suggestionTree != null && suggestionTree!.containsKey(suggestion)) {
+        final subtree = suggestionTree![suggestion];
+        print('[Click] suggestion=$suggestion, subtree type=${subtree.runtimeType}, keys=${subtree is Map ? (subtree as Map).keys.toList() : 'null'}');
+        suggestionTree = subtree is Map<String, dynamic> ? subtree : null;
+        print('[Click] new tree keys=${suggestionTree?.keys.toList()}');
+      } else {
+        print('[Click] suggestion=$suggestion not found in tree');
+        suggestionTree = null;
+      }
+    });
+
+    // Check if we need to extend the tree
+    final depth = _countDepth(suggestionTree);
+    print('[Click] remaining depth=$depth');
+    _checkAndExtendTree();
+  }
+
+  int _countDepth(dynamic node) {
+    if (node == null) return 0;
+    if (node is! Map<String, dynamic>) return 0;
+    if (node.isEmpty) return 0;
+
+    int maxDepth = 0;
+    for (final value in node.values) {
+      final childDepth = _countDepth(value);
+      if (childDepth > maxDepth) {
+        maxDepth = childDepth;
+      }
+    }
+
+    return 1 + maxDepth;
+  }
+
+  Future<void> _checkAndExtendTree() async {
+    final remainingDepth = _countDepth(suggestionTree);
+
+    if (remainingDepth <= minRemainingDepth && !isLoadingSuggestions && !isExtendingTree) {
+      await _extendTree();
+    }
+  }
+
+  Future<void> _extendTree() async {
+    // Set flag to prevent overlapping extensions
+    if (isExtendingTree) return;
+    isExtendingTree = true;
+
+    // Don't set isLoadingSuggestions = true here, load in background
+    // Keep showing cached suggestions while extending
+
+    try {
+      if (suggestionTree == null || suggestionTree!.isEmpty) {
+        isExtendingTree = false;
+        return;
+      }
+
+      // Build anchoring suggestions from current tree
+      final anchoring = <String, dynamic>{};
+      for (final key in suggestionTree!.keys) {
+        anchoring[key] = suggestionTree![key];
+      }
+
+      // Request extension (extend by extensionDepth levels)
+      final result = await backend.getSuggestions(
+        previousMessages: _getPreviousMessages(),
+        currentInput: messageController.text,
+        depth: extensionDepth,
+        branchingFactor: suggestionBranchingFactor,
+        anchoringSuggestions: anchoring,
+      );
+
+      // Replace tree with extended version
+      if (mounted) {
+        setState(() {
+          suggestionTree = result;
+          isExtendingTree = false;
+        });
+      }
+    } catch (e) {
+      // Silently fail, keep showing cached suggestions
+      if (mounted) {
+        setState(() {
+          isExtendingTree = false;
+        });
+      }
+    }
+  }
+
+  List<Map<String, String>> _getPreviousMessages() {
+    return messages.map((msg) {
+      return {
+        'role': msg.isUser ? 'user' : 'assistant',
+        'content': msg.text,
+      };
+    }).toList();
+  }
+
   @override
   void dispose() {
+    messageController.removeListener(_onInputChanged);
     messageController.dispose();
     scrollController.dispose();
     streamSubscription?.cancel();
