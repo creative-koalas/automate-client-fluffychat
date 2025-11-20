@@ -212,11 +212,16 @@ class AutomateBackend {
     required int branchingFactor,
     required Map<String, dynamic> anchoringSuggestions,
   }) {
+    // If no anchoring provided, use default initial suggestions
+    final anchors = anchoringSuggestions.isEmpty
+        ? {'我想': null, '我要': null, '帮我': null}
+        : anchoringSuggestions;
+
     // Build suggestion tree based on anchoring suggestions
     // IMPORTANT: Always return a tree with the same keys as anchoring
     final result = <String, dynamic>{};
 
-    for (final anchor in anchoringSuggestions.keys) {
+    for (final anchor in anchors.keys) {
       if (depth <= 1) {
         // Last level, no children (terminal nodes)
         result[anchor] = null;
@@ -231,7 +236,7 @@ class AutomateBackend {
       }
     }
 
-    print('[Mock] depth=$depth, anchors=${anchoringSuggestions.keys.toList()}, result keys=${result.keys.toList()}');
+    print('[Mock] depth=$depth, anchors=${anchors.keys.toList()}, result keys=${result.keys.toList()}');
     return result;
   }
 

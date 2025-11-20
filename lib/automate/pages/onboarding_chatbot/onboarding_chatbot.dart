@@ -61,7 +61,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     super.initState();
     _sendInitialGreeting();
     messageController.addListener(_onInputChanged);
-    _loadInitialSuggestions();
+    _loadSuggestions();
   }
 
   void _sendInitialGreeting() async {
@@ -186,22 +186,21 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     }
   }
 
-  Future<void> _loadInitialSuggestions() async {
+  /// Load suggestions with optional anchoring
+  /// If anchoring is null, backend will use default initial suggestions
+  Future<void> _loadSuggestions({
+    Map<String, dynamic>? anchoring,
+    int? depth,
+  }) async {
     setState(() => isLoadingSuggestions = true);
 
     try {
-      final anchoring = {
-        '我想': null,
-        '我要': null,
-        '帮我': null,
-      };
-
       final result = await backend.getSuggestions(
         previousMessages: _getPreviousMessages(),
         currentInput: messageController.text,
-        depth: initialSuggestionDepth,
+        depth: depth ?? initialSuggestionDepth,
         branchingFactor: suggestionBranchingFactor,
-        anchoringSuggestions: anchoring,
+        anchoringSuggestions: anchoring ?? {},
       );
 
       if (mounted) {
@@ -226,33 +225,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     });
 
     // Reload with new input
-    try {
-      final anchoring = {
-        '我想': null,
-        '我要': null,
-        '帮我': null,
-      };
-
-      final result = await backend.getSuggestions(
-        previousMessages: _getPreviousMessages(),
-        currentInput: messageController.text,
-        depth: initialSuggestionDepth,
-        branchingFactor: suggestionBranchingFactor,
-        anchoringSuggestions: anchoring,
-      );
-
-      if (mounted) {
-        setState(() {
-          suggestionTree = result;
-          lastInputForSuggestions = messageController.text;
-          isLoadingSuggestions = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => isLoadingSuggestions = false);
-      }
-    }
+    await _loadSuggestions();
   }
 
   void onSuggestionClick(String suggestion) {
@@ -307,7 +280,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (remainingDepth <= minRemainingDepth && !isLoadingSuggestions && !isExtendingTree) {
       // If tree is null/empty, reload from scratch instead of extending
       if (_suggestionTree == null || _suggestionTree!.isEmpty) {
-        _loadInitialSuggestions();
+        _loadSuggestions();
       } else {
         _extendTree();
       }
