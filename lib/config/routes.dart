@@ -29,7 +29,6 @@ import 'package:fluffychat/pages/settings_chat/settings_chat.dart';
 import 'package:fluffychat/pages/settings_emotes/settings_emotes.dart';
 import 'package:fluffychat/pages/settings_homeserver/settings_homeserver.dart';
 import 'package:fluffychat/pages/settings_ignore_list/settings_ignore_list.dart';
-import 'package:fluffychat/pages/settings_multiple_emotes/settings_multiple_emotes.dart';
 import 'package:fluffychat/pages/settings_notifications/settings_notifications.dart';
 import 'package:fluffychat/pages/settings_password/settings_password.dart';
 import 'package:fluffychat/pages/settings_security/settings_security.dart';
@@ -273,7 +272,9 @@ abstract class AppRoutes {
                           pageBuilder: (context, state) => defaultPageBuilder(
                             context,
                             state,
-                            const EmotesSettings(),
+                            EmotesSettings(
+                              roomId: state.pathParameters['roomid'],
+                            ),
                           ),
                         ),
                       ],
@@ -466,29 +467,13 @@ abstract class AppRoutes {
                       redirect: loggedOutRedirect,
                     ),
                     GoRoute(
-                      path: 'multiple_emotes',
-                      pageBuilder: (context, state) => defaultPageBuilder(
-                        context,
-                        state,
-                        const MultipleEmotesSettings(),
-                      ),
-                      redirect: loggedOutRedirect,
-                    ),
-                    GoRoute(
                       path: 'emotes',
                       pageBuilder: (context, state) => defaultPageBuilder(
                         context,
                         state,
-                        const EmotesSettings(),
-                      ),
-                      redirect: loggedOutRedirect,
-                    ),
-                    GoRoute(
-                      path: 'emotes/:state_key',
-                      pageBuilder: (context, state) => defaultPageBuilder(
-                        context,
-                        state,
-                        const EmotesSettings(),
+                        EmotesSettings(
+                          roomId: state.pathParameters['roomid'],
+                        ),
                       ),
                       redirect: loggedOutRedirect,
                     ),

@@ -3452,5 +3452,13 @@
     }
   },
   "thread": "Thread",
-  "backToMainChat": "Back to main chat"
+  "backToMainChat": "Back to main chat",
+  "saveChanges": "Save changes",
+  "createSticker": "Create sticker or emoji",
+  "useAsSticker": "Use as sticker",
+  "useAsEmoji": "Use as emoji",
+  "stickerPackNameAlreadyExists": "Sticker pack name already exists",
+  "newStickerPack": "New sticker pack",
+  "stickerPackName": "Sticker pack name",
+  "attribution": "Attribution"
 }
