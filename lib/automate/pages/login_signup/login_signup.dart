@@ -105,14 +105,10 @@ class LoginSignupController extends State<LoginSignup> {
       Matrix.of(context);
 
       // Verify the phone number and code with backend
-      final authResponse = await backend.verifyCode(
+      final authResponse = await backend.loginOrSignup(
         phoneController.text,
         codeController.text,
       );
-
-      // TODO: Use authResponse.token to login or register the user
-      // This would typically involve calling matrix.getLoginClient() with
-      // the credentials obtained from the backend
 
       if (mounted) {
         setState(() => loading = false);
@@ -196,7 +192,6 @@ class LoginSignupController extends State<LoginSignup> {
   void dispose() {
     phoneController.dispose();
     codeController.dispose();
-    backend.dispose();
     super.dispose();
   }
 

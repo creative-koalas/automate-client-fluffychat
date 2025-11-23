@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:fluffychat/automate/backend.dart';
 import 'package:fluffychat/config/routes.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
@@ -52,18 +55,63 @@ class FluffyChatApp extends StatelessWidget {
         localizationsDelegates: L10n.localizationsDelegates,
         supportedLocales: L10n.supportedLocales,
         routerConfig: router,
-        builder: (context, child) => AppLockWidget(
-          pincode: pincode,
-          clients: clients,
-          // Need a navigator above the Matrix widget for
-          // displaying dialogs
-          child: Matrix(
+        builder: (context, child) => _AutomateAuthListener(
+          child: AppLockWidget(
+            pincode: pincode,
             clients: clients,
-            store: store,
-            child: testWidget ?? child,
+            // Need a navigator above the Matrix widget for
+            // displaying dialogs
+            child: Matrix(
+              clients: clients,
+              store: store,
+              child: testWidget ?? child,
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _AutomateAuthListener extends StatefulWidget {
+  final Widget? child;
+  const _AutomateAuthListener({this.child});
+
+  @override
+  State<_AutomateAuthListener> createState() => _AutomateAuthListenerState();
+}
+
+class _AutomateAuthListenerState extends State<_AutomateAuthListener> {
+  StreamSubscription<void>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = AutomateAuthEvents.instance.unauthorized.listen((_) async {
+      await AutomateBackend().clearTokens();
+      _redirectToLogin();
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child ?? const SizedBox.shrink();
+
+  void _redirectToLogin() {
+    final navKey = FluffyChatApp.router.routerDelegate.navigatorKey;
+    final ctx = navKey.currentContext;
+    if (ctx == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _redirectToLogin());
+      return;
+    }
+    final router = GoRouter.of(ctx);
+    if (router.routeInformationProvider.value.uri.path != '/login-signup') {
+      router.go('/login-signup');
+    }
   }
 }

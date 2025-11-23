@@ -59,9 +59,13 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   @override
   void initState() {
     super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
     _sendInitialGreeting();
     messageController.addListener(_onInputChanged);
-    _loadSuggestions();
+    await _loadSuggestions();
   }
 
   void _sendInitialGreeting() async {
@@ -122,8 +126,8 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   Future<void> sendMessage() async {
-    final text = messageController.text;
-    if (isLoading || isStreaming) return;
+    final text = messageController.text.trim();
+    if (isLoading || isStreaming || text.isEmpty) return;
 
     // Add user message
     _addMessage(
@@ -159,9 +163,8 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         }
       }
     } catch (e) {
-      // Handle error
       setState(() {
-        messages.last.text = '抱歉，出现了一些问题。请稍后再试。';
+        messages.last.text = _errorText(e);
       });
     } finally {
       setState(() => isLoading = false);
@@ -334,7 +337,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         // Setter will automatically trigger extension check if needed
       }
     } catch (e) {
-      // Silently fail, keep showing cached suggestions
       if (mounted) {
         setState(() {
           clicksDuringExtension.clear();
@@ -360,6 +362,13 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     scrollController.dispose();
     streamSubscription?.cancel();
     super.dispose();
+  }
+
+  String _errorText(Object error) {
+    if (error is AutomateBackendException) {
+      return error.message;
+    }
+    return '抱歉，出现了一些问题：${error.toString()}';
   }
 
   @override

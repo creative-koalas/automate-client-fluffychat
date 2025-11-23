@@ -1,165 +1,182 @@
 /// Backend API wrapper for Automate functionality.
-/// This file contains HTTP API clients and mock implementations
-/// for the onboarding chatbot and other automation features.
+/// Integrates the onboarding chatbot (Next.js service) and auth flows.
 library;
 
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-/// Main backend client for Automate features
+/// Tokens issued by the main backend. The onboarding chatbot has its own JWT.
+class AutomateAuthTokens {
+  final String primaryToken;
+  final String chatbotToken;
+  final String userId;
+
+  AutomateAuthTokens({
+    required this.primaryToken,
+    required this.chatbotToken,
+    required this.userId,
+  });
+}
+
+/// Secure token storage shared across Automate flows.
+class AutomateAuthStore {
+  AutomateAuthStore({FlutterSecureStorage? storage})
+      : _storage = storage ?? const FlutterSecureStorage();
+
+  static const _primaryKey = 'automate_primary_token';
+  static const _chatbotKey = 'automate_chatbot_token';
+  static const _userIdKey = 'automate_user_id';
+
+  final FlutterSecureStorage _storage;
+
+  Future<void> saveTokens(AutomateAuthTokens tokens) async {
+    await _storage.write(key: _primaryKey, value: tokens.primaryToken);
+    await _storage.write(key: _chatbotKey, value: tokens.chatbotToken);
+    await _storage.write(key: _userIdKey, value: tokens.userId);
+  }
+
+  Future<AutomateAuthTokens?> loadTokens() async {
+    final primary = await _storage.read(key: _primaryKey);
+    final chatbot = await _storage.read(key: _chatbotKey);
+    final userId = await _storage.read(key: _userIdKey);
+    if (primary == null || chatbot == null || userId == null) {
+      return null;
+    }
+    return AutomateAuthTokens(
+      primaryToken: primary,
+      chatbotToken: chatbot,
+      userId: userId,
+    );
+  }
+
+  Future<void> clear() async {
+    await Future.wait([
+      _storage.delete(key: _primaryKey),
+      _storage.delete(key: _chatbotKey),
+      _storage.delete(key: _userIdKey),
+    ]);
+  }
+}
+
+/// Main backend client for Automate features.
 class AutomateBackend {
-  // TODO: Replace with actual backend URL
-  static const String baseUrl = 'https://api.automate.example.com';
+  factory AutomateBackend({
+    http.Client? httpClient,
+    AutomateAuthStore? authStore,
+    String? chatbotBaseUrl,
+    String? mainBaseUrl,
+  }) {
+    return _instance ??= AutomateBackend._internal(
+      httpClient: httpClient,
+      authStore: authStore,
+      chatbotBaseUrl: chatbotBaseUrl,
+      mainBaseUrl: mainBaseUrl,
+    );
+  }
+
+  AutomateBackend._internal({
+    http.Client? httpClient,
+    AutomateAuthStore? authStore,
+    String? chatbotBaseUrl,
+    String? mainBaseUrl,
+  })  : _httpClient = httpClient ?? http.Client(),
+        _authStore = authStore ?? AutomateAuthStore(),
+        chatbotBaseUrl = chatbotBaseUrl ??
+            const String.fromEnvironment(
+              'ONBOARDING_CHATBOT_URL',
+              defaultValue: 'http://192.168.1.8:3000',
+            ),
+        mainBackendBaseUrl = mainBaseUrl ??
+            const String.fromEnvironment(
+              'MAIN_BACKEND_URL',
+              defaultValue: 'https://api.automate.example.com',
+            );
+
+  static AutomateBackend? _instance;
+  static Future<void>? _initializing;
+
+  /// Call once during app startup to load tokens into the singleton.
+  static Future<void> ensureInitialized() {
+    _initializing ??= AutomateBackend().loadSavedTokens().then((_) {});
+    return _initializing!;
+  }
 
   final http.Client _httpClient;
+  final AutomateAuthStore _authStore;
+  final String chatbotBaseUrl;
+  final String mainBackendBaseUrl;
 
-  AutomateBackend({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  String? _primaryToken;
+  String? _chatbotToken;
 
-  /// Streams chat response from the AI chatbot.
+  static const String _mockPrimaryToken = 'automate-mock-primary-token';
+  static const String _mockChatbotTokenEnv =
+      String.fromEnvironment('ONBOARDING_CHATBOT_TOKEN', defaultValue: '');
+
+  String? get chatbotToken => _chatbotToken;
+
+  /// Loads tokens from secure storage into memory.
+  Future<AutomateAuthTokens?> loadSavedTokens() async {
+    final tokens = await _authStore.loadTokens();
+    if (tokens != null) {
+      _applyTokens(tokens);
+    }
+    return tokens;
+  }
+
+  /// Persists and applies tokens.
+  Future<void> saveTokens(AutomateAuthTokens tokens) async {
+    _applyTokens(tokens);
+    await _authStore.saveTokens(tokens);
+  }
+
+  Future<void> clearTokens() async {
+    _primaryToken = null;
+    _chatbotToken = null;
+    await _authStore.clear();
+  }
+
+  /// Streams chat response from the onboarding chatbot.
   ///
-  /// API Design:
-  /// POST /api/v1/chat/stream
-  /// Request body: {
-  ///   "message": "user message text",
-  ///   "session_id": "optional session identifier",
-  ///   "context": {
-  ///     "is_onboarding": true,
-  ///     "user_id": "optional user ID"
-  ///   }
-  /// }
-  ///
-  /// Response: Server-Sent Events (SSE) stream
-  /// Each event: data: {"chunk": "text chunk", "done": false}
-  /// Final event: data: {"chunk": "", "done": true}
-  Stream<String> streamChatResponse(
-    String message, {
-    String? sessionId,
-    bool isOnboarding = true,
-  }) async* {
-    // TODO: Implement actual API call
-    // For now, using mock implementation
-    yield* _mockStreamChatResponse(message);
+  /// POST /api/submit-user-message
+  /// Headers: Authorization: Bearer <chatbotToken>
+  /// Body: {"content": "user input text"}
+  Stream<String> streamChatResponse(String message) async* {
+    _ensureChatbotToken();
 
-    /* Actual implementation would look like:
-    final url = Uri.parse('$baseUrl/api/v1/chat/stream');
+    final url = Uri.parse('$chatbotBaseUrl/api/submit-user-message');
     final request = http.Request('POST', url);
-    request.headers['Content-Type'] = 'application/json';
-    request.body = jsonEncode({
-      'message': message,
-      'session_id': sessionId,
-      'context': {
-        'is_onboarding': isOnboarding,
-      },
-    });
+    request.headers.addAll(_jsonHeaders(forChatbot: true));
+    request.body = jsonEncode({'content': message});
 
-    final response = await _httpClient.send(request);
+    late final http.StreamedResponse response;
+    try {
+      response = await _httpClient.send(request);
+    } catch (e) {
+      print(e);
+      throw AutomateBackendException('无法连接到聊天服务: $e');
+    }
 
     if (response.statusCode != 200) {
+      final body = await response.stream.bytesToString();
+      _handleUnauthorized(response.statusCode);
       throw AutomateBackendException(
-        'Failed to stream chat response: ${response.statusCode}',
+        '聊天请求失败 (${response.statusCode}): ${_extractErrorMessage(body)}',
+        statusCode: response.statusCode,
       );
     }
 
-    await for (final chunk in response.stream.transform(utf8.decoder)) {
-      // Parse SSE format
-      final lines = chunk.split('\n');
-      for (final line in lines) {
-        if (line.startsWith('data: ')) {
-          final jsonStr = line.substring(6);
-          final data = jsonDecode(jsonStr);
-          if (!data['done']) {
-            yield data['chunk'] as String;
-          }
-        }
-      }
-    }
-    */
+    yield* _parseSseStream(response.stream);
   }
 
-  /// Mock implementation of streaming chat response
-  /// Simulates AI responses with realistic typing speed
-  Stream<String> _mockStreamChatResponse(String message) async* {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    // Generate mock response based on message content
-    final response = _generateMockResponse(message);
-
-    // Stream the response character by character with realistic delays
-    final words = response.split(' ');
-    for (var i = 0; i < words.length; i++) {
-      final word = words[i];
-      yield word;
-
-      // Add space after word (except last word)
-      if (i < words.length - 1) {
-        yield ' ';
-      }
-
-      // Variable delay to simulate typing
-      final delay = word.length * 20 + (word.contains('。') ? 200 : 50);
-      await Future.delayed(Duration(milliseconds: delay));
-    }
-  }
-
-  /// Generate mock response based on user input
-  String _generateMockResponse(String message) {
-    final lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.contains('提醒') || lowerMessage.contains('remind')) {
-      return '好的！我可以帮你设置定时提醒。\n\n'
-          '我会在指定的时间通过通知提醒你。你想在什么时间收到提醒呢？\n\n'
-          '例如："每天早上 8 点" 或 "每周一下午 3 点"';
-    } else if (lowerMessage.contains('整理') || lowerMessage.contains('organize')) {
-      return '明白了！我可以帮你整理和管理待办事项。\n\n'
-          '我会自动分类、优先排序，还可以设置提醒。\n\n'
-          '你想让我怎么帮你整理呢？';
-    } else if (lowerMessage.contains('监控') || lowerMessage.contains('monitor') ||
-               lowerMessage.contains('价格') || lowerMessage.contains('price')) {
-      return '好的！我可以帮你监控网站或价格变化。\n\n'
-          '我会定期检查并在发现变化时通知你。\n\n'
-          '请告诉我你想监控的网站地址或商品链接。';
-    } else if (lowerMessage.contains('邮件') || lowerMessage.contains('email')) {
-      return '我可以帮你管理邮件！\n\n'
-          '包括自动分类、智能回复建议、重要邮件提醒等。\n\n'
-          '你需要哪方面的帮助呢？';
-    } else {
-      return '我理解了！听起来是个很有趣的任务。\n\n'
-          '让我帮你设置这个自动化任务。我需要了解更多细节：\n\n'
-          '1. 具体的触发条件是什么？\n'
-          '2. 你希望多久执行一次？\n'
-          '3. 需要什么样的通知方式？\n\n'
-          '请告诉我更多细节，我会为你定制最合适的方案。';
-    }
-  }
-
-  /// Get input suggestions for autocomplete
+  /// Get input suggestions for autocomplete from chatbot backend.
   ///
-  /// API Design:
-  /// POST /api/v1/chat/suggestions
-  /// Request body: {
-  ///   "previous_messages": [
-  ///     {"role": "user", "content": "..."},
-  ///     {"role": "assistant", "content": "..."}
-  ///   ],
-  ///   "current_input": "我今天",
-  ///   "depth": 2,
-  ///   "branching_factor": 3,
-  ///   "anchoring_suggestions": {
-  ///     "吃了": null,
-  ///     "心情": null,
-  ///     "想要": null
-  ///   }
-  /// }
-  ///
-  /// Response: {
-  ///   "suggestions": {
-  ///     "吃了": {"苹果": null, "香蕉": null, "梨": null},
-  ///     "心情": {"很好": null, "很糟": null, "还可以": null},
-  ///     "想要": {"出去玩": null, "学习": null, "上班": null}
-  ///   }
-  /// }
+  /// POST /api/generate-auto-completions
+  /// Headers: Authorization: Bearer <chatbotToken>
+  /// Body matches backend contract.
   Future<Map<String, dynamic>> getSuggestions({
     required List<Map<String, String>> previousMessages,
     required String currentInput,
@@ -167,328 +184,285 @@ class AutomateBackend {
     required int branchingFactor,
     required Map<String, dynamic> anchoringSuggestions,
   }) async {
-    // TODO: Implement actual API call
-    // Simulate API delay
-    await Future.delayed(const Duration(seconds: 1));
+    final trimmedInput = currentInput.trim();
+    if (trimmedInput.isEmpty) {
+      return {};
+    }
 
-    // For now, using mock implementation
-    return _mockGetSuggestions(
-      currentInput: currentInput,
-      depth: depth,
-      branchingFactor: branchingFactor,
-      anchoringSuggestions: anchoringSuggestions,
-    );
+    _ensureChatbotToken();
 
-    /* Actual implementation:
-    final url = Uri.parse('$baseUrl/api/v1/chat/suggestions');
-    final response = await _httpClient.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'previous_messages': previousMessages,
-        'current_input': currentInput,
-        'depth': depth,
-        'branching_factor': branchingFactor,
-        'anchoring_suggestions': anchoringSuggestions,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw AutomateBackendException(
-        'Failed to get suggestions: ${response.statusCode}',
+    final url = Uri.parse('$chatbotBaseUrl/api/generate-auto-completions');
+    late final http.Response response;
+    try {
+      response = await _httpClient.post(
+        url,
+        headers: _jsonHeaders(forChatbot: true),
+        body: jsonEncode({
+          'history': previousMessages,
+          'currentInput': trimmedInput,
+          'anchoringSuggestions': anchoringSuggestions,
+          'treeDepth': depth,
+          'branchingFactor': branchingFactor,
+        }),
       );
+    } catch (e) {
+      print(e);
+      throw AutomateBackendException('获取补全失败: $e');
     }
 
-    final data = jsonDecode(response.body);
-    return data['suggestions'] as Map<String, dynamic>;
-    */
-  }
-
-  /// Mock implementation of getSuggestions
-  /// If anchoring is empty: create NEW tree with given depth
-  /// If anchoring has structure: EXTEND the tree by adding depth levels to terminal nodes
-  Map<String, dynamic> _mockGetSuggestions({
-    required String currentInput,
-    required int depth,
-    required int branchingFactor,
-    required Map<String, dynamic> anchoringSuggestions,
-  }) {
-    // If no anchoring provided, create a new tree from scratch
-    if (anchoringSuggestions.isEmpty) {
-      final defaultAnchors = {'我想': null, '我要': null, '帮我': null};
-      return _buildNewTree(
-        anchors: defaultAnchors,
-        depth: depth,
-        branchingFactor: branchingFactor,
-        currentInput: currentInput,
-      );
-    }
-
-    // Otherwise, extend the existing tree structure
-    return _extendTree(
-      tree: anchoringSuggestions,
-      depth: depth,
-      branchingFactor: branchingFactor,
-      currentInput: currentInput,
-    );
-  }
-
-  /// Build a completely new tree
-  Map<String, dynamic> _buildNewTree({
-    required Map<String, dynamic> anchors,
-    required int depth,
-    required int branchingFactor,
-    required String currentInput,
-  }) {
-    final result = <String, dynamic>{};
-
-    for (final anchor in anchors.keys) {
-      if (depth <= 1) {
-        result[anchor] = null;
-      } else {
-        result[anchor] = _generateMockSuggestionChildren(
-          parent: anchor,
-          currentInput: currentInput,
-          depth: depth - 1,
-          branchingFactor: branchingFactor,
-        );
+    var data = <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        data = decoded;
       }
+    } catch (_) {
+      // fallthrough to error handling
     }
 
-    return result;
-  }
-
-  /// Extend an existing tree by adding levels to terminal nodes
-  Map<String, dynamic> _extendTree({
-    required Map<String, dynamic> tree,
-    required int depth,
-    required int branchingFactor,
-    required String currentInput,
-  }) {
-    final result = <String, dynamic>{};
-
-    for (final key in tree.keys) {
-      final value = tree[key];
-
-      if (value == null) {
-        // Terminal node - extend it by adding new children
-        if (depth <= 0) {
-          result[key] = null;
-        } else {
-          result[key] = _generateMockSuggestionChildren(
-            parent: key,
-            currentInput: currentInput,
-            depth: depth,
-            branchingFactor: branchingFactor,
-          );
-        }
-      } else if (value is Map<String, dynamic>) {
-        // Non-terminal node - recursively extend its children
-        result[key] = _extendTree(
-          tree: value,
-          depth: depth,
-          branchingFactor: branchingFactor,
-          currentInput: currentInput,
-        );
-      } else {
-        // Unknown structure, keep as-is
-        result[key] = value;
-      }
+    if (response.statusCode != 200 || data['ok'] != true) {
+      _handleUnauthorized(response.statusCode);
+      final error = data['error']?.toString() ?? _extractErrorMessage(response.body);
+      throw AutomateBackendException(error, statusCode: response.statusCode);
     }
 
-    return result;
-  }
-
-  /// Generate mock suggestion children
-  Map<String, dynamic> _generateMockSuggestionChildren({
-    required String parent,
-    required String currentInput,
-    required int depth,
-    required int branchingFactor,
-  }) {
-    // Predefined suggestion patterns based on common Chinese phrases
-    final suggestionPatterns = {
-      '吃了': ['苹果', '香蕉', '梨', '西瓜', '葡萄', '橙子'],
-      '喝了': ['水', '茶', '咖啡', '果汁', '牛奶', '可乐'],
-      '心情': ['很好', '很糟', '还可以', '不错', '一般', '糟透了'],
-      '想要': ['出去玩', '学习', '上班', '休息', '睡觉', '运动'],
-      '去了': ['公园', '商场', '学校', '公司', '医院', '图书馆'],
-      '看了': ['电影', '书', '电视', '新闻', '比赛', '展览'],
-      '买了': ['衣服', '食物', '书籍', '电子产品', '日用品', '礼物'],
-      '见了': ['朋友', '家人', '同事', '老师', '医生', '客户'],
-    };
-
-    final children = suggestionPatterns[parent] ??
-        ['选项1', '选项2', '选项3', '选项4', '选项5', '选项6'];
-
-    final result = <String, dynamic>{};
-    final count = branchingFactor < children.length
-        ? branchingFactor
-        : children.length;
-
-    for (var i = 0; i < count; i++) {
-      final child = children[i];
-      if (depth <= 1) {
-        result[child] = null;
-      } else {
-        // For deeper levels, generate more generic suggestions
-        result[child] = _generateGenericSuggestions(
-          depth: depth - 1,
-          branchingFactor: branchingFactor,
-        );
-      }
+    final suggestions = data['suggestions'];
+    if (suggestions is Map<String, dynamic>) {
+      return suggestions;
     }
-
-    return result;
+    throw AutomateBackendException('补全结果格式错误');
   }
 
-  /// Generate generic suggestions for deeper levels
-  Map<String, dynamic> _generateGenericSuggestions({
-    required int depth,
-    required int branchingFactor,
-  }) {
-    final generic = ['了', '的', '很开心', '很满意', '不太好', '还行'];
-    final result = <String, dynamic>{};
-    final count = branchingFactor < generic.length
-        ? branchingFactor
-        : generic.length;
-
-    for (var i = 0; i < count; i++) {
-      result[generic[i]] = depth <= 1 ? null : <String, dynamic>{};
-    }
-
-    return result;
-  }
-
-  /// Send verification code via SMS
-  ///
-  /// API Design:
-  /// POST /api/v1/auth/send-code
-  /// Request: {"phone": "+86xxxxxxxxxx"}
-  /// Response: {"success": true, "message": "Code sent"}
+  /// Send verification code via SMS (main backend).
   Future<void> sendVerificationCode(String phoneNumber) async {
-    // TODO: Implement actual API call
-    // Mock implementation
-    await Future.delayed(const Duration(seconds: 1));
-
-    /* Actual implementation:
-    final url = Uri.parse('$baseUrl/api/v1/auth/send-code');
-    final response = await _httpClient.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phoneNumber}),
-    );
-
-    if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw AutomateBackendException(error['message'] ?? 'Failed to send code');
-    }
-    */
+    // Mocked: assume code sent successfully.
+    await Future.delayed(const Duration(milliseconds: 300));
   }
 
-  /// Verify phone number and code, returns auth token
-  ///
-  /// API Design:
-  /// POST /api/v1/auth/verify
-  /// Request: {"phone": "+86xxxxxxxxxx", "code": "123456"}
-  /// Response: {
-  ///   "success": true,
-  ///   "token": "jwt_token_here",
-  ///   "user": {
-  ///     "id": "user_id",
-  ///     "phone": "+86xxxxxxxxxx",
-  ///     "is_new_user": true
-  ///   }
-  /// }
-  Future<AuthResponse> verifyCode(String phoneNumber, String code) async {
-    // TODO: Implement actual API call
-    // Mock implementation
-    await Future.delayed(const Duration(seconds: 1));
-
-    return AuthResponse(
-      token: 'mock_jwt_token_${DateTime.now().millisecondsSinceEpoch}',
-      userId: 'mock_user_id',
+  /// Verify phone number and code, returns tokens and user info.
+  Future<AuthResponse> loginOrSignup(String phoneNumber, String code) async {
+    // Mocked: bypass network and return provided chatbot token.
+    final auth = AuthResponse(
+      token: _mockPrimaryToken,
+      chatbotToken: _mockChatbotTokenEnv,
+      userId: phoneNumber.isNotEmpty
+          ? phoneNumber
+          : DateTime.now().millisecondsSinceEpoch.toString(),
       isNewUser: true,
     );
-
-    /* Actual implementation:
-    final url = Uri.parse('$baseUrl/api/v1/auth/verify');
-    final response = await _httpClient.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone': phoneNumber,
-        'code': code,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw AutomateBackendException(error['message'] ?? 'Verification failed');
-    }
-
-    final data = jsonDecode(response.body);
-    return AuthResponse.fromJson(data);
-    */
+    await saveTokens(auth.tokens);
+    return auth;
   }
 
-  /// Mark onboarding as complete
-  ///
-  /// API Design:
-  /// POST /api/v1/user/onboarding/complete
-  /// Headers: Authorization: Bearer {token}
-  /// Response: {"success": true}
   Future<void> completeOnboarding(String userId) async {
-    // TODO: Implement actual API call
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    /* Actual implementation:
-    final url = Uri.parse('$baseUrl/api/v1/user/onboarding/complete');
-    final response = await _httpClient.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode != 200) {
-      throw AutomateBackendException('Failed to complete onboarding');
-    }
-    */
+    // Placeholder for main backend integration.
+    debugPrint('completeOnboarding for user $userId');
   }
 
   void dispose() {
-    _httpClient.close();
+    // No-op for singleton; keep the shared client alive.
+  }
+
+  void _applyTokens(AutomateAuthTokens tokens) {
+    _primaryToken = tokens.primaryToken;
+    _chatbotToken = tokens.chatbotToken;
+  }
+
+  void _ensureChatbotToken() {
+    if (_chatbotToken == null ||
+        _chatbotToken!.isEmpty ||
+        _chatbotToken == '<PASTE_CHATBOT_TOKEN>') {
+      AutomateAuthEvents.instance.notifyUnauthorized();
+      throw AutomateBackendException(
+        '缺少聊天服务的访问令牌，请重新登录。',
+        statusCode: 401,
+      );
+    }
+  }
+
+  void _handleUnauthorized(int? statusCode) {
+    if (statusCode == 401) {
+      AutomateAuthEvents.instance.notifyUnauthorized();
+    }
+  }
+
+  Map<String, String> _jsonHeaders({bool forChatbot = false}) {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final token = forChatbot ? _chatbotToken : _primaryToken;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  Stream<String> _parseSseStream(Stream<List<int>> byteStream) async* {
+    final decoder = utf8.decoder;
+    var buffer = '';
+    var hasStreamedChunk = false;
+
+    await for (final chunk in byteStream.transform(decoder)) {
+      buffer += chunk;
+      int boundary;
+      while ((boundary = buffer.indexOf('\n\n')) != -1) {
+        final rawEvent = buffer.substring(0, boundary);
+        buffer = buffer.substring(boundary + 2);
+
+        final event = _decodeSseEvent(rawEvent);
+        if (event == null) continue;
+
+        switch (event.name) {
+          case 'assistant_message_delta':
+            final delta = _readDelta(event.data);
+            if (delta.isNotEmpty) {
+              hasStreamedChunk = true;
+              yield delta;
+            }
+            break;
+          case 'assistant_message':
+            final content = _readAssistantContent(event.data);
+            if (content.isNotEmpty && !hasStreamedChunk) {
+              yield content;
+              hasStreamedChunk = true;
+            }
+            break;
+          case 'error':
+            throw AutomateBackendException(_readErrorFromEvent(event.data));
+          case 'done':
+            return;
+          default:
+            continue;
+        }
+      }
+    }
+  }
+
+  _SseEvent? _decodeSseEvent(String rawEvent) {
+    String? name;
+    final dataBuffer = StringBuffer();
+
+    for (final line in rawEvent.split('\n')) {
+      if (line.startsWith('event:')) {
+        name = line.substring(6).trim();
+      } else if (line.startsWith('data:')) {
+        dataBuffer.write(line.substring(5).trim());
+      }
+    }
+
+    if (name == null) return null;
+    final dataString = dataBuffer.toString();
+    dynamic data;
+    if (dataString.isNotEmpty) {
+      try {
+        data = jsonDecode(dataString);
+      } catch (_) {
+        data = dataString;
+      }
+    }
+
+    return _SseEvent(name: name, data: data);
+  }
+
+  String _readDelta(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data['delta']?.toString() ?? '';
+    }
+    return data?.toString() ?? '';
+  }
+
+  String _readAssistantContent(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data['content']?.toString() ?? '';
+    }
+    return '';
+  }
+
+  String _readErrorFromEvent(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data['message']?.toString() ??
+          data['error']?.toString() ??
+          'Unknown error';
+    }
+    return data?.toString() ?? 'Unknown error';
+  }
+
+  String _extractErrorMessage(String body) {
+    if (body.isEmpty) return 'Unknown error';
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded['error']?.toString() ??
+            decoded['message']?.toString() ??
+            body;
+      }
+    } catch (_) {
+      // Ignore decode errors and fall back to raw body
+    }
+    return body;
   }
 }
 
-/// Response from authentication API
+class AutomateAuthEvents {
+  AutomateAuthEvents._();
+  static final AutomateAuthEvents instance = AutomateAuthEvents._();
+
+  final StreamController<void> _unauthorizedController = StreamController<void>.broadcast();
+
+  Stream<void> get unauthorized => _unauthorizedController.stream;
+
+  void notifyUnauthorized() {
+    if (!_unauthorizedController.isClosed) {
+      _unauthorizedController.add(null);
+    }
+  }
+}
+
+class _SseEvent {
+  final String name;
+  final dynamic data;
+
+  _SseEvent({required this.name, required this.data});
+}
+
+/// Response from authentication API.
 class AuthResponse {
   final String token;
+  final String chatbotToken;
   final String userId;
   final bool isNewUser;
 
   AuthResponse({
     required this.token,
+    required this.chatbotToken,
     required this.userId,
     required this.isNewUser,
   });
 
+  AutomateAuthTokens get tokens => AutomateAuthTokens(
+        primaryToken: token,
+        chatbotToken: chatbotToken,
+        userId: userId,
+      );
+
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>? ?? {};
+    final onboardingToken = json['chatbotToken']?.toString() ?? json['onboardingToken']?.toString();
     return AuthResponse(
-      token: json['token'] as String,
-      userId: json['user']['id'] as String,
-      isNewUser: json['user']['is_new_user'] as bool,
+      token: json['token']?.toString() ?? '',
+      chatbotToken: onboardingToken ?? json['token']?.toString() ?? '',
+      userId: user['id']?.toString() ?? '',
+      isNewUser: user['is_new_user'] == true || user['isNewUser'] == true,
     );
   }
 }
 
-/// Exception thrown by Automate backend
+/// Exception thrown by Automate backend.
 class AutomateBackendException implements Exception {
   final String message;
+  final int? statusCode;
 
-  AutomateBackendException(this.message);
+  AutomateBackendException(this.message, {this.statusCode});
+
+  bool get isUnauthorized => statusCode == 401;
 
   @override
   String toString() => 'AutomateBackendException: $message';
