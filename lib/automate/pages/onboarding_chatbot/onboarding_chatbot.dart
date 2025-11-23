@@ -1,11 +1,10 @@
 /// The onboarding chatbot page.
-/// User is automatically redirected to this page after successful signup.
-/// This page guides the user to describe their first automation task.
+/// Loads past messages, streams replies, and auto-completion suggestions.
 library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:fluffychat/automate/backend.dart';
+import 'package:fluffychat/automate/backend/backend.dart';
 import 'onboarding_chatbot_view.dart';
 
 class OnboardingChatbot extends StatefulWidget {
@@ -19,42 +18,39 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
   final List<ChatMessage> messages = [];
-  final AutomateBackend backend = AutomateBackend();
+  final AutomateBackend backend = AutomateBackend.instance;
 
   bool isLoading = false;
   bool isStreaming = false;
-  StreamSubscription<String>? streamSubscription;
 
   // Suggestion state - tree at current level
   Map<String, dynamic>? _suggestionTree;
   bool isLoadingSuggestions = false;
-  bool isExtendingTree = false; // Track background extension
-  List<String> clicksDuringExtension = []; // Track clicks made during extension
+  bool isExtendingTree = false;
+  List<String> clicksDuringExtension = [];
   String lastInputForSuggestions = '';
 
-  // Getter for tree
   Map<String, dynamic>? get suggestionTree => _suggestionTree;
+  set suggestionTree(Map<String, dynamic>? value) {
+    _suggestionTree = value;
 
-  // Setter that triggers extension check
-  set suggestionTree(Map<String, dynamic>? newTree) {
-    _suggestionTree = newTree;
     // Schedule extension check on next frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndExtendTreeNonRecursive();
     });
   }
 
-  // Derived from tree - no separate state needed
   List<String> get currentSuggestions {
     if (_suggestionTree == null || _suggestionTree!.isEmpty) return [];
     return _suggestionTree!.keys.toList();
   }
 
-  // Suggestion tree parameters
-  static const int initialSuggestionDepth = 3; // Initial tree depth (3 levels: 3 + 9 + 27 = 39 nodes)
-  static const int suggestionBranchingFactor = 3; // Branching factor
-  static const int minRemainingDepth = 1; // Extend when only 1 level remains
-  static const int extensionDepth = 2; // Extend by 2 levels each time
+  static const int initialSuggestionDepth = 3;
+  static const int suggestionBranchingFactor = 3;
+  static const int minRemainingDepth = 1;
+  static const int maxSuggestionTreeDepth = 3;
+
+  StreamSubscription<String>? streamSubscription;
 
   @override
   void initState() {
@@ -63,18 +59,41 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   Future<void> _initialize() async {
-    _sendInitialGreeting();
+    await backend.ensureInitialized();
+    try {
+      final history = await backend.fetchMessages();
+      if (!mounted) return;
+      if (history.isNotEmpty) {
+        _addMessagesFromHistory(history);
+      } else {
+        _sendInitialGreeting();
+      }
+    } on UnauthorizedException {
+      // Auth gate will handle redirect
+      return;
+    } catch (_) {
+      if (mounted) {
+        _sendInitialGreeting();
+      }
+    }
+
     messageController.addListener(_onInputChanged);
-    await _loadSuggestions();
+    if (!mounted) return;
+    try {
+      await _loadSuggestions();
+    } on UnauthorizedException {
+      // Auth gate will handle redirect
+      return;
+    }
   }
 
   void _sendInitialGreeting() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
 
-    // Simulate slight delay for natural feel
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
 
-    // Add AI greeting message with streaming effect
     _addMessage(
       ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -87,28 +106,30 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     const greeting = '你好！👋 欢迎使用智能助手。\n\n我可以帮你自动完成各种任务。请告诉我，你想让我帮你做什么？\n\n例如：\n• "每天早上 8 点提醒我查看邮件"\n• "帮我整理待办事项"\n• "监控某个网站的价格变动"';
 
     await _streamTextToLastMessage(greeting);
-
+    if (!mounted) return;
     setState(() => isLoading = false);
   }
 
   Future<void> _streamTextToLastMessage(String fullText) async {
+    if (!mounted) return;
     setState(() => isStreaming = true);
 
     final chars = fullText.characters.toList();
     for (var i = 0; i < chars.length; i++) {
       await Future.delayed(const Duration(milliseconds: 15));
-      if (mounted) {
-        setState(() {
-          messages.last.text += chars[i];
-        });
-        _scrollToBottom();
-      }
+      if (!mounted) return;
+      setState(() {
+        messages.last.text += chars[i];
+      });
+      _scrollToBottom();
     }
 
+    if (!mounted) return;
     setState(() => isStreaming = false);
   }
 
   void _addMessage(ChatMessage message) {
+    if (!mounted) return;
     setState(() => messages.add(message));
     _scrollToBottom();
   }
@@ -129,7 +150,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     final text = messageController.text.trim();
     if (isLoading || isStreaming || text.isEmpty) return;
 
-    // Add user message
     _addMessage(
       ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -142,7 +162,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     messageController.clear();
     setState(() => isLoading = true);
 
-    // Add placeholder for AI response
     _addMessage(
       ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -153,48 +172,45 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     );
 
     try {
-      // Stream the AI response
       await for (final chunk in backend.streamChatResponse(text)) {
-        if (mounted) {
-          setState(() {
-            messages.last.text += chunk;
-          });
-          _scrollToBottom();
-        }
+        if (!mounted) return;
+        setState(() {
+          messages.last.text += chunk;
+        });
+        _scrollToBottom();
       }
+    } on UnauthorizedException {
+      return;
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         messages.last.text = _errorText(e);
       });
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   void completeOnboarding() {
-    // TODO: Mark onboarding as complete and navigate to main app
     if (mounted) {
       Navigator.of(context).pushReplacementNamed('/rooms');
     }
   }
 
-  // Suggestion methods
-
   void _onInputChanged() {
     final currentInput = messageController.text;
-
-    // If input changed by user (not by suggestion click), invalidate suggestions
     if (currentInput != lastInputForSuggestions) {
       _invalidateAndReloadSuggestions();
     }
   }
 
-  /// Load suggestions with optional anchoring
-  /// If anchoring is null, backend will use default initial suggestions
   Future<void> _loadSuggestions({
     Map<String, dynamic>? anchoring,
     int? depth,
   }) async {
+    if (!mounted) return;
     setState(() => isLoadingSuggestions = true);
 
     try {
@@ -213,7 +229,9 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
           isLoadingSuggestions = false;
         });
       }
-    } catch (e) {
+    } on UnauthorizedException {
+      return;
+    } catch (_) {
       if (mounted) {
         setState(() => isLoadingSuggestions = false);
       }
@@ -221,30 +239,19 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   Future<void> _invalidateAndReloadSuggestions() async {
-    // Clear current suggestions
     setState(() {
       suggestionTree = null;
       isLoadingSuggestions = true;
     });
-
-    // Reload with new input
     await _loadSuggestions();
   }
 
   void onSuggestionClick(String suggestion) {
-    // Add suggestion to input
     final newText = messageController.text + suggestion;
-
-    // Update lastInputForSuggestions BEFORE changing text to prevent listener from invalidating
     lastInputForSuggestions = newText;
     messageController.text = newText;
 
-    // Track click if extension is in progress
-    if (isExtendingTree) {
-      clicksDuringExtension.add(suggestion);
-    }
-
-    // Cut the tree - replace with the clicked suggestion's subtree
+    if (!mounted) return;
     setState(() {
       if (_suggestionTree != null && _suggestionTree!.containsKey(suggestion)) {
         final subtree = _suggestionTree![suggestion];
@@ -253,7 +260,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         suggestionTree = null;
       }
     });
-    // Setter will automatically trigger extension check if needed
   }
 
   int _countDepth(dynamic node) {
@@ -268,16 +274,12 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         maxDepth = childDepth;
       }
     }
-
     return 1 + maxDepth;
   }
 
-  // Non-recursive version that doesn't await - just starts the process
   void _checkAndExtendTreeNonRecursive() {
     final remainingDepth = _countDepth(_suggestionTree);
-
     if (remainingDepth <= minRemainingDepth && !isLoadingSuggestions && !isExtendingTree) {
-      // If tree is null/empty, reload from scratch instead of extending
       if (_suggestionTree == null || _suggestionTree!.isEmpty) {
         _loadSuggestions();
       } else {
@@ -286,15 +288,10 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     }
   }
 
-
   Future<void> _extendTree() async {
-    // Set flag to prevent overlapping extensions
     if (isExtendingTree) return;
     isExtendingTree = true;
     clicksDuringExtension.clear();
-
-    // Don't set isLoadingSuggestions = true here, load in background
-    // Keep showing cached suggestions while extending
 
     try {
       if (suggestionTree == null || suggestionTree!.isEmpty) {
@@ -302,20 +299,16 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         return;
       }
 
-      // Pass the entire current tree as anchoring (not just keys!)
       final anchoring = Map<String, dynamic>.from(suggestionTree!);
 
-
-      // Request extension (extend by extensionDepth levels)
       final result = await backend.getSuggestions(
         previousMessages: _getPreviousMessages(),
         currentInput: messageController.text,
-        depth: extensionDepth,
+        depth: maxSuggestionTreeDepth,
         branchingFactor: suggestionBranchingFactor,
         anchoringSuggestions: anchoring,
       );
 
-      // Apply clicks that happened during extension
       var extendedTree = result;
       for (final click in clicksDuringExtension) {
         if (extendedTree.containsKey(click)) {
@@ -327,32 +320,54 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         }
       }
 
-      // Replace tree with extended version (with clicks applied)
       if (mounted) {
         setState(() {
           suggestionTree = extendedTree.isNotEmpty ? extendedTree : null;
           clicksDuringExtension.clear();
           isExtendingTree = false;
         });
-        // Setter will automatically trigger extension check if needed
       }
-    } catch (e) {
+    } on UnauthorizedException {
+      return;
+    } catch (_) {
       if (mounted) {
         setState(() {
           clicksDuringExtension.clear();
           isExtendingTree = false;
         });
       }
+    } finally {
+      isExtendingTree = false;
     }
   }
 
   List<Map<String, String>> _getPreviousMessages() {
-    return messages.map((msg) {
-      return {
-        'role': msg.isUser ? 'user' : 'assistant',
-        'content': msg.text,
-      };
-    }).toList();
+    return messages
+        .map((msg) => {
+              'role': msg.isUser ? 'user' : 'assistant',
+              'content': msg.text,
+            })
+        .toList();
+  }
+
+  void _addMessagesFromHistory(List<Map<String, String>> history) {
+    if (!mounted) return;
+    setState(() {
+      messages.addAll(history.map(_fromBackendMessage));
+    });
+    _scrollToBottom();
+  }
+
+  ChatMessage _fromBackendMessage(Map<String, String> msg) {
+    final role = msg['role']?.toUpperCase() ?? '';
+    final content = msg['content'] ?? '';
+    final isUser = role != 'ASSISTANT';
+    return ChatMessage(
+      id: '${role}_${content.hashCode}_${messages.length}',
+      text: content,
+      isUser: isUser,
+      timestamp: DateTime.now(),
+    );
   }
 
   @override

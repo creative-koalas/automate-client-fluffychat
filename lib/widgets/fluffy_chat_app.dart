@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:fluffychat/automate/backend.dart';
+import 'package:fluffychat/automate/backend/backend.dart';
 import 'package:fluffychat/config/routes.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
@@ -87,8 +87,8 @@ class _AutomateAuthListenerState extends State<_AutomateAuthListener> {
   @override
   void initState() {
     super.initState();
-    _sub = AutomateAuthEvents.instance.unauthorized.listen((_) async {
-      await AutomateBackend().clearTokens();
+    _sub = AutomateAuthManager.instance.unauthorized.listen((_) async {
+      await AutomateBackend.instance.clearTokens();
       _redirectToLogin();
     });
   }

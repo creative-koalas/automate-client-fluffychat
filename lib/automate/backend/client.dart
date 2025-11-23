@@ -1,12 +1,11 @@
-/// Backend API wrapper for Automate functionality.
-/// Integrates the onboarding chatbot (Next.js service) and auth flows.
-library;
-
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
+import 'auth_manager.dart';
+import 'exceptions.dart';
 
 /// Tokens issued by the main backend. The onboarding chatbot has its own JWT.
 class AutomateAuthTokens {
@@ -21,7 +20,6 @@ class AutomateAuthTokens {
   });
 }
 
-/// Secure token storage shared across Automate flows.
 class AutomateAuthStore {
   AutomateAuthStore({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -42,9 +40,7 @@ class AutomateAuthStore {
     final primary = await _storage.read(key: _primaryKey);
     final chatbot = await _storage.read(key: _chatbotKey);
     final userId = await _storage.read(key: _userIdKey);
-    if (primary == null || chatbot == null || userId == null) {
-      return null;
-    }
+    if (primary == null || chatbot == null || userId == null) return null;
     return AutomateAuthTokens(
       primaryToken: primary,
       chatbotToken: chatbot,
@@ -61,23 +57,9 @@ class AutomateAuthStore {
   }
 }
 
-/// Main backend client for Automate features.
+/// Main backend client for Automate features (singleton).
 class AutomateBackend {
-  factory AutomateBackend({
-    http.Client? httpClient,
-    AutomateAuthStore? authStore,
-    String? chatbotBaseUrl,
-    String? mainBaseUrl,
-  }) {
-    return _instance ??= AutomateBackend._internal(
-      httpClient: httpClient,
-      authStore: authStore,
-      chatbotBaseUrl: chatbotBaseUrl,
-      mainBaseUrl: mainBaseUrl,
-    );
-  }
-
-  AutomateBackend._internal({
+  AutomateBackend._({
     http.Client? httpClient,
     AutomateAuthStore? authStore,
     String? chatbotBaseUrl,
@@ -96,13 +78,8 @@ class AutomateBackend {
             );
 
   static AutomateBackend? _instance;
-  static Future<void>? _initializing;
-
-  /// Call once during app startup to load tokens into the singleton.
-  static Future<void> ensureInitialized() {
-    _initializing ??= AutomateBackend().loadSavedTokens().then((_) {});
-    return _initializing!;
-  }
+  static AutomateBackend get instance =>
+      _instance ??= AutomateBackend._();
 
   final http.Client _httpClient;
   final AutomateAuthStore _authStore;
@@ -112,22 +89,14 @@ class AutomateBackend {
   String? _primaryToken;
   String? _chatbotToken;
 
-  static const String _mockPrimaryToken = 'automate-mock-primary-token';
-  static const String _mockChatbotTokenEnv =
-      String.fromEnvironment('ONBOARDING_CHATBOT_TOKEN', defaultValue: '');
-
-  String? get chatbotToken => _chatbotToken;
-
   /// Loads tokens from secure storage into memory.
-  Future<AutomateAuthTokens?> loadSavedTokens() async {
+  Future<void> ensureInitialized() async {
     final tokens = await _authStore.loadTokens();
     if (tokens != null) {
       _applyTokens(tokens);
     }
-    return tokens;
   }
 
-  /// Persists and applies tokens.
   Future<void> saveTokens(AutomateAuthTokens tokens) async {
     _applyTokens(tokens);
     await _authStore.saveTokens(tokens);
@@ -139,11 +108,26 @@ class AutomateBackend {
     await _authStore.clear();
   }
 
+  /// Mocked send verification code.
+  Future<void> sendVerificationCode(String phoneNumber) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  /// Mocked login/signup that returns tokens using dart-define for chatbot token.
+  Future<AuthResponse> loginOrSignup(String phoneNumber, String code) async {
+    final auth = AuthResponse(
+      token: 'automate-mock-primary-token',
+      chatbotToken: _mockChatbotToken,
+      userId: phoneNumber.isNotEmpty
+          ? phoneNumber
+          : DateTime.now().millisecondsSinceEpoch.toString(),
+      isNewUser: true,
+    );
+    await saveTokens(auth.tokens);
+    return auth;
+  }
+
   /// Streams chat response from the onboarding chatbot.
-  ///
-  /// POST /api/submit-user-message
-  /// Headers: Authorization: Bearer <chatbotToken>
-  /// Body: {"content": "user input text"}
   Stream<String> streamChatResponse(String message) async* {
     _ensureChatbotToken();
 
@@ -156,13 +140,15 @@ class AutomateBackend {
     try {
       response = await _httpClient.send(request);
     } catch (e) {
-      print(e);
       throw AutomateBackendException('无法连接到聊天服务: $e');
     }
 
+    if (_isUnauthorized(response.statusCode)) {
+      _notifyUnauthorized();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200) {
       final body = await response.stream.bytesToString();
-      _handleUnauthorized(response.statusCode);
       throw AutomateBackendException(
         '聊天请求失败 (${response.statusCode}): ${_extractErrorMessage(body)}',
         statusCode: response.statusCode,
@@ -172,11 +158,7 @@ class AutomateBackend {
     yield* _parseSseStream(response.stream);
   }
 
-  /// Get input suggestions for autocomplete from chatbot backend.
-  ///
-  /// POST /api/generate-auto-completions
-  /// Headers: Authorization: Bearer <chatbotToken>
-  /// Body matches backend contract.
+  /// Get input suggestions for autocomplete.
   Future<Map<String, dynamic>> getSuggestions({
     required List<Map<String, String>> previousMessages,
     required String currentInput,
@@ -184,11 +166,6 @@ class AutomateBackend {
     required int branchingFactor,
     required Map<String, dynamic> anchoringSuggestions,
   }) async {
-    final trimmedInput = currentInput.trim();
-    if (trimmedInput.isEmpty) {
-      return {};
-    }
-
     _ensureChatbotToken();
 
     final url = Uri.parse('$chatbotBaseUrl/api/generate-auto-completions');
@@ -199,38 +176,34 @@ class AutomateBackend {
         headers: _jsonHeaders(forChatbot: true),
         body: jsonEncode({
           'history': previousMessages,
-          'currentInput': trimmedInput,
+          'currentInput': currentInput.trim(),
           'anchoringSuggestions': anchoringSuggestions,
           'treeDepth': depth,
           'branchingFactor': branchingFactor,
         }),
       );
     } catch (e) {
-      print(e);
       throw AutomateBackendException('获取补全失败: $e');
     }
 
-    var data = <String, dynamic>{};
+    Map<String, dynamic> data = {};
     try {
       final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) {
-        data = decoded;
-      }
-    } catch (_) {
-      // fallthrough to error handling
-    }
+      if (decoded is Map<String, dynamic>) data = decoded;
+    } catch (_) {}
 
+    if (_isUnauthorized(response.statusCode)) {
+      _notifyUnauthorized();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200 || data['ok'] != true) {
-      _handleUnauthorized(response.statusCode);
       final error = data['error']?.toString() ?? _extractErrorMessage(response.body);
       throw AutomateBackendException(error, statusCode: response.statusCode);
     }
 
     final suggestions = data['suggestions'];
-    if (suggestions is Map<String, dynamic>) {
-      return suggestions;
-    }
-    throw AutomateBackendException('补全结果格式错误');
+    if (suggestions is Map<String, dynamic>) return suggestions;
+    throw AutomateBackendException('Malformed suggestions payload');
   }
 
   /// Fetch persisted messages for the current user.
@@ -251,15 +224,14 @@ class AutomateBackend {
     Map<String, dynamic> data = {};
     try {
       final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) {
-        data = decoded;
-      }
-    } catch (_) {
-      // Ignore decode error; handled below.
-    }
+      if (decoded is Map<String, dynamic>) data = decoded;
+    } catch (_) {}
 
+    if (_isUnauthorized(response.statusCode)) {
+      _notifyUnauthorized();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200 || data['ok'] != true) {
-      _handleUnauthorized(response.statusCode);
       final error = data['error']?.toString() ?? _extractErrorMessage(response.body);
       throw AutomateBackendException(error, statusCode: response.statusCode);
     }
@@ -274,61 +246,20 @@ class AutomateBackend {
               })
           .toList();
     }
-
     return [];
   }
 
-  /// Send verification code via SMS (main backend).
-  Future<void> sendVerificationCode(String phoneNumber) async {
-    // Mocked: assume code sent successfully.
-    await Future.delayed(const Duration(milliseconds: 300));
-  }
-
-  /// Verify phone number and code, returns tokens and user info.
-  Future<AuthResponse> loginOrSignup(String phoneNumber, String code) async {
-    // Mocked: bypass network and return provided chatbot token.
-    final auth = AuthResponse(
-      token: _mockPrimaryToken,
-      chatbotToken: _mockChatbotTokenEnv,
-      userId: phoneNumber.isNotEmpty
-          ? phoneNumber
-          : DateTime.now().millisecondsSinceEpoch.toString(),
-      isNewUser: true,
-    );
-    await saveTokens(auth.tokens);
-    return auth;
-  }
-
-  Future<void> completeOnboarding(String userId) async {
-    // Placeholder for main backend integration.
-    debugPrint('completeOnboarding for user $userId');
-  }
-
   void dispose() {
-    // No-op for singleton; keep the shared client alive.
+    // shared client; do not close
   }
+
+  // Helpers
+  static const String _mockChatbotToken =
+      String.fromEnvironment('ONBOARDING_CHATBOT_TOKEN', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJpYXQiOjE3NjM4OTE4MjIsImV4cCI6MTc2NDQ5NjYyMn0.9Xt4jGGAtB43PZMiR__X8zW9gGooNafyzpyA54gVUHw');
 
   void _applyTokens(AutomateAuthTokens tokens) {
     _primaryToken = tokens.primaryToken;
     _chatbotToken = tokens.chatbotToken;
-  }
-
-  void _ensureChatbotToken() {
-    if (_chatbotToken == null ||
-        _chatbotToken!.isEmpty ||
-        _chatbotToken == 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJpYXQiOjE3NjM4OTE4MjIsImV4cCI6MTc2NDQ5NjYyMn0.9Xt4jGGAtB43PZMiR__X8zW9gGooNafyzpyA54gVUHw') {
-      AutomateAuthEvents.instance.notifyUnauthorized();
-      throw AutomateBackendException(
-        '缺少聊天服务的访问令牌，请重新登录。',
-        statusCode: 401,
-      );
-    }
-  }
-
-  void _handleUnauthorized(int? statusCode) {
-    if (statusCode == 401) {
-      AutomateAuthEvents.instance.notifyUnauthorized();
-    }
   }
 
   Map<String, String> _jsonHeaders({bool forChatbot = false}) {
@@ -343,7 +274,6 @@ class AutomateBackend {
   Stream<String> _parseSseStream(Stream<List<int>> byteStream) async* {
     final decoder = utf8.decoder;
     var buffer = '';
-    var hasStreamedChunk = false;
 
     await for (final chunk in byteStream.transform(decoder)) {
       buffer += chunk;
@@ -351,31 +281,22 @@ class AutomateBackend {
       while ((boundary = buffer.indexOf('\n\n')) != -1) {
         final rawEvent = buffer.substring(0, boundary);
         buffer = buffer.substring(boundary + 2);
-
         final event = _decodeSseEvent(rawEvent);
         if (event == null) continue;
 
         switch (event.name) {
           case 'assistant_message_delta':
             final delta = _readDelta(event.data);
-            if (delta.isNotEmpty) {
-              hasStreamedChunk = true;
-              yield delta;
-            }
+            if (delta.isNotEmpty) yield delta;
             break;
           case 'assistant_message':
             final content = _readAssistantContent(event.data);
-            if (content.isNotEmpty && !hasStreamedChunk) {
-              yield content;
-              hasStreamedChunk = true;
-            }
+            if (content.isNotEmpty) yield content;
             break;
           case 'error':
             throw AutomateBackendException(_readErrorFromEvent(event.data));
           case 'done':
             return;
-          default:
-            continue;
         }
       }
     }
@@ -403,8 +324,7 @@ class AutomateBackend {
         data = dataString;
       }
     }
-
-    return _SseEvent(name: name, data: data);
+    return _SseEvent(name: name!, data: data);
   }
 
   String _readDelta(dynamic data) {
@@ -439,24 +359,21 @@ class AutomateBackend {
             decoded['message']?.toString() ??
             body;
       }
-    } catch (_) {
-      // Ignore decode errors and fall back to raw body
-    }
+    } catch (_) {}
     return body;
   }
-}
 
-class AutomateAuthEvents {
-  AutomateAuthEvents._();
-  static final AutomateAuthEvents instance = AutomateAuthEvents._();
+  bool _isUnauthorized(int? status) => status == 401;
 
-  final StreamController<void> _unauthorizedController = StreamController<void>.broadcast();
+  void _notifyUnauthorized() {
+    AutomateAuthManager.instance.notifyUnauthorized();
+  }
 
-  Stream<void> get unauthorized => _unauthorizedController.stream;
-
-  void notifyUnauthorized() {
-    if (!_unauthorizedController.isClosed) {
-      _unauthorizedController.add(null);
+  void _ensureChatbotToken() {
+    if (_chatbotToken == null ||
+        _chatbotToken!.isEmpty) {
+      _notifyUnauthorized();
+      throw UnauthorizedException();
     }
   }
 }
@@ -487,28 +404,4 @@ class AuthResponse {
         chatbotToken: chatbotToken,
         userId: userId,
       );
-
-  factory AuthResponse.fromJson(Map<String, dynamic> json) {
-    final user = json['user'] as Map<String, dynamic>? ?? {};
-    final onboardingToken = json['chatbotToken']?.toString() ?? json['onboardingToken']?.toString();
-    return AuthResponse(
-      token: json['token']?.toString() ?? '',
-      chatbotToken: onboardingToken ?? json['token']?.toString() ?? '',
-      userId: user['id']?.toString() ?? '',
-      isNewUser: user['is_new_user'] == true || user['isNewUser'] == true,
-    );
-  }
-}
-
-/// Exception thrown by Automate backend.
-class AutomateBackendException implements Exception {
-  final String message;
-  final int? statusCode;
-
-  AutomateBackendException(this.message, {this.statusCode});
-
-  bool get isUnauthorized => statusCode == 401;
-
-  @override
-  String toString() => 'AutomateBackendException: $message';
 }
