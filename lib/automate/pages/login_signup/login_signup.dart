@@ -32,6 +32,10 @@ class LoginSignupController extends State<LoginSignup> {
   }
 
   void requestVerificationCode() async {
+    if (!await _ensureEulaAccepted()) {
+      return;
+    }
+
     if (phoneController.text.isEmpty) {
       setState(() => phoneError = '请输入您的手机号');
       return;
@@ -70,6 +74,10 @@ class LoginSignupController extends State<LoginSignup> {
   }
 
   void verifyAndLogin() async {
+    if (!await _ensureEulaAccepted()) {
+      return;
+    }
+
     if (phoneController.text.isEmpty) {
       setState(() => phoneError = '请输入您的手机号');
       return;
@@ -123,6 +131,65 @@ class LoginSignupController extends State<LoginSignup> {
         loading = false;
       });
     }
+  }
+
+  Future<bool> _ensureEulaAccepted() async {
+    if (agreedToEula) return true;
+
+    final shouldAccept = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('同意最终用户许可协议'),
+        content: const Text('继续操作前，请阅读并同意《最终用户许可协议》。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('同意'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldAccept == true) {
+      setState(() => agreedToEula = true);
+      return true;
+    }
+
+    return false;
+  }
+
+  void showEula() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('最终用户许可协议'),
+        content: const SingleChildScrollView(
+          child: Text(
+            '这是示例协议内容，占位说明了用户在使用本产品前需阅读并同意的条款。'
+            '实际应用中请在此处填充完整的最终用户许可协议，涵盖用户权利、'
+            '隐私政策、数据使用、责任限制和服务条款等信息。'
+            '\n\n点击“同意”表示您已阅读并接受全部条款。',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() => agreedToEula = true);
+            },
+            child: const Text('同意'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

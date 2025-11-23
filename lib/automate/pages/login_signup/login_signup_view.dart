@@ -158,9 +158,30 @@ class LoginSignupView extends StatelessWidget {
                         ? null
                         : (_) => controller.toggleEulaAgreement(),
                     controlAffinity: ListTileControlAffinity.leading,
-                    title: Text(
-                      '我同意《最终用户许可协议》',
-                      style: textTheme.titleMedium,
+                    title: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '我同意',
+                          style: textTheme.titleMedium,
+                        ),
+                        TextButton(
+                          onPressed: controller.loading
+                              ? null
+                              : controller.showEula,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            '《最终用户许可协议》',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     dense: false,
                   ),
@@ -179,9 +200,8 @@ class LoginSignupView extends StatelessWidget {
                         minimumSize: const Size.fromHeight(56),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: controller.loading || !controller.agreedToEula
-                          ? null
-                          : controller.verifyAndLogin,
+                      onPressed:
+                          controller.loading ? null : controller.verifyAndLogin,
                       child: controller.loading
                           ? const SizedBox(
                               height: 24,
