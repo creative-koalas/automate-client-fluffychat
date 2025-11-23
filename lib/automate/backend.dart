@@ -233,6 +233,51 @@ class AutomateBackend {
     throw AutomateBackendException('补全结果格式错误');
   }
 
+  /// Fetch persisted messages for the current user.
+  Future<List<Map<String, String>>> fetchMessages() async {
+    _ensureChatbotToken();
+
+    final url = Uri.parse('$chatbotBaseUrl/api/messages');
+    late final http.Response response;
+    try {
+      response = await _httpClient.get(
+        url,
+        headers: _jsonHeaders(forChatbot: true),
+      );
+    } catch (e) {
+      throw AutomateBackendException('获取历史消息失败: $e');
+    }
+
+    Map<String, dynamic> data = {};
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        data = decoded;
+      }
+    } catch (_) {
+      // Ignore decode error; handled below.
+    }
+
+    if (response.statusCode != 200 || data['ok'] != true) {
+      _handleUnauthorized(response.statusCode);
+      final error = data['error']?.toString() ?? _extractErrorMessage(response.body);
+      throw AutomateBackendException(error, statusCode: response.statusCode);
+    }
+
+    final rawMessages = data['messages'];
+    if (rawMessages is List) {
+      return rawMessages
+          .whereType<Map<String, dynamic>>()
+          .map((m) => {
+                'role': m['role']?.toString() ?? '',
+                'content': m['content']?.toString() ?? '',
+              })
+          .toList();
+    }
+
+    return [];
+  }
+
   /// Send verification code via SMS (main backend).
   Future<void> sendVerificationCode(String phoneNumber) async {
     // Mocked: assume code sent successfully.
@@ -271,7 +316,7 @@ class AutomateBackend {
   void _ensureChatbotToken() {
     if (_chatbotToken == null ||
         _chatbotToken!.isEmpty ||
-        _chatbotToken == '<PASTE_CHATBOT_TOKEN>') {
+        _chatbotToken == 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJpYXQiOjE3NjM4OTE4MjIsImV4cCI6MTc2NDQ5NjYyMn0.9Xt4jGGAtB43PZMiR__X8zW9gGooNafyzpyA54gVUHw') {
       AutomateAuthEvents.instance.notifyUnauthorized();
       throw AutomateBackendException(
         '缺少聊天服务的访问令牌，请重新登录。',

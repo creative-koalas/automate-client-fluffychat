@@ -109,9 +109,10 @@ class _AutomateAuthListenerState extends State<_AutomateAuthListener> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _redirectToLogin());
       return;
     }
+    final navigator = navKey.currentState;
+    navigator?.popUntil((route) => route.isFirst);
+
     final router = GoRouter.of(ctx);
-    if (router.routeInformationProvider.value.uri.path != '/login-signup') {
-      router.go('/login-signup');
-    }
+    router.go('/login-signup');
   }
 }
