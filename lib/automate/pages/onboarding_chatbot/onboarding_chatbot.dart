@@ -21,7 +21,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   final AutomateBackend backend = AutomateBackend.instance;
 
   bool isLoading = false;
-  bool isStreaming = false;
 
   // Suggestion state - tree at current level
   Map<String, dynamic>? _suggestionTree;
@@ -50,8 +49,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   static const int minRemainingDepth = 1;
   static const int maxSuggestionTreeDepth = 3;
 
-  StreamSubscription<String>? streamSubscription;
-
   @override
   void initState() {
     super.initState();
@@ -61,20 +58,14 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   Future<void> _initialize() async {
     await backend.ensureInitialized();
     try {
+      _sendInitialGreeting();
       final history = await backend.fetchMessages();
       if (!mounted) return;
-      if (history.isNotEmpty) {
-        _addMessagesFromHistory(history);
-      } else {
-        _sendInitialGreeting();
-      }
+      _addMessagesFromHistory(history);
     } on UnauthorizedException {
       // Auth gate will handle redirect
       return;
     } catch (_) {
-      if (mounted) {
-        _sendInitialGreeting();
-      }
     }
 
     messageController.addListener(_onInputChanged);
@@ -91,41 +82,19 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (!mounted) return;
     setState(() => isLoading = true);
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
+    const greeting = '你好！👋 欢迎使用智能助手。\n\n我可以帮你自动完成各种任务。请告诉我，你想让我帮你做什么？\n\n例如：\n• "每天早上 8 点提醒我查看邮件"\n• "帮我整理待办事项"\n• "监控某个网站的价格变动"';
 
     _addMessage(
       ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: '',
+        text: greeting,
         isUser: false,
         timestamp: DateTime.now(),
       ),
     );
-
-    const greeting = '你好！👋 欢迎使用智能助手。\n\n我可以帮你自动完成各种任务。请告诉我，你想让我帮你做什么？\n\n例如：\n• "每天早上 8 点提醒我查看邮件"\n• "帮我整理待办事项"\n• "监控某个网站的价格变动"';
-
-    await _streamTextToLastMessage(greeting);
-    if (!mounted) return;
-    setState(() => isLoading = false);
-  }
-
-  Future<void> _streamTextToLastMessage(String fullText) async {
-    if (!mounted) return;
-    setState(() => isStreaming = true);
-
-    final chars = fullText.characters.toList();
-    for (var i = 0; i < chars.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 15));
-      if (!mounted) return;
-      setState(() {
-        messages.last.text += chars[i];
-      });
-      _scrollToBottom();
+    if (mounted) {
+      setState(() => isLoading = false);
     }
-
-    if (!mounted) return;
-    setState(() => isStreaming = false);
   }
 
   void _addMessage(ChatMessage message) {
@@ -148,7 +117,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
   Future<void> sendMessage() async {
     final text = messageController.text.trim();
-    if (isLoading || isStreaming || text.isEmpty) return;
+    if (isLoading || text.isEmpty) return;
 
     _addMessage(
       ChatMessage(
@@ -375,7 +344,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     messageController.removeListener(_onInputChanged);
     messageController.dispose();
     scrollController.dispose();
-    streamSubscription?.cancel();
     super.dispose();
   }
 

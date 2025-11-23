@@ -53,7 +53,7 @@ class OnboardingChatbotView extends StatelessWidget {
             ),
 
             // Loading Indicator
-            if (controller.isLoading && !controller.isStreaming)
+            if (controller.isLoading)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
@@ -316,7 +316,7 @@ class _InputAreaState extends State<_InputArea> {
                   maxLines: null,
                   textInputAction: TextInputAction.newline,
                   style: widget.textTheme.bodyLarge,
-                  enabled: !widget.controller.isLoading && !widget.controller.isStreaming,
+                  enabled: !widget.controller.isLoading,
                   decoration: InputDecoration(
                     hintText: '输入消息...',
                     hintStyle: widget.textTheme.bodyLarge?.copyWith(
@@ -347,9 +347,8 @@ class _InputAreaState extends State<_InputArea> {
                           color: widget.theme.colorScheme.primary,
                           borderRadius: BorderRadius.circular(4),
                           child: InkWell(
-                            onTap: (widget.controller.isLoading || widget.controller.isStreaming)
-                                ? null
-                                : widget.controller.sendMessage,
+                            onTap:
+                                widget.controller.isLoading ? null : widget.controller.sendMessage,
                             borderRadius: BorderRadius.circular(4),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -389,7 +388,7 @@ class _SuggestionBubbles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Don't show suggestions while AI is responding
-    if (controller.isLoading || controller.isStreaming) {
+    if (controller.isLoading) {
       return const SizedBox.shrink();
     }
 
