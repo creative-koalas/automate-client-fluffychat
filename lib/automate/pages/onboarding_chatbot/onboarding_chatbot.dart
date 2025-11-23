@@ -80,7 +80,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       ),
     );
 
-    final greeting = '你好！👋 欢迎使用智能助手。\n\n我可以帮你自动完成各种任务。请告诉我，你想让我帮你做什么？\n\n例如：\n• "每天早上 8 点提醒我查看邮件"\n• "帮我整理待办事项"\n• "监控某个网站的价格变动"';
+    const greeting = '你好！👋 欢迎使用智能助手。\n\n我可以帮你自动完成各种任务。请告诉我，你想让我帮你做什么？\n\n例如：\n• "每天早上 8 点提醒我查看邮件"\n• "帮我整理待办事项"\n• "监控某个网站的价格变动"';
 
     await _streamTextToLastMessage(greeting);
 
@@ -91,7 +91,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     setState(() => isStreaming = true);
 
     final chars = fullText.characters.toList();
-    for (int i = 0; i < chars.length; i++) {
+    for (var i = 0; i < chars.length; i++) {
       await Future.delayed(const Duration(milliseconds: 15));
       if (mounted) {
         setState(() {
@@ -239,18 +239,14 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     // Track click if extension is in progress
     if (isExtendingTree) {
       clicksDuringExtension.add(suggestion);
-      print('[Click] during extension, tracked: $suggestion');
     }
 
     // Cut the tree - replace with the clicked suggestion's subtree
     setState(() {
       if (_suggestionTree != null && _suggestionTree!.containsKey(suggestion)) {
         final subtree = _suggestionTree![suggestion];
-        print('[Click] suggestion=$suggestion, subtree type=${subtree.runtimeType}, keys=${subtree is Map ? (subtree as Map).keys.toList() : 'null'}');
         suggestionTree = subtree is Map<String, dynamic> ? subtree : null;
-        print('[Click] new tree keys=${suggestionTree?.keys.toList()}');
       } else {
-        print('[Click] suggestion=$suggestion not found in tree');
         suggestionTree = null;
       }
     });
@@ -262,7 +258,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (node is! Map<String, dynamic>) return 0;
     if (node.isEmpty) return 0;
 
-    int maxDepth = 0;
+    var maxDepth = 0;
     for (final value in node.values) {
       final childDepth = _countDepth(value);
       if (childDepth > maxDepth) {
@@ -306,7 +302,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       // Pass the entire current tree as anchoring (not just keys!)
       final anchoring = Map<String, dynamic>.from(suggestionTree!);
 
-      print('[Extend] anchoring tree depth=${_countDepth(anchoring)}');
 
       // Request extension (extend by extensionDepth levels)
       final result = await backend.getSuggestions(
@@ -320,12 +315,10 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       // Apply clicks that happened during extension
       var extendedTree = result;
       for (final click in clicksDuringExtension) {
-        print('[Extend] applying click during extension: $click');
         if (extendedTree.containsKey(click)) {
           final subtree = extendedTree[click];
           extendedTree = subtree is Map<String, dynamic> ? subtree : <String, dynamic>{};
         } else {
-          print('[Extend] click $click not found in extended tree');
           extendedTree = <String, dynamic>{};
           break;
         }
@@ -337,7 +330,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
           suggestionTree = extendedTree.isNotEmpty ? extendedTree : null;
           clicksDuringExtension.clear();
           isExtendingTree = false;
-          print('[Extend] new tree keys=${suggestionTree?.keys.toList()}, depth=${_countDepth(suggestionTree)}');
         });
         // Setter will automatically trigger extension check if needed
       }

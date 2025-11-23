@@ -4,7 +4,6 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 /// Main backend client for Automate features
@@ -89,7 +88,7 @@ class AutomateBackend {
 
     // Stream the response character by character with realistic delays
     final words = response.split(' ');
-    for (int i = 0; i < words.length; i++) {
+    for (var i = 0; i < words.length; i++) {
       final word = words[i];
       yield word;
 
@@ -256,7 +255,6 @@ class AutomateBackend {
       }
     }
 
-    print('[Mock/New] depth=$depth, keys=${result.keys.toList()}');
     return result;
   }
 
@@ -298,7 +296,6 @@ class AutomateBackend {
       }
     }
 
-    print('[Mock/Extend] depth=$depth, keys=${result.keys.toList()}');
     return result;
   }
 
@@ -329,7 +326,7 @@ class AutomateBackend {
         ? branchingFactor
         : children.length;
 
-    for (int i = 0; i < count; i++) {
+    for (var i = 0; i < count; i++) {
       final child = children[i];
       if (depth <= 1) {
         result[child] = null;
@@ -356,7 +353,7 @@ class AutomateBackend {
         ? branchingFactor
         : generic.length;
 
-    for (int i = 0; i < count; i++) {
+    for (var i = 0; i < count; i++) {
       result[generic[i]] = depth <= 1 ? null : <String, dynamic>{};
     }
 

@@ -94,7 +94,7 @@ class LoginSignupController extends State<LoginSignup> {
     });
 
     try {
-      final matrix = Matrix.of(context);
+      Matrix.of(context);
 
       // Verify the phone number and code with backend
       final authResponse = await backend.verifyCode(

@@ -113,7 +113,7 @@ class _MessageBubble extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(
@@ -138,7 +138,7 @@ class _MessageBubble extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.shadowColor.withOpacity(0.05),
+                    color: theme.shadowColor.withValues(alpha: 0.05),
                     blurRadius: 2,
                     offset: const Offset(0, 1),
                   ),
@@ -162,7 +162,7 @@ class _MessageBubble extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: theme.colorScheme.secondary.withOpacity(0.2),
+                color: theme.colorScheme.secondary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(
@@ -213,7 +213,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
         borderRadius: BorderRadius.circular(4),
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withOpacity(0.05),
+            color: theme.shadowColor.withValues(alpha: 0.05),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -236,7 +236,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                   height: 8,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.onSurfaceVariant
-                        .withOpacity(opacity.clamp(0.3, 1.0)),
+                        .withValues(alpha: opacity.clamp(0.3, 1.0)),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -536,7 +536,7 @@ class _SkeletonBubbleState extends State<_SkeletonBubble>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: widget.theme.colorScheme.surfaceContainerHighest
-                .withOpacity(_animation.value),
+                .withValues(alpha: _animation.value),
             borderRadius: BorderRadius.circular(24),
           ),
         );
