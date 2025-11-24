@@ -57,7 +57,6 @@ class AutomateApiClient {
     required Map<String, dynamic> anchoringSuggestions,
   }) async {
     final token = auth.chatbotToken;
-    if (token == null) throw UnauthorizedException();
     final res = await _dio.post<Map<String, dynamic>>(
       '$_chatbotBase/api/generate-auto-completions',
       data: {
@@ -83,7 +82,6 @@ class AutomateApiClient {
 
   Future<List<Map<String, String>>> fetchMessages() async {
     final token = auth.chatbotToken;
-    if (token == null) throw UnauthorizedException();
     final res = await _dio.get<Map<String, dynamic>>(
       '$_chatbotBase/api/messages',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -110,7 +108,6 @@ class AutomateApiClient {
 
   Stream<String> streamChatResponse(String message) async* {
     final token = auth.chatbotToken;
-    if (token == null) throw UnauthorizedException();
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');
     final request = http.Request('POST', url);
     request.headers['Content-Type'] = 'application/json';
