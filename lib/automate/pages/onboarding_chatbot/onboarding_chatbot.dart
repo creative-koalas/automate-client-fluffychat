@@ -45,10 +45,10 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     return _suggestionTree!.keys.toList();
   }
 
-  static const int initialSuggestionDepth = 3;
-  static const int suggestionBranchingFactor = 3;
-  static const int minRemainingDepth = 1;
-  static const int maxSuggestionTreeDepth = 3;
+  static const int initialSuggestionDepth = 2;
+  static const int suggestionBranchingFactor = 2;
+  static const int treeExtensionTriggerDepth = 1;
+  static const int maxSuggestionTreeDepth = 2;
   
   @override
   void initState() {
@@ -268,7 +268,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
   void _checkAndExtendTreeNonRecursive() {
     final remainingDepth = _countDepth(_suggestionTree);
-    if (remainingDepth <= minRemainingDepth && !isLoadingSuggestions && !isExtendingTree) {
+    if (remainingDepth <= treeExtensionTriggerDepth && !isLoadingSuggestions && !isExtendingTree) {
       if (_suggestionTree == null || _suggestionTree!.isEmpty) {
         _loadSuggestions();
       } else {
