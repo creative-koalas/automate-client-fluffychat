@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'auth_state.dart';
@@ -59,7 +60,7 @@ class AutomateApiClient {
     final token = auth.chatbotToken;
 
     // Truncate the history; take only the last two messages
-    final truncatedHistory = history.sublist(history.length - 2);
+    final truncatedHistory = history.sublist(max(0, history.length - 2));
     final res = await _dio.post<Map<String, dynamic>>(
       '$_chatbotBase/api/generate-auto-completions',
       data: {
