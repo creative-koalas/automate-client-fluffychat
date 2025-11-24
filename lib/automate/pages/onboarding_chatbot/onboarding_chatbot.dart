@@ -37,7 +37,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     _suggestionTree = value;
 
     // Schedule extension check on next frame
-            WidgetsBinding.instance.addPostFrameCallback((_) { _checkAndExtendTreeNonRecursive(); });
+    WidgetsBinding.instance.addPostFrameCallback((_) { _checkAndExtendTreeNonRecursive(); });
   }
 
   List<String> get currentSuggestions {
@@ -49,7 +49,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   static const int suggestionBranchingFactor = 2;
   static const int treeExtensionTriggerDepth = 1;
   static const int maxSuggestionTreeDepth = 2;
-  
+
   @override
   void initState() {
     super.initState();
@@ -158,7 +158,10 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       });
     } finally {
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+          _invalidateAndReloadSuggestions();
+        });
       }
     }
   }

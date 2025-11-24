@@ -57,10 +57,13 @@ class AutomateApiClient {
     required Map<String, dynamic> anchoringSuggestions,
   }) async {
     final token = auth.chatbotToken;
+
+    // Truncate the history; take only the last two messages
+    final truncatedHistory = history.sublist(history.length - 2);
     final res = await _dio.post<Map<String, dynamic>>(
       '$_chatbotBase/api/generate-auto-completions',
       data: {
-        'history': history,
+        'history': truncatedHistory,
         'currentInput': currentInput,
         'anchoringSuggestions': anchoringSuggestions,
         'treeDepth': depth,
