@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fluffychat/automate/backend/backend.dart';
+import 'package:provider/provider.dart';
 import 'onboarding_chatbot_view.dart';
 
 class OnboardingChatbot extends StatefulWidget {
@@ -18,7 +19,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
   final List<ChatMessage> messages = [];
-  final AutomateBackend backend = AutomateBackend.instance;
+  late AutomateApiClient backend;
 
   bool isLoading = false;
 
@@ -34,9 +35,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     _suggestionTree = value;
 
     // Schedule extension check on next frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndExtendTreeNonRecursive();
-    });
+        WidgetsBinding.instance.addPostFrameCallback((_) { _checkAndExtendTreeNonRecursive(); });
   }
 
   List<String> get currentSuggestions {
@@ -52,21 +51,19 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   @override
   void initState() {
     super.initState();
+    backend = context.read<AutomateApiClient>();
     _initialize();
   }
 
   Future<void> _initialize() async {
-    await backend.ensureInitialized();
+    _sendInitialGreeting();
     try {
-      _sendInitialGreeting();
       final history = await backend.fetchMessages();
       if (!mounted) return;
       _addMessagesFromHistory(history);
     } on UnauthorizedException {
-      // Auth gate will handle redirect
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     messageController.addListener(_onInputChanged);
     if (!mounted) return;
@@ -184,7 +181,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
     try {
       final result = await backend.getSuggestions(
-        previousMessages: _getPreviousMessages(),
+        history: _getPreviousMessages(),
         currentInput: messageController.text,
         depth: depth ?? initialSuggestionDepth,
         branchingFactor: suggestionBranchingFactor,
@@ -271,7 +268,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       final anchoring = Map<String, dynamic>.from(suggestionTree!);
 
       final result = await backend.getSuggestions(
-        previousMessages: _getPreviousMessages(),
+        history: _getPreviousMessages(),
         currentInput: messageController.text,
         depth: maxSuggestionTreeDepth,
         branchingFactor: suggestionBranchingFactor,

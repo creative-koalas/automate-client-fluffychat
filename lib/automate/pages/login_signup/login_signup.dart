@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:fluffychat/automate/backend/backend.dart';
 import 'login_signup_view.dart';
@@ -19,7 +20,7 @@ class LoginSignup extends StatefulWidget {
 class LoginSignupController extends State<LoginSignup> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController codeController = TextEditingController();
-  final AutomateBackend backend = AutomateBackend.instance;
+  AutomateApiClient get backend => context.read<AutomateApiClient>();
 
   String? phoneError;
   String? codeError;

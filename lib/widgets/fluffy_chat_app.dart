@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
 import 'package:fluffychat/automate/backend/backend.dart';
 import 'package:fluffychat/config/routes.dart';
@@ -55,17 +54,26 @@ class FluffyChatApp extends StatelessWidget {
         localizationsDelegates: L10n.localizationsDelegates,
         supportedLocales: L10n.supportedLocales,
         routerConfig: router,
-        builder: (context, child) => _AutomateAuthListener(
-          child: AppLockWidget(
-            pincode: pincode,
-            clients: clients,
-            // Need a navigator above the Matrix widget for
-            // displaying dialogs
-            child: Matrix(
-              clients: clients,
-              store: store,
-              child: testWidget ?? child,
-            ),
+        builder: (context, child) => ChangeNotifierProvider(
+          create: (_) => AutomateAuthState()..load(),
+          child: Builder(
+            builder: (context) {
+              final auth = context.read<AutomateAuthState>();
+              return Provider<AutomateApiClient>(
+                create: (_) => AutomateApiClient(auth),
+                child: _AutomateAuthGate(
+                  child: AppLockWidget(
+                    pincode: pincode,
+                    clients: clients,
+                    child: Matrix(
+                      clients: clients,
+                      store: store,
+                      child: testWidget ?? child,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -73,34 +81,25 @@ class FluffyChatApp extends StatelessWidget {
   }
 }
 
-class _AutomateAuthListener extends StatefulWidget {
+class _AutomateAuthGate extends StatefulWidget {
   final Widget? child;
-  const _AutomateAuthListener({this.child});
+
+  const _AutomateAuthGate({this.child});
 
   @override
-  State<_AutomateAuthListener> createState() => _AutomateAuthListenerState();
+  State<_AutomateAuthGate> createState() => _AutomateAuthGateState();
 }
 
-class _AutomateAuthListenerState extends State<_AutomateAuthListener> {
-  StreamSubscription<void>? _sub;
-
+class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   @override
-  void initState() {
-    super.initState();
-    _sub = AutomateAuthManager.instance.unauthorized.listen((_) async {
-      await AutomateBackend.instance.clearTokens();
+  Widget build(BuildContext context) {
+    final auth = context.watch<AutomateAuthState>();
+    if (!auth.isLoggedIn) {
+      // Reset stack and show login
       _redirectToLogin();
-    });
+    }
+    return widget.child ?? const SizedBox.shrink();
   }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child ?? const SizedBox.shrink();
 
   void _redirectToLogin() {
     final navKey = FluffyChatApp.router.routerDelegate.navigatorKey;
@@ -113,6 +112,9 @@ class _AutomateAuthListenerState extends State<_AutomateAuthListener> {
     navigator?.popUntil((route) => route.isFirst);
 
     final router = GoRouter.of(ctx);
-    router.go('/login-signup');
+    if (router.routerDelegate.currentConfiguration.fullPath !=
+        '/login-signup') {
+      router.go('/login-signup');
+    }
   }
 }
