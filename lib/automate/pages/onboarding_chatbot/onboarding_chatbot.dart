@@ -97,7 +97,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   void _addMessage(ChatMessage message) {
-    _suggestionGeneration++;
     if (!mounted) return;
     setState(() => messages.add(message));
     _scrollToBottom();
@@ -118,6 +117,8 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   Future<void> sendMessage() async {
     final text = messageController.text.trim();
     if (isLoading || text.isEmpty) return;
+
+    _suggestionGeneration++;
 
     _addMessage(
       ChatMessage(
@@ -236,6 +237,8 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     final newText = messageController.text + suggestion;
     lastInputForSuggestions = newText;
     messageController.text = newText;
+
+    clicksDuringExtension.add(suggestion);
 
     if (!mounted) return;
     setState(() {
