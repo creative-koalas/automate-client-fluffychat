@@ -29,6 +29,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   bool isExtendingTree = false;
   List<String> clicksDuringExtension = [];
   String lastInputForSuggestions = '';
+  Timer? _suggestionDebounce;
 
   Map<String, dynamic>? get suggestionTree => _suggestionTree;
   set suggestionTree(Map<String, dynamic>? value) {
@@ -166,10 +167,14 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   void _onInputChanged() {
-    final currentInput = messageController.text;
-    if (currentInput != lastInputForSuggestions) {
-      _invalidateAndReloadSuggestions();
-    }
+    _suggestionDebounce?.cancel();
+    _suggestionDebounce = Timer(const Duration(milliseconds: 400), () {
+      final currentInput = messageController.text;
+      if (!mounted) return;
+      if (currentInput != lastInputForSuggestions) {
+        _invalidateAndReloadSuggestions();
+      }
+    });
   }
 
   Future<void> _loadSuggestions({
