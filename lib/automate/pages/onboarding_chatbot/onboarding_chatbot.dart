@@ -167,11 +167,23 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   void _onInputChanged() {
+    final currentInput = messageController.text;
+    if (currentInput != lastInputForSuggestions) {
+      if (mounted) {
+        setState(() {
+          suggestionTree = null;
+          isLoadingSuggestions = true;
+          isExtendingTree = false;
+          clicksDuringExtension.clear();
+        });
+      }
+    }
+
     _suggestionDebounce?.cancel();
     _suggestionDebounce = Timer(const Duration(milliseconds: 400), () {
-      final currentInput = messageController.text;
+      final debouncedInput = messageController.text;
       if (!mounted) return;
-      if (currentInput != lastInputForSuggestions) {
+      if (debouncedInput != lastInputForSuggestions) {
         _invalidateAndReloadSuggestions();
       }
     });
