@@ -52,7 +52,8 @@ enum AppSettings<T> {
   ),
   // AppConfig-mirrored settings
   applicationName<String>('chat.fluffy.application_name', 'FluffyChat'),
-  defaultHomeserver<String>('chat.fluffy.default_homeserver', 'matrix.org'),
+  // 写死 homeserver 指向本地 K8s Synapse（与 AutomateConfig.matrixHomeserver 同步）
+  defaultHomeserver<String>('chat.fluffy.default_homeserver', 'http://192.168.1.10:30008'),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>(
     'chat.fluffy.color_scheme_seed',

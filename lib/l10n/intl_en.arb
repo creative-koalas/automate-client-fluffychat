@@ -3460,5 +3460,235 @@
   "stickerPackNameAlreadyExists": "Sticker pack name already exists",
   "newStickerPack": "New sticker pack",
   "stickerPackName": "Sticker pack name",
-  "attribution": "Attribution"
+  "attribution": "Attribution",
+
+  "teamPageTitle": "Team",
+  "@teamPageTitle": {},
+  "employeesTab": "Employees",
+  "@employeesTab": {},
+  "recruitTab": "Recruit",
+  "@recruitTab": {},
+  "trainingTab": "Training",
+  "@trainingTab": {},
+
+  "noEmployeesYet": "No employees yet",
+  "@noEmployeesYet": {},
+  "noEmployeesHint": "Go to Recruit tab to hire your first AI employee",
+  "@noEmployeesHint": {},
+  "hireFirstEmployee": "Hire first employee",
+  "@hireFirstEmployee": {},
+
+  "noTemplatesAvailable": "No templates available",
+  "@noTemplatesAvailable": {},
+  "noTemplatesHint": "Check back later for new agent templates",
+  "@noTemplatesHint": {},
+
+  "noTrainingAvailable": "No training available",
+  "@noTrainingAvailable": {},
+  "noTrainingHint": "Check back later for new skills",
+  "@noTrainingHint": {},
+
+  "employeeWorking": "Working",
+  "@employeeWorking": {},
+  "employeeIdle": "Idle",
+  "@employeeIdle": {},
+  "employeeIdleLong": "Idle for a while",
+  "@employeeIdleLong": {},
+  "employeeOnboarding": "Onboarding...",
+  "@employeeOnboarding": {},
+  "employeeReady": "Ready",
+  "@employeeReady": {},
+  "employeeNoMatrixId": "Employee not ready for chat",
+  "@employeeNoMatrixId": {},
+
+  "startChat": "Start chat",
+  "@startChat": {},
+  "deleteEmployee": "Delete employee",
+  "@deleteEmployee": {},
+  "deleteEmployeeConfirm": "Are you sure you want to delete {name}? This action cannot be undone.",
+  "@deleteEmployeeConfirm": {
+    "type": "String",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "employeeDeleted": "Employee deleted",
+  "@employeeDeleted": {},
+  "errorDeletingEmployee": "Error deleting employee",
+  "@errorDeletingEmployee": {},
+  "errorStartingChat": "Error starting chat",
+  "@errorStartingChat": {},
+
+  "hireEmployee": "Hire Employee",
+  "@hireEmployee": {},
+  "employeeName": "Employee name",
+  "@employeeName": {},
+  "enterEmployeeName": "Enter employee name",
+  "@enterEmployeeName": {},
+  "employeeNameRequired": "Employee name is required",
+  "@employeeNameRequired": {},
+  "confirmHire": "Confirm Hire",
+  "@confirmHire": {},
+  "hireSuccess": "Successfully hired {name}!",
+  "@hireSuccess": {
+    "type": "String",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "viewEmployee": "View",
+  "@viewEmployee": {},
+  "hireSuccessGeneric": "Employee hired successfully!",
+  "@hireSuccessGeneric": {},
+
+  "requiresConfig": "Config",
+  "@requiresConfig": {},
+  "trainedEmployees": "{count} trained",
+  "@trainedEmployees": {
+    "type": "String",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trainedEmployeesSection": "Trained",
+  "@trainedEmployeesSection": {},
+  "untrainedEmployees": "Not trained",
+  "@untrainedEmployees": {},
+  "noEmployeesForTraining": "No employees available",
+  "@noEmployeesForTraining": {},
+  "hireEmployeeFirst": "Hire an employee first",
+  "@hireEmployeeFirst": {},
+  "trained": "Trained",
+  "@trained": {},
+  "train": "Train",
+  "@train": {},
+  "trainingStarted": "Training started for {name}",
+  "@trainingStarted": {
+    "type": "String",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "trainingFailed": "Training failed",
+  "@trainingFailed": {},
+  "configurePlugin": "Configure {name}",
+  "@configurePlugin": {
+    "type": "String",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "confirm": "Confirm",
+  "@confirm": {},
+  "cancel": "Cancel",
+  "@cancel": {},
+  "delete": "Delete",
+  "@delete": {},
+  "tryAgain": "Try again",
+  "@tryAgain": {},
+  "errorLoadingData": "Error loading data",
+  "@errorLoadingData": {},
+  "customHire": "Custom Hire",
+  "@customHire": {},
+  "customHireDescription": "Create a custom AI assistant from scratch",
+  "@customHireDescription": {},
+  "advancedOptions": "Advanced Options",
+  "@advancedOptions": {},
+  "systemPrompt": "System Prompt",
+  "@systemPrompt": {},
+  "systemPromptHint": "Define the AI's behavior and personality...",
+  "@systemPromptHint": {},
+  "systemPromptHelp": "Optional. Describe what you want the AI to do and how it should behave.",
+  "@systemPromptHelp": {},
+  "createEmployee": "Create",
+  "@createEmployee": {},
+  "basicInfo": "Basic Info",
+  "@basicInfo": {},
+  "selectPlugins": "Select Plugins",
+  "@selectPlugins": {},
+  "configurePlugins": "Configure",
+  "@configurePlugins": {},
+  "noPluginsAvailable": "No plugins available",
+  "@noPluginsAvailable": {},
+  "skipPluginSelectionHint": "You can add plugins later from the training market",
+  "@skipPluginSelectionHint": {},
+  "selectPluginsHint": "Choose the skills you want your employee to learn",
+  "@selectPluginsHint": {},
+  "requiresConfiguration": "Requires configuration",
+  "@requiresConfiguration": {},
+  "noConfigurationNeeded": "No configuration needed",
+  "@noConfigurationNeeded": {},
+  "readyToCreate": "Your new employee is ready to be created",
+  "@readyToCreate": {},
+  "configurePluginsHint": "Configure the selected plugins",
+  "@configurePluginsHint": {},
+  "back": "Back",
+  "@back": {},
+  "employeeNameCannotBeNumeric": "Name cannot be numbers only",
+  "@employeeNameCannotBeNumeric": {},
+  "loadingPlugins": "Loading plugins...",
+  "@loadingPlugins": {},
+  "optional": "Optional",
+  "@optional": {},
+  "networkError": "Network error. Please check your connection.",
+  "@networkError": {},
+  "userNotFound": "User not found on the server",
+  "@userNotFound": {},
+  "permissionDenied": "Permission denied",
+  "@permissionDenied": {},
+  "serverError": "Server error. Please try again later.",
+  "@serverError": {},
+  "invalidMatrixUserId": "Invalid user ID format",
+  "@invalidMatrixUserId": {},
+  "skills": "Skills",
+  "@skills": {},
+  "noSkillsYet": "No skills yet. Visit the Training page to add skills.",
+  "@noSkillsYet": {},
+  "contractExpired": "Contract Expired",
+  "@contractExpired": {},
+  "contractExpiringSoon": "Contract expires in {days} days",
+  "@contractExpiringSoon": {
+    "type": "String",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "contractExpiresOn": "Contract expires on {date}",
+  "@contractExpiresOn": {
+    "type": "String",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "lastActiveSummary": "Last active {time}",
+  "@lastActiveSummary": {
+    "type": "String",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "daysAgo": "days ago",
+  "@daysAgo": {},
+  "hoursAgo": "hours ago",
+  "@hoursAgo": {},
+  "minutesAgo": "minutes ago",
+  "@minutesAgo": {},
+  "justNow": "Just now",
+  "@justNow": {}
 }

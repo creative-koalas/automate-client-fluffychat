@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
+import 'package:fluffychat/automate/core/auth_service.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -81,6 +82,31 @@ class LoginController extends State<Login> {
         password: passwordController.text,
         initialDeviceDisplayName: PlatformInfos.clientName,
       );
+
+      // Matrix 登录成功后，同步获取 Automate JWT Token
+      final matrixUserId = client.userID;
+      if (matrixUserId != null) {
+        final authService = AutomateAuthService();
+        try {
+          final result = await authService.authenticateWithMatrix(
+            matrixUserId: matrixUserId,
+            password: passwordController.text,
+          );
+          if (!result.success) {
+            Logs().w(
+              '[Login] Automate auth failed: ${result.error}, but Matrix login succeeded',
+            );
+            // Automate 认证失败不阻塞 Matrix 登录（降级体验）
+          } else {
+            Logs().i('[Login] Automate auth succeeded for user: ${result.userId}');
+          }
+        } catch (e) {
+          Logs().e('[Login] Automate auth error: $e');
+          // 错误不阻塞主流程
+        } finally {
+          authService.dispose();
+        }
+      }
     } on MatrixException catch (exception) {
       setState(() => passwordError = exception.errorMessage);
       return setState(() => loading = false);

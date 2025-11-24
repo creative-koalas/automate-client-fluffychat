@@ -16,6 +16,12 @@ class ChatListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final isColumnMode = FluffyThemes.isColumnMode(context);
+    final showNavigationRail =
+        isColumnMode || AppSettings.displayNavigationRail.value;
+
     return PopScope(
       canPop: !controller.isSearchMode && controller.activeSpaceId == null,
       onPopInvokedWithResult: (pop, _) {
@@ -31,15 +37,14 @@ class ChatListView extends StatelessWidget {
       },
       child: Row(
         children: [
-          if (FluffyThemes.isColumnMode(context) ||
-              AppSettings.displayNavigationRail.value) ...[
+          if (showNavigationRail) ...[
             SpacesNavigationRail(
               activeSpaceId: controller.activeSpaceId,
               onGoToChats: controller.clearActiveSpace,
               onGoToSpaceId: controller.setActiveSpace,
             ),
             Container(
-              color: Theme.of(context).dividerColor,
+              color: theme.dividerColor,
               width: 1,
             ),
           ],
@@ -56,11 +61,12 @@ class ChatListView extends StatelessWidget {
                         onPressed: () => context.go('/rooms/newprivatechat'),
                         icon: const Icon(Icons.add_outlined),
                         label: Text(
-                          L10n.of(context).chat,
+                          l10n.chat,
                           overflow: TextOverflow.fade,
                         ),
                       )
                     : const SizedBox.shrink(),
+                // Bottom navigation is now handled by MainScreen
               ),
             ),
           ),

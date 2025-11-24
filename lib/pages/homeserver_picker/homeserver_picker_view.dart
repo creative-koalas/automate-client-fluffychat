@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_linkify/flutter_linkify.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:fluffychat/widgets/layouts/login_scaffold.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'homeserver_picker.dart';
@@ -117,98 +114,85 @@ class HomeserverPickerView extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextField(
-                            onSubmitted: (_) =>
-                                controller.checkHomeserverAction(),
-                            controller: controller.homeserverController,
-                            autocorrect: false,
-                            keyboardType: TextInputType.url,
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.search_outlined),
-                              filled: false,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppConfig.borderRadius,
-                                ),
+                          // Homeserver 已写死，显示只读信息
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(
+                                AppConfig.borderRadius,
                               ),
-                              hintText: AppSettings.defaultHomeserver.value,
-                              hintStyle: TextStyle(
-                                color: theme.colorScheme.surfaceTint,
-                              ),
-                              labelText: 'Sign in with:',
-                              errorText: controller.error,
-                              errorMaxLines: 4,
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog.adaptive(
-                                      title: Text(
-                                        L10n.of(context).whatIsAHomeserver,
-                                      ),
-                                      content: Linkify(
-                                        text: L10n.of(context)
-                                            .homeserverDescription,
-                                        textScaleFactor:
-                                            MediaQuery.textScalerOf(context)
-                                                .scale(1),
-                                        options: const LinkifyOptions(
-                                          humanize: false,
-                                        ),
-                                        linkStyle: TextStyle(
-                                          color: theme.colorScheme.primary,
-                                          decorationColor:
-                                              theme.colorScheme.primary,
-                                        ),
-                                        onOpen: (link) =>
-                                            launchUrlString(link.url),
-                                      ),
-                                      actions: [
-                                        AdaptiveDialogAction(
-                                          onPressed: () => launchUrl(
-                                            Uri.https('servers.joinmatrix.org'),
-                                          ),
-                                          child: Text(
-                                            L10n.of(context)
-                                                .discoverHomeservers,
-                                          ),
-                                        ),
-                                        AdaptiveDialogAction(
-                                          onPressed: Navigator.of(context).pop,
-                                          child: Text(L10n.of(context).close),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.info_outlined),
+                              border: Border.all(
+                                color: theme.colorScheme.outline.withOpacity(0.3),
                               ),
                             ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.dns_outlined,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        L10n.of(context).homeserver,
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        controller.homeserverController.text,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.lock_outline,
+                                  size: 18,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
                           ),
+                          // 显示错误信息
+                          if (controller.error != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                controller.error!,
+                                style: TextStyle(
+                                  color: theme.colorScheme.error,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 4,
+                              ),
+                            ),
                           const SizedBox(height: 32),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: theme.colorScheme.primary,
                               foregroundColor: theme.colorScheme.onPrimary,
-                            ),
-                            onPressed: controller.isLoading
-                                ? null
-                                : controller.checkHomeserverAction,
-                            child: controller.isLoading
-                                ? const LinearProgressIndicator()
-                                : Text(L10n.of(context).continueText),
-                          ),
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              foregroundColor: theme.colorScheme.secondary,
-                              textStyle: theme.textTheme.labelMedium,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             onPressed: controller.isLoading
                                 ? null
                                 : () => controller.checkHomeserverAction(
                                       legacyPasswordLogin: true,
                                     ),
-                            child: Text(L10n.of(context).loginWithMatrixId),
+                            child: controller.isLoading
+                                ? const LinearProgressIndicator()
+                                : Text(L10n.of(context).login),
                           ),
                         ],
                       ),

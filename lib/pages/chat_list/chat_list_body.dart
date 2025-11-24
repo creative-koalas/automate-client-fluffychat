@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:fluffychat/config/setting_keys.dart';
@@ -140,32 +141,32 @@ class ChatListViewBody extends StatelessWidget {
                           shrinkWrap: true,
                           scrollDirection: Axis.horizontal,
                           children: [
-                            if (AppSettings.separateChatTypes.value)
-                              ActiveFilter.messages
-                            else
-                              ActiveFilter.allChats,
-                            ActiveFilter.groups,
-                            ActiveFilter.unread,
-                            if (spaceDelegateCandidates.isNotEmpty &&
-                                !AppSettings.displayNavigationRail.value &&
-                                !FluffyThemes.isColumnMode(context))
-                              ActiveFilter.spaces,
-                          ]
-                              .map(
-                                (filter) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4.0,
-                                  ),
-                                  child: FilterChip(
-                                    selected: filter == controller.activeFilter,
-                                    onSelected: (_) =>
-                                        controller.setActiveFilter(filter),
-                                    label:
-                                        Text(filter.toLocalizedString(context)),
-                                  ),
+                            ...[
+                              if (AppSettings.separateChatTypes.value)
+                                ActiveFilter.messages
+                              else
+                                ActiveFilter.allChats,
+                              ActiveFilter.groups,
+                              ActiveFilter.unread,
+                              if (spaceDelegateCandidates.isNotEmpty &&
+                                  !AppSettings.displayNavigationRail.value &&
+                                  !FluffyThemes.isColumnMode(context))
+                                ActiveFilter.spaces,
+                            ].map(
+                              (filter) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4.0,
                                 ),
-                              )
-                              .toList(),
+                                child: FilterChip(
+                                  selected: filter == controller.activeFilter,
+                                  onSelected: (_) =>
+                                      controller.setActiveFilter(filter),
+                                  label:
+                                      Text(filter.toLocalizedString(context)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     if (controller.isSearchMode)

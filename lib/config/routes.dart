@@ -20,6 +20,8 @@ import 'package:fluffychat/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:fluffychat/pages/invitation_selection/invitation_selection.dart';
 import 'package:fluffychat/automate/pages/login_signup/login_signup.dart';
 import 'package:fluffychat/automate/pages/onboarding_chatbot/onboarding_chatbot.dart';
+import 'package:fluffychat/automate/pages/team/team_page.dart';
+import 'package:fluffychat/pages/main_screen/main_screen.dart';
 import 'package:fluffychat/pages/login/login.dart';
 import 'package:fluffychat/pages/new_group/new_group.dart';
 import 'package:fluffychat/pages/new_private_chat/new_private_chat.dart';
@@ -66,8 +68,8 @@ abstract class AppRoutes {
           Matrix.of(context).widget.clients.any((client) => client.isLogged())
               ? '/rooms'
               // FIXME: Temporarily changed to /loginsignup for testing
-              // : '/home',
-              : '/login-signup',
+              : '/home',
+              // : '/login-signup',
     ),
     // FIXME: Temporary route for testing login-signup page
     GoRoute(
@@ -154,12 +156,24 @@ abstract class AppRoutes {
             state,
             FluffyThemes.isColumnMode(context)
                 ? const EmptyPage()
-                : ChatList(
+                : MainScreen(
                     activeChat: state.pathParameters['roomid'],
                     activeSpace: state.uri.queryParameters['spaceId'],
+                    initialPage: 0,
                   ),
           ),
           routes: [
+            GoRoute(
+              path: 'team',
+              pageBuilder: (context, state) => defaultPageBuilder(
+                context,
+                state,
+                FluffyThemes.isColumnMode(context)
+                    ? const TeamPage()
+                    : const MainScreen(initialPage: 1),
+              ),
+              redirect: loggedOutRedirect,
+            ),
             GoRoute(
               path: 'archive',
               pageBuilder: (context, state) => defaultPageBuilder(

@@ -27,12 +27,13 @@ class SpacesNavigationRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final client = Matrix.of(context).client;
-    final isSettings = GoRouter.of(context)
+    final currentPath = GoRouter.of(context)
         .routeInformationProvider
         .value
         .uri
-        .path
-        .startsWith('/rooms/settings');
+        .path;
+    final isSettings = currentPath.startsWith('/rooms/settings');
+    final isTeam = currentPath.startsWith('/rooms/team');
     return Material(
       child: SafeArea(
         child: StreamBuilder(
@@ -59,7 +60,7 @@ class SpacesNavigationRail extends StatelessWidget {
                       itemBuilder: (context, i) {
                         if (i == 0) {
                           return NaviRailItem(
-                            isSelected: activeSpaceId == null && !isSettings,
+                            isSelected: activeSpaceId == null && !isSettings && !isTeam,
                             onTap: onGoToChats,
                             icon: const Padding(
                               padding: EdgeInsets.all(10.0),
