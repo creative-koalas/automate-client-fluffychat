@@ -30,13 +30,14 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   List<String> clicksDuringExtension = [];
   String lastInputForSuggestions = '';
   Timer? _suggestionDebounce;
+  int _suggestionGeneration = 0;
 
   Map<String, dynamic>? get suggestionTree => _suggestionTree;
   set suggestionTree(Map<String, dynamic>? value) {
     _suggestionTree = value;
 
     // Schedule extension check on next frame
-        WidgetsBinding.instance.addPostFrameCallback((_) { _checkAndExtendTreeNonRecursive(); });
+            WidgetsBinding.instance.addPostFrameCallback((_) { _checkAndExtendTreeNonRecursive(); });
   }
 
   List<String> get currentSuggestions {
@@ -48,7 +49,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   static const int suggestionBranchingFactor = 3;
   static const int minRemainingDepth = 1;
   static const int maxSuggestionTreeDepth = 3;
-
+  
   @override
   void initState() {
     super.initState();
@@ -96,6 +97,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   void _addMessage(ChatMessage message) {
+    _suggestionGeneration++;
     if (!mounted) return;
     setState(() => messages.add(message));
     _scrollToBottom();
@@ -194,6 +196,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     int? depth,
   }) async {
     if (!mounted) return;
+    final requestId = ++_suggestionGeneration;
     setState(() => isLoadingSuggestions = true);
 
     try {
@@ -205,7 +208,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         anchoringSuggestions: anchoring ?? {},
       );
 
-      if (mounted) {
+      if (mounted && requestId == _suggestionGeneration) {
         setState(() {
           suggestionTree = result;
           lastInputForSuggestions = messageController.text;
@@ -215,7 +218,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     } on UnauthorizedException {
       return;
     } catch (_) {
-      if (mounted) {
+      if (mounted && requestId == _suggestionGeneration) {
         setState(() => isLoadingSuggestions = false);
       }
     }
@@ -273,6 +276,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
   Future<void> _extendTree() async {
     if (isExtendingTree) return;
+    final requestId = ++_suggestionGeneration;
     isExtendingTree = true;
     clicksDuringExtension.clear();
 
@@ -303,7 +307,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         }
       }
 
-      if (mounted) {
+      if (mounted && requestId == _suggestionGeneration) {
         setState(() {
           suggestionTree = extendedTree.isNotEmpty ? extendedTree : null;
           clicksDuringExtension.clear();
@@ -313,7 +317,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     } on UnauthorizedException {
       return;
     } catch (_) {
-      if (mounted) {
+      if (mounted && requestId == _suggestionGeneration) {
         setState(() {
           clicksDuringExtension.clear();
           isExtendingTree = false;
