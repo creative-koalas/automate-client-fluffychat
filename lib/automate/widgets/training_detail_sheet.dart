@@ -113,26 +113,14 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
       return {};
     }
 
-    // 简化的配置对话框
-    final controllers = <String, TextEditingController>{};
-    for (final key in properties.keys) {
-      controllers[key] = TextEditingController();
-    }
-
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _ConfigDialog(
         pluginName: widget.plugin.name,
         schema: configSchema,
         properties: properties,
-        controllers: controllers,
       ),
     );
-
-    // 清理 controllers
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
 
     return result;
   }
@@ -569,30 +557,54 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
 }
 
 /// 配置表单对话框
-class _ConfigDialog extends StatelessWidget {
+class _ConfigDialog extends StatefulWidget {
   final String pluginName;
   final Map<String, dynamic> schema;
   final Map<String, dynamic> properties;
-  final Map<String, TextEditingController> controllers;
 
   const _ConfigDialog({
     required this.pluginName,
     required this.schema,
     required this.properties,
-    required this.controllers,
   });
+
+  @override
+  State<_ConfigDialog> createState() => _ConfigDialogState();
+}
+
+class _ConfigDialogState extends State<_ConfigDialog> {
+  late Map<String, TextEditingController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    // 为每个配置字段创建 TextEditingController
+    _controllers = {};
+    for (final key in widget.properties.keys) {
+      _controllers[key] = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    // 正确的时机释放所有 controller
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   /// 获取必填字段列表（兼容两种 schema 格式）
   List<String> _getRequiredFields() {
     // 标准 JSON Schema 格式：顶层 required 数组
-    final requiredList = schema['required'];
+    final requiredList = widget.schema['required'];
     if (requiredList is List) {
       return requiredList.cast<String>();
     }
 
     // 后端简化格式：每个字段内部的 required 属性
     final result = <String>[];
-    for (final entry in properties.entries) {
+    for (final entry in widget.properties.entries) {
       final fieldSchema = entry.value as Map<String, dynamic>;
       if (fieldSchema['required'] == true) {
         result.add(entry.key);
@@ -618,7 +630,7 @@ class _ConfigDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                l10n.configurePlugin(pluginName),
+                l10n.configurePlugin(widget.pluginName),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -626,7 +638,7 @@ class _ConfigDialog extends StatelessWidget {
               const SizedBox(height: 20),
 
               // 配置字段
-              ...properties.entries.map((entry) {
+              ...widget.properties.entries.map((entry) {
                 final key = entry.key;
                 final prop = entry.value as Map<String, dynamic>;
                 final isRequired = requiredFields.contains(key);
@@ -636,7 +648,7 @@ class _ConfigDialog extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: TextField(
-                    controller: controllers[key],
+                    controller: _controllers[key],
                     decoration: InputDecoration(
                       labelText: isRequired ? '$title *' : title,
                       helperText: description,
@@ -674,7 +686,7 @@ class _ConfigDialog extends StatelessWidget {
                     child: FilledButton(
                       onPressed: () {
                         final config = <String, dynamic>{};
-                        for (final entry in controllers.entries) {
+                        for (final entry in _controllers.entries) {
                           final value = entry.value.text.trim();
                           if (value.isNotEmpty) {
                             config[entry.key] = value;

@@ -127,6 +127,12 @@ class AutomateApiClient {
     };
 
     if (requiresAuth) {
+      // Check if token is expiring soon (within 5 minutes) and refresh if needed
+      if (await _tokenManager.isTokenExpiringSoon()) {
+        Logs().i('[AutomateApi] Token expiring soon, refreshing...');
+        await _refreshAccessToken();
+      }
+
       final accessToken = await _tokenManager.getAccessToken();
       if (accessToken == null) {
         throw ApiException(7, 'No access token available');
@@ -135,6 +141,50 @@ class AutomateApiClient {
     }
 
     return headers;
+  }
+
+  /// 刷新 Access Token
+  Future<void> _refreshAccessToken() async {
+    final refreshToken = await _tokenManager.getRefreshToken();
+    if (refreshToken == null) {
+      Logs().e('[AutomateApi] No refresh token available');
+      throw ApiException(7, 'No refresh token available');
+    }
+
+    try {
+      final uri = Uri.parse('${AutomateConfig.baseUrl}/api/matrix/refresh');
+      final response = await _httpClient.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      ).timeout(AutomateConfig.receiveTimeout);
+
+      // Parse response
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      if (json['code'] != 0) {
+        final errorMsg = json['msg'] as String? ?? 'Token refresh failed';
+        Logs().e('[AutomateApi] Token refresh failed: $errorMsg');
+        // Clear tokens on refresh failure
+        await _tokenManager.clearTokens();
+        throw ApiException(json['code'] as int, errorMsg);
+      }
+
+      // Extract new access token
+      final data = json['data'] as Map<String, dynamic>;
+      final newAccessToken = data['access_token'] as String;
+      final expiresIn = data['expires_in'] as int;
+
+      // Update token manager
+      final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
+      await _tokenManager.updateAccessToken(newAccessToken, expiresAt);
+
+      Logs().i('[AutomateApi] Access token refreshed successfully');
+    } catch (e) {
+      Logs().e('[AutomateApi] Token refresh error: $e');
+      // Clear tokens on any error
+      await _tokenManager.clearTokens();
+      rethrow;
+    }
   }
 
   /// 处理响应
