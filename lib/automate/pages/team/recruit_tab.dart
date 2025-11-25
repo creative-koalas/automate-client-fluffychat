@@ -4,9 +4,12 @@ import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 
 import '../../models/agent_template.dart';
+import '../../repositories/agent_repository.dart';
 import '../../repositories/agent_template_repository.dart';
+import '../../utils/retry_helper.dart';
 import '../../widgets/custom_hire_dialog.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/hire_success_dialog.dart';
 import '../../widgets/skeleton_card.dart';
 import '../../widgets/template_card.dart';
 import '../../widgets/hire_dialog.dart';
@@ -14,7 +17,19 @@ import '../../widgets/hire_dialog.dart';
 /// 招聘中心 Tab
 /// 展示可雇佣的 Agent 模板
 class RecruitTab extends StatefulWidget {
-  const RecruitTab({super.key});
+  /// Callback when user clicks "view employee" in SnackBar
+  /// Triggers switch to Employees tab and refresh
+  final VoidCallback? onEmployeeHired;
+
+  /// Callback to refresh employee list in background
+  /// Called automatically after successful hire
+  final VoidCallback? onRefreshEmployees;
+
+  const RecruitTab({
+    super.key,
+    this.onEmployeeHired,
+    this.onRefreshEmployees,
+  });
 
   @override
   State<RecruitTab> createState() => _RecruitTabState();
@@ -23,10 +38,12 @@ class RecruitTab extends StatefulWidget {
 class _RecruitTabState extends State<RecruitTab>
     with AutomaticKeepAliveClientMixin {
   final AgentTemplateRepository _repository = AgentTemplateRepository();
+  final AgentRepository _agentRepository = AgentRepository();
 
   List<AgentTemplate> _templates = [];
   bool _isLoading = true;
   String? _error;
+  int _employeeCount = 0; // 用于判断是否是第一位员工
 
   @override
   bool get wantKeepAlive => true;
@@ -35,12 +52,27 @@ class _RecruitTabState extends State<RecruitTab>
   void initState() {
     super.initState();
     _loadTemplates();
+    _loadEmployeeCount();
   }
 
   @override
   void dispose() {
     _repository.dispose();
+    _agentRepository.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadEmployeeCount() async {
+    try {
+      final page = await _agentRepository.getUserAgents();
+      if (mounted) {
+        setState(() {
+          _employeeCount = page.agents.length;
+        });
+      }
+    } catch (_) {
+      // 忽略错误，默认为0
+    }
   }
 
   Future<void> _loadTemplates() async {
@@ -50,7 +82,14 @@ class _RecruitTabState extends State<RecruitTab>
     });
 
     try {
-      final templates = await _repository.getActiveTemplates();
+      final templates = await RetryHelper.withRetry(
+        operation: () => _repository.getActiveTemplates(),
+        maxRetries: 2,
+        retryDelayMs: 3000,
+        onRetry: (attempt, error) {
+          debugPrint('Retrying templates load, attempt $attempt');
+        },
+      );
       if (mounted) {
         setState(() {
           _templates = templates;
@@ -92,19 +131,39 @@ class _RecruitTabState extends State<RecruitTab>
 
   void _handleHireResult(UnifiedCreateAgentResponse? result) {
     if (result != null && mounted) {
-      // 雇佣成功，显示 Toast
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(L10n.of(context).hireSuccessGeneric),
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: L10n.of(context).viewEmployee,
-            onPressed: () {
-              // 切换到员工 Tab
-              // TODO: 通过父级控制器切换
-            },
-          ),
-        ),
+      // 自动刷新员工列表（后台刷新，用户切回时能看到新员工）
+      widget.onRefreshEmployees?.call();
+
+      // 判断是否是第一位员工
+      final isFirstEmployee = _employeeCount == 0;
+
+      // 雇佣后更新员工计数
+      setState(() {
+        _employeeCount++;
+      });
+
+      // 从 matrixUserId 提取员工名称 (@name:domain -> name)
+      String employeeName = 'Employee';
+      if (result.matrixUserId.isNotEmpty) {
+        final userId = result.matrixUserId;
+        if (userId.startsWith('@') && userId.contains(':')) {
+          employeeName = userId.substring(1, userId.indexOf(':'));
+        } else {
+          employeeName = userId;
+        }
+      }
+
+      // 显示成功对话框
+      showHireSuccessDialog(
+        context: context,
+        employeeName: employeeName,
+        isFirstEmployee: isFirstEmployee,
+        onViewEmployee: () {
+          widget.onEmployeeHired?.call();
+        },
+        onContinueHiring: () {
+          // 留在当前页面，不做任何操作
+        },
       );
     }
   }
@@ -148,44 +207,57 @@ class _RecruitTabState extends State<RecruitTab>
       );
     }
 
-    // 错误状态
+    // 错误状态 - 包裹在可滚动组件中以支持下拉刷新
     if (_error != null && _templates.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l10n.errorLoadingData,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _loadTemplates,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(l10n.tryAgain),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.errorLoadingData,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _loadTemplates,
-              icon: const Icon(Icons.refresh),
-              label: Text(l10n.tryAgain),
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    // 空状态
+    // 空状态 - 包裹在可滚动组件中以支持下拉刷新
     if (_templates.isEmpty) {
-      return EmptyState(
-        icon: Icons.person_add_outlined,
-        title: l10n.noTemplatesAvailable,
-        subtitle: l10n.noTemplatesHint,
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: EmptyState(
+            icon: Icons.person_add_outlined,
+            title: l10n.noTemplatesAvailable,
+            subtitle: l10n.noTemplatesHint,
+          ),
+        ),
       );
     }
 
     // 模板列表
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(
         left: 16,
         right: 16,

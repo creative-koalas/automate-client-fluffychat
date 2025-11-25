@@ -4,6 +4,7 @@ import 'package:fluffychat/l10n/l10n.dart';
 
 import '../../models/plugin.dart';
 import '../../repositories/plugin_repository.dart';
+import '../../utils/retry_helper.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeleton_card.dart';
 import '../../widgets/plugin_card.dart';
@@ -48,7 +49,14 @@ class _TrainingTabState extends State<TrainingTab>
     });
 
     try {
-      final plugins = await _repository.getPluginsWithStats();
+      final plugins = await RetryHelper.withRetry(
+        operation: () => _repository.getPluginsWithStats(),
+        maxRetries: 2,
+        retryDelayMs: 3000,
+        onRetry: (attempt, error) {
+          debugPrint('Retrying plugins load, attempt $attempt');
+        },
+      );
       if (mounted) {
         setState(() {
           _plugins = plugins;
@@ -111,44 +119,57 @@ class _TrainingTabState extends State<TrainingTab>
       );
     }
 
-    // 错误状态
+    // 错误状态 - 包裹在可滚动组件中以支持下拉刷新
     if (_error != null && _plugins.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l10n.errorLoadingData,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _loadPlugins,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(l10n.tryAgain),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.errorLoadingData,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _loadPlugins,
-              icon: const Icon(Icons.refresh),
-              label: Text(l10n.tryAgain),
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    // 空状态
+    // 空状态 - 包裹在可滚动组件中以支持下拉刷新
     if (_plugins.isEmpty) {
-      return EmptyState(
-        icon: Icons.school_outlined,
-        title: l10n.noTrainingAvailable,
-        subtitle: l10n.noTrainingHint,
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: EmptyState(
+            icon: Icons.school_outlined,
+            title: l10n.noTrainingAvailable,
+            subtitle: l10n.noTrainingHint,
+          ),
+        ),
       );
     }
 
     // 插件列表
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(
         left: 16,
         right: 16,

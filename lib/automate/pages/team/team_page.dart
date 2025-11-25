@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 
-import 'employees_tab.dart';
+import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 import 'recruit_tab.dart';
 import 'training_tab.dart';
 
@@ -21,6 +21,9 @@ class TeamPageController extends State<TeamPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late PageController _pageController;
+
+  // GlobalKey to access EmployeesTab state
+  final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
 
   // Current selected tab index
   int _currentIndex = 0;
@@ -64,6 +67,40 @@ class TeamPageController extends State<TeamPage>
       });
       _tabController.animateTo(index);
     }
+  }
+
+  /// Switch to Employees tab and refresh the list
+  /// Called after successful employee hire
+  void switchToEmployeesAndRefresh() {
+    // Switch to employees tab (index 0)
+    _tabController.animateTo(0);
+    _pageController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+
+    // Trigger refresh on employees tab
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _employeesTabKey.currentState?.refreshEmployeeList();
+    });
+  }
+
+  /// Switch to Recruit tab
+  /// Called from empty state in Employees tab
+  void switchToRecruitTab() {
+    _tabController.animateTo(1);
+    _pageController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  /// Refresh employee list without switching tab
+  /// Called after successful hire (background refresh)
+  void refreshEmployeeList() {
+    _employeesTabKey.currentState?.refreshEmployeeList();
   }
 
   @override
@@ -124,10 +161,16 @@ class TeamPageView extends StatelessWidget {
       body: PageView(
         controller: controller._pageController,
         onPageChanged: controller._onPageChanged,
-        children: const [
-          EmployeesTab(),
-          RecruitTab(),
-          TrainingTab(),
+        children: [
+          EmployeesTab(
+            key: controller._employeesTabKey,
+            onNavigateToRecruit: controller.switchToRecruitTab,
+          ),
+          RecruitTab(
+            onEmployeeHired: controller.switchToEmployeesAndRefresh,
+            onRefreshEmployees: controller.refreshEmployeeList,
+          ),
+          const TrainingTab(),
         ],
       ),
       // Bottom navigation is now handled by MainScreen

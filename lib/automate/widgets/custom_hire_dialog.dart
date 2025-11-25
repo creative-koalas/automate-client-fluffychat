@@ -29,6 +29,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   // 表单控制器
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _invitationCodeController = TextEditingController();
   final TextEditingController _systemPromptController = TextEditingController();
   final FocusNode _nameFocusNode = FocusNode();
 
@@ -44,13 +45,27 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   bool _isSubmitting = false;
   String? _error;
 
+  // 名称长度限制
+  static const int _maxNameLength = 20;
+
+  // System prompt 长度限制
+  static const int _maxSystemPromptLength = 5000;
+
+  // 默认 system prompt（用户不填时使用）
+  static const String _defaultSystemPrompt = 'You are a helpful assistant.';
+
   // 验证状态
   bool get _isNameValid =>
       _nameController.text.trim().isNotEmpty &&
-      !_isNameNumericOnly;
+      !_isNameNumericOnly &&
+      !_isNameTooLong;
   bool get _isNameNumericOnly =>
       _nameController.text.isNotEmpty &&
       _nameController.text.trim().split('').every((c) => '0123456789'.contains(c));
+  bool get _isNameTooLong =>
+      _nameController.text.trim().length > _maxNameLength;
+  bool get _isSystemPromptTooLong =>
+      _systemPromptController.text.length > _maxSystemPromptLength;
 
   @override
   void initState() {
@@ -63,6 +78,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _invitationCodeController.dispose();
     _systemPromptController.dispose();
     _nameFocusNode.dispose();
     _pluginRepository.dispose();
@@ -105,9 +121,22 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     if (_currentStep == 0) {
       // 验证名称
       if (!_isNameValid) {
-        setState(() => _error = _isNameNumericOnly
-            ? L10n.of(context).employeeNameCannotBeNumeric
-            : L10n.of(context).employeeNameRequired);
+        setState(() {
+          if (_nameController.text.trim().isEmpty) {
+            _error = L10n.of(context).employeeNameRequired;
+          } else if (_isNameNumericOnly) {
+            _error = L10n.of(context).employeeNameCannotBeNumeric;
+          } else if (_isNameTooLong) {
+            _error = L10n.of(context).employeeNameTooLong;
+          }
+        });
+        return;
+      }
+      // 验证 system prompt 长度
+      if (_isSystemPromptTooLong) {
+        setState(() {
+          _error = L10n.of(context).systemPromptTooLong;
+        });
         return;
       }
       setState(() => _error = null);
@@ -251,6 +280,15 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   /// 提交创建
   Future<void> _onSubmit() async {
+    final invitationCode = _invitationCodeController.text.trim();
+
+    if (invitationCode.isEmpty) {
+      setState(() {
+        _error = L10n.of(context).invitationCodeRequired;
+      });
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _error = null;
@@ -266,12 +304,16 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       }).toList();
 
       // 调用创建接口
+      // 如果用户没填 system prompt，使用默认值（接口要求 system_prompt 和 template_id 至少填一个）
+      final systemPrompt = _systemPromptController.text.trim().isNotEmpty
+          ? _systemPromptController.text.trim()
+          : _defaultSystemPrompt;
+
       final response = await widget.repository.createCustomAgentWithPlugins(
         name: _nameController.text.trim(),
-        systemPrompt: _systemPromptController.text.trim().isNotEmpty
-            ? _systemPromptController.text.trim()
-            : null,
+        systemPrompt: systemPrompt,
         plugins: plugins.isNotEmpty ? plugins : null,
+        invitationCode: invitationCode,
       );
 
       if (mounted) {
@@ -507,10 +549,25 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           label: l10n.employeeName,
           hint: l10n.enterEmployeeName,
           icon: Icons.badge_outlined,
-          isError: _isNameNumericOnly,
-          errorText: _isNameNumericOnly ? l10n.employeeNameCannotBeNumeric : null,
+          isError: _isNameNumericOnly || _isNameTooLong,
+          errorText: _isNameNumericOnly
+              ? l10n.employeeNameCannotBeNumeric
+              : (_isNameTooLong ? l10n.employeeNameTooLong : null),
           enabled: !_isSubmitting,
           onChanged: (_) => setState(() {}),
+          maxLength: _maxNameLength,
+          showCounter: true,
+        ),
+        const SizedBox(height: 20),
+
+        // 邀请码
+        _buildInputField(
+          theme: theme,
+          controller: _invitationCodeController,
+          label: l10n.invitationCode,
+          hint: l10n.enterInvitationCode,
+          icon: Icons.vpn_key_outlined,
+          enabled: !_isSubmitting,
         ),
         const SizedBox(height: 20),
 
@@ -525,6 +582,11 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           maxLines: 6,
           enabled: !_isSubmitting,
           isOptional: true,
+          onChanged: (_) => setState(() {}),
+          maxLength: _maxSystemPromptLength,
+          showCounter: true,
+          isError: _isSystemPromptTooLong,
+          errorText: _isSystemPromptTooLong ? l10n.systemPromptTooLong : null,
         ),
         const SizedBox(height: 12),
 
@@ -944,6 +1006,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     String? errorText,
     bool isOptional = false,
     ValueChanged<String>? onChanged,
+    int? maxLength,
+    bool showCounter = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1009,6 +1073,15 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16,
               vertical: minLines > 1 ? 16 : 14,
+            ),
+            counterText: showCounter && maxLength != null
+                ? '${controller.text.length}/$maxLength'
+                : null,
+            counterStyle: TextStyle(
+              color: controller.text.length > (maxLength ?? 0)
+                  ? theme.colorScheme.error
+                  : theme.colorScheme.onSurfaceVariant,
+              fontSize: 12,
             ),
           ),
           minLines: minLines,

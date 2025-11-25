@@ -23,16 +23,26 @@ class HireDialog extends StatefulWidget {
 
 class _HireDialogState extends State<HireDialog> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _invitationCodeController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
   bool _isLoading = false;
   String? _error;
 
+  // 名称长度限制
+  static const int _maxNameLength = 20;
+
+  // 验证状态
+  bool get _isNameTooLong => _nameController.text.trim().length > _maxNameLength;
+
   @override
   void initState() {
     super.initState();
-    // 默认使用模板名称作为员工名
-    _nameController.text = widget.template.name;
+    // 默认使用模板名称作为员工名（超长时截断）
+    final templateName = widget.template.name;
+    _nameController.text = templateName.length > _maxNameLength
+        ? templateName.substring(0, _maxNameLength)
+        : templateName;
     // 自动选中文本
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -46,15 +56,32 @@ class _HireDialogState extends State<HireDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _invitationCodeController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
   Future<void> _onConfirm() async {
     final name = _nameController.text.trim();
+    final invitationCode = _invitationCodeController.text.trim();
+
     if (name.isEmpty) {
       setState(() {
         _error = L10n.of(context).employeeNameRequired;
+      });
+      return;
+    }
+
+    if (_isNameTooLong) {
+      setState(() {
+        _error = L10n.of(context).employeeNameTooLong;
+      });
+      return;
+    }
+
+    if (invitationCode.isEmpty) {
+      setState(() {
+        _error = L10n.of(context).invitationCodeRequired;
       });
       return;
     }
@@ -69,7 +96,7 @@ class _HireDialogState extends State<HireDialog> {
       final response = await widget.repository.hireFromTemplate(
         widget.template.id,
         name,
-        // invitationCode 默认为空，开发环境会跳过校验
+        invitationCode: invitationCode,
       );
       if (mounted) {
         // 返回响应对象，调用方可以获取 agentId、matrixUserId 等
@@ -124,6 +151,51 @@ class _HireDialogState extends State<HireDialog> {
                   labelText: l10n.employeeName,
                   hintText: l10n.enterEmployeeName,
                   prefixIcon: const Icon(Icons.badge_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: _isNameTooLong
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.outline,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: _isNameTooLong
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.3),
+                  counterText: '${_nameController.text.length}/$_maxNameLength',
+                  counterStyle: TextStyle(
+                    color: _isNameTooLong
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                  errorText: _isNameTooLong ? l10n.employeeNameTooLong : null,
+                ),
+                textInputAction: TextInputAction.next,
+                enabled: !_isLoading,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+
+              // 邀请码输入
+              TextField(
+                controller: _invitationCodeController,
+                decoration: InputDecoration(
+                  labelText: l10n.invitationCode,
+                  hintText: l10n.enterInvitationCode,
+                  prefixIcon: const Icon(Icons.vpn_key_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

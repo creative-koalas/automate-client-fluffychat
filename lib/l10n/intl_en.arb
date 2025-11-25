@@ -3503,9 +3503,9 @@
 
   "startChat": "Start chat",
   "@startChat": {},
-  "deleteEmployee": "Delete employee",
+  "deleteEmployee": "Optimize employee",
   "@deleteEmployee": {},
-  "deleteEmployeeConfirm": "Are you sure you want to delete {name}? This action cannot be undone.",
+  "deleteEmployeeConfirm": "Are you sure you want to optimize {name}? This action cannot be undone.",
   "@deleteEmployeeConfirm": {
     "type": "String",
     "placeholders": {
@@ -3514,9 +3514,9 @@
       }
     }
   },
-  "employeeDeleted": "Employee deleted",
+  "employeeDeleted": "Employee optimized",
   "@employeeDeleted": {},
-  "errorDeletingEmployee": "Error deleting employee",
+  "errorDeletingEmployee": "Error optimizing employee",
   "@errorDeletingEmployee": {},
   "errorStartingChat": "Error starting chat",
   "@errorStartingChat": {},
@@ -3529,6 +3529,14 @@
   "@enterEmployeeName": {},
   "employeeNameRequired": "Employee name is required",
   "@employeeNameRequired": {},
+  "employeeNameTooLong": "Name cannot exceed 20 characters",
+  "@employeeNameTooLong": {},
+  "invitationCode": "Invitation Code",
+  "@invitationCode": {},
+  "enterInvitationCode": "Enter invitation code",
+  "@enterInvitationCode": {},
+  "invitationCodeRequired": "Invitation code is required",
+  "@invitationCodeRequired": {},
   "confirmHire": "Confirm Hire",
   "@confirmHire": {},
   "hireSuccess": "Successfully hired {name}!",
@@ -3542,8 +3550,29 @@
   },
   "viewEmployee": "View",
   "@viewEmployee": {},
+  "viewDetails": "View Details",
+  "@viewDetails": {},
   "hireSuccessGeneric": "Employee hired successfully!",
   "@hireSuccessGeneric": {},
+  "hireSuccessTitle": "Hire Successful",
+  "@hireSuccessTitle": {},
+  "hireSuccessMessage": "{name} has joined your team!",
+  "@hireSuccessMessage": {
+    "type": "String",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "firstEmployeeHired": "Congrats! Your First Employee",
+  "@firstEmployeeHired": {},
+  "firstEmployeeHint": "Once onboarding is complete, click on them in the employee list to start chatting and collaborating.",
+  "@firstEmployeeHint": {},
+  "employeeOnboardingHint": "Employee is onboarding, please wait...",
+  "@employeeOnboardingHint": {},
+  "continueHiring": "Continue Hiring",
+  "@continueHiring": {},
 
   "requiresConfig": "Config",
   "@requiresConfig": {},
@@ -3608,6 +3637,8 @@
   "@systemPrompt": {},
   "systemPromptHint": "Define the AI's behavior and personality...",
   "@systemPromptHint": {},
+  "systemPromptTooLong": "System prompt cannot exceed 5000 characters",
+  "@systemPromptTooLong": {},
   "systemPromptHelp": "Optional. Describe what you want the AI to do and how it should behave.",
   "@systemPromptHelp": {},
   "createEmployee": "Create",

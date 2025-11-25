@@ -3530,9 +3530,9 @@
 
     "startChat": "开始聊天",
     "@startChat": {},
-    "deleteEmployee": "删除员工",
+    "deleteEmployee": "优化员工",
     "@deleteEmployee": {},
-    "deleteEmployeeConfirm": "确定要删除 {name} 吗？此操作无法撤销。",
+    "deleteEmployeeConfirm": "确定要优化 {name} 吗？此操作无法撤销。",
     "@deleteEmployeeConfirm": {
         "type": "String",
         "placeholders": {
@@ -3541,9 +3541,9 @@
             }
         }
     },
-    "employeeDeleted": "员工已删除",
+    "employeeDeleted": "员工已优化",
     "@employeeDeleted": {},
-    "errorDeletingEmployee": "删除员工失败",
+    "errorDeletingEmployee": "优化员工失败",
     "@errorDeletingEmployee": {},
     "errorStartingChat": "开始聊天失败",
     "@errorStartingChat": {},
@@ -3556,6 +3556,14 @@
     "@enterEmployeeName": {},
     "employeeNameRequired": "员工名称不能为空",
     "@employeeNameRequired": {},
+    "employeeNameTooLong": "名称不能超过20个字符",
+    "@employeeNameTooLong": {},
+    "invitationCode": "邀请码",
+    "@invitationCode": {},
+    "enterInvitationCode": "请输入邀请码",
+    "@enterInvitationCode": {},
+    "invitationCodeRequired": "邀请码不能为空",
+    "@invitationCodeRequired": {},
     "confirmHire": "确认雇佣",
     "@confirmHire": {},
     "hireSuccess": "成功雇佣 {name}！",
@@ -3569,8 +3577,29 @@
     },
     "viewEmployee": "查看",
     "@viewEmployee": {},
+    "viewDetails": "查看详情",
+    "@viewDetails": {},
     "hireSuccessGeneric": "员工雇佣成功！",
     "@hireSuccessGeneric": {},
+    "hireSuccessTitle": "雇佣成功",
+    "@hireSuccessTitle": {},
+    "hireSuccessMessage": "{name} 已成功加入您的团队！",
+    "@hireSuccessMessage": {
+        "type": "String",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            }
+        }
+    },
+    "firstEmployeeHired": "恭喜！您的第一位员工",
+    "@firstEmployeeHired": {},
+    "firstEmployeeHint": "员工入职完成后，您可以在员工列表点击他开始聊天和协作。",
+    "@firstEmployeeHint": {},
+    "employeeOnboardingHint": "员工正在入职中，请稍等...",
+    "@employeeOnboardingHint": {},
+    "continueHiring": "继续招聘",
+    "@continueHiring": {},
 
     "requiresConfig": "需配置",
     "@requiresConfig": {},
@@ -3633,6 +3662,8 @@
     "@systemPrompt": {},
     "systemPromptHint": "定义 AI 的行为和个性...",
     "@systemPromptHint": {},
+    "systemPromptTooLong": "提示词不能超过5000个字符",
+    "@systemPromptTooLong": {},
     "systemPromptHelp": "可选。描述你希望 AI 做什么以及它应该如何表现。",
     "@systemPromptHelp": {},
     "createEmployee": "创建",

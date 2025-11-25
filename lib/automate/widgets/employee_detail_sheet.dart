@@ -326,7 +326,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             _buildSkillsList(theme, l10n),
           ],
 
-          // 删除按钮
+          // 优化按钮（删除）
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
             child: TextButton.icon(
@@ -630,7 +630,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: Text(l10n.delete),
+            child: Text(l10n.confirm),
           ),
         ],
       ),
