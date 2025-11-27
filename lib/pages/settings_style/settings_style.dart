@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/config/setting_keys.dart';
-import 'package:fluffychat/utils/account_config.dart';
-import 'package:fluffychat/utils/file_selector.dart';
-import 'package:fluffychat/widgets/future_loading_dialog.dart';
-import 'package:fluffychat/widgets/theme_builder.dart';
+import 'package:automate/config/app_config.dart';
+import 'package:automate/config/setting_keys.dart';
+import 'package:automate/utils/account_config.dart';
+import 'package:automate/utils/file_selector.dart';
+import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:automate/widgets/theme_builder.dart';
 import '../../widgets/matrix.dart';
 import 'settings_style_view.dart';
 

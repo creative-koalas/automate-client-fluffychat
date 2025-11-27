@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/config/themes.dart';
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/pages/chat/chat.dart';
-import 'package:fluffychat/utils/date_time_extension.dart';
-import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:fluffychat/utils/sync_status_localization.dart';
-import 'package:fluffychat/widgets/avatar.dart';
-import 'package:fluffychat/widgets/presence_builder.dart';
+import 'package:automate/config/themes.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/pages/chat/chat.dart';
+import 'package:automate/utils/date_time_extension.dart';
+import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:automate/utils/sync_status_localization.dart';
+import 'package:automate/widgets/avatar.dart';
+import 'package:automate/widgets/presence_builder.dart';
 
 class ChatAppBarTitle extends StatelessWidget {
   final ChatController controller;

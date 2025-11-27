@@ -4,7 +4,7 @@ library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:fluffychat/automate/backend/backend.dart';
+import 'package:automate/automate/backend/backend.dart';
 import 'package:provider/provider.dart';
 import 'onboarding_chatbot_view.dart';
 

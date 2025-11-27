@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/pages/chat/events/video_player.dart';
-import 'package:fluffychat/pages/image_viewer/image_viewer.dart';
-import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:fluffychat/widgets/mxc_image.dart';
+import 'package:automate/config/app_config.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/pages/chat/events/video_player.dart';
+import 'package:automate/pages/image_viewer/image_viewer.dart';
+import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:automate/widgets/mxc_image.dart';
 
 class ChatSearchImagesTab extends StatelessWidget {
   final Room room;

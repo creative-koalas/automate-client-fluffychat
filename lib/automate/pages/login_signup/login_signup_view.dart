@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fluffychat/widgets/layouts/login_scaffold.dart';
+import 'package:automate/widgets/layouts/login_scaffold.dart';
 import 'login_signup.dart';
 
 class LoginSignupView extends StatelessWidget {

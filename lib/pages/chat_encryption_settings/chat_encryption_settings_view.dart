@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/pages/chat_encryption_settings/chat_encryption_settings.dart';
-import 'package:fluffychat/utils/beautify_string_extension.dart';
-import 'package:fluffychat/widgets/avatar.dart';
-import 'package:fluffychat/widgets/layouts/max_width_body.dart';
+import 'package:automate/config/app_config.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/pages/chat_encryption_settings/chat_encryption_settings.dart';
+import 'package:automate/utils/beautify_string_extension.dart';
+import 'package:automate/widgets/avatar.dart';
+import 'package:automate/widgets/layouts/max_width_body.dart';
 
 class ChatEncryptionSettingsView extends StatelessWidget {
   final ChatEncryptionSettingsController controller;

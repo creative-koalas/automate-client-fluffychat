@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:fluffychat/l10n/l10n.dart';
+import 'package:automate/l10n/l10n.dart';
 
 /// 雇佣成功对话框
 /// 在用户成功雇佣员工后显示，提供更醒目的成功反馈

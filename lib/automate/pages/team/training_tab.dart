@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:fluffychat/l10n/l10n.dart';
+import 'package:automate/l10n/l10n.dart';
 
 import '../../models/plugin.dart';
 import '../../repositories/plugin_repository.dart';

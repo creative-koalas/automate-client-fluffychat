@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/config/setting_keys.dart';
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:automate/config/setting_keys.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
 import '../../../config/app_config.dart';
 
 class ReplyContent extends StatelessWidget {

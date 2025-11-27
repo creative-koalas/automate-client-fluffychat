@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:fluffychat/utils/platform_infos.dart';
+import 'package:automate/utils/platform_infos.dart';
 
 enum AppSettings<T> {
   textMessageMaxLength<int>('textMessageMaxLength', 16384),
@@ -17,50 +17,50 @@ enum AppSettings<T> {
   audioRecordingNoiseSuppress<bool>('audioRecordingNoiseSuppress', true),
   audioRecordingBitRate<int>('audioRecordingBitRate', 64000),
   audioRecordingSamplingRate<int>('audioRecordingSamplingRate', 44100),
-  showNoGoogle<bool>('chat.fluffy.show_no_google', false),
-  unifiedPushRegistered<bool>('chat.fluffy.unifiedpush.registered', false),
-  unifiedPushEndpoint<String>('chat.fluffy.unifiedpush.endpoint', ''),
+  showNoGoogle<bool>('com.automate.show_no_google', false),
+  unifiedPushRegistered<bool>('com.automate.unifiedpush.registered', false),
+  unifiedPushEndpoint<String>('com.automate.unifiedpush.endpoint', ''),
   pushNotificationsGatewayUrl<String>(
     'pushNotificationsGatewayUrl',
-    'https://push.fluffychat.im/_matrix/push/v1/notify',
+    'https://push.automate.app/_matrix/push/v1/notify',
   ),
   pushNotificationsPusherFormat<String>(
     'pushNotificationsPusherFormat',
     'event_id_only',
   ),
-  renderHtml<bool>('chat.fluffy.renderHtml', true),
-  fontSizeFactor<double>('chat.fluffy.font_size_factor', 1.0),
-  hideRedactedEvents<bool>('chat.fluffy.hideRedactedEvents', false),
-  hideUnknownEvents<bool>('chat.fluffy.hideUnknownEvents', true),
-  separateChatTypes<bool>('chat.fluffy.separateChatTypes', false),
-  autoplayImages<bool>('chat.fluffy.autoplay_images', true),
-  sendTypingNotifications<bool>('chat.fluffy.send_typing_notifications', true),
-  sendPublicReadReceipts<bool>('chat.fluffy.send_public_read_receipts', true),
-  swipeRightToLeftToReply<bool>('chat.fluffy.swipeRightToLeftToReply', true),
-  sendOnEnter<bool>('chat.fluffy.send_on_enter', false),
-  showPresences<bool>('chat.fluffy.show_presences', true),
-  displayNavigationRail<bool>('chat.fluffy.display_navigation_rail', false),
-  experimentalVoip<bool>('chat.fluffy.experimental_voip', false),
-  shareKeysWith<String>('chat.fluffy.share_keys_with_2', 'all'),
+  renderHtml<bool>('com.automate.renderHtml', true),
+  fontSizeFactor<double>('com.automate.font_size_factor', 1.0),
+  hideRedactedEvents<bool>('com.automate.hideRedactedEvents', false),
+  hideUnknownEvents<bool>('com.automate.hideUnknownEvents', true),
+  separateChatTypes<bool>('com.automate.separateChatTypes', false),
+  autoplayImages<bool>('com.automate.autoplay_images', true),
+  sendTypingNotifications<bool>('com.automate.send_typing_notifications', true),
+  sendPublicReadReceipts<bool>('com.automate.send_public_read_receipts', true),
+  swipeRightToLeftToReply<bool>('com.automate.swipeRightToLeftToReply', true),
+  sendOnEnter<bool>('com.automate.send_on_enter', false),
+  showPresences<bool>('com.automate.show_presences', true),
+  displayNavigationRail<bool>('com.automate.display_navigation_rail', false),
+  experimentalVoip<bool>('com.automate.experimental_voip', false),
+  shareKeysWith<String>('com.automate.share_keys_with_2', 'all'),
   noEncryptionWarningShown<bool>(
-    'chat.fluffy.no_encryption_warning_shown',
+    'com.automate.no_encryption_warning_shown',
     false,
   ),
   displayChatDetailsColumn(
-    'chat.fluffy.display_chat_details_column',
+    'com.automate.display_chat_details_column',
     false,
   ),
   // AppConfig-mirrored settings
-  applicationName<String>('chat.fluffy.application_name', 'FluffyChat'),
+  applicationName<String>('com.automate.application_name', 'Automate'),
   // 写死 homeserver 指向本地 K8s Synapse（与 AutomateConfig.matrixHomeserver 同步）
-  defaultHomeserver<String>('chat.fluffy.default_homeserver', 'http://192.168.1.10:30008'),
+  defaultHomeserver<String>('com.automate.default_homeserver', 'http://192.168.1.4:30008'),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>(
-    'chat.fluffy.color_scheme_seed',
+    'com.automate.color_scheme_seed',
     0xFF5625BA,
   ),
   emojiSuggestionLocale<String>('emoji_suggestion_locale', ''),
-  enableSoftLogout<bool>('chat.fluffy.enable_soft_logout', false);
+  enableSoftLogout<bool>('com.automate.enable_soft_logout', false);
 
   final String key;
   final T defaultValue;

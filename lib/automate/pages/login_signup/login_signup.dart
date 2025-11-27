@@ -6,8 +6,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:fluffychat/widgets/matrix.dart';
-import 'package:fluffychat/automate/backend/backend.dart';
+import 'package:automate/widgets/matrix.dart';
+import 'package:automate/automate/backend/backend.dart';
 import 'login_signup_view.dart';
 
 class LoginSignup extends StatefulWidget {

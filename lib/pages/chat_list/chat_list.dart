@@ -11,19 +11,19 @@ import 'package:matrix/matrix.dart' as sdk;
 import 'package:matrix/matrix.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/pages/chat_list/chat_list_view.dart';
-import 'package:fluffychat/utils/localized_exception_extension.dart';
-import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:fluffychat/utils/platform_infos.dart';
-import 'package:fluffychat/utils/show_scaffold_dialog.dart';
-import 'package:fluffychat/utils/show_update_snackbar.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_modal_action_popup.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:fluffychat/widgets/avatar.dart';
-import 'package:fluffychat/widgets/future_loading_dialog.dart';
-import 'package:fluffychat/widgets/share_scaffold_dialog.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/pages/chat_list/chat_list_view.dart';
+import 'package:automate/utils/localized_exception_extension.dart';
+import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/utils/show_scaffold_dialog.dart';
+import 'package:automate/utils/show_update_snackbar.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_modal_action_popup.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:automate/widgets/avatar.dart';
+import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:automate/widgets/share_scaffold_dialog.dart';
 import '../../../utils/account_bundles.dart';
 import '../../config/setting_keys.dart';
 import '../../utils/url_launcher.dart';
@@ -174,7 +174,7 @@ class ChatListController extends State<ChatList>
   QueryPublicRoomsResponse? roomSearchResult;
 
   bool isSearching = false;
-  static const String _serverStoreNamespace = 'im.fluffychat.search.server';
+  static const String _serverStoreNamespace = 'com.automate.search.server';
 
   void setServer() async {
     final newServer = await showTextInputDialog(

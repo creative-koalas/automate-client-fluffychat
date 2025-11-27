@@ -8,12 +8,12 @@ import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/utils/client_download_content_extension.dart';
-import 'package:fluffychat/utils/client_manager.dart';
-import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:fluffychat/utils/platform_infos.dart';
-import 'package:fluffychat/utils/push_helper.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/utils/client_download_content_extension.dart';
+import 'package:automate/utils/client_manager.dart';
+import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/utils/push_helper.dart';
 import '../config/app_config.dart';
 import '../config/setting_keys.dart';
 
@@ -112,7 +112,7 @@ Future<void> notificationTap(
     notificationResponse.notificationResponseType.name,
   );
   final payload =
-      FluffyChatPushPayload.fromString(notificationResponse.payload ?? '');
+      AutomatePushPayload.fromString(notificationResponse.payload ?? '');
   switch (notificationResponse.notificationResponseType) {
     case NotificationResponseType.selectedNotification:
       final roomId = payload.roomId;
@@ -136,7 +136,7 @@ Future<void> notificationTap(
             : '/rooms/$roomId',
       );
     case NotificationResponseType.selectedNotificationAction:
-      final actionType = FluffyChatNotificationActions.values.singleWhereOrNull(
+      final actionType = AutomateNotificationActions.values.singleWhereOrNull(
         (action) => action.name == notificationResponse.actionId,
       );
       if (actionType == null) {
@@ -156,13 +156,13 @@ Future<void> notificationTap(
         );
       }
       switch (actionType) {
-        case FluffyChatNotificationActions.markAsRead:
+        case AutomateNotificationActions.markAsRead:
           await room.setReadMarker(
             payload.eventId ?? room.lastEvent!.eventId,
             mRead: payload.eventId ?? room.lastEvent!.eventId,
             public: AppSettings.sendPublicReadReceipts.value,
           );
-        case FluffyChatNotificationActions.reply:
+        case AutomateNotificationActions.reply:
           final input = notificationResponse.input;
           if (input == null || input.isEmpty) {
             throw Exception(
@@ -227,7 +227,7 @@ Future<void> notificationTap(
                   enableVibration: false,
                   actions: <AndroidNotificationAction>[
                     AndroidNotificationAction(
-                      FluffyChatNotificationActions.reply.name,
+                      AutomateNotificationActions.reply.name,
                       l10n.reply,
                       inputs: [
                         AndroidNotificationActionInput(
@@ -239,14 +239,14 @@ Future<void> notificationTap(
                       semanticAction: SemanticAction.reply,
                     ),
                     AndroidNotificationAction(
-                      FluffyChatNotificationActions.markAsRead.name,
+                      AutomateNotificationActions.markAsRead.name,
                       l10n.markAsRead,
                       semanticAction: SemanticAction.markAsRead,
                     ),
                   ],
                 ),
               ),
-              payload: FluffyChatPushPayload(
+              payload: AutomatePushPayload(
                 client.clientName,
                 room.id,
                 eventId,
@@ -257,4 +257,4 @@ Future<void> notificationTap(
   }
 }
 
-enum FluffyChatNotificationActions { markAsRead, reply }
+enum AutomateNotificationActions { markAsRead, reply }

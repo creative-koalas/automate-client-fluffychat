@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/automate/core/auth_service.dart';
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/utils/localized_exception_extension.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:fluffychat/widgets/future_loading_dialog.dart';
-import 'package:fluffychat/widgets/matrix.dart';
+import 'package:automate/automate/core/auth_service.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/utils/localized_exception_extension.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:automate/widgets/matrix.dart';
 import '../../utils/platform_infos.dart';
 import 'login_view.dart';
 

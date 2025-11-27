@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fluffychat/config/themes.dart';
+import 'package:automate/config/themes.dart';
 import 'onboarding_chatbot.dart';
 
 class OnboardingChatbotView extends StatelessWidget {

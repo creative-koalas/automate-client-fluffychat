@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fluffychat/config/themes.dart';
-import 'package:fluffychat/l10n/l10n.dart';
+import 'package:automate/config/themes.dart';
+import 'package:automate/l10n/l10n.dart';
 
 import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 import 'recruit_tab.dart';

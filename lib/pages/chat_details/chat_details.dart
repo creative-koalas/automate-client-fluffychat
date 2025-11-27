@@ -4,16 +4,16 @@ import 'package:collection/collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/pages/chat_details/chat_details_view.dart';
-import 'package:fluffychat/pages/settings/settings.dart';
-import 'package:fluffychat/utils/file_selector.dart';
-import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:fluffychat/utils/platform_infos.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_modal_action_popup.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:fluffychat/widgets/future_loading_dialog.dart';
-import 'package:fluffychat/widgets/matrix.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/pages/chat_details/chat_details_view.dart';
+import 'package:automate/pages/settings/settings.dart';
+import 'package:automate/utils/file_selector.dart';
+import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_modal_action_popup.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:automate/widgets/matrix.dart';
 
 enum AliasActions { copy, delete, setCanonical }
 

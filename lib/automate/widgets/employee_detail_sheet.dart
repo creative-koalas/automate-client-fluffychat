@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/widgets/matrix.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/widgets/matrix.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/agent.dart';

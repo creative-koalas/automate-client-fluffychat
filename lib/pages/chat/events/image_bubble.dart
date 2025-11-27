@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/config/setting_keys.dart';
-import 'package:fluffychat/pages/image_viewer/image_viewer.dart';
-import 'package:fluffychat/utils/file_description.dart';
-import 'package:fluffychat/utils/url_launcher.dart';
-import 'package:fluffychat/widgets/mxc_image.dart';
+import 'package:automate/config/app_config.dart';
+import 'package:automate/config/setting_keys.dart';
+import 'package:automate/pages/image_viewer/image_viewer.dart';
+import 'package:automate/utils/file_description.dart';
+import 'package:automate/utils/url_launcher.dart';
+import 'package:automate/widgets/mxc_image.dart';
 import '../../../widgets/blur_hash.dart';
 
 class ImageBubble extends StatelessWidget {

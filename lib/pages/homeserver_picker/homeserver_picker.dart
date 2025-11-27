@@ -10,14 +10,14 @@ import 'package:matrix/matrix.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:fluffychat/config/app_config.dart';
-import 'package:fluffychat/config/setting_keys.dart';
-import 'package:fluffychat/l10n/l10n.dart';
-import 'package:fluffychat/pages/homeserver_picker/homeserver_picker_view.dart';
-import 'package:fluffychat/utils/file_selector.dart';
-import 'package:fluffychat/utils/platform_infos.dart';
-import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:fluffychat/widgets/matrix.dart';
+import 'package:automate/config/app_config.dart';
+import 'package:automate/config/setting_keys.dart';
+import 'package:automate/l10n/l10n.dart';
+import 'package:automate/pages/homeserver_picker/homeserver_picker_view.dart';
+import 'package:automate/utils/file_selector.dart';
+import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:automate/widgets/matrix.dart';
 import '../../utils/localized_exception_extension.dart';
 
 class HomeserverPicker extends StatefulWidget {
