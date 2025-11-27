@@ -102,7 +102,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   }
 
   void _redirectToLogin() {
-    final navKey = FluffyChatApp.router.routerDelegate.navigatorKey;
+    final navKey = AutomateApp.router.routerDelegate.navigatorKey;
     final ctx = navKey.currentContext;
     if (ctx == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _redirectToLogin());
