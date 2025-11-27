@@ -33,6 +33,14 @@ class AgentTemplateRepository {
       '/api/agent-templates/active',
       requiresAuth: false, // 公开端点，无需 JWT
       fromJsonT: (data) {
+        // 后端返回 {"templates": [...]}，需要从中提取 templates 数组
+        if (data is Map<String, dynamic>) {
+          final templates = data['templates'];
+          if (templates is List) {
+            return templates;
+          }
+        }
+        // 兼容直接返回数组的情况
         if (data is List) {
           return data;
         }

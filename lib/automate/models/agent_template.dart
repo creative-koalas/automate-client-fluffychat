@@ -49,6 +49,14 @@ class AgentTemplate {
       parsedTags = rawTags.map((e) => e.toString()).toList();
     }
 
+    // 解析 is_active，兼容 status 字段
+    bool isActive = true;
+    if (json.containsKey('is_active')) {
+      isActive = json['is_active'] as bool? ?? true;
+    } else if (json.containsKey('status')) {
+      isActive = json['status'] == 'active';
+    }
+
     return AgentTemplate(
       id: json['id'] as int,
       name: json['name'] as String? ?? '',
@@ -57,7 +65,7 @@ class AgentTemplate {
       skillTags: parsedTags,
       avatarUrl: json['avatar_url'] as String?,
       systemPrompt: json['system_prompt'] as String? ?? '',
-      isActive: json['is_active'] as bool? ?? true,
+      isActive: isActive,
     );
   }
 
