@@ -953,8 +953,8 @@
     "type": "String",
     "placeholders": {}
   },
-  "fluffychat": "FluffyChat",
-  "@fluffychat": {
+  "automate": "Automate",
+  "@automate": {
     "type": "String",
     "placeholders": {}
   },

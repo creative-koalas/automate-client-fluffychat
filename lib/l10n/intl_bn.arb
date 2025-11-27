@@ -937,7 +937,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "@newMessageInFluffyChat": {
+  "@newMessageInAutomate": {
     "type": "String",
     "placeholders": {}
   },
@@ -1404,7 +1404,7 @@
     "placeholders": {}
   },
   "@unverified": {},
-  "@fluffychat": {
+  "@automate": {
     "type": "String",
     "placeholders": {}
   },

@@ -158,8 +158,8 @@
       }
     }
   },
-  "fluffychat": "FluffyChat",
-  "@fluffychat": {
+  "automate": "Automate",
+  "@automate": {
     "type": "String",
     "placeholders": {}
   },
@@ -1094,7 +1094,7 @@
     }
   },
   "@callingPermissions": {},
-  "@newMessageInFluffyChat": {
+  "@newMessageInAutomate": {
     "type": "String",
     "placeholders": {}
   },
