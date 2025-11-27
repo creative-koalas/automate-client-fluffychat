@@ -141,13 +141,73 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       ),
     );
 
+    // 缓存 delta 内容，等待 decision 事件
+    final deltaBuffer = StringBuffer();
+    bool? decisionReceived;
+    bool shouldStop = false;
+
     try {
-      await for (final chunk in backend.streamChatResponse(text)) {
+      await for (final event in backend.streamChatResponse(text)) {
         if (!mounted) return;
-        setState(() {
-          messages.last.text += chunk;
-        });
-        _scrollToBottom();
+
+        switch (event.type) {
+          case ChatStreamEventType.delta:
+            if (decisionReceived == null) {
+              // decision 还没到，先缓存
+              deltaBuffer.write(event.content ?? '');
+            } else if (!shouldStop) {
+              // decision 已到且不停止，直接渲染
+              setState(() {
+                messages.last.text += event.content ?? '';
+              });
+              _scrollToBottom();
+            }
+            // 如果 shouldStop = true，忽略后续 delta
+            break;
+
+          case ChatStreamEventType.decision:
+            decisionReceived = true;
+            shouldStop = event.shouldStop ?? false;
+
+            if (shouldStop) {
+              // 丢弃缓存，显示固定消息
+              setState(() {
+                messages.last.text = '好的，我明白了，正在为您安排...';
+              });
+              _scrollToBottom();
+            } else {
+              // 开始渲染缓存的内容
+              final buffered = deltaBuffer.toString();
+              if (buffered.isNotEmpty) {
+                setState(() {
+                  messages.last.text = buffered;
+                });
+                _scrollToBottom();
+              }
+            }
+            break;
+
+          case ChatStreamEventType.assistantMessage:
+            // 完整消息到达，如果之前没收到 decision，直接使用完整内容
+            if (decisionReceived == null || !shouldStop) {
+              setState(() {
+                messages.last.text = event.content ?? '';
+              });
+              _scrollToBottom();
+            }
+            break;
+
+          case ChatStreamEventType.done:
+            // 流结束，如果 shouldStop = true，触发页面跳转
+            if (shouldStop) {
+              // 延迟一下让用户看到消息
+              await Future.delayed(const Duration(milliseconds: 1500));
+              if (mounted) {
+                completeOnboarding();
+              }
+            }
+            break;
+        }
       }
     } on UnauthorizedException {
       return;
@@ -160,7 +220,9 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       if (mounted) {
         setState(() {
           isLoading = false;
-          _invalidateAndReloadSuggestions();
+          if (!shouldStop) {
+            _invalidateAndReloadSuggestions();
+          }
         });
       }
     }

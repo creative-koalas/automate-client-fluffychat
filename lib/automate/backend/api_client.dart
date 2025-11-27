@@ -25,8 +25,10 @@ class AutomateApiClient {
   final Dio _dio;
   final http.Client _http;
 
+  // K8s NodePort: 30300
+  // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
   static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://localhost:3000');
+      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://localhost:30300');
 
   Future<void> sendVerificationCode(String phone) async {
     // Mock: assume success
@@ -110,7 +112,7 @@ class AutomateApiClient {
     return [];
   }
 
-  Stream<String> streamChatResponse(String message) async* {
+  Stream<ChatStreamEvent> streamChatResponse(String message) async* {
     final token = auth.chatbotToken;
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');
     final request = http.Request('POST', url);
@@ -140,7 +142,7 @@ class AutomateApiClient {
     yield* _parseSseStream(response.stream);
   }
 
-  Stream<String> _parseSseStream(Stream<List<int>> byteStream) async* {
+  Stream<ChatStreamEvent> _parseSseStream(Stream<List<int>> byteStream) async* {
     final decoder = utf8.decoder;
     var buffer = '';
     await for (final chunk in byteStream.transform(decoder)) {
@@ -154,19 +156,31 @@ class AutomateApiClient {
         switch (event.name) {
           case 'assistant_message_delta':
             final delta = _readDelta(event.data);
-            if (delta.isNotEmpty) yield delta;
+            if (delta.isNotEmpty) yield ChatStreamEvent.delta(delta);
+            break;
+          case 'decision':
+            final shouldStop = _readDecision(event.data);
+            yield ChatStreamEvent.decision(shouldStop);
             break;
           case 'assistant_message':
             final content = _readAssistantContent(event.data);
-            if (content.isNotEmpty) yield content;
+            if (content.isNotEmpty) yield ChatStreamEvent.assistantMessage(content);
             break;
           case 'error':
             throw AutomateBackendException(_readErrorFromEvent(event.data));
           case 'done':
+            yield ChatStreamEvent.done();
             return;
         }
       }
     }
+  }
+
+  bool _readDecision(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data['shouldStop'] == true;
+    }
+    return false;
   }
 
   _SseEvent? _decodeSseEvent(String rawEvent) {
@@ -237,4 +251,50 @@ class _SseEvent {
   final dynamic data;
 
   _SseEvent({required this.name, required this.data});
+}
+
+/// SSE 事件类型枚举
+enum ChatStreamEventType {
+  /// 对话 LLM 的增量内容
+  delta,
+  /// 判断 LLM 的决策结果
+  decision,
+  /// 完整的 assistant 消息（流结束时）
+  assistantMessage,
+  /// 流结束
+  done,
+}
+
+/// 聊天流事件
+class ChatStreamEvent {
+  final ChatStreamEventType type;
+  /// delta 类型时为增量文本，assistantMessage 类型时为完整内容
+  final String? content;
+  /// decision 类型时为 true/false
+  final bool? shouldStop;
+
+  ChatStreamEvent._({
+    required this.type,
+    this.content,
+    this.shouldStop,
+  });
+
+  factory ChatStreamEvent.delta(String content) => ChatStreamEvent._(
+        type: ChatStreamEventType.delta,
+        content: content,
+      );
+
+  factory ChatStreamEvent.decision(bool shouldStop) => ChatStreamEvent._(
+        type: ChatStreamEventType.decision,
+        shouldStop: shouldStop,
+      );
+
+  factory ChatStreamEvent.assistantMessage(String content) => ChatStreamEvent._(
+        type: ChatStreamEventType.assistantMessage,
+        content: content,
+      );
+
+  factory ChatStreamEvent.done() => ChatStreamEvent._(
+        type: ChatStreamEventType.done,
+      );
 }
