@@ -46,10 +46,16 @@ abstract class AppRoutes {
   static FutureOr<String?> loggedInRedirect(
     BuildContext context,
     GoRouterState state,
-  ) =>
-      Matrix.of(context).widget.clients.any((client) => client.isLogged())
-          ? '/rooms'
-          : null;
+  ) {
+    // If we are already going to the onboarding chatbot, don't redirect away
+    if (state.fullPath == '/onboarding-chatbot') {
+      return null;
+    }
+    
+    return Matrix.of(context).widget.clients.any((client) => client.isLogged())
+        ? '/rooms'
+        : null;
+  }
 
   static FutureOr<String?> loggedOutRedirect(
     BuildContext context,

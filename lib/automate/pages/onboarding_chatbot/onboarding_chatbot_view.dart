@@ -14,71 +14,87 @@ class OnboardingChatbotView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar with contact name
-            Container(
-              height: 56,
-              alignment: Alignment.center,
-              child: Text(
-                '小考拉',
-                style: TextStyle(
-                  fontSize: textTheme.titleLarge?.fontSize != null &&
-                          textTheme.titleMedium?.fontSize != null
-                      ? (textTheme.titleLarge!.fontSize! +
-                              textTheme.titleMedium!.fontSize!) /
-                          2
-                      : textTheme.titleMedium?.fontSize,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            // Messages List
-            Expanded(
-              child: ListView.builder(
-                controller: controller.scrollController,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                itemCount: controller.messages.length,
-                itemBuilder: (context, index) {
-                  final message = controller.messages[index];
-                  return _MessageBubble(
-                    message: message,
+      body: Stack(
+        children: [
+          AnimatedOpacity(
+            opacity: controller.isFinishing ? 0.0 : 1.0,
+            duration: const Duration(seconds: 1),
+            curve: Curves.easeOut,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Top bar with contact name
+                  Container(
+                    height: 56,
+                    alignment: Alignment.center,
+                    child: Text(
+                      '小考拉',
+                      style: TextStyle(
+                        fontSize: textTheme.titleLarge?.fontSize != null &&
+                                textTheme.titleMedium?.fontSize != null
+                            ? (textTheme.titleLarge!.fontSize! +
+                                    textTheme.titleMedium!.fontSize!) /
+                                2
+                            : textTheme.titleMedium?.fontSize,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  // Messages List
+                  Expanded(
+                    child: ListView.builder(
+                      controller: controller.scrollController,
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      itemCount: controller.messages.length,
+                      itemBuilder: (context, index) {
+                        final message = controller.messages[index];
+                        return _MessageBubble(
+                          message: message,
+                          theme: theme,
+                          textTheme: textTheme,
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Loading Indicator
+                  if (controller.isLoading)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          _TypingIndicator(),
+                        ],
+                      ),
+                    ),
+
+                  // Suggestion Bubbles
+                  _SuggestionBubbles(
+                    controller: controller,
                     theme: theme,
                     textTheme: textTheme,
-                  );
-                },
+                  ),
+
+                  // Input Area
+                  _InputArea(
+                    controller: controller,
+                    theme: theme,
+                    textTheme: textTheme,
+                  ),
+                ],
               ),
             ),
-
-            // Loading Indicator
-            if (controller.isLoading)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    _TypingIndicator(),
-                  ],
-                ),
-              ),
-
-            // Suggestion Bubbles
-            _SuggestionBubbles(
+          ),
+          
+          if (controller.isFinishing)
+            _FinishingOverlay(
               controller: controller,
               theme: theme,
               textTheme: textTheme,
             ),
-
-            // Input Area
-            _InputArea(
-              controller: controller,
-              theme: theme,
-              textTheme: textTheme,
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -543,3 +559,123 @@ class _SkeletonBubbleState extends State<_SkeletonBubble>
     );
   }
 }
+
+class _FinishingOverlay extends StatefulWidget {
+  final OnboardingChatbotController controller;
+  final ThemeData theme;
+  final TextTheme textTheme;
+
+  const _FinishingOverlay({
+    required this.controller,
+    required this.theme,
+    required this.textTheme,
+  });
+
+  @override
+  State<_FinishingOverlay> createState() => _FinishingOverlayState();
+}
+
+class _FinishingOverlayState extends State<_FinishingOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _glowController;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    
+    _glowAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lastMessage = widget.controller.messages.isNotEmpty 
+        ? widget.controller.messages.last.text 
+        : '';
+        
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black.withValues(alpha: 0.85), // Dark background for focus
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Animated Main Text (Simulating moving to center by simply appearing here)
+          TweenAnimationBuilder<double>(
+            duration: const Duration(seconds: 2),
+            curve: Curves.easeOutQuint,
+            tween: Tween(begin: 100.0, end: 0.0),
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, value),
+                child: Opacity(
+                  opacity: (1 - (value / 100)).clamp(0.0, 1.0),
+                  child: child,
+                ),
+              );
+            },
+            child: AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) {
+                return Text(
+                  lastMessage,
+                  textAlign: TextAlign.center,
+                  style: widget.textTheme.headlineMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: _glowAnimation.value),
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      BoxShadow(
+                        color: widget.theme.colorScheme.primary.withValues(alpha: 0.5),
+                        blurRadius: 20 * _glowAnimation.value,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 40),
+          
+          // Streamed Secondary Text
+          if (widget.controller.finishText.isNotEmpty)
+            Text(
+              widget.controller.finishText,
+              textAlign: TextAlign.center,
+              style: widget.textTheme.bodyLarge?.copyWith(
+                color: Colors.white70,
+                height: 1.5,
+              ),
+            ),
+            
+          const SizedBox(height: 20),
+          
+          // Countdown
+          if (widget.controller.finishText.length > 10 && widget.controller.countdown > 0)
+             Text(
+              '${widget.controller.countdown}',
+              style: widget.textTheme.displayMedium?.copyWith(
+                color: widget.theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+

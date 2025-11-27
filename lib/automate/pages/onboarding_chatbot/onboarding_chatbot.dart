@@ -23,6 +23,11 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
   bool isLoading = false;
 
+  // Animation state
+  bool isFinishing = false;
+  String finishText = '';
+  int countdown = 5;
+
   // Suggestion state - tree at current level
   Map<String, dynamic>? _suggestionTree;
   bool isLoadingSuggestions = false;
@@ -64,7 +69,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       if (!mounted) return;
       _addMessagesFromHistory(history);
     } on UnauthorizedException {
-      return;
+      // return;
     } catch (_) {}
 
     messageController.addListener(_onInputChanged);
@@ -73,7 +78,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       await _loadSuggestions();
     } on UnauthorizedException {
       // Auth gate will handle redirect
-      return;
+      // return;
     }
   }
 
@@ -112,6 +117,42 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         );
       }
     });
+  }
+
+  Future<void> _startFinishSequence() async {
+    if (!mounted) return;
+    setState(() {
+      isFinishing = true;
+      finishText = '';
+      countdown = 5;
+    });
+
+    // Wait for the move/focus animation (approx 2s)
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (!mounted) return;
+
+    // Stream the secondary text
+    const fullText = "我将为你招聘一名员工来完成它，需要一些时间，您先去忙其他事情吧，进度推进后我会通知您，将于5秒后置于后台工作";
+    for (int i = 0; i < fullText.length; i++) {
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 50));
+      setState(() {
+        finishText += fullText[i];
+      });
+    }
+
+    if (!mounted) return;
+    
+    // Countdown
+    while (countdown > 0) {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      setState(() {
+        countdown--;
+      });
+    }
+
+    completeOnboarding();
   }
 
   Future<void> sendMessage() async {
@@ -201,9 +242,9 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
             // 流结束，如果 shouldStop = true，触发页面跳转
             if (shouldStop) {
               // 延迟一下让用户看到消息
-              await Future.delayed(const Duration(milliseconds: 1500));
+              await Future.delayed(const Duration(milliseconds: 1000));
               if (mounted) {
-                completeOnboarding();
+                 _startFinishSequence();
               }
             }
             break;

@@ -28,7 +28,7 @@ class AutomateApiClient {
   // K8s NodePort: 30300
   // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
   static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://localhost:30300');
+      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.1.4:30300');
 
   Future<void> sendVerificationCode(String phone) async {
     // Mock: assume success
@@ -37,7 +37,7 @@ class AutomateApiClient {
 
   Future<AuthResponse> loginOrSignup(String phone, String code) async {
     const chatbotToken =
-        String.fromEnvironment('ONBOARDING_CHATBOT_TOKEN', defaultValue: '<PASTE_CHATBOT_TOKEN>');
+        String.fromEnvironment('ONBOARDING_CHATBOT_TOKEN', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NjQyNDgwNDAsImV4cCI6MTc2NDg1Mjg0MH0.XiYa82GX197DEm8IYPRhCbJAQiFT3jz0wjTavElhxOg');
     final authResponse = AuthResponse(
       token: 'automate-mock-primary-token',
       chatbotToken: chatbotToken,
