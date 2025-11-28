@@ -53,7 +53,7 @@ enum AppSettings<T> {
   // AppConfig-mirrored settings
   applicationName<String>('com.automate.application_name', 'Automate'),
   // 写死 homeserver 指向本地 K8s Synapse（与 AutomateConfig.matrixHomeserver 同步）
-  defaultHomeserver<String>('com.automate.default_homeserver', 'http://192.168.1.4:30008'),
+  defaultHomeserver<String>('com.automate.default_homeserver', 'http://192.168.31.22:30008'),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>(
     'com.automate.color_scheme_seed',

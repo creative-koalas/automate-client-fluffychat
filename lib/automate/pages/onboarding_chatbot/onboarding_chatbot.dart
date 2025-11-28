@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:automate/automate/backend/backend.dart';
 import 'package:provider/provider.dart';
 import 'onboarding_chatbot_view.dart';
@@ -25,6 +26,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
   // Animation state
   bool isFinishing = false;
+  bool showCountdown = false;
   String finishText = '';
   int countdown = 5;
 
@@ -123,27 +125,48 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (!mounted) return;
     setState(() {
       isFinishing = true;
+      showCountdown = false;
       finishText = '';
       countdown = 5;
     });
 
-    // Wait for the move/focus animation (approx 2s)
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // 1. Focus/Blur Animation Phase (3s)
+    // Wait for the UI to blur and the text to "lift off"
+    await Future.delayed(const Duration(milliseconds: 3000));
     if (!mounted) return;
 
-    // Stream the secondary text
-    const fullText = "我将为你招聘一名员工来完成它，需要一些时间，您先去忙其他事情吧，进度推进后我会通知您，将于5秒后置于后台工作";
+    // 2. Typing Animation Phase
+    const fullText = "我将为你招聘一名员工来完成它，需要一些时间...\n\n您先去忙其他事情吧，进度推进后我会通知您。\n\n将于 5 秒后置于后台工作";
+    
+    // Split by characters but keep newlines as distinct pauses if needed
+    // Here we just type character by character but slower
     for (int i = 0; i < fullText.length; i++) {
       if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 50));
+      
+      // Variable typing speed for realism
+      // Punctuation marks get a slightly longer pause
+      final char = fullText[i];
+      int delay = 100;
+      if (char == '，' || char == '、') delay = 200;
+      if (char == '。' || char == '\n') delay = 400;
+
+      await Future.delayed(Duration(milliseconds: delay));
+      
       setState(() {
-        finishText += fullText[i];
+        finishText += char;
       });
     }
 
+    // Brief pause after typing finishes before countdown emphasis
+    await Future.delayed(const Duration(seconds: 1));
+
     if (!mounted) return;
     
-    // Countdown
+    setState(() {
+      showCountdown = true;
+    });
+    
+    // 3. Countdown Phase
     while (countdown > 0) {
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
@@ -151,6 +174,9 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         countdown--;
       });
     }
+    
+    // Final brief pause at 0
+    await Future.delayed(const Duration(milliseconds: 500));
 
     completeOnboarding();
   }
@@ -271,7 +297,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
   void completeOnboarding() {
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/rooms');
+      context.go('/rooms');
     }
   }
 

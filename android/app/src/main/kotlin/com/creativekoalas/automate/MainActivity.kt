@@ -17,7 +17,9 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        // do nothing, because the engine was been configured in provideEngine
+        super.configureFlutterEngine(flutterEngine)
+        // 注册一键登录插件
+        flutterEngine.plugins.add(OneClickLoginPlugin())
     }
 
     companion object {

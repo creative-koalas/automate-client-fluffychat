@@ -17,6 +17,11 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 阿里云一键登录所需权限 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- To make app compatible with tablets -->
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
@@ -116,6 +121,19 @@
             <action android:name="com.google.firebase.MESSAGING_EVENT"/>
           </intent-filter>
         </service>
+
+        <!-- 阿里云一键登录 SDK 授权页 Activity -->
+        <activity
+            android:name="com.mobile.auth.gatewayauth.LoginAuthActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- 阿里云一键登录 SDK 隐私协议页 Activity -->
+        <activity
+            android:name="com.mobile.auth.gatewayauth.PrivacyWebviewActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false" />
 
         <service android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
              android:foregroundServiceType="camera|microphone|mediaProjection">

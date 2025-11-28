@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:automate/config/themes.dart';
+import 'chatbot_message_renderer.dart';
 import 'onboarding_chatbot.dart';
 
 class OnboardingChatbotView extends StatelessWidget {
@@ -18,7 +20,7 @@ class OnboardingChatbotView extends StatelessWidget {
         children: [
           AnimatedOpacity(
             opacity: controller.isFinishing ? 0.0 : 1.0,
-            duration: const Duration(seconds: 1),
+            duration: const Duration(seconds: 2),
             curve: Curves.easeOut,
             child: SafeArea(
               child: Column(
@@ -114,6 +116,12 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final bubbleColor = isUser
+        ? theme.bubbleColor
+        : theme.colorScheme.surfaceContainerHighest;
+    final textColor = isUser
+        ? theme.onBubbleColor
+        : theme.colorScheme.onSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -126,16 +134,16 @@ class _MessageBubble extends StatelessWidget {
           if (!isUser) ...[
             // AI Avatar
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.smart_toy,
-                color: theme.colorScheme.primary,
-                size: 24,
+                Icons.smart_toy_rounded,
+                color: theme.colorScheme.onPrimaryContainer,
+                size: 20,
               ),
             ),
             const SizedBox(width: 8),
@@ -144,14 +152,21 @@ class _MessageBubble extends StatelessWidget {
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
+                horizontal: 16,
+                vertical: 12,
               ),
               decoration: BoxDecoration(
-                color: isUser
-                    ? theme.bubbleColor
-                    : theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
+                color: bubbleColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: isUser
+                      ? const Radius.circular(18)
+                      : const Radius.circular(4),
+                  bottomRight: isUser
+                      ? const Radius.circular(4)
+                      : const Radius.circular(18),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: theme.shadowColor.withValues(alpha: 0.05),
@@ -160,33 +175,36 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Text(
-                message.text.isEmpty ? ' ' : message.text,
-                style: textTheme.bodyLarge?.copyWith(
-                  color: isUser
-                      ? theme.onBubbleColor
-                      : theme.colorScheme.onSurface,
-                  height: 1.4,
+              child: SelectionArea(
+                child: ChatbotMessageRenderer(
+                  text: message.text.isEmpty ? ' ' : message.text,
+                  textColor: textColor,
+                  isUser: isUser,
+                  linkStyle: TextStyle(
+                    color: isUser ? Colors.white : theme.colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                    decorationColor: isUser ? Colors.white : theme.colorScheme.primary,
+                  ),
                 ),
               ),
             ),
           ),
           if (isUser) ...[
             const SizedBox(width: 8),
-            // User Avatar
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.secondary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Icon(
-                Icons.person,
-                color: theme.colorScheme.secondary,
-                size: 24,
-              ),
-            ),
+            // User Avatar (Optional, sticking to simple design for user)
+            // Container(
+            //   width: 36,
+            //   height: 36,
+            //   decoration: BoxDecoration(
+            //     color: theme.colorScheme.secondaryContainer,
+            //     borderRadius: BorderRadius.circular(12),
+            //   ),
+            //   child: Icon(
+            //     Icons.person_rounded,
+            //     color: theme.colorScheme.onSecondaryContainer,
+            //     size: 20,
+            //   ),
+            // ),
           ],
           if (!isUser) const SizedBox(width: 48),
         ],
@@ -576,25 +594,68 @@ class _FinishingOverlay extends StatefulWidget {
 }
 
 class _FinishingOverlayState extends State<_FinishingOverlay>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  late AnimationController _entryController;
   late AnimationController _glowController;
+  
+  late Animation<double> _backgroundOpacity;
+  late Animation<double> _blurSigma;
+  late Animation<double> _textMoveY;
   late Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
+    
+    // Controller for the entry sequence (Background fade in + Text move up)
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000), // Slower: 3 seconds
+    );
+
+    // 1. Background Opacity: Gradual darken
+    _backgroundOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entryController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+      ),
+    );
+
+    // 2. Blur Intensity: Gradual blur
+    _blurSigma = Tween<double>(begin: 0.0, end: 10.0).animate(
+      CurvedAnimation(
+        parent: _entryController,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    // 3. Text Movement: From bottom (approx message location) to center
+    // Using a large offset to simulate coming from the bottom of the screen
+    _textMoveY = Tween<double>(begin: 300.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _entryController,
+        // Start slightly later to let blur settle in a bit? No, synchronous is better for "lifting"
+        curve: const Interval(0.0, 1.0, curve: Curves.easeInOutCubic), 
+      ),
+    );
+
+    // Continuous glow animation
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
     
-    _glowAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+    _glowAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
+
+    // Start entry animation immediately
+    _entryController.forward();
   }
 
   @override
   void dispose() {
+    _entryController.dispose();
     _glowController.dispose();
     super.dispose();
   }
@@ -605,76 +666,171 @@ class _FinishingOverlayState extends State<_FinishingOverlay>
         ? widget.controller.messages.last.text 
         : '';
         
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      color: Colors.black.withValues(alpha: 0.85), // Dark background for focus
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Animated Main Text (Simulating moving to center by simply appearing here)
-          TweenAnimationBuilder<double>(
-            duration: const Duration(seconds: 2),
-            curve: Curves.easeOutQuint,
-            tween: Tween(begin: 100.0, end: 0.0),
-            builder: (context, value, child) {
-              return Transform.translate(
-                offset: Offset(0, value),
-                child: Opacity(
-                  opacity: (1 - (value / 100)).clamp(0.0, 1.0),
-                  child: child,
-                ),
-              );
-            },
-            child: AnimatedBuilder(
-              animation: _glowAnimation,
-              builder: (context, child) {
-                return Text(
-                  lastMessage,
-                  textAlign: TextAlign.center,
-                  style: widget.textTheme.headlineMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: _glowAnimation.value),
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      BoxShadow(
-                        color: widget.theme.colorScheme.primary.withValues(alpha: 0.5),
-                        blurRadius: 20 * _glowAnimation.value,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          
-          const SizedBox(height: 40),
-          
-          // Streamed Secondary Text
-          if (widget.controller.finishText.isNotEmpty)
-            Text(
-              widget.controller.finishText,
-              textAlign: TextAlign.center,
-              style: widget.textTheme.bodyLarge?.copyWith(
-                color: Colors.white70,
-                height: 1.5,
+    return AnimatedBuilder(
+      animation: _entryController,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            // 1. Blur Background (Glassmorphism)
+            // We animate the sigma and the color opacity
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: _blurSigma.value,
+                sigmaY: _blurSigma.value,
+              ),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.6 * _backgroundOpacity.value),
               ),
             ),
             
-          const SizedBox(height: 20),
-          
-          // Countdown
-          if (widget.controller.finishText.length > 10 && widget.controller.countdown > 0)
-             Text(
-              '${widget.controller.countdown}',
-              style: widget.textTheme.displayMedium?.copyWith(
-                color: widget.theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
+            // 2. Radial Gradient Overlay for Focus
+            Opacity(
+              opacity: _backgroundOpacity.value,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 1.0,
+                    colors: [
+                      widget.theme.colorScheme.primary.withValues(alpha: 0.1),
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                    stops: const [0.0, 1.0],
+                  ),
+                ),
               ),
             ),
-        ],
-      ),
+
+            // 3. Content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Spacer(flex: 3),
+
+                  // Animated Main Text
+                  // Driven by _entryController for movement
+                  Transform.translate(
+                    offset: Offset(0, _textMoveY.value),
+                    child: Transform.scale(
+                      // Subtle scale up as it reaches center
+                      scale: 1.0 + (1.0 - (_textMoveY.value / 300.0).clamp(0.0, 1.0)) * 0.1,
+                      child: AnimatedBuilder(
+                        animation: _glowAnimation,
+                        builder: (context, child) {
+                          // Only show glow/shadow fully when near center to avoid distraction during move
+                          final entryProgress = _entryController.value;
+                          
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Text(
+                              lastMessage,
+                              textAlign: TextAlign.center,
+                              style: widget.textTheme.headlineSmall?.copyWith(
+                                color: Colors.white.withValues(
+                                  // Fade text in slightly if we want, or keep it solid (it's "moving" from the list)
+                                  // Keeping it solid is better for the "extraction" illusion
+                                  alpha: 1.0 
+                                ),
+                                fontWeight: FontWeight.bold,
+                                height: 1.4,
+                                letterSpacing: 0.5,
+                                shadows: [
+                                  BoxShadow(
+                                    color: widget.theme.colorScheme.primary.withValues(
+                                      alpha: 0.6 * entryProgress // Glow fades in as it centers
+                                    ),
+                                    blurRadius: 25 * _glowAnimation.value,
+                                    spreadRadius: 2,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black45,
+                                    offset: const Offset(0, 4),
+                                    blurRadius: 8 * entryProgress,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  
+                  const Spacer(flex: 2),
+                  
+                  // Streamed Secondary Text (Typewriter style)
+                  Container(
+                    constraints: const BoxConstraints(minHeight: 100),
+                    alignment: Alignment.topCenter,
+                    child: widget.controller.finishText.isNotEmpty
+                      ? AnimatedOpacity(
+                          duration: const Duration(milliseconds: 500),
+                          opacity: 1.0,
+                          child: Text(
+                            widget.controller.finishText,
+                            textAlign: TextAlign.center,
+                            style: widget.textTheme.bodyLarge?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              height: 1.6,
+                              fontSize: 16,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                  ),
+
+                  const SizedBox(height: 20),
+                  
+                  // Progress/Countdown Indicator
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 800),
+                    opacity: widget.controller.showCountdown ? 1.0 : 0.0,
+                    child: Column(
+                      children: [
+                         SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                value: widget.controller.countdown / 5.0,
+                                strokeWidth: 3,
+                                backgroundColor: Colors.white10,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  widget.theme.colorScheme.primary,
+                                ),
+                              ),
+                              Text(
+                                '${widget.controller.countdown}',
+                                style: widget.textTheme.titleLarge?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '正在安排后台任务...',
+                          style: widget.textTheme.bodySmall?.copyWith(
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const Spacer(flex: 2),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

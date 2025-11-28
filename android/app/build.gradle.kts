@@ -12,9 +12,20 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+repositories {
+    flatDir {
+        dirs("libs")
+    }
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // For flutter_local_notifications // Workaround for: https://github.com/MaikuB/flutter_local_notifications/issues/2286
     implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
+
+    // 阿里云一键登录 SDK (官方)
+    implementation(files("libs/auth_number_product-2.14.14-log-online-standard-cuum-release.aar"))
+    implementation(files("libs/logger-2.2.2-release.aar"))
+    implementation(files("libs/main-2.2.3-release.aar"))
 }
 
 
@@ -84,6 +95,11 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+        }
+        debug {
+            // 一键登录 SDK 需要签名与阿里云控制台配置一致
+            // debug 也使用 release 签名，避免 600017 错误
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

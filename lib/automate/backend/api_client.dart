@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'auth_state.dart';
 import 'exceptions.dart';
+import '../core/config.dart';
 
 class AutomateApiClient {
   AutomateApiClient(this.auth, {Dio? dio, http.Client? httpClient})
@@ -28,22 +29,74 @@ class AutomateApiClient {
   // K8s NodePort: 30300
   // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
   static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.1.4:30300');
+      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.31.22:30300');
 
+  /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
+  Future<FusionAuthTokenResponse> getFusionAuthToken() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${AutomateConfig.baseUrl}/api/auth/fusion-token',
+    );
+    final data = res.data ?? {};
+    final code = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || code != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to get fusion auth token',
+        statusCode: res.statusCode,
+      );
+    }
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+    return FusionAuthTokenResponse(
+      verifyToken: respData['verify_token'] as String? ?? '',
+      schemeCode: respData['scheme_code'] as String? ?? '',
+    );
+  }
+
+  /// 发送验证码（暂时 mock）
   Future<void> sendVerificationCode(String phone) async {
-    // Mock: assume success
+    // TODO: 实现真实的验证码发送
     await Future.delayed(const Duration(milliseconds: 200));
   }
 
-  Future<AuthResponse> loginOrSignup(String phone, String code) async {
-    const chatbotToken =
-        String.fromEnvironment('ONBOARDING_CHATBOT_TOKEN', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NjQyNDgwNDAsImV4cCI6MTc2NDg1Mjg0MH0.XiYa82GX197DEm8IYPRhCbJAQiFT3jz0wjTavElhxOg');
-    final authResponse = AuthResponse(
-      token: 'automate-mock-primary-token',
-      chatbotToken: chatbotToken,
-      userId: phone.isNotEmpty ? phone : DateTime.now().millisecondsSinceEpoch.toString(),
-      isNewUser: true,
+  /// 手机号登录/注册
+  /// [fusionToken]: 融合认证一键登录时传入
+  /// [phone] + [code]: 验证码登录时传入
+  Future<AuthResponse> loginOrSignup(String phone, String code, {String? fusionToken}) async {
+    final body = <String, dynamic>{};
+    if (fusionToken != null && fusionToken.isNotEmpty) {
+      body['fusion_token'] = fusionToken;
+    } else {
+      body['phone'] = phone;
+      body['code'] = code;
+    }
+
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${AutomateConfig.baseUrl}/api/auth/phone-login',
+      data: body,
     );
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Login failed',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    final authResponse = AuthResponse(
+      token: respData['access_token'] as String? ?? '',
+      chatbotToken: respData['chatbot_token'] as String? ?? '',
+      userId: respData['username'] as String? ?? '',
+      isNewUser: true, // 服务端暂未返回此字段，默认 true
+    );
+
     await auth.save(
       primaryToken: authResponse.token,
       chatbotToken: authResponse.chatbotToken,
@@ -244,6 +297,17 @@ class AuthResponse {
         'chatbotToken': chatbotToken,
         'userId': userId,
       };
+}
+
+/// 融合认证 Token 响应
+class FusionAuthTokenResponse {
+  final String verifyToken;
+  final String schemeCode;
+
+  FusionAuthTokenResponse({
+    required this.verifyToken,
+    required this.schemeCode,
+  });
 }
 
 class _SseEvent {

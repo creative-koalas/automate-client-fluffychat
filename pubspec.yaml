@@ -30,6 +30,7 @@ dependencies:
   file_selector: ^1.0.4
   flutter:
     sdk: flutter
+  # ali_auth 已移除，使用原生 SDK 实现（见 android/app/libs/）
   flutter_foreground_task: ^9.1.0
   flutter_linkify: ^6.0.0
   flutter_local_notifications: ^19.5.0

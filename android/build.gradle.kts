@@ -2,6 +2,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // 阿里云一键登录 SDK
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
     }
 }
 

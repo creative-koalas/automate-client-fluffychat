@@ -19,6 +19,7 @@ import 'package:automate/pages/device_settings/device_settings.dart';
 import 'package:automate/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:automate/pages/invitation_selection/invitation_selection.dart';
 import 'package:automate/automate/pages/login_signup/login_signup.dart';
+import 'package:automate/automate/pages/login_signup/phone_login_page.dart';
 import 'package:automate/automate/pages/onboarding_chatbot/onboarding_chatbot.dart';
 import 'package:automate/automate/pages/team/team_page.dart';
 import 'package:automate/pages/main_screen/main_screen.dart';
@@ -87,6 +88,14 @@ abstract class AppRoutes {
       ),
       // FIXME: Redirect commented out for testing
       // redirect: loggedInRedirect,
+    ),
+    GoRoute(
+      path: '/login/phone',
+      pageBuilder: (context, state) => defaultPageBuilder(
+        context,
+        state,
+        const PhoneLoginPage(),
+      ),
     ),
     GoRoute(
       path: '/onboarding-chatbot',
