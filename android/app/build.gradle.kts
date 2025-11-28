@@ -34,7 +34,7 @@ configurations.all {
 
 
 android {
-    namespace = "com.automate.app"
+    namespace = "com.creativekoalas.automate"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -54,7 +54,7 @@ android {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
     defaultConfig {
-        applicationId = "com.automate.app"
+        applicationId = "com.creativekoalas.automate"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
