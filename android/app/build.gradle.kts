@@ -48,26 +48,10 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-    signingConfigs {
-       create("release") {
-            keyAlias = "dummyAlias"
-            keyPassword = "dummyPassword"
-            storeFile = file("dummy.keystore")
-            storePassword = "dummyStorePassword"
-        }
-    }
-
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
-    if (keystorePropertiesFile.exists()) {
-        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-        signingConfigs.getByName("release").apply {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
-        }
-    }
+    require(keystorePropertiesFile.exists()) { "Missing key.properties" }
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
     defaultConfig {
         applicationId = "com.automate.app"
@@ -75,6 +59,25 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    signingConfigs {
+        create("release") {
+            val alias = keystoreProperties["keyAlias"]?.toString()
+            val pass  = keystoreProperties["keyPassword"]?.toString()
+            val file  = keystoreProperties["storeFile"]?.toString()
+            val store = keystoreProperties["storePassword"]?.toString()
+
+            require(!alias.isNullOrBlank()) { "Missing keyAlias in key.properties" }
+            require(!pass.isNullOrBlank()) { "Missing keyPassword in key.properties" }
+            require(!file.isNullOrBlank()) { "Missing storeFile in key.properties" }
+            require(!store.isNullOrBlank()) { "Missing storePassword in key.properties" }
+
+            keyAlias = alias
+            keyPassword = pass
+            storeFile = file(file)
+            storePassword = store
+        }
     }
 
     buildTypes {
