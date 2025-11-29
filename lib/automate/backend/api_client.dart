@@ -101,6 +101,7 @@ class AutomateApiClient {
       isNewUser: respData['is_new_user'] as bool? ?? false,
       matrixAccessToken: respData['matrix_access_token'] as String?,
       matrixUserId: respData['matrix_user_id'] as String?,
+      matrixDeviceId: respData['matrix_device_id'] as String?,
     );
 
     await auth.save(
@@ -113,6 +114,7 @@ class AutomateApiClient {
       expiresIn: authResponse.expiresIn,
       matrixAccessToken: authResponse.matrixAccessToken,
       matrixUserId: authResponse.matrixUserId,
+      matrixDeviceId: authResponse.matrixDeviceId,
     );
     return authResponse;
   }
@@ -243,8 +245,9 @@ class AutomateApiClient {
     return [];
   }
 
-  /// 标记用户完成新手引导
-  Future<void> completeOnboarding() async {
+  /// 完成新手引导并创建首个 Agent
+  /// 返回创建的 Agent 信息（agent_id, matrix_user_id, pod_url）
+  Future<OnboardingResult> completeOnboarding() async {
     final userIdInt = auth.userIdInt;
     if (userIdInt == null || userIdInt == 0) {
       throw AutomateBackendException('User ID not found');
@@ -266,6 +269,14 @@ class AutomateApiClient {
 
     // 更新本地状态
     await auth.markOnboardingCompleted();
+
+    // 解析返回的 Agent 信息
+    final respData = data['data'] as Map<String, dynamic>?;
+    return OnboardingResult(
+      agentId: respData?['agent_id'] as String? ?? '',
+      matrixUserId: respData?['matrix_user_id'] as String? ?? '',
+      podUrl: respData?['pod_url'] as String? ?? '',
+    );
   }
 
   Stream<ChatStreamEvent> streamChatResponse(String message) async* {
@@ -393,6 +404,7 @@ class AuthResponse {
   final bool isNewUser;
   final String? matrixAccessToken;
   final String? matrixUserId;
+  final String? matrixDeviceId;
 
   AuthResponse({
     required this.token,
@@ -405,6 +417,7 @@ class AuthResponse {
     required this.isNewUser,
     this.matrixAccessToken,
     this.matrixUserId,
+    this.matrixDeviceId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -418,6 +431,7 @@ class AuthResponse {
         'isNewUser': isNewUser,
         'matrixAccessToken': matrixAccessToken,
         'matrixUserId': matrixUserId,
+        'matrixDeviceId': matrixDeviceId,
       };
 }
 
@@ -429,6 +443,19 @@ class FusionAuthTokenResponse {
   FusionAuthTokenResponse({
     required this.verifyToken,
     required this.schemeCode,
+  });
+}
+
+/// 新手引导完成结果（包含创建的 Agent 信息）
+class OnboardingResult {
+  final String agentId;
+  final String matrixUserId;
+  final String podUrl;
+
+  OnboardingResult({
+    required this.agentId,
+    required this.matrixUserId,
+    required this.podUrl,
   });
 }
 

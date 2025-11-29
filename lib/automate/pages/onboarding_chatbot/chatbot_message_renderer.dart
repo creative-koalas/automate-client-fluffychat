@@ -240,8 +240,8 @@ class ChatbotMessageRenderer extends StatelessWidget {
                margin: const EdgeInsets.symmetric(vertical: 8),
                padding: const EdgeInsets.all(12),
                decoration: BoxDecoration(
-                 color: Colors.black87,
-                 borderRadius: BorderRadius.circular(8),
+                 color: const Color(0xFF2b2b2b), // Dark gray
+                 borderRadius: BorderRadius.circular(4), // Slightly rounded
                ),
                child: SingleChildScrollView(
                  scrollDirection: Axis.horizontal,
@@ -250,7 +250,7 @@ class ChatbotMessageRenderer extends StatelessWidget {
                    style: TextStyle(
                      fontFamily: 'monospace',
                      fontSize: fontSize * 0.9,
-                     color: const Color(0xFFE0E0E0),
+                     color: const Color(0xFFa9b7c6), // Light gray text
                    ),
                  ),
                ),

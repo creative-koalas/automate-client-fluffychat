@@ -35,6 +35,9 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   String finishText = '';
   int countdown = 5;
 
+  // Agent 创建状态（动画开始时触发，与动画并行）
+  Future<OnboardingResult>? _createAgentFuture;
+
   // Suggestion state - tree at current level
   Map<String, dynamic>? _suggestionTree;
   bool isLoadingSuggestions = false;
@@ -58,7 +61,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   }
 
   static const int initialSuggestionDepth = 2;
-  static const int suggestionBranchingFactor = 2;
+  static const int suggestionBranchingFactor = 3;
   static const int treeExtensionTriggerDepth = 1;
   static const int maxSuggestionTreeDepth = 2;
 
@@ -135,6 +138,10 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       countdown = 5;
     });
 
+    // 🚀 立即触发 Agent 创建（与动画并行执行）
+    debugPrint('[Onboarding] Starting agent creation in background...');
+    _createAgentFuture = backend.completeOnboarding();
+
     // 1. Focus/Blur Animation Phase (3s)
     // Wait for the UI to blur and the text to "lift off"
     await Future.delayed(const Duration(milliseconds: 3000));
@@ -142,12 +149,12 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
     // 2. Typing Animation Phase
     const fullText = "我将为你招聘一名员工来完成它，需要一些时间...\n\n您先去忙其他事情吧，进度推进后我会通知您。\n\n将于 5 秒后置于后台工作";
-    
+
     // Split by characters but keep newlines as distinct pauses if needed
     // Here we just type character by character but slower
     for (int i = 0; i < fullText.length; i++) {
       if (!mounted) return;
-      
+
       // Variable typing speed for realism
       // Punctuation marks get a slightly longer pause
       final char = fullText[i];
@@ -156,7 +163,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       if (char == '。' || char == '\n') delay = 400;
 
       await Future.delayed(Duration(milliseconds: delay));
-      
+
       setState(() {
         finishText += char;
       });
@@ -166,11 +173,11 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     await Future.delayed(const Duration(seconds: 1));
 
     if (!mounted) return;
-    
+
     setState(() {
       showCountdown = true;
     });
-    
+
     // 3. Countdown Phase
     while (countdown > 0) {
       await Future.delayed(const Duration(seconds: 1));
@@ -179,11 +186,22 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         countdown--;
       });
     }
-    
+
     // Final brief pause at 0
     await Future.delayed(const Duration(milliseconds: 500));
 
-    completeOnboarding();
+    // 等待 Agent 创建完成，然后登录 Matrix
+    await _waitForAgentAndLogin();
+  }
+
+  // ... existing code ...
+
+  @override
+  void dispose() {
+    messageController.removeListener(_onInputChanged);
+    messageController.dispose();
+    scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> sendMessage() async {
@@ -204,6 +222,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     messageController.clear();
     setState(() => isLoading = true);
 
+    // Add empty assistant message
     _addMessage(
       ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -213,9 +232,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       ),
     );
 
-    // 缓存 delta 内容，等待 decision 事件
-    final deltaBuffer = StringBuffer();
-    bool? decisionReceived;
     bool shouldStop = false;
 
     try {
@@ -224,56 +240,38 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
         switch (event.type) {
           case ChatStreamEventType.delta:
-            if (decisionReceived == null) {
-              // decision 还没到，先缓存
-              deltaBuffer.write(event.content ?? '');
-            } else if (!shouldStop) {
-              // decision 已到且不停止，直接渲染
+            // 直接渲染，不缓存，不延迟
+            if (!shouldStop) {
               setState(() {
                 messages.last.text += event.content ?? '';
               });
               _scrollToBottom();
             }
-            // 如果 shouldStop = true，忽略后续 delta
             break;
 
           case ChatStreamEventType.decision:
-            decisionReceived = true;
             shouldStop = event.shouldStop ?? false;
-
             if (shouldStop) {
-              // 丢弃缓存，显示固定消息
               setState(() {
                 messages.last.text = '好的，我明白了，正在为您安排...';
               });
               _scrollToBottom();
-            } else {
-              // 开始渲染缓存的内容
-              final buffered = deltaBuffer.toString();
-              if (buffered.isNotEmpty) {
-                setState(() {
-                  messages.last.text = buffered;
-                });
-                _scrollToBottom();
-              }
             }
             break;
 
           case ChatStreamEventType.assistantMessage:
-            // 完整消息到达，如果之前没收到 decision，直接使用完整内容
-            if (decisionReceived == null || !shouldStop) {
-              setState(() {
-                messages.last.text = event.content ?? '';
-              });
-              _scrollToBottom();
-            }
+             // 如果流结束时发来完整消息，且没有被停止，则更新（通常用于纠正）
+             if (!shouldStop && (event.content?.isNotEmpty ?? false)) {
+               setState(() {
+                 messages.last.text = event.content!;
+               });
+               _scrollToBottom();
+             }
             break;
 
           case ChatStreamEventType.done:
-            // 流结束，如果 shouldStop = true，触发页面跳转
             if (shouldStop) {
-              // 延迟一下让用户看到消息
-              await Future.delayed(const Duration(milliseconds: 1000));
+              await Future.delayed(const Duration(milliseconds: 500));
               if (mounted) {
                  _startFinishSequence();
               }
@@ -300,56 +298,65 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     }
   }
 
-  Future<void> completeOnboarding() async {
+  /// 等待 Agent 创建完成，然后登录 Matrix
+  Future<void> _waitForAgentAndLogin() async {
     if (!mounted) return;
 
-    // Call backend API to mark onboarding as completed
+    // 等待 Agent 创建 API 完成
+    OnboardingResult? result;
     try {
-      await backend.completeOnboarding();
-      debugPrint('新手引导已标记完成');
+      result = await _createAgentFuture;
+      debugPrint('[Onboarding] Agent created: agentId=${result?.agentId}, matrixUserId=${result?.matrixUserId}');
     } catch (e) {
-      debugPrint('标记新手引导完成失败: $e');
-      // Continue to navigate even if marking fails
+      debugPrint('[Onboarding] Agent creation failed: $e');
+      _showLoginErrorAndRedirect('创建员工失败，请重试');
+      return;
     }
 
-    // 更新本地 auth state
-    await backend.auth.markOnboardingCompleted();
+    if (!mounted) return;
 
-    if (mounted) {
-      // 登录 Matrix
-      final matrixAccessToken = backend.auth.matrixAccessToken;
-      final matrixUserId = backend.auth.matrixUserId;
+    // 登录 Matrix（使用用户的 Matrix 账号，不是 Agent 的）
+    final matrixAccessToken = backend.auth.matrixAccessToken;
+    final matrixUserId = backend.auth.matrixUserId;
+    final matrixDeviceId = backend.auth.matrixDeviceId;
 
-      if (matrixAccessToken == null || matrixUserId == null) {
-        debugPrint('Matrix access token missing, cannot login to Matrix');
-        _showLoginErrorAndRedirect('Matrix 凭证缺失，请重新登录');
-        return;
-      }
+    if (matrixAccessToken == null || matrixUserId == null) {
+      debugPrint('[Onboarding] Matrix access token missing');
+      _showLoginErrorAndRedirect('Matrix 凭证缺失，请重新登录');
+      return;
+    }
 
-      try {
-        final matrix = Matrix.of(context);
-        final client = await matrix.getLoginClient();
+    if (matrixDeviceId == null) {
+      debugPrint('[Onboarding] Matrix device_id missing - encryption will fail');
+      _showLoginErrorAndRedirect('Matrix device_id 缺失，请重新登录');
+      return;
+    }
 
-        // Set homeserver before login
-        final homeserverUrl = Uri.parse(AutomateConfig.matrixHomeserver);
-        debugPrint('设置 homeserver: $homeserverUrl');
-        await client.checkHomeserver(homeserverUrl);
+    try {
+      final matrix = Matrix.of(context);
+      final client = await matrix.getLoginClient();
 
-        debugPrint('尝试 Matrix 登录: matrixUserId=$matrixUserId');
+      // Set homeserver before login
+      final homeserverUrl = Uri.parse(AutomateConfig.matrixHomeserver);
+      debugPrint('[Onboarding] 设置 homeserver: $homeserverUrl');
+      await client.checkHomeserver(homeserverUrl);
 
-        // 使用后端返回的 access_token 直接初始化，无需密码登录
-        await client.init(
-          newToken: matrixAccessToken,
-          newUserID: matrixUserId,
-          newHomeserver: homeserverUrl,
-          newDeviceName: PlatformInfos.clientName,
-        );
-        // Matrix login success -> auto redirect to /rooms by MatrixState
-        debugPrint('Matrix 登录成功');
-      } catch (e) {
-        debugPrint('Matrix 登录失败 (未知错误): $e');
-        _showLoginErrorAndRedirect('登录失败: $e');
-      }
+      debugPrint('[Onboarding] 尝试 Matrix 登录: matrixUserId=$matrixUserId, deviceId=$matrixDeviceId');
+
+      // 使用后端返回的 access_token + device_id 直接初始化
+      // device_id 是加密模块初始化的关键参数
+      await client.init(
+        newToken: matrixAccessToken,
+        newUserID: matrixUserId,
+        newHomeserver: homeserverUrl,
+        newDeviceName: PlatformInfos.clientName,
+        newDeviceID: matrixDeviceId,
+      );
+      // Matrix login success -> auto redirect to /rooms by MatrixState
+      debugPrint('[Onboarding] Matrix 登录成功');
+    } catch (e) {
+      debugPrint('[Onboarding] Matrix 登录失败: $e');
+      _showLoginErrorAndRedirect('登录失败: $e');
     }
   }
 
@@ -563,13 +570,6 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     );
   }
 
-  @override
-  void dispose() {
-    messageController.removeListener(_onInputChanged);
-    messageController.dispose();
-    scrollController.dispose();
-    super.dispose();
-  }
 
   String _errorText(Object error) {
     if (error is AutomateBackendException) {

@@ -13,9 +13,23 @@ class OnboardingChatbotView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    const backgroundColor = Color(0xFFEDEDED);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      backgroundColor: backgroundColor,
+      appBar: controller.isFinishing
+          ? null
+          : AppBar(
+              backgroundColor: backgroundColor,
+              elevation: 0,
+              centerTitle: true,
+              title: const Text('Automate',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 17)),
+              automaticallyImplyLeading: false,
+            ),
       body: Stack(
         children: [
           AnimatedOpacity(
@@ -25,29 +39,11 @@ class OnboardingChatbotView extends StatelessWidget {
             child: SafeArea(
               child: Column(
                 children: [
-                  // Top bar with contact name
-                  Container(
-                    height: 56,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '小考拉',
-                      style: TextStyle(
-                        fontSize: textTheme.titleLarge?.fontSize != null &&
-                                textTheme.titleMedium?.fontSize != null
-                            ? (textTheme.titleLarge!.fontSize! +
-                                    textTheme.titleMedium!.fontSize!) /
-                                2
-                            : textTheme.titleMedium?.fontSize,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                   // Messages List
                   Expanded(
                     child: ListView.builder(
                       controller: controller.scrollController,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                       itemCount: controller.messages.length,
                       itemBuilder: (context, index) {
                         final message = controller.messages[index];
@@ -60,14 +56,22 @@ class OnboardingChatbotView extends StatelessWidget {
                     ),
                   ),
 
-                  // Loading Indicator
+                  // Loading Indicator (Simple text or small spinner)
                   if (controller.isLoading)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.only(left: 16, bottom: 8),
                       child: Row(
                         children: [
-                          const SizedBox(width: 12),
-                          _TypingIndicator(),
+                          Container(
+                            width: 32,
+                            height: 32,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ],
                       ),
                     ),
@@ -116,97 +120,71 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-    final bubbleColor = isUser
-        ? theme.bubbleColor
-        : theme.colorScheme.surfaceContainerHighest;
-    final textColor = isUser
-        ? theme.onBubbleColor
-        : theme.colorScheme.onSurface;
+    // Brand Colors (Avoid WeChat Green)
+    final bubbleColor = isUser ? theme.colorScheme.primary : Colors.white;
+    final textColor = isUser ? theme.colorScheme.onPrimary : Colors.black;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isUser) const SizedBox(width: 48),
           if (!isUser) ...[
-            // AI Avatar
+            // AI Avatar (Simple Square)
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.smart_toy_rounded,
-                color: theme.colorScheme.onPrimaryContainer,
-                size: 20,
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                image: const DecorationImage(
+                  image: AssetImage('assets/logo.png'), 
+                ),
               ),
             ),
             const SizedBox(width: 8),
           ],
+          
           // Message Content
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+                horizontal: 12,
+                vertical: 10,
               ),
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
               decoration: BoxDecoration(
                 color: bubbleColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: isUser
-                      ? const Radius.circular(18)
-                      : const Radius.circular(4),
-                  bottomRight: isUser
-                      ? const Radius.circular(4)
-                      : const Radius.circular(18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.shadowColor.withValues(alpha: 0.05),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(6), // Standard rounded corners
               ),
-              child: SelectionArea(
-                child: ChatbotMessageRenderer(
-                  text: message.text.isEmpty ? ' ' : message.text,
-                  textColor: textColor,
-                  isUser: isUser,
-                  linkStyle: TextStyle(
-                    color: isUser ? Colors.white : theme.colorScheme.primary,
-                    decoration: TextDecoration.underline,
-                    decorationColor: isUser ? Colors.white : theme.colorScheme.primary,
-                  ),
+              child: ChatbotMessageRenderer(
+                text: message.text.isEmpty ? ' ' : message.text,
+                textColor: textColor,
+                isUser: isUser,
+                linkStyle: TextStyle(
+                  color: isUser ? Colors.white : theme.colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: isUser ? Colors.white : theme.colorScheme.primary,
                 ),
               ),
             ),
           ),
+          
           if (isUser) ...[
             const SizedBox(width: 8),
-            // User Avatar (Optional, sticking to simple design for user)
-            // Container(
-            //   width: 36,
-            //   height: 36,
-            //   decoration: BoxDecoration(
-            //     color: theme.colorScheme.secondaryContainer,
-            //     borderRadius: BorderRadius.circular(12),
-            //   ),
-            //   child: Icon(
-            //     Icons.person_rounded,
-            //     color: theme.colorScheme.onSecondaryContainer,
-            //     size: 20,
-            //   ),
-            // ),
+             // User Avatar - Brand Style
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                width: 40, 
+                height: 40,
+                color: theme.colorScheme.primaryContainer, // Theme color
+                child: Icon(Icons.person, color: theme.colorScheme.onPrimaryContainer, size: 28),
+              ),
+            ),
           ],
-          if (!isUser) const SizedBox(width: 48),
         ],
       ),
     );
@@ -324,83 +302,70 @@ class _InputAreaState extends State<_InputArea> {
 
   @override
   Widget build(BuildContext context) {
+    // WeChat Input Area Style
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      color: const Color(0xFFF7F7F7), // Light gray background for input bar
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: SafeArea(
         top: false,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // Left Padding for balance
+            const SizedBox(width: 4),
+            
             // Text Input
             Expanded(
               child: Container(
                 constraints: const BoxConstraints(
                   maxHeight: 120,
+                  minHeight: 40,
                 ),
                 decoration: BoxDecoration(
-                  color: widget.theme.colorScheme.surfaceContainerHighest,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: widget.theme.dividerColor,
-                    width: 0.5,
-                  ),
                 ),
                 child: TextField(
                   controller: widget.controller.messageController,
                   maxLines: null,
                   textInputAction: TextInputAction.newline,
-                  style: widget.textTheme.bodyLarge,
+                  style: const TextStyle(fontSize: 16, color: Colors.black),
                   enabled: !widget.controller.isLoading,
-                  decoration: InputDecoration(
-                    hintText: '输入消息...',
-                    hintStyle: widget.textTheme.bodyLarge?.copyWith(
-                      color: widget.theme.colorScheme.onSurfaceVariant,
-                    ),
+                  decoration: const InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
+                    contentPadding: EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 6,
+                      vertical: 10,
                     ),
                   ),
                   onSubmitted: (_) => widget.controller.sendMessage(),
                 ),
               ),
             ),
-            // Animated Send Button
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              alignment: Alignment.centerRight,
-              child: hasText
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(width: 8),
-                        Material(
-                          color: widget.theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(4),
-                          child: InkWell(
-                            onTap:
-                                widget.controller.isLoading ? null : widget.controller.sendMessage,
-                            borderRadius: BorderRadius.circular(4),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '发送',
-                                style: widget.textTheme.bodyLarge?.copyWith(
-                                  color: widget.theme.colorScheme.onPrimary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
+            
+            // Send Button
+            if (hasText) ...[
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4), // (40px - 32px) / 2 = 4px centering
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.theme.colorScheme.primary, // Brand Color
+                    foregroundColor: widget.theme.colorScheme.onPrimary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                    minimumSize: const Size(50, 32), // Compact size
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16), // Pill shape
+                    ),
+                  ),
+                  onPressed: widget.controller.isLoading ? null : widget.controller.sendMessage,
+                  child: const Text('发送', style: TextStyle(fontSize: 14)), 
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -482,13 +447,6 @@ class _SuggestionBubble extends StatelessWidget {
   final ThemeData theme;
   final TextTheme textTheme;
 
-  // Color list for bubbles
-  static const List<Color> colorList = [
-    Color(0xFFEF5350), // Red
-    Color(0xFF66BB6A), // Green
-    Color(0xFF42A5F5), // Blue
-  ];
-
   const _SuggestionBubble({
     required this.text,
     required this.index,
@@ -499,23 +457,26 @@ class _SuggestionBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = colorList[index % colorList.length];
-
     return Material(
-      color: bubbleColor,
-      borderRadius: BorderRadius.circular(24),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18), // Pill shape
+      elevation: 0,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          constraints: const BoxConstraints(minWidth: 100),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          constraints: const BoxConstraints(minWidth: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+             borderRadius: BorderRadius.circular(18),
+             border: Border.all(color: Colors.grey[300]!),
+          ),
           child: Center(
             child: Text(
               text,
-              style: textTheme.bodyLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
+              style: textTheme.bodyMedium?.copyWith(
+                color: Colors.black87,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),

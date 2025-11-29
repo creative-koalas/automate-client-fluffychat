@@ -8,10 +8,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class AutomateTokenManager {
   static const _storage = FlutterSecureStorage();
 
-  // Storage keys
-  static const String _keyAccessToken = 'automate_access_token';
+  // Storage keys (must match AutomateAuthState keys!)
+  static const String _keyAccessToken = 'automate_primary_token'; // NOT automate_access_token!
   static const String _keyRefreshToken = 'automate_refresh_token';
-  static const String _keyUserId = 'automate_user_id';
+  static const String _keyUserId = 'automate_user_id_int'; // AuthState uses user_id_int for int type
   static const String _keyExpiresAt = 'automate_expires_at';
 
   // Token 过期前刷新阈值（5 分钟）

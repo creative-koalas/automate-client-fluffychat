@@ -16,6 +16,7 @@ class AutomateAuthState extends ChangeNotifier {
   static const _onboardingCompletedKey = 'automate_onboarding_completed';
   static const _matrixAccessTokenKey = 'automate_matrix_access_token';
   static const _matrixUserIdKey = 'automate_matrix_user_id';
+  static const _matrixDeviceIdKey = 'automate_matrix_device_id';
 
   // Token refresh threshold (5 minutes before expiry)
   static const Duration _refreshThreshold = Duration(minutes: 5);
@@ -30,6 +31,7 @@ class AutomateAuthState extends ChangeNotifier {
   bool _onboardingCompleted = false;
   String? _matrixAccessToken;
   String? _matrixUserId;
+  String? _matrixDeviceId;
 
   bool get isLoggedIn => _loggedIn;
   String? get chatbotToken => _chatbotToken;
@@ -41,6 +43,7 @@ class AutomateAuthState extends ChangeNotifier {
   bool get onboardingCompleted => _onboardingCompleted;
   String? get matrixAccessToken => _matrixAccessToken;
   String? get matrixUserId => _matrixUserId;
+  String? get matrixDeviceId => _matrixDeviceId;
 
   /// Check if token is expired
   bool get isTokenExpired {
@@ -75,6 +78,7 @@ class AutomateAuthState extends ChangeNotifier {
     _onboardingCompleted = onboardingStr == 'true';
     _matrixAccessToken = await _storage.read(key: _matrixAccessTokenKey);
     _matrixUserId = await _storage.read(key: _matrixUserIdKey);
+    _matrixDeviceId = await _storage.read(key: _matrixDeviceIdKey);
     _loggedIn = _primaryToken != null && _chatbotToken != null;
     notifyListeners();
   }
@@ -89,6 +93,7 @@ class AutomateAuthState extends ChangeNotifier {
     int? expiresIn,
     String? matrixAccessToken,
     String? matrixUserId,
+    String? matrixDeviceId,
   }) async {
     _primaryToken = primaryToken;
     _chatbotToken = chatbotToken;
@@ -124,6 +129,12 @@ class AutomateAuthState extends ChangeNotifier {
       await _storage.write(key: _matrixUserIdKey, value: matrixUserId);
     }
 
+    // Handle Matrix device ID (CRITICAL for encryption!)
+    if (matrixDeviceId != null) {
+      _matrixDeviceId = matrixDeviceId;
+      await _storage.write(key: _matrixDeviceIdKey, value: matrixDeviceId);
+    }
+
     await _storage.write(key: _primaryKey, value: primaryToken);
     await _storage.write(key: _chatbotKey, value: chatbotToken);
     await _storage.write(key: _userIdKey, value: userId);
@@ -154,6 +165,7 @@ class AutomateAuthState extends ChangeNotifier {
     _onboardingCompleted = false;
     _matrixAccessToken = null;
     _matrixUserId = null;
+    _matrixDeviceId = null;
     _loggedIn = false;
     await Future.wait([
       _storage.delete(key: _primaryKey),
@@ -165,6 +177,7 @@ class AutomateAuthState extends ChangeNotifier {
       _storage.delete(key: _onboardingCompletedKey),
       _storage.delete(key: _matrixAccessTokenKey),
       _storage.delete(key: _matrixUserIdKey),
+      _storage.delete(key: _matrixDeviceIdKey),
     ]);
     notifyListeners();
   }
