@@ -64,19 +64,25 @@ abstract class AppRoutes {
   ) =>
       Matrix.of(context).widget.clients.any((client) => client.isLogged())
           ? null
-          : '/home';
+          : '/login-signup';  // 重定向到新版登录页
 
   AppRoutes();
 
   static final List<RouteBase> routes = [
     GoRoute(
       path: '/',
+      // Don't redirect to login-signup here - _AutomateAuthGate handles login flow
+      // This prevents race condition where GoRouter redirects before AuthGate can navigate
       redirect: (context, state) =>
           Matrix.of(context).widget.clients.any((client) => client.isLogged())
               ? '/rooms'
-              // FIXME: Temporarily changed to /loginsignup for testing
-              : '/home',
-              // : '/login-signup',
+              : null,  // Let AuthGate handle unauthenticated state
+      // Empty page builder - AuthGate will show loading/login UI, not this page
+      pageBuilder: (context, state) => defaultPageBuilder(
+        context,
+        state,
+        const EmptyPage(),
+      ),
     ),
     // FIXME: Temporary route for testing login-signup page
     GoRoute(

@@ -3,12 +3,15 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:go_router/go_router.dart';
+import 'package:matrix/matrix.dart' hide Matrix;
 import 'package:provider/provider.dart';
 import 'package:automate/widgets/matrix.dart';
 import 'package:automate/automate/backend/backend.dart';
 import 'package:automate/automate/services/one_click_login.dart';
+import 'package:automate/automate/core/config.dart';
+import 'package:automate/utils/platform_infos.dart';
 import 'login_signup_view.dart';
 
 class LoginSignup extends StatefulWidget {
@@ -61,23 +64,24 @@ class LoginSignupController extends State<LoginSignup> {
       );
 
       debugPrint('=== 发送 token 到后端 ===');
-      Matrix.of(context);
       final authResponse = await backend.loginOrSignup(
         '', // phone is empty for one-click login
         '', // code is empty for one-click login
         fusionToken: loginToken,
       );
-      debugPrint('后端响应: isNewUser=${authResponse.isNewUser}');
+      debugPrint('后端响应: onboardingCompleted=${authResponse.onboardingCompleted}');
 
-      if (mounted) {
+      if (!mounted) return;
+
+      // Redirect based on onboarding status
+      if (authResponse.onboardingCompleted) {
+        // 已完成 onboarding，需要先登录 Matrix
+        debugPrint('=== 已完成 onboarding，尝试登录 Matrix ===');
+        await _loginMatrixAndRedirect();
+      } else {
+        // 需要先完成 onboarding
         setState(() => loading = false);
-
-        // Redirect to onboarding chatbot if it's a new user
-        if (authResponse.isNewUser) {
-          context.go('/onboarding-chatbot');
-        } else {
-          context.go('/rooms');
-        }
+        context.go('/onboarding-chatbot');
       }
     } catch (e, stackTrace) {
       debugPrint('一键登录错误: $e');
@@ -116,6 +120,53 @@ class LoginSignupController extends State<LoginSignup> {
     }
 
     return false;
+  }
+
+  /// 登录 Matrix 并跳转到主页
+  Future<void> _loginMatrixAndRedirect() async {
+    final matrixAccessToken = backend.auth.matrixAccessToken;
+    final matrixUserId = backend.auth.matrixUserId;
+
+    if (matrixAccessToken == null || matrixUserId == null) {
+      debugPrint('Matrix access token 缺失，无法登录 Matrix');
+      if (mounted) {
+        setState(() {
+          phoneError = 'Matrix 凭证缺失，请重新登录';
+          loading = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final matrix = Matrix.of(context);
+      final client = await matrix.getLoginClient();
+
+      // Set homeserver before login
+      final homeserverUrl = Uri.parse(AutomateConfig.matrixHomeserver);
+      debugPrint('设置 homeserver: $homeserverUrl');
+      await client.checkHomeserver(homeserverUrl);
+
+      debugPrint('尝试 Matrix 登录: matrixUserId=$matrixUserId');
+
+      // 使用后端返回的 access_token 直接初始化，无需密码登录
+      await client.init(
+        newToken: matrixAccessToken,
+        newUserID: matrixUserId,
+        newHomeserver: homeserverUrl,
+        newDeviceName: PlatformInfos.clientName,
+      );
+      // Matrix login success -> auto redirect to /rooms by MatrixState
+      debugPrint('Matrix 登录成功');
+    } catch (e) {
+      debugPrint('Matrix 登录失败 (未知错误): $e');
+      if (mounted) {
+        setState(() {
+          phoneError = '登录失败: $e';
+          loading = false;
+        });
+      }
+    }
   }
 
   void showEula() async {
@@ -171,7 +222,7 @@ class EulaBottomSheet extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          
+
           // Content
           Expanded(
             child: SingleChildScrollView(
@@ -183,9 +234,9 @@ class EulaBottomSheet extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const Divider(height: 1),
-          
+
           // Footer
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -265,7 +316,7 @@ class EulaBottomSheet extends StatelessWidget {
   List<InlineSpan> _parseInline(String text, ThemeData theme) {
     final spans = <InlineSpan>[];
     final parts = text.split('**');
-    
+
     for (int i = 0; i < parts.length; i++) {
       if (i % 2 == 0) {
         // Normal text
@@ -287,7 +338,7 @@ const String _eulaText = '''
 
 **生效日期：2023年10月1日**
 
-欢迎您使用 Automate（以下简称“本服务”）。本协议是您与 Automate 运营方（以下简称“我们”）之间关于您使用本服务所订立的协议。
+欢迎您使用 Automate（以下简称"本服务"）。本协议是您与 Automate 运营方（以下简称"我们"）之间关于您使用本服务所订立的协议。
 
 ## 1. 服务内容
 本服务是一款基于人工智能技术的自动化助理应用，旨在为您提供智能对话、信息处理及自动化任务执行等服务。我们有权根据业务发展需要，随时调整服务内容或中断服务。
@@ -319,9 +370,9 @@ const String _eulaText = '''
 我们非常重视您的个人信息保护。我们将按照《隐私政策》收集、存储、使用、披露和保护您的个人信息。请您详细阅读《隐私政策》以了解我们如何保护您的隐私。
 
 ## 7. 违约处理
-一旦发现您违反本协议的规定，我们有权不经通知单方采取包��但不限于限制、暂停或终止您使用本服务、封禁账号等措施，并追究您的法律责任。
+一旦发现您违反本协议的规定，我们有权不经通知单方采取包括但不限于限制、暂停或终止您使用本服务、封禁账号等措施，并追究您的法律责任。
 
 ## 8. 其他
 - 本协议的效力、解释及纠纷的解决，适用于中华人民共和国法律。
-- 若您和我们之间发生任何纠纷或争议，首先应友好协商解决；协商不成的，您同意将纠纷或争议提交至我们所在地有管辖权的民法院管辖。
+- 若您和我们之间发生任何纠纷或争议，首先应友好协商解决；协商不成的，您同意将纠纷或争议提交至我们所在地有管辖权的人民法院管辖。
 ''';

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:automate/widgets/layouts/login_scaffold.dart';
-import 'package:automate/widgets/matrix.dart';
 import 'package:automate/automate/backend/backend.dart';
 
 class PhoneLoginPage extends StatefulWidget {
@@ -100,8 +99,6 @@ class PhoneLoginController extends State<PhoneLoginPage> {
     });
 
     try {
-      Matrix.of(context);
-
       final authResponse = await backend.loginOrSignup(
         phoneController.text,
         codeController.text,
@@ -110,10 +107,13 @@ class PhoneLoginController extends State<PhoneLoginPage> {
       if (mounted) {
         setState(() => loading = false);
 
-        if (authResponse.isNewUser) {
-          context.go('/onboarding-chatbot');
-        } else {
+        // Redirect based on onboarding status
+        if (authResponse.onboardingCompleted) {
+          // Already completed onboarding, go to main page
           context.go('/rooms');
+        } else {
+          // Need to complete onboarding chatbot first
+          context.go('/onboarding-chatbot');
         }
       }
     } catch (e) {

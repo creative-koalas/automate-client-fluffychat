@@ -16,6 +16,8 @@ import com.mobile.auth.gatewayauth.PreLoginResultListener
 import com.mobile.auth.gatewayauth.ResultCode
 import com.mobile.auth.gatewayauth.model.TokenRet
 import com.mobile.auth.gatewayauth.AuthUIConfig
+import android.graphics.Color
+import android.util.TypedValue
 
 /**
  * 阿里云一键登录 Flutter 插件（使用官方 SDK）
@@ -225,16 +227,76 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         try {
             pendingResult = result
 
-            // 配置授权页 UI
+            // 获取屏幕密度
+            val density = act.resources.displayMetrics.density
+            val screenWidth = act.resources.displayMetrics.widthPixels
+            val btnWidthDp = ((screenWidth / density) - 64).toInt()
+
+            // 配置授权页 UI - 简洁全屏模式
             helper.setAuthUIConfig(
                 AuthUIConfig.Builder()
-                    .setNavText("一键登录")
+                    // ========== 状态栏 ==========
+                    .setStatusBarColor(Color.WHITE)
+                    .setLightColor(true)
+
+                    // ========== 导航栏（简化） ==========
+                    .setNavColor(Color.WHITE)
+                    .setNavText("")
                     .setNavReturnHidden(false)
+
+                    // ========== Logo ==========
                     .setLogoHidden(false)
-                    .setSloganText("Automate AI 助手")
+                    .setLogoImgDrawable(act.getDrawable(R.drawable.auth_logo))
+                    .setLogoWidth(90)
+                    .setLogoHeight(90)
+                    .setLogoOffsetY(100)
+
+                    // ========== Slogan ==========
+                    .setSloganHidden(false)
+                    .setSloganText("AutoMate")
+                    .setSloganTextColor(Color.parseColor("#1A1A1A"))
+                    .setSloganTextSize(20)
+                    .setSloganOffsetY(210)
+
+                    // ========== 手机号 ==========
+                    .setNumberColor(Color.parseColor("#1A1A1A"))
+                    .setNumberSize(28)
+                    .setNumFieldOffsetY(260)
+
+                    // ========== 登录按钮 ==========
                     .setLogBtnText("本机号码一键登录")
-                    .setPrivacyState(false)  // 默认不勾选协议
+                    .setLogBtnTextColor(Color.WHITE)
+                    .setLogBtnTextSize(17)
+                    .setLogBtnWidth(btnWidthDp)
+                    .setLogBtnHeight(50)
+                    .setLogBtnOffsetY(340)
+                    .setLogBtnBackgroundDrawable(act.getDrawable(R.drawable.auth_login_btn))
+
+                    // ========== 其他登录方式 ==========
+                    .setSwitchAccText("其他方式登录")
+                    .setSwitchAccTextColor(Color.parseColor("#007AFF"))
+                    .setSwitchAccTextSize(15)
+                    .setSwitchOffsetY(410)
+                    .setSwitchAccHidden(false)
+
+                    // ========== 隐私协议 ==========
+                    .setPrivacyState(false)
                     .setCheckboxHidden(false)
+                    .setCheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_checked))
+                    .setUncheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_unchecked))
+                    .setPrivacyOffsetY_B(80)
+                    .setPrivacyTextSize(12)
+                    .setAppPrivacyOne("《用户协议》", "https://automate.creativekoalas.com/agreement")
+                    .setAppPrivacyTwo("《隐私政策》", "https://automate.creativekoalas.com/privacy")
+                    .setAppPrivacyColor(Color.parseColor("#999999"), Color.parseColor("#007AFF"))
+                    .setPrivacyBefore("登录即同意")
+                    .setPrivacyEnd("")
+                    .setVendorPrivacyPrefix("《")
+                    .setVendorPrivacySuffix("》")
+
+                    // ========== 页面背景 ==========
+                    .setPageBackgroundDrawable(act.getDrawable(android.R.color.white))
+
                     .create()
             )
 

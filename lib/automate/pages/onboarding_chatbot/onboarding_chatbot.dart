@@ -3,10 +3,15 @@
 library;
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:automate/automate/backend/backend.dart';
+import 'package:matrix/matrix.dart' hide Matrix; // Hide Matrix widget to avoid conflict
 import 'package:provider/provider.dart';
+import 'package:automate/widgets/matrix.dart'; // Helper widget
+import 'package:automate/automate/backend/backend.dart';
+import 'package:automate/automate/core/config.dart';
+import 'package:automate/utils/platform_infos.dart';
 import 'onboarding_chatbot_view.dart';
 
 class OnboardingChatbot extends StatefulWidget {
@@ -295,10 +300,76 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     }
   }
 
-  void completeOnboarding() {
-    if (mounted) {
-      context.go('/rooms');
+  Future<void> completeOnboarding() async {
+    if (!mounted) return;
+
+    // Call backend API to mark onboarding as completed
+    try {
+      await backend.completeOnboarding();
+      debugPrint('新手引导已标记完成');
+    } catch (e) {
+      debugPrint('标记新手引导完成失败: $e');
+      // Continue to navigate even if marking fails
     }
+
+    // 更新本地 auth state
+    await backend.auth.markOnboardingCompleted();
+
+    if (mounted) {
+      // 登录 Matrix
+      final matrixAccessToken = backend.auth.matrixAccessToken;
+      final matrixUserId = backend.auth.matrixUserId;
+
+      if (matrixAccessToken == null || matrixUserId == null) {
+        debugPrint('Matrix access token missing, cannot login to Matrix');
+        _showLoginErrorAndRedirect('Matrix 凭证缺失，请重新登录');
+        return;
+      }
+
+      try {
+        final matrix = Matrix.of(context);
+        final client = await matrix.getLoginClient();
+
+        // Set homeserver before login
+        final homeserverUrl = Uri.parse(AutomateConfig.matrixHomeserver);
+        debugPrint('设置 homeserver: $homeserverUrl');
+        await client.checkHomeserver(homeserverUrl);
+
+        debugPrint('尝试 Matrix 登录: matrixUserId=$matrixUserId');
+
+        // 使用后端返回的 access_token 直接初始化，无需密码登录
+        await client.init(
+          newToken: matrixAccessToken,
+          newUserID: matrixUserId,
+          newHomeserver: homeserverUrl,
+          newDeviceName: PlatformInfos.clientName,
+        );
+        // Matrix login success -> auto redirect to /rooms by MatrixState
+        debugPrint('Matrix 登录成功');
+      } catch (e) {
+        debugPrint('Matrix 登录失败 (未知错误): $e');
+        _showLoginErrorAndRedirect('登录失败: $e');
+      }
+    }
+  }
+
+  void _showLoginErrorAndRedirect(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    // 延迟后重定向到登录页
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        context.go('/login-signup');
+      }
+    });
   }
 
   void _onInputChanged() {

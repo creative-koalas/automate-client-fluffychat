@@ -29,7 +29,7 @@ class AutomateApiClient {
   // K8s NodePort: 30300
   // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
   static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.31.22:30300');
+      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.1.7:30300');
 
   /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
   Future<FusionAuthTokenResponse> getFusionAuthToken() async {
@@ -93,16 +93,94 @@ class AutomateApiClient {
     final authResponse = AuthResponse(
       token: respData['access_token'] as String? ?? '',
       chatbotToken: respData['chatbot_token'] as String? ?? '',
+      refreshToken: respData['refresh_token'] as String?,
+      expiresIn: respData['expires_in'] as int?,
       userId: respData['username'] as String? ?? '',
-      isNewUser: true, // 服务端暂未返回此字段，默认 true
+      userIdInt: respData['user_id'] as int? ?? 0,
+      onboardingCompleted: respData['onboarding_completed'] as bool? ?? false,
+      isNewUser: respData['is_new_user'] as bool? ?? false,
+      matrixAccessToken: respData['matrix_access_token'] as String?,
+      matrixUserId: respData['matrix_user_id'] as String?,
     );
 
     await auth.save(
       primaryToken: authResponse.token,
       chatbotToken: authResponse.chatbotToken,
       userId: authResponse.userId,
+      userIdInt: authResponse.userIdInt,
+      onboardingCompleted: authResponse.onboardingCompleted,
+      refreshToken: authResponse.refreshToken,
+      expiresIn: authResponse.expiresIn,
+      matrixAccessToken: authResponse.matrixAccessToken,
+      matrixUserId: authResponse.matrixUserId,
     );
     return authResponse;
+  }
+
+  /// Refresh the access token using refresh token
+  /// Returns true if refresh was successful, false otherwise
+  Future<bool> refreshAccessToken() async {
+    final refreshToken = auth.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return false;
+    }
+
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '${AutomateConfig.baseUrl}/api/auth/refresh',
+        data: {'refresh_token': refreshToken},
+      );
+
+      final data = res.data ?? {};
+      final respCode = data['code'] as int? ?? -1;
+      if (res.statusCode != 200 || respCode != 0) {
+        // Refresh failed, clear tokens
+        await auth.markLoggedOut();
+        return false;
+      }
+
+      final respData = data['data'] as Map<String, dynamic>?;
+      if (respData == null) {
+        await auth.markLoggedOut();
+        return false;
+      }
+
+      final newAccessToken = respData['access_token'] as String?;
+      final newExpiresIn = respData['expires_in'] as int?;
+
+      if (newAccessToken == null || newExpiresIn == null) {
+        await auth.markLoggedOut();
+        return false;
+      }
+
+      await auth.updateAccessToken(newAccessToken, newExpiresIn);
+      return true;
+    } catch (e) {
+      await auth.markLoggedOut();
+      return false;
+    }
+  }
+
+  /// Ensure we have a valid token before making API calls
+  /// Will refresh token if it's expiring soon
+  Future<bool> ensureValidToken() async {
+    // No token at all
+    if (!auth.isLoggedIn || auth.primaryToken == null) {
+      return false;
+    }
+
+    // Token is still valid
+    if (auth.hasValidToken && !auth.isTokenExpiringSoon) {
+      return true;
+    }
+
+    // Token expired or expiring soon, try to refresh
+    if (auth.refreshToken != null) {
+      return await refreshAccessToken();
+    }
+
+    // No refresh token available
+    return false;
   }
 
   Future<Map<String, dynamic>> getSuggestions({
@@ -163,6 +241,31 @@ class AutomateApiClient {
           .toList();
     }
     return [];
+  }
+
+  /// 标记用户完成新手引导
+  Future<void> completeOnboarding() async {
+    final userIdInt = auth.userIdInt;
+    if (userIdInt == null || userIdInt == 0) {
+      throw AutomateBackendException('User ID not found');
+    }
+
+    final token = auth.primaryToken;
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${AutomateConfig.baseUrl}/api/users/$userIdInt/complete-onboarding',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to complete onboarding',
+        statusCode: res.statusCode,
+      );
+    }
+
+    // 更新本地状态
+    await auth.markOnboardingCompleted();
   }
 
   Stream<ChatStreamEvent> streamChatResponse(String message) async* {
@@ -282,20 +385,39 @@ class AutomateApiClient {
 class AuthResponse {
   final String token;
   final String chatbotToken;
+  final String? refreshToken;
+  final int? expiresIn;
   final String userId;
+  final int userIdInt;
+  final bool onboardingCompleted;
   final bool isNewUser;
+  final String? matrixAccessToken;
+  final String? matrixUserId;
 
   AuthResponse({
     required this.token,
     required this.chatbotToken,
+    this.refreshToken,
+    this.expiresIn,
     required this.userId,
+    required this.userIdInt,
+    required this.onboardingCompleted,
     required this.isNewUser,
+    this.matrixAccessToken,
+    this.matrixUserId,
   });
 
-  Map<String, String> toJson() => {
+  Map<String, dynamic> toJson() => {
         'token': token,
         'chatbotToken': chatbotToken,
+        'refreshToken': refreshToken,
+        'expiresIn': expiresIn,
         'userId': userId,
+        'userIdInt': userIdInt,
+        'onboardingCompleted': onboardingCompleted,
+        'isNewUser': isNewUser,
+        'matrixAccessToken': matrixAccessToken,
+        'matrixUserId': matrixUserId,
       };
 }
 
