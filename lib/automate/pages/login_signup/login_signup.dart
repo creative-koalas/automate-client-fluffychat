@@ -78,14 +78,28 @@ class LoginSignupController extends State<LoginSignup> {
         // 已完成 onboarding，需要先登录 Matrix
         debugPrint('=== 已完成 onboarding，尝试登录 Matrix ===');
         await _loginMatrixAndRedirect();
+        // 所有操作完成后关闭授权页
+        await OneClickLoginService.quitLoginPage();
       } else {
         // 需要先完成 onboarding
+        // 关闭授权页后再跳转
+        await OneClickLoginService.quitLoginPage();
         setState(() => loading = false);
         context.go('/onboarding-chatbot');
+      }
+    } on SwitchLoginMethodException {
+      // User clicked "其他方式登录" button, redirect to phone login page
+      debugPrint('用户选择其他登录方式');
+      // SDK 已自动关闭授权页
+      setState(() => loading = false);
+      if (mounted) {
+        context.push('/login/phone');
       }
     } catch (e, stackTrace) {
       debugPrint('一键登录错误: $e');
       debugPrint('堆栈: $stackTrace');
+      // 出错时关闭授权页
+      await OneClickLoginService.quitLoginPage();
       setState(() {
         phoneError = e.toString();
         loading = false;
@@ -174,7 +188,26 @@ class LoginSignupController extends State<LoginSignup> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const EulaBottomSheet(),
+      builder: (context) => const PolicyBottomSheet(
+        title: '用户协议',
+        content: _eulaText,
+      ),
+    );
+
+    if (result == true) {
+      setState(() => agreedToEula = true);
+    }
+  }
+
+  void showPrivacyPolicy() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const PolicyBottomSheet(
+        title: '隐私政策',
+        content: _privacyPolicyText,
+      ),
     );
 
     if (result == true) {
@@ -186,8 +219,15 @@ class LoginSignupController extends State<LoginSignup> {
   Widget build(BuildContext context) => LoginSignupView(this);
 }
 
-class EulaBottomSheet extends StatelessWidget {
-  const EulaBottomSheet({super.key});
+class PolicyBottomSheet extends StatelessWidget {
+  final String title;
+  final String content;
+
+  const PolicyBottomSheet({
+    super.key,
+    required this.title,
+    required this.content,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +249,7 @@ class EulaBottomSheet extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '服务协议与隐私政策',
+                  title,
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -229,7 +269,7 @@ class EulaBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Text.rich(
                 TextSpan(
-                  children: _parseMarkdown(_eulaText, theme),
+                  children: _parseMarkdown(content, theme),
                 ),
               ),
             ),
@@ -256,7 +296,7 @@ class EulaBottomSheet extends StatelessWidget {
     );
   }
 
-  // Simple Markdown Parsing Logic for EULA
+  // Simple Markdown Parsing Logic
   List<InlineSpan> _parseMarkdown(String text, ThemeData theme) {
     final spans = <InlineSpan>[];
     final lines = text.split('\n');
@@ -375,4 +415,71 @@ const String _eulaText = '''
 ## 8. 其他
 - 本协议的效力、解释及纠纷的解决，适用于中华人民共和国法律。
 - 若您和我们之间发生任何纠纷或争议，首先应友好协商解决；协商不成的，您同意将纠纷或争议提交至我们所在地有管辖权的人民法院管辖。
+''';
+
+const String _privacyPolicyText = '''
+# 隐私政策
+
+**生效日期：2023年10月1日**
+
+Automate（以下简称"我们"）非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。
+
+## 1. 信息收集
+
+我们可能收集以下类型的信息：
+
+### 1.1 您主动提供的信息
+- 注册信息：手机号码、昵称、头像等
+- 使用服务时提供的内容：对话记录、文件、图片等
+
+### 1.2 自动收集的信息
+- 设备信息：设备型号、操作系统版本、唯一设备标识符
+- 日志信息：访问时间、功能使用情况、错误日志
+- 位置信息：仅在您授权后收集，用于提供位置相关服务
+
+### 1.3 第三方来源的信息
+- 通过第三方登录时获取的基本信息（如您选择使用）
+
+## 2. 信息使用
+
+我们收集的信息将用于：
+- 提供、维护和改进我们的服务
+- 向您发送服务通知和更新
+- 检测、预防和解决技术问题和安全问题
+- 遵守法律法规的要求
+- 优化 AI 模型和提升服务质量（已匿名化处理）
+
+## 3. 信息存储
+
+- 您的信息存储在位于中华人民共和国境内的服务器
+- 我们采用行业标准的安全措施保护您的信息
+- 信息保存期限为提供服务所必需的期间，或法律法规要求的期间
+
+## 4. 信息共享
+
+我们不会向第三方出售您的个人信息。以下情况除外：
+- 获得您的明确同意
+- 根据法律法规的要求
+- 为保护我们、用户或公众的权益
+
+## 5. 您的权利
+
+您对您的个人信息享有以下权利：
+- **访问权**：查看我们收集的关于您的信息
+- **更正权**：更正不准确的个人信息
+- **删除权**：请求删除您的个人信息
+- **注销账号**：您可以随时申请注销账号
+
+## 6. 儿童隐私
+
+我们的服务不面向 14 周岁以下的儿童。如果我们发现收集了儿童的个人信息，将立即删除。
+
+## 7. 隐私政策的变更
+
+我们可能会不时更新本隐私政策。更新后的政策将在本应用内公布，重大变更将通过应用内通知或其他方式告知您。
+
+## 8. 联系我们
+
+如果您对本隐私政策有任何疑问，请通过以下方式联系我们：
+- 邮箱：support@creativekoalas.com
 ''';

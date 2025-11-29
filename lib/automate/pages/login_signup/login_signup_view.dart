@@ -39,37 +39,55 @@ class LoginSignupView extends StatelessWidget {
                     const SizedBox(height: 48),
 
                     // EULA Agreement Checkbox
-                    Theme(
-                      data: theme.copyWith(
-                        checkboxTheme: theme.checkboxTheme.copyWith(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                        ),
-                      ),
-                      child: CheckboxListTile(
-                        value: controller.agreedToEula,
-                        onChanged: controller.loading ? null : (_) => controller.toggleEulaAgreement(),
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              '我已阅读并同意 ',
-                              style: textTheme.bodyMedium,
-                            ),
-                            InkWell(
-                              onTap: controller.loading ? null : controller.showEula,
-                              borderRadius: BorderRadius.circular(4),
-                              child: Text(
-                                '《用户协议》',
-                                style: textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: controller.agreedToEula,
+                            onChanged: controller.loading
+                                ? null
+                                : (_) => controller.toggleEulaAgreement(),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          Flexible(
+                            child: Text.rich(
+                              TextSpan(
+                                style: textTheme.bodyMedium,
+                                children: [
+                                  const TextSpan(text: '我已阅读并同意'),
+                                  WidgetSpan(
+                                    child: InkWell(
+                                      onTap: controller.loading ? null : controller.showEula,
+                                      child: Text(
+                                        '《用户协议》',
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const TextSpan(text: '和'),
+                                  WidgetSpan(
+                                    child: InkWell(
+                                      onTap: controller.loading ? null : controller.showPrivacyPolicy,
+                                      child: Text(
+                                        '《隐私政策》',
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),

@@ -115,6 +115,7 @@ enum _AuthState {
   refreshing,    // Refreshing expired token
   authenticating, // Performing one-click login
   authenticated, // Successfully authenticated
+  needsLogin,    // Needs login, show login page
   error,         // Error occurred
 }
 
@@ -206,10 +207,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   }
 
   Future<void> _performDirectLogin() async {
-    setState(() {
-      _state = _AuthState.authenticating;
-      _errorMessage = null;
-    });
+    // 不设置 authenticating 状态，避免显示"正在登录"
+    // SDK 授权页会直接弹出覆盖当前界面
+    _errorMessage = null;
 
     try {
       debugPrint('[AuthGate] Starting one-click login...');
@@ -236,14 +236,26 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
       if (authResponse.onboardingCompleted) {
         // Already completed onboarding, login to Matrix
         await _loginMatrixAndProceed();
+        // 所有操作完成后关闭授权页
+        await OneClickLoginService.quitLoginPage();
       } else {
         // Need to complete onboarding first
+        // 关闭授权页后再跳转 onboarding
+        await OneClickLoginService.quitLoginPage();
         // Important: Navigate BEFORE setting authenticated state to avoid
         // GoRouter's redirect to /login-signup (which checks Matrix client)
         _navigateToOnboardingThenAuthenticate();
       }
+    } on SwitchLoginMethodException {
+      // User clicked "其他方式登录" button, redirect to login page
+      debugPrint('[AuthGate] User chose to switch login method');
+      // SDK 已自动关闭授权页，无需手动关闭
+      _redirectToLoginPage();
+      return;
     } catch (e) {
       debugPrint('[AuthGate] One-click login error: $e');
+      // 出错时关闭授权页
+      await OneClickLoginService.quitLoginPage();
 
       // Check if user cancelled
       final errorStr = e.toString();
@@ -316,6 +328,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   }
 
   void _redirectToLoginPage() {
+    setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navKey = AutomateApp.router.routerDelegate.navigatorKey;
       final ctx = navKey.currentContext;
@@ -365,6 +378,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
     switch (_state) {
       case _AuthState.checking:
+        // 检查 token 时不显示任何东西，保持原生启动画面
+        // 这样 SDK 授权页弹出时用户不会看到中间的 loading
+        return const SizedBox.shrink();
+
       case _AuthState.refreshing:
         return _buildLoadingScreen('正在验证登录状态...');
 
@@ -374,6 +391,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
       case _AuthState.error:
         return _buildErrorScreen();
 
+      case _AuthState.needsLogin:
       case _AuthState.authenticated:
         return widget.child ?? const SizedBox.shrink();
     }

@@ -18,6 +18,8 @@ import com.mobile.auth.gatewayauth.model.TokenRet
 import com.mobile.auth.gatewayauth.AuthUIConfig
 import android.graphics.Color
 import android.util.TypedValue
+import com.mobile.auth.gatewayauth.ActivityResultListener
+import com.mobile.auth.gatewayauth.CustomInterface
 
 /**
  * 阿里云一键登录 Flutter 插件（使用官方 SDK）
@@ -280,19 +282,51 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setSwitchAccHidden(false)
 
                     // ========== 隐私协议 ==========
-                    .setPrivacyState(false)
+                    .setPrivacyState(false)  // 默认未勾选
                     .setCheckboxHidden(false)
                     .setCheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_checked))
                     .setUncheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_unchecked))
                     .setPrivacyOffsetY_B(80)
                     .setPrivacyTextSize(12)
-                    .setAppPrivacyOne("《用户协议》", "https://automate.creativekoalas.com/agreement")
-                    .setAppPrivacyTwo("《隐私政策》", "https://automate.creativekoalas.com/privacy")
+                    // 协议名称和链接（使用本地 HTML 文件）
+                    .setAppPrivacyOne("《用户协议》", "file:///android_asset/user_agreement.html")
+                    .setAppPrivacyTwo("《隐私政策》", "file:///android_asset/privacy_policy.html")
                     .setAppPrivacyColor(Color.parseColor("#999999"), Color.parseColor("#007AFF"))
                     .setPrivacyBefore("登录即同意")
                     .setPrivacyEnd("")
                     .setVendorPrivacyPrefix("《")
                     .setVendorPrivacySuffix("》")
+                    // 未勾选协议时，点击登录按钮弹出二次确认弹窗
+                    .setLogBtnToastHidden(true)  // 隐藏 Toast，改用弹窗
+                    .setPrivacyAlertIsNeedShow(true)  // 启用二次确认弹窗
+                    .setPrivacyAlertIsNeedAutoLogin(true)  // 点击同意后自动登录
+                    // 二次确认弹窗 UI 配置 - 紧凑简洁风格
+                    .setPrivacyAlertTitleContent("温馨提示")
+                    .setPrivacyAlertTitleTextSize(17)
+                    .setPrivacyAlertTitleColor(Color.parseColor("#1A1A1A"))
+                    .setPrivacyAlertContentTextSize(14)
+                    .setPrivacyAlertContentColor(Color.parseColor("#666666"))
+                    .setPrivacyAlertContentBaseColor(Color.parseColor("#666666"))
+                    .setPrivacyAlertContentHorizontalMargin(16)
+                    .setPrivacyAlertContentVerticalMargin(10)
+                    .setPrivacyAlertBtnContent("同意并登录")
+                    .setPrivacyAlertBtnTextColor(Color.WHITE)
+                    .setPrivacyAlertBtnTextSize(15)
+                    .setPrivacyAlertBtnBackgroundImgDrawable(act.getDrawable(R.drawable.auth_login_btn))
+                    .setPrivacyAlertCloseBtnShow(true)  // 显示关闭按钮
+                    .setPrivacyAlertMaskIsNeedShow(true)  // 显示背景遮罩
+                    .setPrivacyAlertMaskAlpha(0.3f)
+                    .setPrivacyAlertCornerRadiusArray(intArrayOf(16, 16, 16, 16))
+                    .setPrivacyAlertAlignment(1)  // 0-居左 1-居中 2-居右
+                    .setPrivacyAlertWidth(280)  // 更紧凑的宽度
+                    .setPrivacyAlertHeight(200)  // 更紧凑的高度
+                    .setPrivacyAlertBtnWidth(240)
+                    .setPrivacyAlertBtnHeigth(42)
+                    // 协议页面（内置 WebView）导航栏配置
+                    .setWebNavColor(Color.WHITE)
+                    .setWebNavTextColor(Color.parseColor("#1A1A1A"))
+                    .setWebNavTextSize(18)
+                    .setWebSupportedJavascript(true)
 
                     // ========== 页面背景 ==========
                     .setPageBackgroundDrawable(act.getDrawable(android.R.color.white))
@@ -335,6 +369,8 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             when {
                 ResultCode.CODE_SUCCESS == code -> {
                     // 获取 token 成功
+                    // 注意：不在这里关闭授权页，让 Flutter 端完成后续操作后再调用 quitLoginPage()
+                    // 这样用户会在授权页上看到 loading，而不是跳到另一个页面显示 loading
                     val token = tokenRet.token
                     Log.d(TAG, "Got token: ${token?.take(20)}...")
                     activity?.runOnUiThread {
@@ -344,8 +380,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                             "token" to token
                         ))
                     }
-                    // 关闭授权页
-                    phoneNumberAuthHelper?.quitLoginPage()
+                    // 不调用 quitLoginPage()，由 Flutter 端手动调用
                 }
                 ResultCode.CODE_START_AUTHPAGE_SUCCESS == code -> {
                     // 授权页唤起成功，继续等待用户操作

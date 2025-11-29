@@ -132,6 +132,17 @@ class OneClickLoginService {
       throw Exception('未获取到认证 token');
     }
 
+    // 700001: 用户点击"其他方式登录"按钮，正常行为，抛出特定异常
+    if (code == '700001') {
+      throw SwitchLoginMethodException();
+    }
+
     throw Exception('一键登录失败: ${loginResult['msg']} (code: $code)');
   }
+}
+
+/// 用户选择切换到其他登录方式的异常
+class SwitchLoginMethodException implements Exception {
+  @override
+  String toString() => '用户选择其他登录方式';
 }

@@ -127,9 +127,29 @@
             android:name="com.mobile.auth.gatewayauth.LoginAuthActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:exported="false"
-            android:launchMode="singleTop" />
+            android:launchMode="singleTop"
+            android:screenOrientation="behind"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
-        <!-- 阿里云一键登录 SDK 隐私协议页 Activity -->
+        <!-- 阿里云一键登录 SDK 二次确认弹窗 Activity (必须使用 SDK 提供的主题) -->
+        <activity
+            android:name="com.mobile.auth.gatewayauth.PrivacyDialogActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="behind"
+            android:theme="@style/authsdk_activity_dialog" />
+
+        <!-- 阿里云一键登录 SDK 协议 WebView Activity -->
+        <activity
+            android:name="com.mobile.auth.gatewayauth.activity.AuthWebVeiwActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="behind"
+            android:theme="@style/authsdk_app_theme_day" />
+
+        <!-- 阿里云一键登录 SDK 隐私协议页 Activity (备用) -->
         <activity
             android:name="com.mobile.auth.gatewayauth.PrivacyWebviewActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
