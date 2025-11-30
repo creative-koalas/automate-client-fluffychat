@@ -96,7 +96,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (!mounted) return;
     setState(() => isLoading = true);
 
-    const greeting = '你好！👋 欢迎使用智能助手。\n\n我可以帮你自动完成各种任务。请告诉我，你想让我帮你做什么？\n\n例如：\n• "每天早上 8 点提醒我查看邮件"\n• "帮我整理待办事项"\n• "监控某个网站的价格变动"';
+    const greeting = '你好！👋 欢迎来到 AutoMate 人才中心。\n\n我是前台接待。我们这里有各类数字工作者——程序员、研究员、数据分析师、运营专员等等，随时待命。\n\n您有什么事情想交给别人去做？不管是一个想法、一个项目、还是一件麻烦事，都可以跟我说说。\n\n我来帮您找到合适的人选，组建团队，把事情办妥。';
 
     _addMessage(
       ChatMessage(
