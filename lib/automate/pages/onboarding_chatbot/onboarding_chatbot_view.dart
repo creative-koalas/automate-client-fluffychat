@@ -76,6 +76,9 @@ class OnboardingChatbotView extends StatelessWidget {
                       ),
                     ),
 
+                  // "开始吧!" 按钮 - 用户发送 >= 3 条消息后显示
+                  _StartButton(controller: controller, theme: theme),
+
                   // Suggestion Bubbles
                   _SuggestionBubbles(
                     controller: controller,
@@ -119,6 +122,11 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Greeting 消息用特殊卡片渲染
+    if (message.isGreeting) {
+      return _GreetingCard(message: message, theme: theme, textTheme: textTheme);
+    }
+
     final isUser = message.isUser;
     // Brand Colors (Avoid WeChat Green)
     final bubbleColor = isUser ? theme.colorScheme.primary : Colors.white;
@@ -140,13 +148,13 @@ class _MessageBubble extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(4),
                 image: const DecorationImage(
-                  image: AssetImage('assets/logo.png'), 
+                  image: AssetImage('assets/logo.png'),
                 ),
               ),
             ),
             const SizedBox(width: 8),
           ],
-          
+
           // Message Content
           Flexible(
             child: Container(
@@ -171,14 +179,14 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          
+
           if (isUser) ...[
             const SizedBox(width: 8),
              // User Avatar - Brand Style
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Container(
-                width: 40, 
+                width: 40,
                 height: 40,
                 color: theme.colorScheme.primaryContainer, // Theme color
                 child: Icon(Icons.person, color: theme.colorScheme.onPrimaryContainer, size: 28),
@@ -186,6 +194,136 @@ class _MessageBubble extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// 欢迎卡片 - 特殊渲染 greeting 消息
+class _GreetingCard extends StatelessWidget {
+  final ChatMessage message;
+  final ThemeData theme;
+  final TextTheme textTheme;
+
+  const _GreetingCard({
+    required this.message,
+    required this.theme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 解析消息：第一段是标题，其余是内容
+    final paragraphs = message.text.split('\n\n');
+    final title = paragraphs.isNotEmpty ? paragraphs[0] : '';
+    final bodyParagraphs = paragraphs.length > 1 ? paragraphs.sublist(1) : <String>[];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Logo + 标题行
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Logo
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset('assets/logo.png', fit: BoxFit.cover),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // 标题
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          title,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              if (bodyParagraphs.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                // 分隔线
+                Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary.withValues(alpha: 0.2),
+                        theme.colorScheme.primary.withValues(alpha: 0.05),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 内容段落
+                ...bodyParagraphs.map((paragraph) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    paragraph,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Colors.black54,
+                      height: 1.6,
+                    ),
+                  ),
+                )),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -367,6 +505,120 @@ class _InputAreaState extends State<_InputArea> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "开始吧!" 按钮 - 用户发送 >= 3 条消息后浮现
+class _StartButton extends StatefulWidget {
+  final OnboardingChatbotController controller;
+  final ThemeData theme;
+
+  const _StartButton({
+    required this.controller,
+    required this.theme,
+  });
+
+  @override
+  State<_StartButton> createState() => _StartButtonState();
+}
+
+class _StartButtonState extends State<_StartButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.controller.canManuallyStart) {
+      return const SizedBox.shrink();
+    }
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 400),
+      opacity: 1.0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _pulseAnimation.value,
+              child: child,
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  widget.theme.colorScheme.primary,
+                  widget.theme.colorScheme.primary.withValues(alpha: 0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.theme.colorScheme.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.controller.manuallyStartFinish,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.rocket_launch_rounded,
+                        color: widget.theme.colorScheme.onPrimary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '开始吧!',
+                        style: TextStyle(
+                          color: widget.theme.colorScheme.onPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

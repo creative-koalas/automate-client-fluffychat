@@ -1,0 +1,50 @@
+group 'com.jokui.rao.auth.ali_auth'
+version '0.2.3'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        // classpath 'com.android.tools.build:gradle:8.0.0' 
+        // Use the same gradle version as the main project to avoid conflicts if possible, 
+        // but 3.3.2 is too old. 
+        // However, as a library, it usually inherits. 
+        // But the issue was 'Namespace not specified'.
+    }
+}
+
+// getCurrentProjectDir implementation is a bit hacky in the original plugin.
+// Since we are now local, we might simplify or keep it.
+// The issue is Gradle 8 requires 'namespace' in android block.
+
+apply plugin: 'com.android.library'
+
+android {
+    // Upgrading compileSdkVersion to be compatible with modern flutter
+    compileSdkVersion 34 
+    
+    // CRITICAL FIX: Add namespace for Gradle 8+
+    namespace 'com.jokui.rao.auth.ali_auth'
+
+    defaultConfig {
+        minSdkVersion 19
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+}
+
+dependencies {
+    // Migrated to AndroidX
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.alibaba:fastjson:1.2.83'
+
+    // The AARs are in libs folder. The original build.gradle had a repo pointing to libs.
+    // We need to ensure that repo is added.
+    implementation fileTree(dir: 'libs', include: ['*.aar'])
+}

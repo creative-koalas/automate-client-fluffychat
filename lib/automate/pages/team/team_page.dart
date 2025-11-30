@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:automate/config/themes.dart';
 import 'package:automate/l10n/l10n.dart';
 
+import 'package:automate/automate/pages/wallet/wallet_page.dart';
 import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 import 'recruit_tab.dart';
 import 'training_tab.dart';
@@ -153,6 +154,24 @@ class TeamPageView extends StatelessWidget {
         ),
         centerTitle: false,
         elevation: 0,
+        actions: [
+          // Wallet button
+          IconButton(
+            icon: Icon(
+              Icons.account_balance_wallet_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            tooltip: l10n.walletTitle,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const WalletPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: _buildTabBar(context, theme),

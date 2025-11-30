@@ -2,10 +2,13 @@ package com.creativekoalas.automate
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 import android.content.Context
 
 class MainActivity : FlutterActivity() {
+
+    private val APP_CONTROL_CHANNEL = "com.creativekoalas.automate/app_control"
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -20,6 +23,17 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // 注册一键登录插件
         flutterEngine.plugins.add(OneClickLoginPlugin())
+
+        // 注册应用控制 channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APP_CONTROL_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "moveToBackground" -> {
+                    moveTaskToBack(true)
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     companion object {

@@ -12,6 +12,7 @@ import 'package:automate/widgets/matrix.dart'; // Helper widget
 import 'package:automate/automate/backend/backend.dart';
 import 'package:automate/automate/core/config.dart';
 import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/automate/services/app_control.dart';
 import 'onboarding_chatbot_view.dart';
 
 class OnboardingChatbot extends StatefulWidget {
@@ -46,6 +47,35 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
   String lastInputForSuggestions = '';
   Timer? _suggestionDebounce;
   int _suggestionGeneration = 0;
+
+  /// 用户发送的消息数量
+  int get userMessageCount => messages.where((m) => m.isUser).length;
+
+  /// 是否显示"开始吧"按钮（用户发送 >= 3 条消息）
+  bool get canManuallyStart => userMessageCount >= 3 && !isFinishing && !isLoading;
+
+  /// 用户主动点击"开始吧"按钮，强制触发完成流程
+  void manuallyStartFinish() {
+    if (!canManuallyStart) return;
+
+    // 先添加固定的消息，再触发动画
+    setState(() {
+      messages.add(ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: '好的，我明白了，正在为您安排...',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+
+    // 延迟一点再开始动画，让用户看到消息
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _startFinishSequence();
+      }
+    });
+  }
 
   Map<String, dynamic>? get suggestionTree => _suggestionTree;
   set suggestionTree(Map<String, dynamic>? value) {
@@ -104,6 +134,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         text: greeting,
         isUser: false,
         timestamp: DateTime.now(),
+        isGreeting: true,
       ),
     );
     if (mounted) {
@@ -343,8 +374,12 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
 
       debugPrint('[Onboarding] 尝试 Matrix 登录: matrixUserId=$matrixUserId, deviceId=$matrixDeviceId');
 
-      // 使用后端返回的 access_token + device_id 直接初始化
-      // device_id 是加密模块初始化的关键参数
+      // 先退到后台，这样用户看不到自动跳转到 /rooms
+      debugPrint('[Onboarding] 先退到后台...');
+      await AppControlService.moveToBackground();
+
+      // 然后再登录 Matrix（在后台完成）
+      // MatrixState 会触发导航到 /rooms，但用户已经在桌面了
       await client.init(
         newToken: matrixAccessToken,
         newUserID: matrixUserId,
@@ -352,8 +387,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         newDeviceName: PlatformInfos.clientName,
         newDeviceID: matrixDeviceId,
       );
-      // Matrix login success -> auto redirect to /rooms by MatrixState
-      debugPrint('[Onboarding] Matrix 登录成功');
+      debugPrint('[Onboarding] Matrix 登录成功（后台完成）');
     } catch (e) {
       debugPrint('[Onboarding] Matrix 登录失败: $e');
       _showLoginErrorAndRedirect('登录失败: $e');
@@ -587,11 +621,13 @@ class ChatMessage {
   String text;
   final bool isUser;
   final DateTime timestamp;
+  final bool isGreeting;
 
   ChatMessage({
     required this.id,
     required this.text,
     required this.isUser,
     required this.timestamp,
+    this.isGreeting = false,
   });
 }
