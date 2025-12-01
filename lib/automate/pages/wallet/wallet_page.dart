@@ -6,8 +6,8 @@ import 'package:automate/l10n/l10n.dart';
 import 'order_page.dart';
 
 /// 钱包充值页面
-/// 用于微信支付/支付宝支付商业化申请截图
-/// Credit 与人民币 1:1 兑换
+/// 按照新 UI 设计重构
+/// Credit 与人民币 1:1 兑换（1元 = 1分）
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
 
@@ -16,39 +16,53 @@ class WalletPage extends StatefulWidget {
 }
 
 class _WalletPageState extends State<WalletPage> {
-  final TextEditingController _amountController = TextEditingController();
-
   // 预设金额选项
-  final List<int> _presetAmounts = [10, 50, 100, 500, 1000];
+  final List<int> _presetAmounts = [10, 50, 100, 200, 500];
 
-  // 选中的预设金额（-1 表示自定义）
-  int _selectedPresetIndex = -1;
+  // 选中的预设金额索引
+  int _selectedPresetIndex = 1; // 默认选中 50
 
-  // 模拟余额
-  final double _balance = 0.00;
+  // 自定义金额
+  int _customAmount = 50;
+
+  // 模拟余额（分）
+  final int _balanceCredits = 1234;
+
+  // 主题绿色
+  static const Color _primaryGreen = Color(0xFF4CAF50);
+  static const Color _lightGreen = Color(0xFFE8F5E9);
 
   @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _customAmount = _presetAmounts[_selectedPresetIndex];
   }
 
   void _onPresetTap(int index) {
     setState(() {
       _selectedPresetIndex = index;
-      _amountController.text = _presetAmounts[index].toString();
+      _customAmount = _presetAmounts[index];
     });
   }
 
-  void _onAmountChanged(String value) {
+  void _onAmountIncrease() {
     setState(() {
-      _selectedPresetIndex = -1;
+      _customAmount += 10;
+      _selectedPresetIndex = -1; // 取消预设选中
     });
+  }
+
+  void _onAmountDecrease() {
+    if (_customAmount > 10) {
+      setState(() {
+        _customAmount -= 10;
+        _selectedPresetIndex = -1; // 取消预设选中
+      });
+    }
   }
 
   void _onRecharge() {
-    final amount = double.tryParse(_amountController.text) ?? 0;
-    if (amount <= 0) {
+    if (_customAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(L10n.of(context).walletEnterValidAmount),
@@ -61,7 +75,7 @@ class _WalletPageState extends State<WalletPage> {
     // 跳转到订单页面
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => OrderPage(amount: amount),
+        builder: (context) => OrderPage(amount: _customAmount.toDouble()),
       ),
     );
   }
@@ -72,127 +86,473 @@ class _WalletPageState extends State<WalletPage> {
     final l10n = L10n.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface,
-        surfaceTintColor: theme.colorScheme.surface,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         title: Text(
           l10n.walletTitle,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 余额卡片
-            _buildBalanceCard(theme, l10n),
+            _buildBalanceCard(l10n),
+            const SizedBox(height: 16),
+
+            // 充值区域
+            _buildRechargeCard(l10n),
+            const SizedBox(height: 16),
+
+            // 为什么选择我们
+            _buildWhyChooseUs(l10n),
+            const SizedBox(height: 16),
+
+            // 新用户优惠提示
+            _buildPromotion(l10n),
             const SizedBox(height: 24),
-
-            // 充值金额区域
-            Text(
-              l10n.walletRechargeAmount,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // 预设金额网格
-            _buildPresetAmounts(theme),
-            const SizedBox(height: 16),
-
-            // 自定义金额输入
-            _buildCustomAmountInput(theme, l10n),
-            const SizedBox(height: 8),
-
-            // 兑换说明
-            Text(
-              l10n.walletExchangeRate,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // 充值按钮
-            _buildRechargeButton(theme, l10n),
-            const SizedBox(height: 16),
-
-            // 充值说明
-            _buildRechargeNotes(theme, l10n),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBalanceCard(ThemeData theme, L10n l10n) {
+  Widget _buildBalanceCard(L10n l10n) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: _lightGreen,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 顶部行：当前余额 + 实时更新
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: _primaryGreen,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.walletBalance,
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  // TODO: 实时更新余额
+                },
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.refresh,
+                      size: 14,
+                      color: _primaryGreen,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      l10n.walletRefresh,
+                      style: const TextStyle(
+                        color: _primaryGreen,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 余额数字
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                _balanceCredits.toString().replaceAllMapped(
+                      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                      (Match m) => '${m[1]},',
+                    ),
+                style: const TextStyle(
+                  fontSize: 42,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                l10n.walletCreditsUnit,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // 人民币换算
+          Text(
+            '${l10n.walletEquivalent} ¥${(_balanceCredits / 100).toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 提示信息
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: Colors.grey[600],
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  l10n.walletExchangeRate,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRechargeCard(L10n l10n) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 标题行
           Row(
             children: [
-              Icon(
-                Icons.account_balance_wallet,
-                color: theme.colorScheme.onPrimary.withOpacity(0.8),
-                size: 20,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _lightGreen,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.bolt,
+                      size: 16,
+                      color: _primaryGreen,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      l10n.walletCustomRecharge,
+                      style: const TextStyle(
+                        color: _primaryGreen,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                l10n.walletBalance,
-                style: TextStyle(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.8),
-                  fontSize: 14,
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.walletFlexibleRecharge,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[500],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 快捷金额标签
+          Text(
+            l10n.walletQuickAmount,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // 快捷金额按钮
+          Row(
+            children: List.generate(_presetAmounts.length, (index) {
+              final amount = _presetAmounts[index];
+              final isSelected = _selectedPresetIndex == index;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _onPresetTap(index),
+                  child: Container(
+                    margin: EdgeInsets.only(
+                      right: index < _presetAmounts.length - 1 ? 8 : 0,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? _primaryGreen : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? _primaryGreen : Colors.grey[300]!,
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '¥$amount',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+
+          // 自定义金额标签
+          Text(
+            l10n.walletCustomAmount,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // 自定义金额输入（带 +/- 按钮）
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                // 减少按钮
+                _buildAmountButton(
+                  icon: Icons.remove,
+                  onTap: _onAmountDecrease,
+                  enabled: _customAmount > 10,
+                ),
+                // 金额显示
+                Expanded(
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '¥',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _customAmount.toString(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // 增加按钮
+                _buildAmountButton(
+                  icon: Icons.add,
+                  onTap: _onAmountIncrease,
+                  enabled: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // 将获得积分提示
+          Center(
+            child: Text(
+              '${l10n.walletWillGet} $_customAmount${l10n.walletCreditsUnit}',
+              style: TextStyle(
+                fontSize: 13,
+                color: _primaryGreen,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 充值按钮
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _onRecharge,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                '${l10n.walletRechargeNow} ¥$_customAmount',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 支付方式提示
+          Center(
+            child: Text(
+              l10n.walletSupportedPayments,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[500],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool enabled,
+  }) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: enabled ? Colors.grey[700] : Colors.grey[400],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWhyChooseUs(L10n l10n) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.walletWhyChooseUs,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFeatureCard(
+                  icon: Icons.auto_awesome,
+                  title: l10n.walletFeature1Title,
+                  subtitle: l10n.walletFeature1Desc,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildFeatureCard(
+                  icon: Icons.flash_on,
+                  title: l10n.walletFeature2Title,
+                  subtitle: l10n.walletFeature2Desc,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                _balance.toStringAsFixed(2),
-                style: TextStyle(
-                  color: theme.colorScheme.onPrimary,
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: _buildFeatureCard(
+                  icon: Icons.security,
+                  title: l10n.walletFeature3Title,
+                  subtitle: l10n.walletFeature3Desc,
                 ),
               ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  'Credits',
-                  style: TextStyle(
-                    color: theme.colorScheme.onPrimary.withOpacity(0.8),
-                    fontSize: 16,
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildFeatureCard(
+                  icon: Icons.receipt_long,
+                  title: l10n.walletFeature4Title,
+                  subtitle: l10n.walletFeature4Desc,
                 ),
               ),
             ],
@@ -202,160 +562,98 @@ class _WalletPageState extends State<WalletPage> {
     );
   }
 
-  Widget _buildPresetAmounts(ThemeData theme) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: List.generate(_presetAmounts.length, (index) {
-        final amount = _presetAmounts[index];
-        final isSelected = _selectedPresetIndex == index;
-
-        return GestureDetector(
-          onTap: () => _onPresetTap(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant,
-                width: 1.5,
-              ),
-            ),
-            child: Text(
-              '¥$amount',
-              style: TextStyle(
-                color: isSelected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildCustomAmountInput(ThemeData theme, L10n l10n) {
-    return TextField(
-      controller: _amountController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-      ],
-      onChanged: _onAmountChanged,
-      decoration: InputDecoration(
-        hintText: l10n.walletCustomAmount,
-        prefixText: '¥ ',
-        prefixStyle: TextStyle(
-          color: theme.colorScheme.onSurface,
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
-        ),
-        filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: theme.colorScheme.primary,
-            width: 2,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-      ),
-    );
-  }
-
-  Widget _buildRechargeButton(ThemeData theme, L10n l10n) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: _onRecharge,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          l10n.walletRechargeNow,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRechargeNotes(ThemeData theme, L10n l10n) {
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                l10n.walletRechargeNotes,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _lightGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: _primaryGreen,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            l10n.walletNote1,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.5,
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            l10n.walletNote2,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.5,
+            subtitle,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[500],
+              height: 1.3,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromotion(L10n l10n) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFFE082),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.card_giftcard,
+            size: 20,
+            color: Color(0xFFFFA000),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.walletPromotion,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFF57C00),
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.walletNote3,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.5,
-            ),
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: Colors.grey[400],
           ),
         ],
       ),
