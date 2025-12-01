@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "67.0.0"
+  aliyun_push:
+    dependency: "direct main"
+    description:
+      name: aliyun_push
+      sha256: "7c063ff0be073f0833bf052997ceca43c0d559d3c62851527774061068a91cd2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.3"
   analyzer:
     dependency: transitive
     description:
@@ -2042,7 +2050,7 @@ packages:
     source: hosted
     version: "3.1.4"
   uuid:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: uuid
       sha256: a5be9ef6618a7ac1e964353ef476418026db906c4facdedaa299b7a2e71690ff

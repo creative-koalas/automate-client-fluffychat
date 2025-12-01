@@ -125,7 +125,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   bool _hasTriedAuth = false;
 
   // Aliyun SDK secret key
-  static const _secretKey = 'Fc9xB89wBqq7tuq8i0iMIvo5BHWoUj5M775f+2dvooScxIqhsragIsckpislAhTLHUcyfi7dLcTA7EQ6yqMtadLpXLWPQelBPeW6f2iHpz06CCuG832/fQonJj9A3+/Urw05pmL15jgwN7T2blb7KzX4nmOJaSsuuE29kt13KegyS83IoiqFNI+MTzWdig45BMkzEic8yFjynMpgFew77/T4s91GT/WrAf56x+ofUn4uOmRrvBeIUF9zWHhVz8jTyarWHsC+i79/l89zVrupL3LNJJfkreYdkI7b3RBqYhN1WYf0+7YzOPWPTNj7OxeM';
+  static const _secretKey = 'H/J4L0niqVQcJMUqSz9pfSQDRJpEixg5v87sI5wNjjPquoKUpZyxIzmkXdvO5ewbqUFZ6ZmKXU1l234ClDqE0T3S23Brlc4BDFokQVCD90i13Y4ELKLhieDMakXulv5Zyf0lWSQtM5s3+Rt7fI6nf0yRnV+aITvnrFnmGLUMz/n8g24/3ChiMCSHyqjq0uS6gmXOKenk1nqDWdguLeZA8EYh7g/RWanjQ78WEHvQMtopZAtLCSQUmzwjIpAZFJtGti614VdF7qwlYbpCAOiXzOfwxLt2BMX0ulWvMiEBjSR+hcxgSH5PEbsXBp6LlGy6';
 
   @override
   void initState() {

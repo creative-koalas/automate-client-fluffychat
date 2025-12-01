@@ -29,6 +29,7 @@ import 'package:automate/widgets/future_loading_dialog.dart';
 import '../config/setting_keys.dart';
 import '../pages/key_verification/key_verification_dialog.dart';
 import '../utils/account_bundles.dart';
+import '../utils/aliyun_push_service.dart';
 import '../utils/background_push.dart';
 import 'local_notifications_extension.dart';
 
@@ -268,6 +269,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         ClientManager.removeClientNameFromStore(c.clientName, store);
         InitWithRestoreExtension.deleteSessionBackup(name);
       }
+      // 用户登录成功后，注册阿里云推送
+      if (state == LoginState.loggedIn && PlatformInfos.isMobile) {
+        _registerAliyunPushAfterLogin(c);
+      }
       if (loggedInWithMultipleClients && state != LoginState.loggedIn) {
         ScaffoldMessenger.of(
           AutomateApp.router.routerDelegate.navigatorKey.currentContext ??
@@ -318,30 +323,35 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     }
 
     if (PlatformInfos.isMobile) {
-      backgroundPush = BackgroundPush(
-        this,
-        onFcmError: (errorMsg, {Uri? link}) async {
-          final result = await showOkCancelAlertDialog(
-            context: AutomateApp
-                    .router.routerDelegate.navigatorKey.currentContext ??
-                context,
-            title: L10n.of(context).pushNotificationsNotAvailable,
-            message: errorMsg,
-            okLabel:
-                link == null ? L10n.of(context).ok : L10n.of(context).learnMore,
-            cancelLabel: L10n.of(context).doNotShowAgain,
-          );
-          if (result == OkCancelResult.ok && link != null) {
-            launchUrlString(
-              link.toString(),
-              mode: LaunchMode.externalApplication,
-            );
-          }
-          if (result == OkCancelResult.cancel) {
-            await AppSettings.showNoGoogle.setItem(true);
-          }
-        },
-      );
+      // 注意：我们使用阿里云推送，禁用 FluffyChat 原有的 BackgroundPush（Firebase/UnifiedPush）
+      // 避免两套推送系统同时注册 pusher 到 Synapse 导致重复推送
+      // backgroundPush = BackgroundPush(
+      //   this,
+      //   onFcmError: (errorMsg, {Uri? link}) async {
+      //     final result = await showOkCancelAlertDialog(
+      //       context: AutomateApp
+      //               .router.routerDelegate.navigatorKey.currentContext ??
+      //           context,
+      //       title: L10n.of(context).pushNotificationsNotAvailable,
+      //       message: errorMsg,
+      //       okLabel:
+      //           link == null ? L10n.of(context).ok : L10n.of(context).learnMore,
+      //       cancelLabel: L10n.of(context).doNotShowAgain,
+      //     );
+      //     if (result == OkCancelResult.ok && link != null) {
+      //       launchUrlString(
+      //         link.toString(),
+      //         mode: LaunchMode.externalApplication,
+      //       );
+      //     }
+      //     if (result == OkCancelResult.cancel) {
+      //       await AppSettings.showNoGoogle.setItem(true);
+      //     }
+      //   },
+      // );
+
+      // 初始化阿里云推送（唯一的推送渠道）
+      _initAliyunPush();
     }
 
     createVoipPlugin();
@@ -353,6 +363,75 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       return;
     }
     voipPlugin = VoipPlugin(this);
+  }
+
+  /// 初始化阿里云推送
+  Future<void> _initAliyunPush() async {
+    try {
+      final success = await AliyunPushService.instance.initialize();
+      if (success) {
+        Logs().i('[Matrix] Aliyun Push initialized successfully');
+
+        // 如果用户已登录
+        if (client.isLogged() && client.userID != null) {
+          // 绑定账号用于精准推送
+          await AliyunPushService.instance.bindAccount(client.userID!);
+
+          // 注册推送到后端和 Synapse
+          final pushRegistered = await AliyunPushService.instance.registerPush(client);
+          if (pushRegistered) {
+            Logs().i('[Matrix] Push registration completed');
+          } else {
+            Logs().w('[Matrix] Push registration failed');
+          }
+        }
+      } else {
+        Logs().w('[Matrix] Aliyun Push initialization failed');
+      }
+    } catch (e, s) {
+      Logs().e('[Matrix] Aliyun Push init error', e, s);
+    }
+  }
+
+  /// 登录成功后注册阿里云推送
+  Future<void> _registerAliyunPushAfterLogin(Client c) async {
+    try {
+      Logs().i('[Matrix] Registering Aliyun Push after login for ${c.userID}');
+
+      // 确保 SDK 已初始化
+      if (!AliyunPushService.instance.isInitialized) {
+        final initSuccess = await AliyunPushService.instance.initialize();
+        if (!initSuccess) {
+          Logs().w('[Matrix] Aliyun Push SDK initialization failed');
+          return;
+        }
+      }
+
+      // 检查是否有 deviceId
+      if (AliyunPushService.instance.deviceId == null) {
+        Logs().w('[Matrix] Aliyun Push deviceId is null, cannot register');
+        return;
+      }
+
+      final userID = c.userID;
+      if (userID == null) {
+        Logs().w('[Matrix] User ID is null, cannot register push');
+        return;
+      }
+
+      // 绑定账号用于精准推送
+      await AliyunPushService.instance.bindAccount(userID);
+
+      // 注册推送到后端和 Synapse
+      final pushRegistered = await AliyunPushService.instance.registerPush(c);
+      if (pushRegistered) {
+        Logs().i('[Matrix] Push registration completed for $userID');
+      } else {
+        Logs().w('[Matrix] Push registration failed for $userID');
+      }
+    } catch (e, s) {
+      Logs().e('[Matrix] Register Aliyun Push after login error', e, s);
+    }
   }
 
   @override

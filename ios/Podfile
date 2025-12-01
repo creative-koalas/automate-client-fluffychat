@@ -1,3 +1,7 @@
+# 阿里云推送 SDK 源
+source 'https://github.com/aliyun/aliyun-specs.git'
+source 'https://github.com/CocoaPods/Specs.git'
+
 # Uncomment this line to define a global platform for your project
 platform :ios, '13.0'
 
@@ -60,6 +64,12 @@ post_install do |installer|
         # dart: PermissionGroup.microphone
         'PERMISSION_MICROPHONE=1',
       ]
+
+      # 阿里云推送 SDK 需要 -ObjC linker flag
+      config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+      unless config.build_settings['OTHER_LDFLAGS'].include?('-ObjC')
+        config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+      end
     end
   end
   flutter_post_install(installer) if defined?(flutter_post_install)

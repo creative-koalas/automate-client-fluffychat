@@ -56,7 +56,8 @@ void main() async {
 
     // In the background fetch mode we do not want to waste ressources with
     // starting the Flutter engine but process incoming push notifications.
-    BackgroundPush.clientOnly(clients.first);
+    // 注意：我们使用阿里云推送，禁用 FluffyChat 原有的 BackgroundPush
+    // BackgroundPush.clientOnly(clients.first);
     // To start the flutter engine afterwards we add an custom observer.
     WidgetsBinding.instance.addObserver(AppStarter(clients, store));
     Logs().i(

@@ -8,7 +8,12 @@ class AutomateConfig {
   static const String k8sNodeIp = '192.168.1.7';
 
   /// Automate Assistant 后端 URL（NodePort: 32469）
+  /// 客户端直接访问用这个
   static const String baseUrl = 'http://$k8sNodeIp:32469';
+
+  /// Automate Assistant 集群内部 URL
+  /// Synapse 调用 Push Gateway 用这个（K8s FQDN，Twisted 解析不了短名）
+  static const String internalBaseUrl = 'http://automate-assistant.default.svc.cluster.local:8080';
 
   /// Matrix Synapse Homeserver URL（NodePort: 30008）
   static const String matrixHomeserver = 'http://$k8sNodeIp:30008';

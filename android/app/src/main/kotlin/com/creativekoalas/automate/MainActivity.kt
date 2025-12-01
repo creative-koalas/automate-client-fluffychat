@@ -4,7 +4,11 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.graphics.Color
+import android.os.Build
 
 class MainActivity : FlutterActivity() {
 
@@ -21,6 +25,10 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // 创建阿里云推送通知渠道（Android 8.0+）
+        createNotificationChannel()
+
         // 注册一键登录插件
         flutterEngine.plugins.add(OneClickLoginPlugin())
 
@@ -33,6 +41,33 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    /**
+     * 创建阿里云推送通知渠道
+     * Android 8.0+ 必须创建 NotificationChannel 才能显示通知
+     */
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // 创建高优先级通知渠道
+            val channelId = "automate_push_channel"
+            val channelName = "消息通知"
+            val channelDescription = "接收 Automate 的消息推送通知"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = channelDescription
+                enableLights(true)
+                lightColor = Color.BLUE
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 250, 250)
+                setShowBadge(true)
+            }
+
+            notificationManager.createNotificationChannel(channel)
         }
     }
 

@@ -32,3 +32,43 @@
 -dontwarn com.cmic.**
 -dontwarn cn.com.chinatelecom.**
 -dontwarn com.unicom.**
+
+# ==========================================
+# 阿里云移动推送 SDK ProGuard 配置
+# ==========================================
+-keepclasseswithmembernames class ** {
+    native <methods>;
+}
+-keep class com.taobao.** {*;}
+-keep class com.alibaba.** {*;}
+-keep class com.alipay.** {*;}
+-keep class com.ut.** {*;}
+-keep class com.ta.** {*;}
+-keep class anet.** {*;}
+-keep class anetwork.** {*;}
+-keep class org.android.agoo.** {*;}
+-keep class org.android.spdy.** {*;}
+
+-keep public class **.R$* {
+    public static final int *;
+}
+
+-keepattributes Signature
+-keep class sun.misc.Unsafe { *; }
+
+-dontwarn com.taobao.**
+-dontwarn com.alibaba.**
+-dontwarn com.alipay.**
+-dontwarn anet.**
+-dontwarn org.android.agoo.**
+-dontwarn org.android.spdy.**
+
+# 华为 HMS 厂商通道（暂未接入，忽略缺失类）
+-dontwarn com.huawei.**
+-dontwarn org.bouncycastle.**
+
+# 小米/OPPO/vivo 厂商通道（暂未接入）
+-dontwarn com.xiaomi.**
+-dontwarn com.coloros.**
+-dontwarn com.vivo.**
+-dontwarn com.meizu.**
