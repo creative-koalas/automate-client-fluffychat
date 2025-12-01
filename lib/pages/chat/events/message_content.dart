@@ -10,6 +10,7 @@ import 'package:automate/pages/chat/events/poll.dart';
 import 'package:automate/pages/chat/events/video_player.dart';
 import 'package:automate/utils/adaptive_bottom_sheet.dart';
 import 'package:automate/utils/date_time_extension.dart';
+import 'package:automate/utils/markdown_helper.dart';
 import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:automate/widgets/avatar.dart';
 import 'package:automate/widgets/matrix.dart';
@@ -244,7 +245,7 @@ class MessageContent extends StatelessWidget {
             }
             var html = AppSettings.renderHtml.value && event.isRichMessage
                 ? event.formattedText
-                : event.body;
+                : MarkdownHelper.toHtmlIfNeeded(event.body);
             if (event.messageType == MessageTypes.Emote) {
               html = '* $html';
             }
