@@ -743,7 +743,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -890,7 +890,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} zaprosił/-a Cię do Automate.\n1. Odwiedź automate.app i zainstaluj aplikację\n2. Zarejestuj się lub zaloguj\n3. Otwórz link zaproszenia:\n{link}",
+    "inviteText": "{username} zaprosił/-a Cię do AutoMate.\n1. Odwiedź automate.app i zainstaluj aplikację\n2. Zarejestuj się lub zaloguj\n3. Otwórz link zaproszenia:\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1386,7 +1386,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2268,7 +2268,7 @@
     "@deviceKeys": {},
     "emailOrUsername": "Adres e-mail lub nazwa użytkownika",
     "@emailOrUsername": {},
-    "indexedDbErrorLong": "Przechowywanie wiadomości niestety nie jest domyślnie włączone w trybie prywatnym.\nOdwiedź\n - about:config\n - ustaw dom.indexedDB.privateBrowsing.enabled na true\nW przeciwnym razie nie jest możliwe uruchomienie Automate.",
+    "indexedDbErrorLong": "Przechowywanie wiadomości niestety nie jest domyślnie włączone w trybie prywatnym.\nOdwiedź\n - about:config\n - ustaw dom.indexedDB.privateBrowsing.enabled na true\nW przeciwnym razie nie jest możliwe uruchomienie AutoMate.",
     "@indexedDbErrorLong": {},
     "saveKeyManuallyDescription": "Zapisz ten klucz ręcznie, uruchamiając systemowe okno dialogowe udostępniania lub schowek.",
     "@saveKeyManuallyDescription": {},
@@ -2432,11 +2432,11 @@
     "@screenSharingDetail": {},
     "callingAccount": "Konto połączeń",
     "@callingAccount": {},
-    "callingAccountDetails": "Pozwala Automate używać natywnej aplikacji do wykonywania połączeń w Androidzie.",
+    "callingAccountDetails": "Pozwala AutoMate używać natywnej aplikacji do wykonywania połączeń w Androidzie.",
     "@callingAccountDetails": {},
     "appearOnTop": "Wyświetlaj nad innymi",
     "@appearOnTop": {},
-    "otherCallingPermissions": "Mikrofon, kamera i inne uprawnienia Automate",
+    "otherCallingPermissions": "Mikrofon, kamera i inne uprawnienia AutoMate",
     "@otherCallingPermissions": {},
     "whyIsThisMessageEncrypted": "Dlaczego nie można odczytać tej wiadomości?",
     "@whyIsThisMessageEncrypted": {},
@@ -2867,7 +2867,7 @@
             }
         }
     },
-    "welcomeText": "No cześć! 👋 Tutaj Automate. Możesz zapisać się do dowolnego serwera domowego, kompatybilnego z https://matrix.org i rozmawiać ze wszystkimi. To duża zdecentralizowana sieć czatów!",
+    "welcomeText": "No cześć! 👋 Tutaj AutoMate. Możesz zapisać się do dowolnego serwera domowego, kompatybilnego z https://matrix.org i rozmawiać ze wszystkimi. To duża zdecentralizowana sieć czatów!",
     "@welcomeText": {},
     "blur": "Rozmazanie:",
     "@blur": {},

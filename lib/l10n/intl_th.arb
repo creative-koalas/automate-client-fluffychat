@@ -158,7 +158,7 @@
       }
     }
   },
-  "automate": "Automate",
+  "automate": "AutoMate",
   "@automate": {
     "type": "String",
     "placeholders": {}

@@ -1,7 +1,7 @@
 {
     "repeatPassword": "Salasana uudelleen",
     "@repeatPassword": {},
-    "about": "Tietoa Automateista",
+    "about": "Tietoa AutoMateista",
     "@about": {
         "type": "String",
         "placeholders": {}
@@ -1239,7 +1239,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1645,7 +1645,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2332,7 +2332,7 @@
     "@pleaseEnterRecoveryKeyDescription": {},
     "unlockOldMessages": "Pura vanhojen viestien salaus",
     "@unlockOldMessages": {},
-    "indexedDbErrorLong": "Viestivarasto ei ole käytössä yksityisselauksessa oletuksena.\nKäythän osoitteessa\n - about:config\n - Aseta dom.indexedDB.privateBrowsing.enabled arvoon true\nMuuten Automatein käyttäminen ei ole mahdollista.",
+    "indexedDbErrorLong": "Viestivarasto ei ole käytössä yksityisselauksessa oletuksena.\nKäythän osoitteessa\n - about:config\n - Aseta dom.indexedDB.privateBrowsing.enabled arvoon true\nMuuten AutoMatein käyttäminen ei ole mahdollista.",
     "@indexedDbErrorLong": {},
     "saveKeyManuallyDescription": "Tallenna tämä avain manuaalisesti käyttäen järjestelmän jakodialogia tai leikepöytää.",
     "@saveKeyManuallyDescription": {},
@@ -2660,7 +2660,7 @@
     "@changelog": {},
     "continueText": "Jatka",
     "@continueText": {},
-    "welcomeText": "Hei 👋, Tämä on Automate. Voit kirjautua sisään mihin tahansa kotipalvelimeen, joka on yhteensopiva https:/matrix.org:in kanssa. Sitten jutellaan kenen kanssa tahansa. Se on hajautettu viestiverkosto!",
+    "welcomeText": "Hei 👋, Tämä on AutoMate. Voit kirjautua sisään mihin tahansa kotipalvelimeen, joka on yhteensopiva https:/matrix.org:in kanssa. Sitten jutellaan kenen kanssa tahansa. Se on hajautettu viestiverkosto!",
     "@welcomeText": {},
     "serverInformation": "Palvelimen tiedot:",
     "@serverInformation": {},

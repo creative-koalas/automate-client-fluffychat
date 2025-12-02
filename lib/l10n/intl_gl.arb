@@ -826,7 +826,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -998,7 +998,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} convidoute a Automate.\n1. Visita automate.app e instala a app\n2. Crea unha conta ou Accede\n3. Abre a ligazón do convite: \n {link}",
+    "inviteText": "{username} convidoute a AutoMate.\n1. Visita automate.app e instala a app\n2. Crea unha conta ou Accede\n3. Abre a ligazón do convite: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1170,7 +1170,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "💬 Nova mensaxe en Automate",
+    "newMessageInAutomate": "💬 Nova mensaxe en AutoMate",
     "@newMessageInAutomate": {
         "type": "String",
         "placeholders": {}
@@ -1792,7 +1792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2352,7 +2352,7 @@
     "@dehydrateTor": {},
     "indexedDbErrorTitle": "Problemas no modo privado",
     "@indexedDbErrorTitle": {},
-    "indexedDbErrorLong": "A almacenaxe de mensaxes non está activada por defecto no modo privado.\nMira en\n- about:config\n- establece dom.indexedDB.privateBrowsing.enabled como true\nSe non, non é posible executar Automate.",
+    "indexedDbErrorLong": "A almacenaxe de mensaxes non está activada por defecto no modo privado.\nMira en\n- about:config\n- establece dom.indexedDB.privateBrowsing.enabled como true\nSe non, non é posible executar AutoMate.",
     "@indexedDbErrorLong": {},
     "user": "Usuaria",
     "@user": {},
@@ -2379,7 +2379,7 @@
     "@noKeyForThisMessage": {},
     "appearOnTop": "Aparecer arriba",
     "@appearOnTop": {},
-    "otherCallingPermissions": "Micrófono, cámara e outros permisos para Automate",
+    "otherCallingPermissions": "Micrófono, cámara e outros permisos para AutoMate",
     "@otherCallingPermissions": {},
     "newGroup": "Novo grupo",
     "@newGroup": {},
@@ -2393,7 +2393,7 @@
     "@callingPermissions": {},
     "callingAccount": "Conta que chama",
     "@callingAccount": {},
-    "callingAccountDetails": "Permítelle a Automate usar a app de telefonía nativa de android.",
+    "callingAccountDetails": "Permítelle a AutoMate usar a app de telefonía nativa de android.",
     "@callingAccountDetails": {},
     "appearOnTopDetails": "Permítelle á app aparecer por enriba (non é preciso se xa configuraches Automate como unha conta para chamadas)",
     "@appearOnTopDetails": {},
@@ -2403,7 +2403,7 @@
     "@enterRoom": {},
     "allSpaces": "Todos os espazos",
     "@allSpaces": {},
-    "screenSharingDetail": "Estás a compartir a túa pantalla en Automate",
+    "screenSharingDetail": "Estás a compartir a túa pantalla en AutoMate",
     "@screenSharingDetail": {},
     "numChats": "{number} conversas",
     "@numChats": {
@@ -3131,7 +3131,7 @@
             }
         }
     },
-    "welcomeText": "Ola! 👋 Isto é Automate. Podes iniciar sesión en calquera servidor compatible con https://matrix.org. Poderás conversar con calquera. Unha enorme rede de mensaxería descentralizada!",
+    "welcomeText": "Ola! 👋 Isto é AutoMate. Podes iniciar sesión en calquera servidor compatible con https://matrix.org. Poderás conversar con calquera. Unha enorme rede de mensaxería descentralizada!",
     "@welcomeText": {},
     "setWallpaper": "Establecer fondo",
     "@setWallpaper": {},

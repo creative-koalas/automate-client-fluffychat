@@ -624,7 +624,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "Automate",
+  "automate": "AutoMate",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -766,7 +766,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} t'ha convidat a Automate.\n1. Visita automate.app i instaŀla l'app\n2. Registra't o inicia sessió\n3. Obre l'enllaç d'invitació:\n{link}",
+  "inviteText": "{username} t'ha convidat a AutoMate.\n1. Visita automate.app i instaŀla l'app\n2. Registra't o inicia sessió\n3. Obre l'enllaç d'invitació:\n{link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -1393,7 +1393,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "Automate",
+  "title": "AutoMate",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2635,7 +2635,7 @@
   "@unsupportedAndroidVersionLong": {},
   "storeSecurlyOnThisDevice": "Desa de forma segura en aquest dispositiu",
   "@storeSecurlyOnThisDevice": {},
-  "screenSharingDetail": "Estàs compartint la teva pantalla a Automate",
+  "screenSharingDetail": "Estàs compartint la teva pantalla a AutoMate",
   "@screenSharingDetail": {},
   "placeCall": "Truca",
   "@placeCall": {},
@@ -3134,7 +3134,7 @@
   },
   "oneOfYourDevicesIsNotVerified": "Un dels teus dispositius no està verificat",
   "@oneOfYourDevicesIsNotVerified": {},
-  "welcomeText": "Hola hola! 👋 Això és Automate. Pots iniciar sessió en qualsevol servidor compatible amb https://matrix.org. I llavors xatejar amb qualsevol. És una xarxa enorme de missatgeria descentralitzada !",
+  "welcomeText": "Hola hola! 👋 Això és AutoMate. Pots iniciar sessió en qualsevol servidor compatible amb https://matrix.org. I llavors xatejar amb qualsevol. És una xarxa enorme de missatgeria descentralitzada !",
   "@welcomeText": {},
   "blur": "Difumina:",
   "@blur": {},

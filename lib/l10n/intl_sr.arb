@@ -773,7 +773,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -945,7 +945,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} вас позива у Automate. \n1. Инсталирајте Automate: https://automate.app \n2. Региструјте се или пријавите \n3. Отворите везу позивнице: {link}",
+    "inviteText": "{username} вас позива у AutoMate. \n1. Инсталирајте Automate: https://automate.app \n2. Региструјте се или пријавите \n3. Отворите везу позивнице: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1673,7 +1673,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",

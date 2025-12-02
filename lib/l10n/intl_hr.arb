@@ -807,7 +807,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -979,7 +979,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} te je pozvao/la u Automate. \n1. Posjeti strnicu automate.app i instaliraj aplikaciju \n2. Registriraj ili prijavi se \n3. Otvori poveznicu poziva: \n {link}",
+    "inviteText": "{username} te je pozvao/la u AutoMate. \n1. Posjeti strnicu automate.app i instaliraj aplikaciju \n2. Registriraj ili prijavi se \n3. Otvori poveznicu poziva: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1731,7 +1731,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2220,7 +2220,7 @@
     "@dehydrateTor": {},
     "emojis": "Emojiji",
     "@emojis": {},
-    "indexedDbErrorLong": "Spremište poruka nažalost nije standarno uključena u privatnom modusu.\nOtvori stranicu\n - about:config\n - postavi dom.indexedDB.privateBrowsing.enabled na true\nAutomate se inače neće moći pokrenuti.",
+    "indexedDbErrorLong": "Spremište poruka nažalost nije standarno uključena u privatnom modusu.\nOtvori stranicu\n - about:config\n - postavi dom.indexedDB.privateBrowsing.enabled na true\nAutoMate se inače neće moći pokrenuti.",
     "@indexedDbErrorLong": {},
     "storeSecurlyOnThisDevice": "Spremi sigurno na ovom uređaju",
     "@storeSecurlyOnThisDevice": {},

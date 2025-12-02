@@ -629,7 +629,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -735,7 +735,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} הזמין אותך ל-Automate.\n1. התקן את Automate: https://automate.app\n2. הירשם או היכנס\n3. פתח את קישור ההזמנה: {link}",
+    "inviteText": "{username} הזמין אותך ל-AutoMate.\n1. התקן את Automate: https://automate.app\n2. הירשם או היכנס\n3. פתח את קישור ההזמנה: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

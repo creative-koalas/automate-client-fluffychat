@@ -830,7 +830,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1796,7 +1796,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -3176,7 +3176,7 @@
             }
         }
     },
-    "welcomeText": "Hey Hey 👋 Karşınızda Automate. https://matrix.org ile uyumlu herhangi bir homeserver'a giriş yapabilirsiniz. Ve herkesle konuşabilirsiniz. Bu koca bir merkeziyetsiz mesajlaşma ağı!",
+    "welcomeText": "Hey Hey 👋 Karşınızda AutoMate. https://matrix.org ile uyumlu herhangi bir homeserver'a giriş yapabilirsiniz. Ve herkesle konuşabilirsiniz. Bu koca bir merkeziyetsiz mesajlaşma ağı!",
     "@welcomeText": {},
     "setCustomPermissionLevel": "Özel izin düzeyi ayarla",
     "@setCustomPermissionLevel": {},

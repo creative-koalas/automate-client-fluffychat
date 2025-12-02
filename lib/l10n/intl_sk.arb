@@ -500,7 +500,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -617,7 +617,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vás pozval na Automate.\n1. Nainštalujte si Automate: https://automate.app\n2. Zaregistrujte sa alebo sa prihláste\n3. Otvorte odkaz na pozvánku: {link}",
+    "inviteText": "{username} vás pozval na AutoMate.\n1. Nainštalujte si Automate: https://automate.app\n2. Zaregistrujte sa alebo sa prihláste\n3. Otvorte odkaz na pozvánku: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1068,7 +1068,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",

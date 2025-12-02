@@ -34,7 +34,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1275,7 +1275,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -1837,7 +1837,7 @@
             }
         }
     },
-    "inviteText": "{username} pakvietė jus prisijungti prie Automate. \n1. Įdiekite Automate: https://automate.app \n2. Prisiregistruokite arba prisijunkite \n3. Atidarykite pakvietimo nuorodą: {link}",
+    "inviteText": "{username} pakvietė jus prisijungti prie AutoMate. \n1. Įdiekite Automate: https://automate.app \n2. Prisiregistruokite arba prisijunkite \n3. Atidarykite pakvietimo nuorodą: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -2324,7 +2324,7 @@
     "@callingAccount": {},
     "newSpace": "Nauja erdvė",
     "@newSpace": {},
-    "callingAccountDetails": "Leidžia Automate naudoti vietinę Android rinkiklio programą.",
+    "callingAccountDetails": "Leidžia AutoMate naudoti vietinę Android rinkiklio programą.",
     "@callingAccountDetails": {},
     "appearOnTop": "Rodyti viršuje",
     "@appearOnTop": {},

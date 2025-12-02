@@ -1098,7 +1098,7 @@
   },
   "homeserver": "Hem-servitor",
   "@homeserver": {},
-  "automate": "Automate",
+  "automate": "AutoMate",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -1142,7 +1142,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "Automate",
+  "title": "AutoMate",
   "@title": {
     "description": "Title for the application",
     "type": "String",

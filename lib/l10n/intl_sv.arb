@@ -649,7 +649,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "Automate",
+  "automate": "AutoMate",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -811,7 +811,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} bjöd in dig till Automate.\n1. Besök automate.app och installera appen\n2. Registrera dig eller logga in\n3. Öppna inbjudningslänk:\n {link}",
+  "inviteText": "{username} bjöd in dig till AutoMate.\n1. Besök automate.app och installera appen\n2. Registrera dig eller logga in\n3. Öppna inbjudningslänk:\n {link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -1479,7 +1479,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "Automate",
+  "title": "AutoMate",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2346,7 +2346,7 @@
   "@commandHint_markasdm": {},
   "user": "Användare",
   "@user": {},
-  "indexedDbErrorLong": "Meddelandelagring är tyvärr inte aktiverat i privat läge som standard.\nGå till\n - about:config\n - sätt dom.indexedDB.privateBrowsing.enabled till true\nAnnars går det inte att använda Automate.",
+  "indexedDbErrorLong": "Meddelandelagring är tyvärr inte aktiverat i privat läge som standard.\nGå till\n - about:config\n - sätt dom.indexedDB.privateBrowsing.enabled till true\nAnnars går det inte att använda AutoMate.",
   "@indexedDbErrorLong": {},
   "storeInSecureStorageDescription": "Lagra återställningsnyckeln på säker plats på denna enhet.",
   "@storeInSecureStorageDescription": {},
@@ -2437,7 +2437,7 @@
   "@callingPermissions": {},
   "callingAccount": "Samtalskonto",
   "@callingAccount": {},
-  "callingAccountDetails": "Tillåt Automate att använda Androids ring-app.",
+  "callingAccountDetails": "Tillåt AutoMate att använda Androids ring-app.",
   "@callingAccountDetails": {},
   "appearOnTop": "Visa ovanpå",
   "@appearOnTop": {},

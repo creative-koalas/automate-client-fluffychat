@@ -815,7 +815,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -987,7 +987,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} invitis vin al Automate. \n1. Instalu la aplikaĵon Automate: https://automate.app \n2. Registriĝu aŭ salutu \n3. Malfermu la invitan ligilon: {link}",
+    "inviteText": "{username} invitis vin al AutoMate. \n1. Instalu la aplikaĵon Automate: https://automate.app \n2. Registriĝu aŭ salutu \n3. Malfermu la invitan ligilon: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1149,7 +1149,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "Nova mesaĝo en Automate",
+    "newMessageInAutomate": "Nova mesaĝo en AutoMate",
     "@newMessageInAutomate": {
         "type": "String",
         "placeholders": {}
@@ -1184,7 +1184,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Ŝajnas, ke via telefono ne havas servojn de Google. Tio estas bona decido por via privateco! Por ricevadi pasivajn sciigojn en Automate, ni rekomendas, ke vi uzu la https://microg.org/ aŭ https://unifiedpush.org/.",
+    "noGoogleServicesWarning": "Ŝajnas, ke via telefono ne havas servojn de Google. Tio estas bona decido por via privateco! Por ricevadi pasivajn sciigojn en AutoMate, ni rekomendas, ke vi uzu la https://microg.org/ aŭ https://unifiedpush.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1750,7 +1750,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",

@@ -826,7 +826,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -998,7 +998,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vás pozvali na Automate.\n1. Navštivte automate.app a nainstalujte si aplikaci.\n2. Zaregistrujte se anebo se přihlašte.\n3. Otevřete pozvánku: \n {link}",
+    "inviteText": "{username} vás pozvali na AutoMate.\n1. Navštivte automate.app a nainstalujte si aplikaci.\n2. Zaregistrujte se anebo se přihlašte.\n3. Otevřete pozvánku: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1792,7 +1792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2626,7 +2626,7 @@
     },
     "block": "Blokovat",
     "@block": {},
-    "indexedDbErrorLong": "Ukládání zpráv bohužel není ve výchozím nastavení v soukromém režimu povoleno.\nNavštivte prosím\n - about:config\n - nastavte dom.indexedDB.privateBrowsing.enabled na true\nV opačném případě nebude možné Automate spustit.",
+    "indexedDbErrorLong": "Ukládání zpráv bohužel není ve výchozím nastavení v soukromém režimu povoleno.\nNavštivte prosím\n - about:config\n - nastavte dom.indexedDB.privateBrowsing.enabled na true\nV opačném případě nebude možné AutoMate spustit.",
     "@indexedDbErrorLong": {},
     "youInvitedToBy": "📩 Prostřednictvím odkazu jste byli pozváni na:\n{alias}",
     "@youInvitedToBy": {

@@ -829,7 +829,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1001,7 +1001,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} heeft je uitgenodigd voor Automate.\n1. Bezoek https://automate.app en installeer de app\n2. Registreer of log in\n3. Open deze uitnodigingslink:\n{link}",
+    "inviteText": "{username} heeft je uitgenodigd voor AutoMate.\n1. Bezoek https://automate.app en installeer de app\n2. Registreer of log in\n3. Open deze uitnodigingslink:\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1173,7 +1173,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "💬 Nieuw bericht in Automate",
+    "newMessageInAutomate": "💬 Nieuw bericht in AutoMate",
     "@newMessageInAutomate": {
         "type": "String",
         "placeholders": {}
@@ -1795,7 +1795,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2394,9 +2394,9 @@
     "@callingAccountDetails": {},
     "appearOnTop": "Bovenaan verschijnen",
     "@appearOnTop": {},
-    "appearOnTopDetails": "Laat de app bovenaan verschijnen (niet nodig als je Automate al hebt ingesteld als een bel-account)",
+    "appearOnTopDetails": "Laat de app bovenaan verschijnen (niet nodig als je AutoMate al hebt ingesteld als een bel-account)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Microfoon, camera en andere Automate-rechten",
+    "otherCallingPermissions": "Microfoon, camera en andere AutoMate-rechten",
     "@otherCallingPermissions": {},
     "newGroup": "Nieuwe groep",
     "@newGroup": {},
@@ -3213,7 +3213,7 @@
     },
     "continueText": "Doorgaan",
     "@continueText": {},
-    "welcomeText": "Hallo hallo 👋 Dit is Automate. Je kan inloggen op elke server die werkt met https://matrix.org. En dan chat je met iedereen. Het is een groot decentraal chat-netwerk!",
+    "welcomeText": "Hallo hallo 👋 Dit is AutoMate. Je kan inloggen op elke server die werkt met https://matrix.org. En dan chat je met iedereen. Het is een groot decentraal chat-netwerk!",
     "@welcomeText": {},
     "appWantsToUseForLogin": "Inloggen met '{server}'",
     "@appWantsToUseForLogin": {

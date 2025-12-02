@@ -908,7 +908,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -2100,7 +2100,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2466,7 +2466,7 @@
     "@appearOnTop": {},
     "appearOnTopDetails": "Ilovaning yuqori qismida koʻrinishiga ruxsat beradi (agar sizda Fluffychat qoʻngʻiroq qiluvchi hisobi sifatida oʻrnatilgan boʻlsa, kerak emas)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Mikrofon, kamera va boshqa Automate ruxsatnomalari",
+    "otherCallingPermissions": "Mikrofon, kamera va boshqa AutoMate ruxsatnomalari",
     "@otherCallingPermissions": {},
     "whyIsThisMessageEncrypted": "Nima uchun bu xabarni oʻqib boʻlmaydi?",
     "@whyIsThisMessageEncrypted": {},
@@ -2592,11 +2592,11 @@
     "@chatPermissionsDescription": {},
     "noticeChatBackupDeviceVerification": "Eslatma: Barcha qurilmalaringizni suhbat zaxira nusxasiga ulaganingizda, ular avtomatik ravishda tasdiqlanadi.",
     "@noticeChatBackupDeviceVerification": {},
-    "welcomeText": "Hey Hey 👋 Bu Automate. Siz https://matrix.org bilan mos keladigan istalgan uy serveriga kirishingiz mumkin. Va keyin istalgan kishi bilan suhbatlashishingiz mumkin. Bu ulkan markazlashtirilmagan xabar almashish tarmog'i!",
+    "welcomeText": "Hey Hey 👋 Bu AutoMate. Siz https://matrix.org bilan mos keladigan istalgan uy serveriga kirishingiz mumkin. Va keyin istalgan kishi bilan suhbatlashishingiz mumkin. Bu ulkan markazlashtirilmagan xabar almashish tarmog'i!",
     "@welcomeText": {},
     "unableToJoinChat": "Chatga qoʻshilib boʻlmadi. Ehtimol, boshqa tomon suhbatni allaqachon yopib qoʻygan.",
     "@unableToJoinChat": {},
-    "appIntroduction": "Automate sizga turli messenjerlar orqali doʻstlaringiz bilan suhbatlashish imkonini beradi. Batafsil maʼlumotni https://matrix.org saytida oling yoki shunchaki *Davom etish* tugmasini bosing.",
+    "appIntroduction": "AutoMate sizga turli messenjerlar orqali doʻstlaringiz bilan suhbatlashish imkonini beradi. Batafsil maʼlumotni https://matrix.org saytida oling yoki shunchaki *Davom etish* tugmasini bosing.",
     "@appIntroduction": {},
     "newChatRequest": "📩 Yangi suhbat uchun soʻrov",
     "@newChatRequest": {},

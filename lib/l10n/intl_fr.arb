@@ -830,7 +830,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1002,7 +1002,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vous a invité·e sur Automate.\n1. Visiter automate.app et installer l'application\n2. Inscrivez-vous ou connectez-vous\n3. Ouvrez le lien d'invitation :\n{link}",
+    "inviteText": "{username} vous a invité·e sur AutoMate.\n1. Visiter automate.app et installer l'application\n2. Inscrivez-vous ou connectez-vous\n3. Ouvrez le lien d'invitation :\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1796,7 +1796,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2326,7 +2326,7 @@
     "@recoveryKey": {},
     "recoveryKeyLost": "Clé de récupération perdue ?",
     "@recoveryKeyLost": {},
-    "indexedDbErrorLong": "Le stockage des messages n'est malheureusement pas activé par défaut en mode privé.\nVeuillez consulter :\n - about:config\n - Définir dom.indexedDB.privateBrowsing.enabled à « vrai ».\nSinon, il n'est pas possible d'exécuter Automate.",
+    "indexedDbErrorLong": "Le stockage des messages n'est malheureusement pas activé par défaut en mode privé.\nVeuillez consulter :\n - about:config\n - Définir dom.indexedDB.privateBrowsing.enabled à « vrai ».\nSinon, il n'est pas possible d'exécuter AutoMate.",
     "@indexedDbErrorLong": {},
     "saveKeyManuallyDescription": "Enregistrer cette clé manuellement en déclenchant la boîte de dialogue de partage du système ou le presse-papiers.",
     "@saveKeyManuallyDescription": {},

@@ -826,7 +826,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Automate",
+    "automate": "AutoMate",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -998,7 +998,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} kutsus sind kasutama Matrix'i-põhist suhtlusrakendust Automate. \n1. Ava automate.app ja paigalda Automate'i rakendus \n2. Liitu kasutajaks või logi sisse olemasoleva Matrix'i kasutajakontoga\n3. Ava kutse link: \n {link}",
+    "inviteText": "{username} kutsus sind kasutama Matrix'i-põhist suhtlusrakendust AutoMate. \n1. Ava automate.app ja paigalda AutoMate'i rakendus \n2. Liitu kasutajaks või logi sisse olemasoleva Matrix'i kasutajakontoga\n3. Ava kutse link: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1792,7 +1792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Automate",
+    "title": "AutoMate",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2350,7 +2350,7 @@
     "@dehydrateWarning": {},
     "dehydrateTorLong": "Kui oled TOR'i võrgu kasutaja, siis enne akna sulgemist palun ekspordi viimase sessiooni andmed.",
     "@dehydrateTorLong": {},
-    "indexedDbErrorLong": "Privaatse akna puhul andmete salvestamine vaikimisi pole kasutusel.\nPalun toimi alljärgnevalt:\n- ava about:config\n- määra dom.indexedDB.privateBrowsing.enabled väärtuseks true\nVastasel juhul sa ei saa Automate'i kasutada.",
+    "indexedDbErrorLong": "Privaatse akna puhul andmete salvestamine vaikimisi pole kasutusel.\nPalun toimi alljärgnevalt:\n- ava about:config\n- määra dom.indexedDB.privateBrowsing.enabled väärtuseks true\nVastasel juhul sa ei saa AutoMate'i kasutada.",
     "@indexedDbErrorLong": {},
     "hydrate": "Taasta varundatud failist",
     "@hydrate": {},
@@ -3118,7 +3118,7 @@
     "@noticeChatBackupDeviceVerification": {},
     "continueText": "Jätka",
     "@continueText": {},
-    "welcomeText": "Tere, tere 👋 See on Automate. Sa võid sisse logida igasse koduserverisse, mis ühildub https://matrix.org serveriga. Ja seejärel saad suhelda kõigiga. Tegemist on ikka väga suure detsentraliseeritud sõnumivõrguga!",
+    "welcomeText": "Tere, tere 👋 See on AutoMate. Sa võid sisse logida igasse koduserverisse, mis ühildub https://matrix.org serveriga. Ja seejärel saad suhelda kõigiga. Tegemist on ikka väga suure detsentraliseeritud sõnumivõrguga!",
     "@welcomeText": {},
     "setWallpaper": "Määra taustapildiks",
     "@setWallpaper": {},
