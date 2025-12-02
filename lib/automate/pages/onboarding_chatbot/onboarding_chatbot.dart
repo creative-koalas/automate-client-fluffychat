@@ -13,6 +13,7 @@ import 'package:automate/automate/backend/backend.dart';
 import 'package:automate/automate/core/config.dart';
 import 'package:automate/utils/platform_infos.dart';
 import 'package:automate/automate/services/app_control.dart';
+import 'package:automate/utils/permission_service.dart';
 import 'onboarding_chatbot_view.dart';
 
 class OnboardingChatbot extends StatefulWidget {
@@ -373,6 +374,11 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       await client.checkHomeserver(homeserverUrl);
 
       debugPrint('[Onboarding] 尝试 Matrix 登录: matrixUserId=$matrixUserId, deviceId=$matrixDeviceId');
+
+      // 请求推送权限（在退到后台之前请求，否则无法显示权限弹窗）
+      if (PlatformInfos.isMobile) {
+        await PermissionService.instance.requestPushPermissions();
+      }
 
       // 先退到后台，这样用户看不到自动跳转到 /rooms
       debugPrint('[Onboarding] 先退到后台...');

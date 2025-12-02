@@ -12,6 +12,7 @@ import 'package:automate/automate/backend/backend.dart';
 import 'package:automate/automate/services/one_click_login.dart';
 import 'package:automate/automate/core/config.dart';
 import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/utils/permission_service.dart';
 import 'login_signup_view.dart';
 
 class LoginSignup extends StatefulWidget {
@@ -170,8 +171,16 @@ class LoginSignupController extends State<LoginSignup> {
         newHomeserver: homeserverUrl,
         newDeviceName: PlatformInfos.clientName,
       );
-      // Matrix login success -> auto redirect to /rooms by MatrixState
       debugPrint('Matrix 登录成功');
+
+      // 登录成功后异步请求推送权限（不阻塞跳转）
+      if (PlatformInfos.isMobile) {
+        // 延迟一下，等跳转完成后再请求权限
+        Future.delayed(const Duration(seconds: 1), () {
+          PermissionService.instance.requestPushPermissions();
+        });
+      }
+      // Matrix login success -> auto redirect to /rooms by MatrixState
     } catch (e) {
       debugPrint('Matrix 登录失败 (未知错误): $e');
       if (mounted) {
