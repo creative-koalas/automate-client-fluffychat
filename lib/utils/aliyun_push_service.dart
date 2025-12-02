@@ -1,24 +1,37 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:aliyun_push/aliyun_push.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
 import 'package:automate/automate/core/config.dart';
+import 'package:automate/config/app_config.dart';
+import 'package:automate/l10n/l10n.dart';
 
 /// 阿里云移动推送服务
 ///
 /// 负责初始化阿里云推送 SDK，处理推送消息回调
+/// 使用透传消息（MESSAGE）模式，客户端决定是否显示通知
 class AliyunPushService {
   static AliyunPushService? _instance;
   static AliyunPushService get instance => _instance ??= AliyunPushService._();
 
   final AliyunPush _aliyunPush = AliyunPush();
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
   String? _deviceId;
+
+  /// 获取当前活跃房间 ID 的回调（由 MatrixState 设置）
+  String? Function()? activeRoomIdGetter;
+
+  /// 通知点击回调（由 MatrixState 设置）
+  void Function(String roomId, String? eventId)? onNotificationTapped;
 
   AliyunPushService._();
 
@@ -59,6 +72,9 @@ class AliyunPushService {
     try {
       Logs().i('[AliyunPush] Initializing with appKey: $_appKey');
 
+      // 初始化本地通知（用于显示透传消息）
+      await _initLocalNotifications();
+
       // 设置消息回调（必须在初始化之前设置）
       _setupCallbacks();
 
@@ -91,6 +107,44 @@ class AliyunPushService {
     } catch (e, s) {
       Logs().e('[AliyunPush] SDK init exception', e, s);
       return false;
+    }
+  }
+
+  /// 初始化本地通知插件
+  Future<void> _initLocalNotifications() async {
+    const androidSettings = AndroidInitializationSettings('notifications_icon');
+    const iosSettings = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
+    );
+
+    // 注意：通知权限由 PermissionService 在登录成功后统一请求
+    // 这里不再请求，避免 App 启动时就弹出权限弹窗
+
+    Logs().d('[AliyunPush] Local notifications initialized');
+  }
+
+  /// 通知点击处理
+  void _onNotificationTapped(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload == null) return;
+
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      final roomId = data['room_id'] as String?;
+      final eventId = data['event_id'] as String?;
+
+      if (roomId != null && onNotificationTapped != null) {
+        onNotificationTapped!(roomId, eventId);
+      }
+    } catch (e) {
+      Logs().w('[AliyunPush] Failed to parse notification payload', e);
     }
   }
 
@@ -151,13 +205,113 @@ class AliyunPushService {
     }
   }
 
-  /// 处理应用内消息
+  /// 处理透传消息（MESSAGE 类型）
+  ///
+  /// 后端发送的透传消息格式：
+  /// {
+  ///   "type": "matrix_message",
+  ///   "title": "发送者名称",
+  ///   "body": "消息内容",
+  ///   "room_id": "!roomid:server",
+  ///   "event_id": "$eventid",
+  ///   "sender": "@user:server",
+  ///   "badge": 5
+  /// }
   void _handleMessage(Map<dynamic, dynamic> message) {
-    // TODO: 在这里处理应用内消息
-    // 透传消息，app 在前台时收到
-    if (kDebugMode) {
-      print('[AliyunPush] Message: $message');
+    Logs().i('[AliyunPush] Received MESSAGE: $message');
+
+    try {
+      // 阿里云透传消息的 content 字段是 JSON 字符串
+      final content = message['content'] as String?;
+      if (content == null) {
+        Logs().w('[AliyunPush] Message content is null');
+        return;
+      }
+
+      // 解析 JSON payload
+      final payload = jsonDecode(content) as Map<String, dynamic>;
+      final type = payload['type'] as String?;
+
+      // 只处理 matrix_message 类型
+      if (type != 'matrix_message') {
+        Logs().d('[AliyunPush] Ignoring non-matrix message type: $type');
+        return;
+      }
+
+      final roomId = payload['room_id'] as String?;
+      final eventId = payload['event_id'] as String?;
+      final title = payload['title'] as String? ?? 'AutoMate';
+      final body = payload['body'] as String? ?? '你收到了一条新消息';
+      final badge = payload['badge'] as int? ?? 0;
+
+      Logs().d('[AliyunPush] Matrix message: room=$roomId, event=$eventId, title=$title');
+
+      // 检查用户是否在当前房间
+      final activeRoomId = activeRoomIdGetter?.call();
+      if (activeRoomId != null && activeRoomId == roomId) {
+        Logs().d('[AliyunPush] User is in current room, skip notification');
+        // 更新角标
+        setBadgeNumber(badge);
+        return;
+      }
+
+      // 用户不在当前房间，显示本地通知
+      _showLocalNotification(
+        title: title,
+        body: body,
+        payload: content,
+        badge: badge,
+      );
+    } catch (e, s) {
+      Logs().e('[AliyunPush] Failed to handle message', e, s);
     }
+  }
+
+  /// 显示本地通知
+  Future<void> _showLocalNotification({
+    required String title,
+    required String body,
+    required String payload,
+    int badge = 0,
+  }) async {
+    // Android 通知详情
+    const androidDetails = AndroidNotificationDetails(
+      'matrix_messages', // channel id
+      '消息通知', // channel name
+      channelDescription: 'Matrix 消息通知',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: 'notifications_icon',
+    );
+
+    // iOS 通知详情
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      badgeNumber: badge,
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // 使用时间戳作为通知 ID，避免覆盖
+    final notificationId = DateTime.now().millisecondsSinceEpoch % 100000;
+
+    await _localNotifications.show(
+      notificationId,
+      title,
+      body,
+      details,
+      payload: payload,
+    );
+
+    // 更新角标
+    await setBadgeNumber(badge);
+
+    Logs().i('[AliyunPush] Local notification shown: id=$notificationId, title=$title');
   }
 
   /// 绑定账号（可选，用于精准推送）
@@ -355,7 +509,7 @@ class AliyunPushService {
           pushkey: pushKey,
           kind: 'http',
           appId: _appId,
-          appDisplayName: 'Automate',
+          appDisplayName: 'AutoMate',
           deviceDisplayName: Platform.localHostname,
           lang: 'zh-CN',
           data: PusherData(

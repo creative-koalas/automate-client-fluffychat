@@ -269,7 +269,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         ClientManager.removeClientNameFromStore(c.clientName, store);
         InitWithRestoreExtension.deleteSessionBackup(name);
       }
-      // 用户登录成功后，注册阿里云推送
+      // 登录成功后只注册推送（权限请求移到登录页面，确保时序正确）
       if (state == LoginState.loggedIn && PlatformInfos.isMobile) {
         _registerAliyunPushAfterLogin(c);
       }
@@ -368,6 +368,16 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   /// 初始化阿里云推送
   Future<void> _initAliyunPush() async {
     try {
+      // 设置回调函数（必须在 initialize 之前设置）
+      // 1. 获取当前活跃房间 ID（用于判断是否显示通知）
+      AliyunPushService.instance.activeRoomIdGetter = () => activeRoomId;
+
+      // 2. 通知点击回调（导航到对应房间）
+      AliyunPushService.instance.onNotificationTapped = (roomId, eventId) {
+        Logs().i('[Matrix] Notification tapped: room=$roomId, event=$eventId');
+        AutomateApp.router.go('/rooms/$roomId');
+      };
+
       final success = await AliyunPushService.instance.initialize();
       if (success) {
         Logs().i('[Matrix] Aliyun Push initialized successfully');

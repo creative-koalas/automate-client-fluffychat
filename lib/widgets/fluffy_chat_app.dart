@@ -14,6 +14,7 @@ import 'package:automate/config/setting_keys.dart';
 import 'package:automate/config/themes.dart';
 import 'package:automate/l10n/l10n.dart';
 import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/utils/permission_service.dart';
 import 'package:automate/widgets/app_lock.dart';
 import 'package:automate/widgets/theme_builder.dart';
 import '../utils/custom_scroll_behaviour.dart';
@@ -317,6 +318,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
       debugPrint('[AuthGate] Matrix login success');
 
       setState(() => _state = _AuthState.authenticated);
+
+      // 登录成功后异步请求推送权限（不阻塞跳转）
+      if (PlatformInfos.isMobile) {
+        Future.delayed(const Duration(seconds: 1), () {
+          PermissionService.instance.requestPushPermissions();
+        });
+      }
       // Matrix login triggers auto navigation to /rooms
     } catch (e) {
       debugPrint('[AuthGate] Matrix login failed: $e');
