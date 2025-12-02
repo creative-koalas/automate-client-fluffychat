@@ -405,7 +405,8 @@ class ChatListController extends State<ChatList>
       if (mounted) {
         searchServer =
             Matrix.of(context).store.getString(_serverStoreNamespace);
-        Matrix.of(context).backgroundPush?.setupPush();
+        // 已使用阿里云推送（AliyunPushService），禁用原有 BackgroundPush 避免重复推送
+        // Matrix.of(context).backgroundPush?.setupPush();
         UpdateNotifier.showUpdateSnackBar(context);
       }
 
