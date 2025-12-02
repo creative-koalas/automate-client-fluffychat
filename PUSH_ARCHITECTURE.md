@@ -29,7 +29,7 @@
 │         │                   │                           │                   │
 │         │                   │                           │                   │
 │  ═══════════════════════════════════════════════════════════════════════   │
-│                           消息推送流程                                       │
+│                   消息推送流程（透传消息模式）                                │
 │  ═══════════════════════════════════════════════════════════════════════   │
 │         │                   │                           │                   │
 │         │                   │ 7. 房间收到新消息         │                   │
@@ -43,20 +43,33 @@
 │         │                   │                           │    获取 device_id  │
 │         │                   │                           │                   │
 │         │                   │                           │ 10. 调用阿里云推送 │
-│         │                   │                           │     API 发送通知   │
+│         │                   │                           │     发送透传消息   │
+│         │                   │                           │     (PushType=MESSAGE)│
 │         │                   │                           │                   │
 │  ┌──────────────┐           │                           │                   │
-│  │  阿里云推送  │<────────── 11. 推送到设备 ─────────────│                   │
+│  │  阿里云推送  │<────────── 11. 推送透传消息 ───────────│                   │
 │  │   服务器     │           │                           │                   │
 │  └──────┬───────┘           │                           │                   │
 │         │                   │                           │                   │
 │         │ 12. 通过厂商通道  │                           │                   │
 │         │     推送到设备    │                           │                   │
 │         v                   │                           │                   │
-│  ┌──────────────┐           │                           │                   │
-│  │ Android/iOS  │           │                           │                   │
-│  │   显示通知   │           │                           │                   │
-│  └──────────────┘           │                           │                   │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ Android/iOS 客户端                                                    │  │
+│  │  ┌─────────────────────┐                                              │  │
+│  │  │ AliyunPushService   │  13. onMessage 回调接收透传消息              │  │
+│  │  │ _handleMessage()    │      解析 JSON payload                       │  │
+│  │  └──────────┬──────────┘                                              │  │
+│  │             │                                                          │  │
+│  │             ├─ 14. 检查 activeRoomId == room_id ?                      │  │
+│  │             │   ├─ 是：用户在当前房间，跳过通知                        │  │
+│  │             │   └─ 否：用户不在当前房间，显示本地通知                  │  │
+│  │             │                                                          │  │
+│  │  ┌──────────v──────────┐                                              │  │
+│  │  │ flutter_local_      │  15. 显示本地通知                            │  │
+│  │  │ notifications       │      点击通知 → onNotificationTapped         │  │
+│  │  └─────────────────────┘      → 导航到对应房间                        │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -71,7 +84,14 @@
 |------|------|
 | `AliyunPushService` | 阿里云推送 SDK 封装，单例模式 |
 | `aliyun_push` 插件 | Flutter 阿里云推送插件 |
+| `flutter_local_notifications` | 本地通知插件，用于显示透传消息 |
 | `matrix` SDK | Matrix 协议客户端，用于注册 pusher |
+
+**回调函数**:
+| 回调 | 说明 |
+|------|------|
+| `activeRoomIdGetter` | 获取当前活跃房间 ID，用于过滤当前房间的通知 |
+| `onNotificationTapped` | 通知点击回调，用于导航到对应房间 |
 
 **关键配置**:
 ```dart
@@ -183,13 +203,34 @@ ip_range_whitelist:
 ```
 1. App 启动
 2. AliyunPushService.initialize()
+   ├─ 初始化本地通知插件 flutter_local_notifications
+   ├─ 设置回调 activeRoomIdGetter / onNotificationTapped
    ├─ 调用阿里云 SDK initPush()
    ├─ 设置消息回调 addMessageReceiver()
    └─ 获取 deviceId = getDeviceId()
 3. 如果用户已登录，执行阶段二
 ```
 
-### 阶段二：注册推送（用户登录后）
+### 阶段二：权限请求（用户登录后）
+
+```
+1. 用户登录成功，触发 _requestPermissionsAndRegisterPush()
+2. 延迟 500ms 等待 UI 稳定
+3. 请求通知权限 PermissionService.requestNotificationPermission()
+   ├─ 检查当前状态
+   ├─ 如果已授权 → 跳过
+   ├─ 如果永久拒绝 → 显示"去设置"对话框
+   └─ 否则：
+       ├─ 显示预授权对话框（解释为什么需要）
+       ├─ 用户同意 → 调用系统权限弹窗
+       └─ 用户拒绝 → 跳过
+4. [Android] 请求电池优化白名单 Permission.ignoreBatteryOptimizations
+   ├─ 显示预授权对话框
+   └─ 调用系统设置
+5. 执行阶段三：注册推送
+```
+
+### 阶段三：注册推送
 
 ```
 1. _registerAliyunPushAfterLogin(client)
@@ -207,7 +248,7 @@ ip_range_whitelist:
        {pushkey, app_id, url=Push Gateway URL}
 ```
 
-### 阶段三：消息推送
+### 阶段三：消息推送（透传消息模式）
 
 ```
 1. 房间收到新消息
@@ -223,16 +264,119 @@ ip_range_whitelist:
 4. Push Gateway 处理
    ├─ 通过 pushkey 查询 push_devices 表
    ├─ 获取 device_id
-   └─ 调用阿里云推送 API
+   └─ 构建透传消息 JSON:
+       {
+         "type": "matrix_message",
+         "title": "发送者名称",
+         "body": "消息内容",
+         "room_id": "!roomid:server",
+         "event_id": "$eventid",
+         "sender": "@user:server",
+         "badge": 5
+       }
+   └─ 调用阿里云推送 API (PushType=MESSAGE)
 5. 阿里云推送服务器
    ├─ 通过 device_id 定位设备
-   └─ 通过厂商通道推送通知
-6. 设备显示通知
+   └─ 通过厂商通道推送透传消息
+6. 客户端 AliyunPushService._handleMessage()
+   ├─ 解析 JSON payload
+   ├─ 检查 activeRoomId == room_id ?
+   │   ├─ 是：用户在当前房间，跳过通知
+   │   └─ 否：用户不在当前房间
+   ├─ 调用 flutter_local_notifications 显示本地通知
+   └─ 更新角标
+7. 用户点击通知
+   ├─ _onNotificationTapped() 回调
+   └─ 导航到对应房间
 ```
 
 ## 关键设计决策
 
-### 1. pushkey 设计
+### 1. 透传消息设计（MESSAGE vs NOTICE）
+
+**问题**：阿里云推送有两种推送类型
+- `NOTICE`：通知消息，阿里云 SDK 直接显示系统通知，App 无法干预
+- `MESSAGE`：透传消息，消息到达 App 代码，由 App 决定是否显示通知
+
+**选择 MESSAGE 的原因**：
+1. **智能过滤**：用户在当前聊天室时不显示通知（避免打扰）
+2. **可定制**：App 可以自定义通知样式、声音、振动等
+3. **可拦截**：App 在前台时可以选择不显示通知
+4. **数据传递**：可以传递 room_id、event_id 等结构化数据
+
+**实现方式**：
+```go
+// push_gateway.go - 构建透传消息
+messagePayload := map[string]interface{}{
+    "type":     "matrix_message",
+    "title":    title,
+    "body":     body,
+    "room_id":  req.Notification.RoomID,
+    "event_id": req.Notification.EventID,
+    "sender":   req.Notification.Sender,
+    "badge":    req.Notification.Counts.Unread,
+}
+api.pushService.SendMessage(deviceID, messageJSON, platform)
+```
+
+```dart
+// aliyun_push_service.dart - 处理透传消息
+void _handleMessage(Map<dynamic, dynamic> message) {
+    // 解析 JSON payload
+    final payload = jsonDecode(content);
+    final roomId = payload['room_id'];
+
+    // 检查用户是否在当前房间
+    if (activeRoomIdGetter?.call() == roomId) {
+        return; // 跳过通知
+    }
+
+    // 显示本地通知
+    _showLocalNotification(title, body, payload);
+}
+```
+
+**注意**：透传消息需要 `flutter_local_notifications` 插件来显示本地通知
+
+### 2. 权限请求设计（业界最佳实践）
+
+**核心原则**：
+1. **延迟请求**：不在启动时请求，而在登录成功后请求
+2. **预授权对话框**：系统弹窗前先用自定义 UI 解释原因（提高通过率 40%+）
+3. **优雅降级**：拒绝后提供"去设置"入口
+
+**权限类型**：
+| 权限 | Android | iOS | 用途 |
+|------|---------|-----|------|
+| 通知权限 | 13+ 需要 | 需要 | 显示推送通知 |
+| 电池优化白名单 | 需要 | 不需要 | 后台保活 |
+
+**实现**：
+```dart
+// lib/utils/permission_service.dart
+class PermissionService {
+  Future<void> requestPushPermissions(BuildContext context) async {
+    // 1. 通知权限
+    await requestNotificationPermission(context);
+    // 2. 电池优化白名单（Android）
+    if (Platform.isAndroid) {
+      await requestBatteryOptimization(context);
+    }
+  }
+}
+```
+
+**预授权对话框流程**：
+```
+用户登录成功
+    ↓
+显示预授权对话框："开启消息通知，不错过重要信息"
+    ↓
+用户点击"好的" → 系统权限弹窗
+用户点击"稍后再说" → 跳过，不影响使用
+```
+
+### 3. pushkey 设计
 
 ```
 格式：{platform}_{deviceId}
@@ -248,7 +392,7 @@ ip_range_whitelist:
 - Debug 模式下 `flutter run` 会重新安装 App，导致 device_id 变化
 - 解决方案：在注册时清理旧的 pusher
 
-### 2. 旧 Pusher 清理机制
+### 4. 旧 Pusher 清理机制
 
 **问题**：device_id 变化 → 新 pushkey → Synapse 累积多个 pusher → 重复推送
 
@@ -272,7 +416,7 @@ ip_range_whitelist:
    }
    ```
 
-### 3. NotificationChannel 配置
+### 5. NotificationChannel 配置
 
 **问题**：Android 8.0+ 必须创建 NotificationChannel 才能显示通知
 
@@ -290,7 +434,7 @@ request.AndroidNotificationChannel = "automate_push_channel"
 val channelId = "automate_push_channel"
 ```
 
-### 4. Synapse IP 白名单
+### 6. Synapse IP 白名单
 
 **问题**：Synapse 默认阻止对内网 IP 的 HTTP 请求（SSRF 防护）
 
@@ -303,7 +447,7 @@ ip_range_whitelist:
   - "172.16.0.0/12"
 ```
 
-### 5. 禁用 FluffyChat 原有推送
+### 7. 禁用 FluffyChat 原有推送
 
 **问题**：FluffyChat 原有 BackgroundPush（Firebase/UnifiedPush）与阿里云推送冲突
 
@@ -409,3 +553,10 @@ ip_range_whitelist:
 | 2025-11-30 | 修复重复推送问题（清理旧 pusher） |
 | 2025-11-30 | 禁用 FluffyChat 原有 BackgroundPush |
 | 2025-11-30 | 添加 Synapse IP 白名单配置 |
+| 2025-12-01 | 改用透传消息（MESSAGE）模式 |
+| 2025-12-01 | 添加智能通知过滤（用户在当前房间时不显示） |
+| 2025-12-01 | 集成 flutter_local_notifications 显示本地通知 |
+| 2025-12-01 | 实现通知点击导航到对应房间 |
+| 2025-12-01 | 添加 PermissionService 统一管理权限请求 |
+| 2025-12-01 | 实现预授权对话框（提高权限通过率） |
+| 2025-12-01 | 支持电池优化白名单请求（Android 后台保活） |
