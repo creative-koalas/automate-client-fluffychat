@@ -29,7 +29,7 @@ class AutomateApiClient {
   // K8s NodePort: 30300
   // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
   static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.1.7:30300');
+      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.1.9:30300');
 
   /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
   Future<FusionAuthTokenResponse> getFusionAuthToken() async {
