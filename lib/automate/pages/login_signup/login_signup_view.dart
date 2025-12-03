@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:automate/widgets/layouts/login_scaffold.dart';
 import 'login_signup.dart';
 
@@ -141,23 +140,6 @@ class LoginSignupView extends StatelessWidget {
             ),
           ),
 
-          // Bottom - "登录其他账号"
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 32),
-              child: TextButton(
-                onPressed: controller.loading
-                    ? null
-                    : () => context.push('/login/phone'),
-                child: Text(
-                  '登录其他账号',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

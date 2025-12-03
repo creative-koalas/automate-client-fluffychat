@@ -44,11 +44,16 @@ docs/tailwind.css
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 
 
+# Signing keys (NEVER commit these!)
+*.jks
+*.keystore
+*.p12
 /key.jks
 /android/key.properties
 **/android/app/.cxx
 android/key.jks
 android/keys.json
+android/app/*.jks
 android/Gemfile.lock
 lib/l10n/*.dart
 ios/Flutter/.last_build_id

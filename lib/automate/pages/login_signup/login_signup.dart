@@ -89,13 +89,13 @@ class LoginSignupController extends State<LoginSignup> {
         context.go('/onboarding-chatbot');
       }
     } on SwitchLoginMethodException {
-      // User clicked "其他方式登录" button, redirect to phone login page
-      debugPrint('用户选择其他登录方式');
-      // SDK 已自动关闭授权页
-      setState(() => loading = false);
-      if (mounted) {
-        context.push('/login/phone');
-      }
+      // 用户点击了"其他方式登录"按钮（但按钮已隐藏，理论上不会触发）
+      // 不跳转，只显示错误提示
+      debugPrint('用户选择其他登录方式（不应该发生）');
+      setState(() {
+        phoneError = '当前仅支持本机号码一键登录';
+        loading = false;
+      });
     } catch (e, stackTrace) {
       debugPrint('一键登录错误: $e');
       debugPrint('堆栈: $stackTrace');

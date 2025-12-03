@@ -274,12 +274,8 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setLogBtnOffsetY(340)
                     .setLogBtnBackgroundDrawable(act.getDrawable(R.drawable.auth_login_btn))
 
-                    // ========== 其他登录方式 ==========
-                    .setSwitchAccText("其他方式登录")
-                    .setSwitchAccTextColor(Color.parseColor("#007AFF"))
-                    .setSwitchAccTextSize(15)
-                    .setSwitchOffsetY(410)
-                    .setSwitchAccHidden(false)
+                    // ========== 其他登录方式（已隐藏，目前只支持一键登录） ==========
+                    .setSwitchAccHidden(true)
 
                     // ========== 隐私协议 ==========
                     .setPrivacyState(false)  // 默认未勾选
