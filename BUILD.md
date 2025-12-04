@@ -2,7 +2,7 @@
 
 ## 环境变量配置
 
-本项目使用环境变量来管理敏感信息和本地配置，避免将这些信息提交到版本控制。
+本项目使用 Flutter 官方的 `--dart-define-from-file` 功能来管理环境变量，避免将敏感信息提交到版本控制。
 
 ### 必需的环境变量
 
@@ -13,63 +13,62 @@
 
 1. 复制环境变量模板：
 ```bash
-cp .env.example .env
+cp env.json.example env.json
 ```
 
-2. 编辑 `.env` 文件，填入实际值：
-```bash
-K8S_NODE_IP=192.168.31.22
-ALIYUN_SECRET_KEY=your-actual-secret-key
+2. 编辑 `env.json` 文件，填入实际值：
+```json
+{
+  "K8S_NODE_IP": "192.168.31.22",
+  "ALIYUN_SECRET_KEY": "your-actual-secret-key"
+}
 ```
 
 ## 构建命令
 
+### 最简单的方式（推荐）
+
+```bash
+flutter run --dart-define-from-file=env.json
+```
+
 ### 开发构建（Debug）
 ```bash
-flutter run \
-  --dart-define=K8S_NODE_IP=192.168.31.22 \
-  --dart-define=ALIYUN_SECRET_KEY=your-secret-key
+flutter run --dart-define-from-file=env.json -d V2403A
 ```
 
 ### 生产构建（Release）
 ```bash
-flutter build apk --release \
-  --dart-define=K8S_NODE_IP=192.168.31.22 \
-  --dart-define=ALIYUN_SECRET_KEY=your-secret-key
+flutter run --release --dart-define-from-file=env.json -d V2403A
+```
+
+### 构建 APK
+```bash
+flutter build apk --release --dart-define-from-file=env.json
 ```
 
 ### 使用脚本简化构建
 
-创建一个构建脚本 `build.sh`：
+项目提供了 `build.sh` 脚本（已废弃，推荐直接使用 Flutter 命令）：
 
-```bash
-#!/bin/bash
-# 从 .env 文件读取环境变量
-source .env
-
-flutter run --release \
-  --dart-define=K8S_NODE_IP=$K8S_NODE_IP \
-  --dart-define=ALIYUN_SECRET_KEY=$ALIYUN_SECRET_KEY \
-  -d V2403A  # 你的设备ID
-```
-
-使其可执行：
-```bash
-chmod +x build.sh
-```
-
-运行：
 ```bash
 ./build.sh
 ```
 
-## 可选环境变量
-
-- **ONBOARDING_CHATBOT_URL**: Onboarding Chatbot 服务地址
-  - 如果不指定，会自动使用 `http://$K8S_NODE_IP:30300`
-
 ## 注意事项
 
-- `.env` 文件已添加到 `.gitignore`，不会被提交到版本控制
+- `env.json` 文件已添加到 `.gitignore`，不会被提交到版本控制
 - 请勿将敏感信息（如 Secret Key）提交到代码仓库
-- 团队成员需要各自配置自己的 `.env` 文件
+- 团队成员需要各自配置自己的 `env.json` 文件
+- 确保使用 Flutter 3.7 或更高版本以支持 `--dart-define-from-file`
+
+## 检查 Flutter 版本
+
+```bash
+flutter --version
+```
+
+如果版本低于 3.7，请升级：
+```bash
+flutter upgrade
+```
