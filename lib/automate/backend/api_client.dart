@@ -28,8 +28,10 @@ class AutomateApiClient {
 
   // K8s NodePort: 30300
   // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
+  // 或者通过 K8S_NODE_IP 自动构建
   static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL', defaultValue: 'http://192.168.1.9:30300');
+      String.fromEnvironment('ONBOARDING_CHATBOT_URL',
+        defaultValue: 'http://${AutomateConfig.k8sNodeIp}:30300');
 
   /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
   Future<FusionAuthTokenResponse> getFusionAuthToken() async {
@@ -74,6 +76,91 @@ class AutomateApiClient {
 
     final res = await _dio.post<Map<String, dynamic>>(
       '${AutomateConfig.baseUrl}/api/auth/phone-login',
+      data: body,
+    );
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Login failed',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    final authResponse = AuthResponse(
+      token: respData['access_token'] as String? ?? '',
+      chatbotToken: respData['chatbot_token'] as String? ?? '',
+      refreshToken: respData['refresh_token'] as String?,
+      expiresIn: respData['expires_in'] as int?,
+      userId: respData['username'] as String? ?? '',
+      userIdInt: respData['user_id'] as int? ?? 0,
+      onboardingCompleted: respData['onboarding_completed'] as bool? ?? false,
+      isNewUser: respData['is_new_user'] as bool? ?? false,
+      matrixAccessToken: respData['matrix_access_token'] as String?,
+      matrixUserId: respData['matrix_user_id'] as String?,
+      matrixDeviceId: respData['matrix_device_id'] as String?,
+    );
+
+    await auth.save(
+      primaryToken: authResponse.token,
+      chatbotToken: authResponse.chatbotToken,
+      userId: authResponse.userId,
+      userIdInt: authResponse.userIdInt,
+      onboardingCompleted: authResponse.onboardingCompleted,
+      refreshToken: authResponse.refreshToken,
+      expiresIn: authResponse.expiresIn,
+      matrixAccessToken: authResponse.matrixAccessToken,
+      matrixUserId: authResponse.matrixUserId,
+      matrixDeviceId: authResponse.matrixDeviceId,
+    );
+    return authResponse;
+  }
+
+  /// 验证手机号（新登录流程第一步）
+  /// 返回是否新用户 + pending_token
+  Future<VerifyPhoneResponse> verifyPhone(String fusionToken) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${AutomateConfig.baseUrl}/api/auth/verify-phone',
+      data: {'fusion_token': fusionToken},
+    );
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Phone verification failed',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return VerifyPhoneResponse(
+      phone: respData['phone'] as String? ?? '',
+      isNewUser: respData['is_new_user'] as bool? ?? false,
+      pendingToken: respData['pending_token'] as String? ?? '',
+    );
+  }
+
+  /// 完成登录/注册（新登录流程第二步）
+  /// 新用户需要传入邀请码
+  Future<AuthResponse> completeLogin(String pendingToken, {String? invitationCode}) async {
+    final body = <String, dynamic>{
+      'pending_token': pendingToken,
+    };
+    if (invitationCode != null && invitationCode.isNotEmpty) {
+      body['invitation_code'] = invitationCode;
+    }
+
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${AutomateConfig.baseUrl}/api/auth/complete-login',
       data: body,
     );
     final data = res.data ?? {};
@@ -443,6 +530,19 @@ class FusionAuthTokenResponse {
   FusionAuthTokenResponse({
     required this.verifyToken,
     required this.schemeCode,
+  });
+}
+
+/// 验证手机号响应
+class VerifyPhoneResponse {
+  final String phone;       // 脱敏手机号（138****1234）
+  final bool isNewUser;     // 是否新用户
+  final String pendingToken; // 待确认 token（5分钟有效）
+
+  VerifyPhoneResponse({
+    required this.phone,
+    required this.isNewUser,
+    required this.pendingToken,
   });
 }
 

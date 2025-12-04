@@ -8,6 +8,7 @@ import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:automate/utils/platform_infos.dart';
+import 'package:automate/automate/core/config.dart';
 
 enum AppSettings<T> {
   textMessageMaxLength<int>('textMessageMaxLength', 16384),
@@ -52,8 +53,8 @@ enum AppSettings<T> {
   ),
   // AppConfig-mirrored settings
   applicationName<String>('com.automate.application_name', 'AutoMate'),
-  // 写死 homeserver 指向本地 K8s Synapse（与 AutomateConfig.matrixHomeserver 同步）
-  defaultHomeserver<String>('com.automate.default_homeserver', 'http://192.168.1.9:30008'),
+  // homeserver 指向本地 K8s Synapse（从环境变量 K8S_NODE_IP 读取）
+  defaultHomeserver<String>('com.automate.default_homeserver', AutomateConfig.matrixHomeserver),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>(
     'com.automate.color_scheme_seed',

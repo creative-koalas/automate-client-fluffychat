@@ -1,3 +1,6 @@
+# Environment variables (contains sensitive data)
+.env
+
 # Miscellaneous
 *.class
 *.log

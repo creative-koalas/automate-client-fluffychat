@@ -5,7 +5,8 @@ library;
 /// 假设客户端永远与 K8s 集群在同一局域网
 class AutomateConfig {
   /// K8s 节点 IP（局域网访问）
-  static const String k8sNodeIp = '192.168.1.9';
+  /// 通过 --dart-define=K8S_NODE_IP=192.168.x.x 指定
+  static const String k8sNodeIp = String.fromEnvironment('K8S_NODE_IP', defaultValue: '127.0.0.1');
 
   /// Automate Assistant 后端 URL（NodePort: 32469）
   /// 客户端直接访问用这个

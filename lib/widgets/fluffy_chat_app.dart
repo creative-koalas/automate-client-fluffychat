@@ -117,6 +117,7 @@ enum _AuthState {
   authenticating, // Performing one-click login
   authenticated, // Successfully authenticated
   needsLogin,    // Needs login, show login page
+  waitingInvitationCode, // Waiting for invitation code input (new user)
   error,         // Error occurred
 }
 
@@ -125,8 +126,25 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   String? _errorMessage;
   bool _hasTriedAuth = false;
 
+  // Pending new user registration data
+  String? _pendingToken;
+  String? _pendingPhone;
+
+  // Invitation code input
+  final _invitationCodeController = TextEditingController();
+  String? _invitationCodeError;
+  bool _submittingInvitation = false;
+
   // Aliyun SDK secret key
-  static const _secretKey = 'H/J4L0niqVQcJMUqSz9pfSQDRJpEixg5v87sI5wNjjPquoKUpZyxIzmkXdvO5ewbqUFZ6ZmKXU1l234ClDqE0T3S23Brlc4BDFokQVCD90i13Y4ELKLhieDMakXulv5Zyf0lWSQtM5s3+Rt7fI6nf0yRnV+aITvnrFnmGLUMz/n8g24/3ChiMCSHyqjq0uS6gmXOKenk1nqDWdguLeZA8EYh7g/RWanjQ78WEHvQMtopZAtLCSQUmzwjIpAZFJtGti614VdF7qwlYbpCAOiXzOfwxLt2BMX0ulWvMiEBjSR+hcxgSH5PEbsXBp6LlGy6';
+  // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
+  static const _secretKey = String.fromEnvironment('ALIYUN_SECRET_KEY',
+      defaultValue: '');
+
+  @override
+  void dispose() {
+    _invitationCodeController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -223,12 +241,36 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
       debugPrint('[AuthGate] Got token from Aliyun, calling backend...');
 
-      // Exchange token with backend
+      // Step 1: Verify phone number
       final api = context.read<AutomateApiClient>();
-      final authResponse = await api.loginOrSignup(
-        '', // phone is empty for one-click login
-        '', // code is empty for one-click login
-        fusionToken: loginToken,
+      final verifyResponse = await api.verifyPhone(loginToken);
+      debugPrint('[AuthGate] Phone verified: ${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
+
+      if (!mounted) return;
+
+      // Step 2: New user needs invitation code
+      if (verifyResponse.isNewUser) {
+        // Close Aliyun auth page
+        await OneClickLoginService.quitLoginPage();
+
+        if (!mounted) return;
+
+        // Save pending data and switch to invitation code state
+        _pendingToken = verifyResponse.pendingToken;
+        _pendingPhone = verifyResponse.phone;
+
+        debugPrint('[AuthGate] New user detected, showing invitation code screen');
+
+        // Change state to show invitation code input screen
+        setState(() => _state = _AuthState.waitingInvitationCode);
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Step 3: Complete login (old user, no invitation code needed)
+      final authResponse = await api.completeLogin(
+        verifyResponse.pendingToken,
       );
 
       debugPrint('[AuthGate] Backend login success, onboardingCompleted=${authResponse.onboardingCompleted}');
@@ -335,6 +377,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
     }
   }
 
+
   void _redirectToLoginPage() {
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -395,6 +438,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
       case _AuthState.authenticating:
         return _buildLoadingScreen('正在登录...');
+
+      case _AuthState.waitingInvitationCode:
+        return _buildInvitationCodeScreen();
 
       case _AuthState.error:
         return _buildErrorScreen();
@@ -462,23 +508,95 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
                 ),
               ),
               const SizedBox(height: 32),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _state = _AuthState.checking;
+                    _hasTriedAuth = false;
+                  });
+                  _checkAuthState();
+                },
+                child: const Text('重试'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInvitationCodeScreen() {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/logo.png',
+                width: 100,
+                height: 100,
+              ),
+              const SizedBox(height: 32),
+              Text(
+                '新用户注册',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '手机号：$_pendingPhone',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text('请输入邀请码完成注册'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _invitationCodeController,
+                decoration: InputDecoration(
+                  labelText: '邀请码',
+                  hintText: '请输入邀请码',
+                  prefixIcon: const Icon(Icons.vpn_key_outlined),
+                  errorText: _invitationCodeError,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                textCapitalization: TextCapitalization.characters,
+                enabled: !_submittingInvitation,
+                onChanged: (_) {
+                  if (_invitationCodeError != null) {
+                    setState(() => _invitationCodeError = null);
+                  }
+                },
+                onSubmitted: (_) => _submitInvitationCode(),
+              ),
+              const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  OutlinedButton(
-                    onPressed: () {
-                      setState(() {
-                        _state = _AuthState.checking;
-                        _hasTriedAuth = false;
-                      });
-                      _checkAuthState();
-                    },
-                    child: const Text('重试'),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _submittingInvitation ? null : _redirectToLoginPage,
+                      child: const Text('取消'),
+                    ),
                   ),
                   const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: _redirectToLoginPage,
-                    child: const Text('其他登录方式'),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _submittingInvitation ? null : _submitInvitationCode,
+                      child: _submittingInvitation
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('确认'),
+                    ),
                   ),
                 ],
               ),
@@ -487,5 +605,47 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitInvitationCode() async {
+    final code = _invitationCodeController.text.trim();
+    if (code.isEmpty) {
+      setState(() => _invitationCodeError = '请输入邀请码');
+      return;
+    }
+
+    setState(() {
+      _submittingInvitation = true;
+      _invitationCodeError = null;
+    });
+
+    try {
+      debugPrint('[AuthGate] Completing registration with invitation code');
+      final api = context.read<AutomateApiClient>();
+      final authResponse = await api.completeLogin(
+        _pendingToken!,
+        invitationCode: code,
+      );
+
+      debugPrint('[AuthGate] Registration success, onboardingCompleted=${authResponse.onboardingCompleted}');
+
+      if (!mounted) return;
+
+      // Handle based on onboarding status
+      if (authResponse.onboardingCompleted) {
+        // Already completed onboarding, login to Matrix
+        await _loginMatrixAndProceed();
+      } else {
+        // Need to complete onboarding first
+        _navigateToOnboardingThenAuthenticate();
+      }
+    } catch (e) {
+      debugPrint('[AuthGate] Registration error: $e');
+      if (!mounted) return;
+      setState(() {
+        _submittingInvitation = false;
+        _invitationCodeError = e.toString();
+      });
+    }
   }
 }

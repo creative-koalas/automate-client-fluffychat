@@ -1,21 +1,50 @@
 package com.creativekoalas.automate
 
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
+import android.os.Bundle
+import android.util.Log
 
 class MainActivity : FlutterActivity() {
 
+    private val TAG = "MainActivity"
     private val APP_CONTROL_CHANNEL = "com.creativekoalas.automate/app_control"
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
+    }
+
+    /**
+     * 使用 Surface 渲染模式而不是默认的 Texture 模式
+     * 这可以解决从后台恢复时的黑屏问题
+     */
+    override fun getRenderMode(): RenderMode {
+        return RenderMode.surface
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.d(TAG, "onCreate called")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume called")
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Log.d(TAG, "onNewIntent called")
+        setIntent(intent)
     }
 
 

@@ -5,7 +5,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart' hide Matrix;
 import 'package:provider/provider.dart';
 import 'package:automate/widgets/matrix.dart';
 import 'package:automate/automate/backend/backend.dart';
@@ -22,18 +21,46 @@ class LoginSignup extends StatefulWidget {
   LoginSignupController createState() => LoginSignupController();
 }
 
-class LoginSignupController extends State<LoginSignup> {
+class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserver {
   AutomateApiClient get backend => context.read<AutomateApiClient>();
 
   String? phoneError;
   bool loading = false;
   bool agreedToEula = false;
+  bool _isInAuthFlow = false; // 是否正在进行授权流程
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 当 app 从后台恢复时，如果正在授权流程中，关闭可能残留的授权页面
+    if (state == AppLifecycleState.resumed && _isInAuthFlow) {
+      debugPrint('App resumed during auth flow, closing auth page to prevent black screen');
+      OneClickLoginService.quitLoginPage();
+      setState(() {
+        _isInAuthFlow = false;
+        loading = false;
+      });
+    }
+  }
 
   void toggleEulaAgreement() {
     setState(() => agreedToEula = !agreedToEula);
   }
 
   /// One-click login (Aliyun Official SDK)
+  /// 新流程：verifyPhone → (新用户弹邀请码) → completeLogin
   void oneClickLogin() async {
     // Web platform doesn't support one-click login
     if (kIsWeb) {
@@ -50,25 +77,49 @@ class LoginSignupController extends State<LoginSignup> {
     setState(() {
       phoneError = null;
       loading = true;
+      _isInAuthFlow = true; // 标记进入授权流程
     });
 
     try {
       // 阿里云控制台获取的密钥
-      const secretKey = 'H/J4L0niqVQcJMUqSz9pfSQDRJpEixg5v87sI5wNjjPquoKUpZyxIzmkXdvO5ewbqUFZ6ZmKXU1l234ClDqE0T3S23Brlc4BDFokQVCD90i13Y4ELKLhieDMakXulv5Zyf0lWSQtM5s3+Rt7fI6nf0yRnV+aITvnrFnmGLUMz/n8g24/3ChiMCSHyqjq0uS6gmXOKenk1nqDWdguLeZA8EYh7g/RWanjQ78WEHvQMtopZAtLCSQUmzwjIpAZFJtGti614VdF7qwlYbpCAOiXzOfwxLt2BMX0ulWvMiEBjSR+hcxgSH5PEbsXBp6LlGy6';
+      // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
+      const secretKey = String.fromEnvironment('ALIYUN_SECRET_KEY', defaultValue: '');
 
       debugPrint('=== 使用官方 SDK 进行一键登录 ===');
 
-      // 执行完整的一键登录流程
-      final loginToken = await OneClickLoginService.performOneClickLogin(
+      // 执行完整的一键登录流程，获取 fusion_token
+      final fusionToken = await OneClickLoginService.performOneClickLogin(
         secretKey: secretKey,
         timeout: 10000,
       );
 
-      debugPrint('=== 发送 token 到后端 ===');
-      final authResponse = await backend.loginOrSignup(
-        '', // phone is empty for one-click login
-        '', // code is empty for one-click login
-        fusionToken: loginToken,
+      debugPrint('=== 第一步：验证手机号 ===');
+      final verifyResponse = await backend.verifyPhone(fusionToken);
+      debugPrint('验证结果: phone=${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
+
+      if (!mounted) return;
+
+      // 新用户需要输入邀请码
+      String? invitationCode;
+      if (verifyResponse.isNewUser) {
+        // 先关闭阿里云授权页，再弹邀请码框
+        await OneClickLoginService.quitLoginPage();
+
+        invitationCode = await _showInvitationCodeDialog(verifyResponse.phone);
+        if (invitationCode == null) {
+          // 用户取消了
+          setState(() {
+            _isInAuthFlow = false;
+            loading = false;
+          });
+          return;
+        }
+      }
+
+      debugPrint('=== 第二步：完成登录 ===');
+      final authResponse = await backend.completeLogin(
+        verifyResponse.pendingToken,
+        invitationCode: invitationCode,
       );
       debugPrint('后端响应: onboardingCompleted=${authResponse.onboardingCompleted}');
 
@@ -79,11 +130,13 @@ class LoginSignupController extends State<LoginSignup> {
         // 已完成 onboarding，需要先登录 Matrix
         debugPrint('=== 已完成 onboarding，尝试登录 Matrix ===');
         await _loginMatrixAndRedirect();
-        // 所有操作完成后关闭授权页
+        // 所有操作完成后关闭授权页（老用户流程，授权页可能还在）
+        _isInAuthFlow = false;
         await OneClickLoginService.quitLoginPage();
       } else {
         // 需要先完成 onboarding
-        // 关闭授权页后再跳转
+        // 关闭授权页后再跳转（老用户流程，授权页可能还在）
+        _isInAuthFlow = false;
         await OneClickLoginService.quitLoginPage();
         setState(() => loading = false);
         context.go('/onboarding-chatbot');
@@ -93,6 +146,7 @@ class LoginSignupController extends State<LoginSignup> {
       // 不跳转，只显示错误提示
       debugPrint('用户选择其他登录方式（不应该发生）');
       setState(() {
+        _isInAuthFlow = false;
         phoneError = '当前仅支持本机号码一键登录';
         loading = false;
       });
@@ -100,12 +154,80 @@ class LoginSignupController extends State<LoginSignup> {
       debugPrint('一键登录错误: $e');
       debugPrint('堆栈: $stackTrace');
       // 出错时关闭授权页
+      _isInAuthFlow = false;
       await OneClickLoginService.quitLoginPage();
       setState(() {
         phoneError = e.toString();
         loading = false;
       });
     }
+  }
+
+  /// 显示邀请码输入对话框
+  /// 返回邀请码，用户取消则返回 null
+  Future<String?> _showInvitationCodeDialog(String maskedPhone) async {
+    final controller = TextEditingController();
+    String? errorText;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('新用户注册'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '手机号：$maskedPhone',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('请输入邀请码完成注册'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: '邀请码',
+                  hintText: '请输入邀请码',
+                  prefixIcon: const Icon(Icons.vpn_key_outlined),
+                  errorText: errorText,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                textCapitalization: TextCapitalization.characters,
+                onChanged: (_) {
+                  if (errorText != null) {
+                    setDialogState(() => errorText = null);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final code = controller.text.trim();
+                if (code.isEmpty) {
+                  setDialogState(() => errorText = '请输入邀请码');
+                  return;
+                }
+                Navigator.of(context).pop(code);
+              },
+              child: const Text('确认'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<bool> _ensureEulaAccepted() async {
