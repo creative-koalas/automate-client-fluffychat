@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_state.dart';
 import 'exceptions.dart';
@@ -281,6 +282,9 @@ class AutomateApiClient {
   }) async {
     final token = auth.chatbotToken;
 
+    // Performance metrics - start timing
+    final startTime = DateTime.now().millisecondsSinceEpoch;
+
     // Truncate the history; take only the last two messages
     final truncatedHistory = history.sublist(max(0, history.length - 2));
     final res = await _dio.post<Map<String, dynamic>>(
@@ -294,6 +298,10 @@ class AutomateApiClient {
       },
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+
+    // Performance metrics - calculate timing
+    final clientTotalMs = DateTime.now().millisecondsSinceEpoch - startTime;
+
     final data = res.data ?? {};
     if (res.statusCode != 200 || data['ok'] != true) {
       throw AutomateBackendException(
@@ -301,6 +309,23 @@ class AutomateApiClient {
         statusCode: res.statusCode,
       );
     }
+
+    // Extract server-side timings
+    final timings = data['_timings'] as Map<String, dynamic>?;
+    final serverTotalMs = timings?['total_ms'] as int?;
+    final llmMs = timings?['llm_ms'] as int?;
+    final dbMs = timings?['db_ms'] as int?;
+    final networkMs = serverTotalMs != null ? clientTotalMs - serverTotalMs : null;
+
+    // Print performance analysis
+    debugPrint('[auto-completion 耗时分析] {');
+    debugPrint('  client_total_ms: $clientTotalMs,  // 客户端感知的总耗时');
+    debugPrint('  server_total_ms: $serverTotalMs,  // 服务端处理耗时');
+    debugPrint('  network_ms: $networkMs,  // 网络往返耗时');
+    debugPrint('  llm_ms: $llmMs,  // DeepSeek API 耗时');
+    debugPrint('  db_ms: $dbMs,  // 数据库耗时');
+    debugPrint('}');
+
     final suggestions = data['suggestions'];
     if (suggestions is Map<String, dynamic>) return suggestions;
     throw AutomateBackendException('Malformed suggestions payload', statusCode: res.statusCode);
