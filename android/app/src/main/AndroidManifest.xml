@@ -79,12 +79,12 @@
                <data android:scheme="matrix" />
             </intent-filter>
 
-            <!-- App can open automate:// uris -->
+            <!-- App can open psygo:// uris -->
             <intent-filter>
                <action android:name="android.intent.action.VIEW" />
                <category android:name="android.intent.category.DEFAULT" />
                <category android:name="android.intent.category.BROWSABLE" />
-               <data android:scheme="automate" android:host="chat" />
+               <data android:scheme="psygo" android:host="chat" />
             </intent-filter>
 
             <!-- App can receive shared text -->
@@ -114,7 +114,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="automate" android:host="login"/>
+                <data android:scheme="psygo" android:host="login"/>
             </intent-filter>
         </activity>
 

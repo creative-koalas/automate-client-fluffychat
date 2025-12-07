@@ -1,4 +1,4 @@
-/*package com.creativekoalas.automate
+/*package com.creativekoalas.psygo
 
 import com.famedly.fcm_shared_isolate.FcmSharedIsolateService
 

@@ -414,8 +414,8 @@ class AliyunPushService {
   static String get _pushGatewayUrl => '${AutomateConfig.internalBaseUrl}/_matrix/push/v1/notify';
 
   /// 应用 ID（用于区分 iOS/Android）
-  static const String _androidAppId = 'com.creativekoalas.automate.android';
-  static const String _iosAppId = 'com.creativekoalas.automate.ios';
+  static const String _androidAppId = 'com.creativekoalas.psygo.android';
+  static const String _iosAppId = 'com.creativekoalas.psygo.ios';
 
   /// 获取当前平台的应用 ID
   String get _appId => Platform.isIOS ? _iosAppId : _androidAppId;

@@ -13,10 +13,10 @@ abstract class AppConfig {
   static const bool hideTypingUsernames = false;
 
   static const String inviteLinkPrefix = 'https://matrix.to/#/';
-  static const String deepLinkPrefix = 'com.automate://chat/';
+  static const String deepLinkPrefix = 'com.psygo://chat/';
   static const String schemePrefix = 'matrix:';
-  static const String pushNotificationsChannelId = 'automate_push';
-  static const String pushNotificationsAppId = 'com.automate.app';
+  static const String pushNotificationsChannelId = 'psygo_push';
+  static const String pushNotificationsAppId = 'com.psygo.app';
   static const double borderRadius = 18.0;
   static const double columnWidth = 360.0;
 
@@ -27,8 +27,8 @@ abstract class AppConfig {
       'https://fluffy.chat/faq/#how_to_use_end_to_end_encryption';
   static const String startChatTutorial =
       'https://fluffy.chat/faq/#how_do_i_find_other_users';
-  static const String appId = 'com.automate.Automate';
-  static const String appOpenUrlScheme = 'com.automate';
+  static const String appId = 'com.psygo.Psygo';
+  static const String appOpenUrlScheme = 'com.psygo';
 
   static const String sourceCodeUrl =
       'https://github.com/krille-chan/fluffychat';

@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 /// 2. accelerateLogin - 预取号（必须成功后才能唤起授权页）
 /// 3. oneClickLogin - 唤起授权页获取 token
 class OneClickLoginService {
-  static const _channel = MethodChannel('com.creativekoalas.automate/one_click_login');
+  static const _channel = MethodChannel('com.creativekoalas.psygo/one_click_login');
 
   /// 初始化 SDK
   /// [secretKey] 阿里云控制台获取的密钥

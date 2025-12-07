@@ -1,4 +1,4 @@
-package com.creativekoalas.automate
+package com.creativekoalas.psygo
 
 import android.app.Activity
 import android.content.Context
