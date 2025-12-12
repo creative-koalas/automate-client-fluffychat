@@ -407,11 +407,11 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         statusColor = Colors.green;
         statusText = '💼 ${l10n.employeeWorking}';
         break;
-      case 'sleeping':
+      case 'idle':
         statusColor = Colors.blue;
         statusText = '😴 ${l10n.employeeSleeping}';
         break;
-      case 'slacking':
+      case 'idle_long':
       default:
         statusColor = Colors.orange;
         statusText = '🐟 ${l10n.employeeSlacking}';
