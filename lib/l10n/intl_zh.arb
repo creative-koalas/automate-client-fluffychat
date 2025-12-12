@@ -3521,8 +3521,10 @@
 
     "employeeWorking": "工作中",
     "@employeeWorking": {},
-    "employeeIdle": "摸鱼",
-    "@employeeIdle": {},
+    "employeeSlacking": "摸鱼中",
+    "@employeeSlacking": {},
+    "employeeSleeping": "睡觉中",
+    "@employeeSleeping": {},
     "employeeOnboarding": "入职中...",
     "@employeeOnboarding": {},
     "employeeReady": "就绪",

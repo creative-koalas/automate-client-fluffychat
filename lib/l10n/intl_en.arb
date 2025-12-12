@@ -3494,8 +3494,10 @@
 
   "employeeWorking": "Working",
   "@employeeWorking": {},
-  "employeeIdle": "Slacking",
-  "@employeeIdle": {},
+  "employeeSlacking": "Slacking",
+  "@employeeSlacking": {},
+  "employeeSleeping": "Sleeping",
+  "@employeeSleeping": {},
   "employeeOnboarding": "Onboarding...",
   "@employeeOnboarding": {},
   "employeeReady": "Ready",

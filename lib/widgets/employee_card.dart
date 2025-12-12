@@ -227,27 +227,6 @@ class _EmployeeCardState extends State<EmployeeCard>
                   : _buildAvatarFallback(theme),
             ),
           ),
-
-          // 在线状态指示器（只在就绪状态下显示）
-          if (widget.employee.isReady)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: widget.employee.isWorking
-                      ? Colors.green
-                      : theme.colorScheme.outline,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.colorScheme.surface,
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -274,20 +253,30 @@ class _EmployeeCardState extends State<EmployeeCard>
       return const SizedBox.shrink();
     }
 
-    // 根据 is_active 判断状态
+    // 根据 work_status 判断状态
     Color dotColor;
-    if (widget.employee.isActive) {
-      dotColor = Colors.green;  // 激活状态 = 工作中
-    } else {
-      dotColor = theme.colorScheme.outline;  // 未激活 = 摸鱼
+    switch (widget.employee.workStatus) {
+      case 'working':
+        dotColor = Colors.green;  // 工作中 - 绿色
+        break;
+      case 'sleeping':
+        dotColor = Colors.blue;   // 睡觉中 - 蓝色
+        break;
+      case 'slacking':
+      default:
+        dotColor = Colors.orange; // 摸鱼中 - 橙色
     }
 
     return Container(
-      width: 8,
-      height: 8,
+      width: 12,
+      height: 12,
       decoration: BoxDecoration(
         color: dotColor,
         shape: BoxShape.circle,
+        border: Border.all(
+          color: theme.colorScheme.surface,
+          width: 2,
+        ),
       ),
     );
   }
@@ -298,11 +287,15 @@ class _EmployeeCardState extends State<EmployeeCard>
       return l10n.employeeOnboarding;
     }
 
-    // 根据 is_active 判断状态
-    if (widget.employee.isActive) {
-      return l10n.employeeWorking;  // 激活 = 工作中
-    } else {
-      return l10n.employeeIdle;     // 未激活 = 摸鱼
+    // 根据 work_status 判断状态，添加 emoji
+    switch (widget.employee.workStatus) {
+      case 'working':
+        return '💼 ${l10n.employeeWorking}';   // 工作中
+      case 'sleeping':
+        return '😴 ${l10n.employeeSleeping}';  // 睡觉中
+      case 'slacking':
+      default:
+        return '🐟 ${l10n.employeeSlacking}';  // 摸鱼中
     }
   }
 

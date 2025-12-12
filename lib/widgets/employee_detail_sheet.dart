@@ -398,13 +398,29 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       );
     }
 
-    // 根据 is_active 判断状态
-    final isWorking = employee.isActive;
+    // 根据 work_status 判断状态
+    Color statusColor;
+    String statusText;
+
+    switch (employee.workStatus) {
+      case 'working':
+        statusColor = Colors.green;
+        statusText = '💼 ${l10n.employeeWorking}';
+        break;
+      case 'sleeping':
+        statusColor = Colors.blue;
+        statusText = '😴 ${l10n.employeeSleeping}';
+        break;
+      case 'slacking':
+      default:
+        statusColor = Colors.orange;
+        statusText = '🐟 ${l10n.employeeSlacking}';
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: (isWorking ? Colors.green : theme.colorScheme.outline)
-            .withOpacity(0.15),
+        color: statusColor.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -414,15 +430,15 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: isWorking ? Colors.green : theme.colorScheme.outline,
+              color: statusColor,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 8),
           Text(
-            isWorking ? l10n.employeeWorking : l10n.employeeIdle,
+            statusText,
             style: theme.textTheme.labelMedium?.copyWith(
-              color: isWorking ? Colors.green : theme.colorScheme.outline,
+              color: statusColor,
               fontWeight: FontWeight.w600,
             ),
           ),

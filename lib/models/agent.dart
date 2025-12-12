@@ -35,7 +35,7 @@ class Agent {
   /// 合同到期时间（ISO 8601 格式）
   final String? contractExpiresAt;
 
-  /// 工作状态：working（工作中）/ idle_long（长时间空闲）/ idle（空闲）
+  /// 工作状态：working（工作中）/ slacking（摸鱼中）/ sleeping（睡觉中）
   final String workStatus;
 
   /// 最后活跃时间（ISO 8601 格式）
@@ -52,7 +52,7 @@ class Agent {
     this.matrixUserId,
     required this.createdAt,
     this.contractExpiresAt,
-    this.workStatus = 'idle',
+    this.workStatus = 'slacking',
     this.lastActiveAt,
   });
 
@@ -69,7 +69,7 @@ class Agent {
       matrixUserId: json['matrix_user_id'] as String?,
       createdAt: json['created_at'] as String,
       contractExpiresAt: json['contract_expires_at'] as String?,
-      workStatus: json['work_status'] as String? ?? 'idle',
+      workStatus: json['work_status'] as String? ?? 'slacking',
       lastActiveAt: json['last_active_at'] as String?,
     );
   }
