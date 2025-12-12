@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat_list/unread_bubble.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/room_status_extension.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
-import 'package:automate/widgets/hover_builder.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat_list/unread_bubble.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/room_status_extension.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/hover_builder.dart';
 import '../../config/themes.dart';
 import '../../utils/date_time_extension.dart';
 import '../../widgets/avatar.dart';

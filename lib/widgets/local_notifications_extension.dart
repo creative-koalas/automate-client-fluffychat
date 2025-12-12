@@ -9,14 +9,14 @@ import 'package:image/image.dart';
 import 'package:matrix/matrix.dart';
 import 'package:universal_html/html.dart' as html;
 
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/client_download_content_extension.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/push_helper.dart';
-import 'package:automate/widgets/fluffy_chat_app.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/client_download_content_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/push_helper.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 extension LocalNotificationsExtension on MatrixState {
   static final html.AudioElement _audioPlayer = html.AudioElement()
@@ -149,7 +149,7 @@ extension LocalNotificationsExtension on MatrixState {
           case DesktopNotificationActions.openChat:
             setActiveClient(event.room.client);
 
-            AutomateApp.router.go('/rooms/${event.room.id}');
+            PsygoApp.router.go('/rooms/${event.room.id}');
             break;
         }
       });

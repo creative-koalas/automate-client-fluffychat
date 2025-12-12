@@ -11,16 +11,16 @@ import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
 
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/custom_http_client.dart';
-import 'package:automate/utils/custom_image_resizer.dart';
-import 'package:automate/utils/init_with_restore.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/custom_http_client.dart';
+import 'package:psygo/utils/custom_image_resizer.dart';
+import 'package:psygo/utils/init_with_restore.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'matrix_sdk_extensions/flutter_matrix_dart_sdk_database/builder.dart';
 
 abstract class ClientManager {
-  static const String clientNamespace = 'com.automate.store.clients';
+  static const String clientNamespace = 'com.psygo.store.clients';
 
   static Future<List<Client>> getClients({
     bool initialize = true,

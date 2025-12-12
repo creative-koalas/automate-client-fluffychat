@@ -8,9 +8,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:universal_html/html.dart' as html;
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/client_manager.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'cipher.dart';
 
 import 'sqlcipher_stub.dart'

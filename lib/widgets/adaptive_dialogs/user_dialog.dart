@@ -5,12 +5,12 @@ import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/date_time_extension.dart';
-import 'package:automate/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/presence_builder.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/presence_builder.dart';
 import '../../utils/url_launcher.dart';
 import '../future_loading_dialog.dart';
 import '../hover_builder.dart';

@@ -17,7 +17,7 @@ import android.util.Log
 class MainActivity : FlutterActivity() {
 
     private val TAG = "MainActivity"
-    private val APP_CONTROL_CHANNEL = "com.creativekoalas.automate/app_control"
+    private val APP_CONTROL_CHANNEL = "com.creativekoalas.psygo/app_control"
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)

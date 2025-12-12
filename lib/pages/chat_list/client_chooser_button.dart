@@ -4,12 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../utils/fluffy_share.dart';
 import 'chat_list.dart';
 

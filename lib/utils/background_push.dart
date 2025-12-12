@@ -33,11 +33,11 @@ import 'package:matrix/matrix.dart';
 import 'package:unifiedpush/unifiedpush.dart';
 import 'package:unifiedpush_ui/unifiedpush_ui.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/main.dart';
-import 'package:automate/utils/notification_background_handler.dart';
-import 'package:automate/utils/push_helper.dart';
-import 'package:automate/widgets/fluffy_chat_app.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/main.dart';
+import 'package:psygo/utils/notification_background_handler.dart';
+import 'package:psygo/utils/push_helper.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
 import '../config/app_config.dart';
 import '../config/setting_keys.dart';
 import '../widgets/matrix.dart';
@@ -84,7 +84,7 @@ class BackgroundPush {
             await notificationTap(
               NotificationResponseJson.fromJsonString(message),
               client: client,
-              router: AutomateApp.router,
+              router: PsygoApp.router,
               l10n: l10n,
             );
           } catch (e, s) {
@@ -105,7 +105,7 @@ class BackgroundPush {
               await notificationTap(
                 NotificationResponseJson.fromJsonString(message),
                 client: client,
-                router: AutomateApp.router,
+                router: PsygoApp.router,
                 l10n: l10n,
               );
             } catch (e, s) {
@@ -122,7 +122,7 @@ class BackgroundPush {
         onDidReceiveNotificationResponse: (response) => notificationTap(
           response,
           client: client,
-          router: AutomateApp.router,
+          router: PsygoApp.router,
           l10n: l10n,
         ),
         onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
@@ -329,7 +329,7 @@ class BackgroundPush {
         notificationTap(
           response,
           client: client,
-          router: AutomateApp.router,
+          router: PsygoApp.router,
           l10n: l10n,
         );
       }

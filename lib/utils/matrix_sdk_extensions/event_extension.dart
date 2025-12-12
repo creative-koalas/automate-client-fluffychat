@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:async/async.dart' as async;
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/utils/size_string.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:psygo/utils/size_string.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'matrix_file_extension.dart';
 
 extension LocalizedBody on Event {

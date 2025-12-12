@@ -500,7 +500,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "AutoMate",
+    "automate": "Psygo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -617,7 +617,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vás pozval na AutoMate.\n1. Nainštalujte si Automate: https://automate.app\n2. Zaregistrujte sa alebo sa prihláste\n3. Otvorte odkaz na pozvánku: {link}",
+    "inviteText": "{username} vás pozval na Psygo.\n1. Nainštalujte si Psygo: https://automate.app\n2. Zaregistrujte sa alebo sa prihláste\n3. Otvorte odkaz na pozvánku: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -754,8 +754,8 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "Nová správa v Automatee",
-    "@newMessageInAutomate": {
+    "newMessageInPsygo": "Nová správa v Psygoe",
+    "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
@@ -769,7 +769,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Zdá sa, že nemáte žiadne služby Googlu v telefóne. To je dobré rozhodnutie pre vaše súkromie! Ak chcete dostávať push notifikácie vo Automate, odporúčame používať microG: https://microg.org/.",
+    "noGoogleServicesWarning": "Zdá sa, že nemáte žiadne služby Googlu v telefóne. To je dobré rozhodnutie pre vaše súkromie! Ak chcete dostávať push notifikácie vo Psygo, odporúčame používať microG: https://microg.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1068,7 +1068,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "AutoMate",
+    "title": "Psygo",
     "@title": {
         "description": "Title for the application",
         "type": "String",

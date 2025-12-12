@@ -4,12 +4,12 @@ import 'package:async/async.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:matrix/matrix.dart' hide Result;
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/url_launcher.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/url_launcher.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
 
 class PollWidget extends StatelessWidget {
   final Event event;

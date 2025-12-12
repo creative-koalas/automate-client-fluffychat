@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat/add_widget_tile.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat/add_widget_tile.dart';
 
 class AddWidgetTileView extends StatelessWidget {
   final AddWidgetTileState controller;

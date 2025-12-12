@@ -9,10 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:video_player/video_player.dart';
 
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/utils/matrix_sdk_extensions/event_extension.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/widgets/blur_hash.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/blur_hash.dart';
 import '../../../utils/error_reporter.dart';
 import '../../widgets/mxc_image.dart';
 

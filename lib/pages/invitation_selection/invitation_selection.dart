@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/invitation_selection/invitation_selection_view.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/invitation_selection/invitation_selection_view.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../utils/localized_exception_extension.dart';
 
 class InvitationSelection extends StatefulWidget {

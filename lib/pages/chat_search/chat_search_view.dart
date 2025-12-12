@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat_search/chat_search_files_tab.dart';
-import 'package:automate/pages/chat_search/chat_search_images_tab.dart';
-import 'package:automate/pages/chat_search/chat_search_message_tab.dart';
-import 'package:automate/pages/chat_search/chat_search_page.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat_search/chat_search_files_tab.dart';
+import 'package:psygo/pages/chat_search/chat_search_images_tab.dart';
+import 'package:psygo/pages/chat_search/chat_search_message_tab.dart';
+import 'package:psygo/pages/chat_search/chat_search_page.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
 
 class ChatSearchView extends StatelessWidget {
   final ChatSearchController controller;

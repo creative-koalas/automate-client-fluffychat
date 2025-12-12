@@ -9,14 +9,14 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_shortcuts_new/flutter_shortcuts_new.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/client_download_content_extension.dart';
-import 'package:automate/utils/client_manager.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/notification_background_handler.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/client_download_content_extension.dart';
+import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/notification_background_handler.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 const notificationAvatarDimension = 128;
 
@@ -43,7 +43,7 @@ Future<void> pushHelper(
     l10n ??= await lookupL10n(PlatformDispatcher.instance.locale);
     flutterLocalNotificationsPlugin.show(
       notification.roomId?.hashCode ?? 0,
-      l10n.newMessageInAutomate,
+      l10n.newMessageInPsygo,
       l10n.openAppToReadMessages,
       NotificationDetails(
         iOS: const DarwinNotificationDetails(),
@@ -147,7 +147,7 @@ Future<void> _tryPushHelper(
 
   // Calculate the body
   final body = event.type == EventTypes.Encrypted
-      ? l10n.newMessageInAutomate
+      ? l10n.newMessageInPsygo
       : await event.calcLocalizedBody(
           matrixLocals,
           plaintextBody: true,
@@ -285,7 +285,7 @@ Future<void> _tryPushHelper(
         ? null
         : <AndroidNotificationAction>[
             AndroidNotificationAction(
-              AutomateNotificationActions.reply.name,
+              PsygoNotificationActions.reply.name,
               l10n.reply,
               inputs: [
                 AndroidNotificationActionInput(
@@ -297,7 +297,7 @@ Future<void> _tryPushHelper(
               semanticAction: SemanticAction.reply,
             ),
             AndroidNotificationAction(
-              AutomateNotificationActions.markAsRead.name,
+              PsygoNotificationActions.markAsRead.name,
               l10n.markAsRead,
               semanticAction: SemanticAction.markAsRead,
             ),
@@ -321,23 +321,23 @@ Future<void> _tryPushHelper(
     body,
     platformChannelSpecifics,
     payload:
-        AutomatePushPayload(client.clientName, event.room.id, event.eventId)
+        PsygoPushPayload(client.clientName, event.room.id, event.eventId)
             .toString(),
   );
   Logs().v('Push helper has been completed!');
 }
 
-class AutomatePushPayload {
+class PsygoPushPayload {
   final String? clientName, roomId, eventId;
 
-  AutomatePushPayload(this.clientName, this.roomId, this.eventId);
+  PsygoPushPayload(this.clientName, this.roomId, this.eventId);
 
-  factory AutomatePushPayload.fromString(String payload) {
+  factory PsygoPushPayload.fromString(String payload) {
     final parts = payload.split('|');
     if (parts.length != 3) {
-      return AutomatePushPayload(null, null, null);
+      return PsygoPushPayload(null, null, null);
     }
-    return AutomatePushPayload(parts[0], parts[1], parts[2]);
+    return PsygoPushPayload(parts[0], parts[1], parts[2]);
   }
 
   @override

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 abstract class UpdateNotifier {
   static const String versionStoreKey = 'last_known_version';

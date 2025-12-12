@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/invitation_selection/invitation_selection.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../widgets/adaptive_dialogs/user_dialog.dart';
 
 class InvitationSelectionView extends StatelessWidget {

@@ -953,7 +953,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "AutoMate",
+  "automate": "Psygo",
   "@automate": {
     "type": "String",
     "placeholders": {}

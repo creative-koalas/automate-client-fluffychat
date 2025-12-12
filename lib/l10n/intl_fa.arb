@@ -1217,8 +1217,8 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInAutomate": "💬 پیام جدید در فلافی‌چت",
-  "@newMessageInAutomate": {
+  "newMessageInPsygo": "💬 پیام جدید در فلافی‌چت",
+  "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
   },

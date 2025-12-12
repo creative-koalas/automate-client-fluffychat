@@ -4,14 +4,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/error_reporter.dart';
-import 'package:automate/utils/fluffy_share.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/error_reporter.dart';
+import 'package:psygo/utils/fluffy_share.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../../utils/adaptive_bottom_sheet.dart';
 import '../key_verification/key_verification_dialog.dart';
 

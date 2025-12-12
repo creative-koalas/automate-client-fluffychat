@@ -1,7 +1,7 @@
 import 'package:matrix/matrix.dart';
 
 extension EventCheckboxRoomExtension on Room {
-  static const String relationshipType = 'com.automate.checkboxes';
+  static const String relationshipType = 'com.psygo.checkboxes';
   Future<String?> checkCheckbox(
     String eventId,
     int checkboxId, {

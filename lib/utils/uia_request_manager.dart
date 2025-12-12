@@ -5,17 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:automate/widgets/fluffy_chat_app.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 extension UiaRequestManager on MatrixState {
   Future uiaRequestHandler(UiaRequest uiaRequest) async {
     final l10n = L10n.of(context);
     final navigatorContext =
-        AutomateApp.router.routerDelegate.navigatorKey.currentContext ??
+        PsygoApp.router.routerDelegate.navigatorKey.currentContext ??
             context;
     try {
       if (uiaRequest.state != UiaRequestState.waitForUser ||

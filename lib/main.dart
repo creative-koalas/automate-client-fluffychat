@@ -9,10 +9,10 @@ import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/utils/client_manager.dart';
-import 'package:automate/utils/notification_background_handler.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/notification_background_handler.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'config/setting_keys.dart';
 import 'utils/background_push.dart';
 import 'widgets/fluffy_chat_app.dart';
@@ -91,7 +91,7 @@ Future<void> startGui(List<Client> clients, SharedPreferences store) async {
   await firstClient?.roomsLoading;
   await firstClient?.accountDataLoading;
 
-  runApp(AutomateApp(clients: clients, pincode: pin, store: store));
+  runApp(PsygoApp(clients: clients, pincode: pin, store: store));
 }
 
 /// Watches the lifecycle changes to start the application when it

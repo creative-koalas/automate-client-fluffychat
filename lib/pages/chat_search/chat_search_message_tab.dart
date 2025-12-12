@@ -4,11 +4,11 @@ import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/date_time_extension.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/url_launcher.dart';
-import 'package:automate/widgets/avatar.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/url_launcher.dart';
+import 'package:psygo/widgets/avatar.dart';
 
 class ChatSearchMessageTab extends StatelessWidget {
   final String searchQuery;

@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 
 class ErrorReporter {
   final BuildContext? context;

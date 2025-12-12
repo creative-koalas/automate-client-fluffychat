@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/settings_3pid/settings_3pid.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/settings_3pid/settings_3pid.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 class Settings3PidView extends StatelessWidget {
   final Settings3PidController controller;

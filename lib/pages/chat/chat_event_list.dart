@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'package:scroll_to_index/scroll_to_index.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/pages/chat/chat.dart';
-import 'package:automate/pages/chat/events/message.dart';
-import 'package:automate/pages/chat/seen_by_row.dart';
-import 'package:automate/pages/chat/typing_indicators.dart';
-import 'package:automate/utils/account_config.dart';
-import 'package:automate/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/pages/chat/chat.dart';
+import 'package:psygo/pages/chat/events/message.dart';
+import 'package:psygo/pages/chat/seen_by_row.dart';
+import 'package:psygo/pages/chat/typing_indicators.dart';
+import 'package:psygo/utils/account_config.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 class ChatEventList extends StatelessWidget {
   final ChatController controller;

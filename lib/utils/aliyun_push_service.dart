@@ -9,9 +9,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/automate/core/config.dart';
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
+import 'package:psygo/core/config.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
 
 /// 阿里云移动推送服务
 ///
@@ -240,7 +240,7 @@ class AliyunPushService {
 
       final roomId = payload['room_id'] as String?;
       final eventId = payload['event_id'] as String?;
-      final title = payload['title'] as String? ?? 'AutoMate';
+      final title = payload['title'] as String? ?? 'Psygo';
       final body = payload['body'] as String? ?? '你收到了一条新消息';
       final badge = payload['badge'] as int? ?? 0;
 
@@ -411,7 +411,7 @@ class AliyunPushService {
   // ============================================================
 
   /// Push Gateway URL（Synapse 调用，用集群内部地址）
-  static String get _pushGatewayUrl => '${AutomateConfig.internalBaseUrl}/_matrix/push/v1/notify';
+  static String get _pushGatewayUrl => '${PsygoConfig.internalBaseUrl}/_matrix/push/v1/notify';
 
   /// 应用 ID（用于区分 iOS/Android）
   static const String _androidAppId = 'com.creativekoalas.psygo.android';
@@ -443,7 +443,7 @@ class AliyunPushService {
     final pushKey = _generatePushKey();
 
     try {
-      final uri = Uri.parse('${AutomateConfig.baseUrl}/api/push/register');
+      final uri = Uri.parse('${PsygoConfig.baseUrl}/api/push/register');
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
@@ -509,7 +509,7 @@ class AliyunPushService {
           pushkey: pushKey,
           kind: 'http',
           appId: _appId,
-          appDisplayName: 'AutoMate',
+          appDisplayName: 'Psygo',
           deviceDisplayName: Platform.localHostname,
           lang: 'zh-CN',
           data: PusherData(
@@ -560,7 +560,7 @@ class AliyunPushService {
   /// [pushKey] 之前注册时返回的 pushkey
   Future<bool> unregisterPush(String pushKey) async {
     try {
-      final uri = Uri.parse('${AutomateConfig.baseUrl}/api/push/unregister')
+      final uri = Uri.parse('${PsygoConfig.baseUrl}/api/push/unregister')
           .replace(queryParameters: {'push_key': pushKey});
 
       final response = await http.delete(uri);

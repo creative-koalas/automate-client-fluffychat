@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/themes.dart';
+import 'package:psygo/config/themes.dart';
 import 'dismiss_keyboard.dart';
 
 class PIPView extends StatefulWidget {

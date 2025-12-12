@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
-import 'package:automate/utils/stream_extension.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/hover_builder.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/utils/stream_extension.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/hover_builder.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../widgets/adaptive_dialogs/user_dialog.dart';
 
 class StatusMessageList extends StatelessWidget {

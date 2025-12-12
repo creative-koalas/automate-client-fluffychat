@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
-import 'package:automate/widgets/mxc_image.dart';
-import 'package:automate/widgets/mxc_image_viewer.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
+import 'package:psygo/widgets/mxc_image.dart';
+import 'package:psygo/widgets/mxc_image_viewer.dart';
 import '../../widgets/matrix.dart';
 import 'settings_emotes.dart';
 

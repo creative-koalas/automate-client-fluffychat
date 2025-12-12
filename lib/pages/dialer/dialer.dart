@@ -29,11 +29,11 @@ import 'package:just_audio/just_audio.dart';
 import 'package:matrix/matrix.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/voip/video_renderer.dart';
-import 'package:automate/widgets/avatar.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/voip/video_renderer.dart';
+import 'package:psygo/widgets/avatar.dart';
 import 'pip/pip_view.dart';
 
 class _StreamView extends StatelessWidget {

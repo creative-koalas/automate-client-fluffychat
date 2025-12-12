@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat_permissions_settings/chat_permissions_settings.dart';
-import 'package:automate/pages/chat_permissions_settings/permission_list_tile.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
+import 'package:psygo/pages/chat_permissions_settings/permission_list_tile.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 class ChatPermissionsSettingsView extends StatelessWidget {
   final ChatPermissionsSettingsController controller;

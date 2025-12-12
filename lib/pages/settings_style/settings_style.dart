@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/utils/account_config.dart';
-import 'package:automate/utils/file_selector.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
-import 'package:automate/widgets/theme_builder.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/utils/account_config.dart';
+import 'package:psygo/utils/file_selector.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/theme_builder.dart';
 import '../../widgets/matrix.dart';
 import 'settings_style_view.dart';
 

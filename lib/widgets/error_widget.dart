@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/utils/error_reporter.dart';
+import 'package:psygo/utils/error_reporter.dart';
 
 class AutomateErrorWidget extends StatefulWidget {
   final FlutterErrorDetails details;

@@ -629,7 +629,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "AutoMate",
+    "automate": "Psygo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -735,7 +735,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} הזמין אותך ל-AutoMate.\n1. התקן את Automate: https://automate.app\n2. הירשם או היכנס\n3. פתח את קישור ההזמנה: {link}",
+    "inviteText": "{username} הזמין אותך ל-Psygo.\n1. התקן את Psygo: https://automate.app\n2. הירשם או היכנס\n3. פתח את קישור ההזמנה: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1308,12 +1308,12 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "הודעה חדשה ב-Automate",
-    "@newMessageInAutomate": {
+    "newMessageInPsygo": "הודעה חדשה ב-Psygo",
+    "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "נראה שאין לך שירותי גוגל בטלפון שלך. זו החלטה טובה לפרטיות שלך! כדי לקבל התרעות ב- Automate אנו ממליצים להשתמש https://microg.org/ או https://unifiedpush.org/.",
+    "noGoogleServicesWarning": "נראה שאין לך שירותי גוגל בטלפון שלך. זו החלטה טובה לפרטיות שלך! כדי לקבל התרעות ב- Psygo אנו ממליצים להשתמש https://microg.org/ או https://unifiedpush.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}

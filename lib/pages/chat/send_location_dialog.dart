@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat/events/map_bubble.dart';
-import 'package:automate/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat/events/map_bubble.dart';
+import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
 
 class SendLocationDialog extends StatefulWidget {
   final Room room;

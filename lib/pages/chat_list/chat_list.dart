@@ -11,19 +11,19 @@ import 'package:matrix/matrix.dart' as sdk;
 import 'package:matrix/matrix.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat_list/chat_list_view.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/show_scaffold_dialog.dart';
-import 'package:automate/utils/show_update_snackbar.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_modal_action_popup.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
-import 'package:automate/widgets/share_scaffold_dialog.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat_list/chat_list_view.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/show_scaffold_dialog.dart';
+import 'package:psygo/utils/show_update_snackbar.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/share_scaffold_dialog.dart';
 import '../../../utils/account_bundles.dart';
 import '../../config/setting_keys.dart';
 import '../../utils/url_launcher.dart';
@@ -174,7 +174,7 @@ class ChatListController extends State<ChatList>
   QueryPublicRoomsResponse? roomSearchResult;
 
   bool isSearching = false;
-  static const String _serverStoreNamespace = 'com.automate.search.server';
+  static const String _serverStoreNamespace = 'com.psygo.search.server';
 
   void setServer() async {
     final newServer = await showTextInputDialog(

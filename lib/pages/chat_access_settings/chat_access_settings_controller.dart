@@ -3,14 +3,14 @@ import 'package:flutter/material.dart' hide Visibility;
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat_access_settings/chat_access_settings_page.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_modal_action_popup.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat_access_settings/chat_access_settings_page.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 class ChatAccessSettings extends StatefulWidget {
   final String roomId;

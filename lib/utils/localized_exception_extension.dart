@@ -7,8 +7,8 @@ import 'package:http/http.dart';
 import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/other_party_can_receive.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/other_party_can_receive.dart';
 import 'uia_request_manager.dart';
 
 extension LocalizedExceptionExtension on Object {

@@ -1098,7 +1098,7 @@
   },
   "homeserver": "Hem-servitor",
   "@homeserver": {},
-  "automate": "AutoMate",
+  "automate": "Psygo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -1142,7 +1142,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "AutoMate",
+  "title": "Psygo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -1675,7 +1675,7 @@
       }
     }
   },
-  "@newMessageInAutomate": {
+  "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
   },

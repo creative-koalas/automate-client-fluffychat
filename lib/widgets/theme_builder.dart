@@ -5,7 +5,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:automate/utils/color_value.dart';
+import 'package:psygo/utils/color_value.dart';
 
 class ThemeBuilder extends StatefulWidget {
   final Widget Function(

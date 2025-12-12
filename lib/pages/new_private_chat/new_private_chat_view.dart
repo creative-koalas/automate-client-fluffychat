@@ -4,16 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/new_private_chat/new_private_chat.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/url_launcher.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/new_private_chat/new_private_chat.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/url_launcher.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../widgets/qr_code_viewer.dart';
 
 class NewPrivateChatView extends StatelessWidget {

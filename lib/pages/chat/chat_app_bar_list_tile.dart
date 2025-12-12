@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_linkify/flutter_linkify.dart';
 
-import 'package:automate/utils/url_launcher.dart';
+import 'package:psygo/utils/url_launcher.dart';
 
 class ChatAppBarListTile extends StatelessWidget {
   final Widget? leading;

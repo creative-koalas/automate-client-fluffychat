@@ -11,12 +11,12 @@ import 'package:matrix/matrix.dart';
 import 'package:opus_caf_converter_dart/opus_caf_converter_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
-import 'package:automate/utils/error_reporter.dart';
-import 'package:automate/utils/file_description.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/utils/url_launcher.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/utils/error_reporter.dart';
+import 'package:psygo/utils/file_description.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/url_launcher.dart';
 import '../../../utils/matrix_sdk_extensions/event_extension.dart';
 import '../../../widgets/fluffy_chat_app.dart';
 import '../../../widgets/matrix.dart';
@@ -85,7 +85,7 @@ class AudioPlayerState extends State<AudioPlayerWidget> {
               content: StreamBuilder(
                 stream: audioPlayer.positionStream.asBroadcastStream(),
                 builder: (context, _) => GestureDetector(
-                  onTap: () => AutomateApp.router.go(
+                  onTap: () => PsygoApp.router.go(
                     '/rooms/${widget.event.room.id}?event=${widget.event.eventId}',
                   ),
                   child: Text(

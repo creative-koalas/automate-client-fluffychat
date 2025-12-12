@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/new_group/new_group.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/new_group/new_group.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
 
 class NewGroupView extends StatelessWidget {
   final NewGroupController controller;

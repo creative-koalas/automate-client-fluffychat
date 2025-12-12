@@ -1,4 +1,4 @@
-name: automate
+name: psygo
 description: Your AI-powered automation assistant.
 publish_to: none
 # On version bump please also increase:

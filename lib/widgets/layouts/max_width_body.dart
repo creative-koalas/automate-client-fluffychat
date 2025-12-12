@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
 
 class MaxWidthBody extends StatelessWidget {
   final Widget child;

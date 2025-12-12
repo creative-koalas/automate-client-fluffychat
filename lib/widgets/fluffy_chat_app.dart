@@ -6,27 +6,27 @@ import 'package:matrix/matrix.dart' hide Matrix;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 
-import 'package:automate/automate/backend/backend.dart';
-import 'package:automate/automate/services/one_click_login.dart';
-import 'package:automate/automate/core/config.dart';
-import 'package:automate/config/routes.dart';
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/permission_service.dart';
-import 'package:automate/widgets/app_lock.dart';
-import 'package:automate/widgets/theme_builder.dart';
+import 'package:psygo/backend/backend.dart';
+import 'package:psygo/services/one_click_login.dart';
+import 'package:psygo/core/config.dart';
+import 'package:psygo/config/routes.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/permission_service.dart';
+import 'package:psygo/widgets/app_lock.dart';
+import 'package:psygo/widgets/theme_builder.dart';
 import '../utils/custom_scroll_behaviour.dart';
 import 'matrix.dart';
 
-class AutomateApp extends StatelessWidget {
+class PsygoApp extends StatelessWidget {
   final Widget? testWidget;
   final List<Client> clients;
   final String? pincode;
   final SharedPreferences store;
 
-  const AutomateApp({
+  const PsygoApp({
     super.key,
     this.testWidget,
     required this.clients,
@@ -60,12 +60,12 @@ class AutomateApp extends StatelessWidget {
         supportedLocales: L10n.supportedLocales,
         routerConfig: router,
         builder: (context, child) => ChangeNotifierProvider(
-          create: (_) => AutomateAuthState()..load(),
+          create: (_) => PsygoAuthState()..load(),
           child: Builder(
             builder: (context) {
-              final auth = context.read<AutomateAuthState>();
-              return Provider<AutomateApiClient>(
-                create: (_) => AutomateApiClient(auth),
+              final auth = context.read<PsygoAuthState>();
+              return Provider<PsygoApiClient>(
+                create: (_) => PsygoApiClient(auth),
                 child: AppLockWidget(
                   pincode: pincode,
                   clients: clients,
@@ -153,11 +153,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   }
 
   Future<void> _checkAuthState() async {
-    final auth = context.read<AutomateAuthState>();
-    final api = context.read<AutomateApiClient>();
+    final auth = context.read<PsygoAuthState>();
+    final api = context.read<PsygoApiClient>();
 
     // Ensure auth state is loaded from storage before checking
-    // This is critical because AutomateAuthState()..load() in Provider.create
+    // This is critical because PsygoAuthState()..load() in Provider.create
     // does not wait for load() to complete (cascade operator returns immediately)
     await auth.load();
 
@@ -242,7 +242,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
       debugPrint('[AuthGate] Got token from Aliyun, calling backend...');
 
       // Step 1: Verify phone number
-      final api = context.read<AutomateApiClient>();
+      final api = context.read<PsygoApiClient>();
       final verifyResponse = await api.verifyPhone(loginToken);
       debugPrint('[AuthGate] Phone verified: ${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
 
@@ -326,7 +326,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   }
 
   Future<void> _loginMatrixAndProceed() async {
-    final auth = context.read<AutomateAuthState>();
+    final auth = context.read<PsygoAuthState>();
     final matrixAccessToken = auth.matrixAccessToken;
     final matrixUserId = auth.matrixUserId;
 
@@ -344,7 +344,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
       final client = await matrix.getLoginClient();
 
       // Set homeserver before login
-      final homeserverUrl = Uri.parse(AutomateConfig.matrixHomeserver);
+      final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
       debugPrint('[AuthGate] Setting homeserver: $homeserverUrl');
       await client.checkHomeserver(homeserverUrl);
 
@@ -381,7 +381,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   void _redirectToLoginPage() {
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navKey = AutomateApp.router.routerDelegate.navigatorKey;
+      final navKey = PsygoApp.router.routerDelegate.navigatorKey;
       final ctx = navKey.currentContext;
       if (ctx == null) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _redirectToLoginPage());
@@ -397,7 +397,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
   void _navigateToOnboarding() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navKey = AutomateApp.router.routerDelegate.navigatorKey;
+      final navKey = PsygoApp.router.routerDelegate.navigatorKey;
       final ctx = navKey.currentContext;
       if (ctx == null) return;
 
@@ -414,7 +414,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AutomateAuthState>();
+    final auth = context.watch<PsygoAuthState>();
 
     // If logged out externally, reset state
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
@@ -621,7 +621,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
     try {
       debugPrint('[AuthGate] Completing registration with invitation code');
-      final api = context.read<AutomateApiClient>();
+      final api = context.read<PsygoApiClient>();
       final authResponse = await api.completeLogin(
         _pendingToken!,
         invitationCode: code,

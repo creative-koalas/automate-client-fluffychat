@@ -1353,8 +1353,8 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInAutomate": "Fuf பஞ்சுபோன்ற புதிய செய்தி",
-  "@newMessageInAutomate": {
+  "newMessageInPsygo": "Fuf பஞ்சுபோன்ற புதிய செய்தி",
+  "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
   },

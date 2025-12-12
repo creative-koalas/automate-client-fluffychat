@@ -32,7 +32,7 @@ import com.mobile.auth.gatewayauth.CustomInterface
 class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     companion object {
         private const val TAG = "OneClickLoginPlugin"
-        private const val CHANNEL = "com.creativekoalas.automate/one_click_login"
+        private const val CHANNEL = "com.creativekoalas.psygo/one_click_login"
     }
 
     private lateinit var channel: MethodChannel

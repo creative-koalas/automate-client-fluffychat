@@ -6,14 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/new_private_chat/new_private_chat_view.dart';
-import 'package:automate/pages/new_private_chat/qr_scanner_modal.dart';
-import 'package:automate/utils/adaptive_bottom_sheet.dart';
-import 'package:automate/utils/fluffy_share.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/url_launcher.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/new_private_chat/new_private_chat_view.dart';
+import 'package:psygo/pages/new_private_chat/qr_scanner_modal.dart';
+import 'package:psygo/utils/adaptive_bottom_sheet.dart';
+import 'package:psygo/utils/fluffy_share.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/url_launcher.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../widgets/adaptive_dialogs/user_dialog.dart';
 
 class NewPrivateChat extends StatefulWidget {

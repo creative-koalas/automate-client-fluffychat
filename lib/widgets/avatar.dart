@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/utils/string_color.dart';
-import 'package:automate/widgets/mxc_image.dart';
-import 'package:automate/widgets/presence_builder.dart';
+import 'package:psygo/utils/string_color.dart';
+import 'package:psygo/widgets/mxc_image.dart';
+import 'package:psygo/widgets/presence_builder.dart';
 
 class Avatar extends StatelessWidget {
   final Uri? mxContent;

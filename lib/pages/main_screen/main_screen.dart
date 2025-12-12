@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat_list/chat_list.dart';
-import 'package:automate/automate/pages/team/team_page.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat_list/chat_list.dart';
+import 'package:psygo/pages/team/team_page.dart';
 
 /// Main screen container for Messages and Team pages
 /// Supports horizontal swipe navigation on mobile devices

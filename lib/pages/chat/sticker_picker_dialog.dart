@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/url_launcher.dart';
-import 'package:automate/widgets/mxc_image.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/url_launcher.dart';
+import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/avatar.dart';
 
 class StickerPickerDialog extends StatefulWidget {

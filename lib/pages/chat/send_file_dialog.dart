@@ -5,15 +5,15 @@ import 'package:cross_file/cross_file.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_file_extension.dart';
-import 'package:automate/utils/other_party_can_receive.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/size_string.dart';
-import 'package:automate/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
-import 'package:automate/widgets/adaptive_dialogs/dialog_text_field.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
+import 'package:psygo/utils/other_party_can_receive.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/size_string.dart';
+import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
+import 'package:psygo/widgets/adaptive_dialogs/dialog_text_field.dart';
 import '../../utils/resize_video.dart';
 
 class SendFileDialog extends StatefulWidget {

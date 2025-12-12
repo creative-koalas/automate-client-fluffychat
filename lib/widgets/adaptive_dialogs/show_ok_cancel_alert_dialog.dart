@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_linkify/flutter_linkify.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/url_launcher.dart';
-import 'package:automate/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/url_launcher.dart';
+import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 
 enum OkCancelResult { ok, cancel }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 class PresenceBuilder extends StatefulWidget {
   final Widget Function(BuildContext context, CachedPresence? presence) builder;

@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
 
 Future<T?> showAdaptiveBottomSheet<T>({
   required BuildContext context,

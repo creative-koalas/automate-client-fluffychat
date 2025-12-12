@@ -830,7 +830,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "AutoMate",
+    "automate": "Psygo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1002,7 +1002,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vous a invité·e sur AutoMate.\n1. Visiter automate.app et installer l'application\n2. Inscrivez-vous ou connectez-vous\n3. Ouvrez le lien d'invitation :\n{link}",
+    "inviteText": "{username} vous a invité·e sur Psygo.\n1. Visiter automate.app et installer l'application\n2. Inscrivez-vous ou connectez-vous\n3. Ouvrez le lien d'invitation :\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1174,8 +1174,8 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "💬 Nouveau message dans Automate",
-    "@newMessageInAutomate": {
+    "newMessageInPsygo": "💬 Nouveau message dans Psygo",
+    "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
@@ -1796,7 +1796,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "AutoMate",
+    "title": "Psygo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2326,7 +2326,7 @@
     "@recoveryKey": {},
     "recoveryKeyLost": "Clé de récupération perdue ?",
     "@recoveryKeyLost": {},
-    "indexedDbErrorLong": "Le stockage des messages n'est malheureusement pas activé par défaut en mode privé.\nVeuillez consulter :\n - about:config\n - Définir dom.indexedDB.privateBrowsing.enabled à « vrai ».\nSinon, il n'est pas possible d'exécuter AutoMate.",
+    "indexedDbErrorLong": "Le stockage des messages n'est malheureusement pas activé par défaut en mode privé.\nVeuillez consulter :\n - about:config\n - Définir dom.indexedDB.privateBrowsing.enabled à « vrai ».\nSinon, il n'est pas possible d'exécuter Psygo.",
     "@indexedDbErrorLong": {},
     "saveKeyManuallyDescription": "Enregistrer cette clé manuellement en déclenchant la boîte de dialogue de partage du système ou le presse-papiers.",
     "@saveKeyManuallyDescription": {},
@@ -2391,13 +2391,13 @@
     "@callingPermissions": {},
     "callingAccount": "Compte d'appel",
     "@callingAccount": {},
-    "callingAccountDetails": "Permet à Automate d'utiliser l'application de numérotation native d'Android.",
+    "callingAccountDetails": "Permet à Psygo d'utiliser l'application de numérotation native d'Android.",
     "@callingAccountDetails": {},
     "appearOnTop": "Apparaître en haut",
     "@appearOnTop": {},
     "appearOnTopDetails": "Permet à l'application d'apparaître en haut de l'écran (non nécessaire si vous avez déjà configuré Fluffychat comme compte d'appel)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Microphone, caméra et autres autorisations de Automate",
+    "otherCallingPermissions": "Microphone, caméra et autres autorisations de Psygo",
     "@otherCallingPermissions": {},
     "newGroup": "Nouveau groupe",
     "@newGroup": {},

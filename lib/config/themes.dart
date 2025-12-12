@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:automate/config/setting_keys.dart';
+import 'package:psygo/config/setting_keys.dart';
 import 'app_config.dart';
 
 abstract class FluffyThemes {

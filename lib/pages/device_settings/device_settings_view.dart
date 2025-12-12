@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/device_settings/device_settings.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/device_settings/device_settings.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
 import 'user_device_list_item.dart';
 
 class DevicesSettingsView extends StatelessWidget {

@@ -44,7 +44,7 @@ class AccountBundle {
       };
 }
 
-const accountBundlesType = 'com.automate.account_bundles';
+const accountBundlesType = 'com.psygo.account_bundles';
 
 extension AccountBundlesExtension on Client {
   List<AccountBundle> get accountBundles {

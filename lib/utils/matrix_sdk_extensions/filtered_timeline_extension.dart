@@ -1,6 +1,6 @@
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/setting_keys.dart';
+import 'package:psygo/config/setting_keys.dart';
 
 extension VisibleInGuiExtension on List<Event> {
   List<Event> filterByVisibleInGui({

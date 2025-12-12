@@ -16,16 +16,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/client_manager.dart';
-import 'package:automate/utils/init_with_restore.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_file_extension.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/uia_request_manager.dart';
-import 'package:automate/utils/voip_plugin.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/fluffy_chat_app.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/init_with_restore.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/uia_request_manager.dart';
+import 'package:psygo/utils/voip_plugin.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../config/setting_keys.dart';
 import '../pages/key_verification/key_verification_dialog.dart';
 import '../utils/account_bundles.dart';
@@ -171,7 +171,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
             );
             _registerSubs(_loginClientCandidate!.clientName);
             _loginClientCandidate = null;
-            AutomateApp.router.go('/rooms');
+            PsygoApp.router.go('/rooms');
           });
     if (widget.clients.isEmpty) widget.clients.add(candidate);
     return candidate;
@@ -206,7 +206,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   bool webHasFocus = true;
 
   String? get activeRoomId {
-    final route = AutomateApp.router.routeInformationProvider.value.uri.path;
+    final route = PsygoApp.router.routeInformationProvider.value.uri.path;
     if (!route.startsWith('/rooms/')) return null;
     return route.split('/')[2];
   }
@@ -250,14 +250,14 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         if (!hidPopup &&
             {KeyVerificationState.done, KeyVerificationState.error}
                 .contains(request.state)) {
-          AutomateApp.router.pop('dialog');
+          PsygoApp.router.pop('dialog');
         }
         hidPopup = true;
       };
       request.onUpdate = null;
       hidPopup = true;
       await KeyVerificationDialog(request: request).show(
-        AutomateApp.router.routerDelegate.navigatorKey.currentContext ??
+        PsygoApp.router.routerDelegate.navigatorKey.currentContext ??
             context,
       );
     });
@@ -275,7 +275,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
       if (loggedInWithMultipleClients && state != LoginState.loggedIn) {
         ScaffoldMessenger.of(
-          AutomateApp.router.routerDelegate.navigatorKey.currentContext ??
+          PsygoApp.router.routerDelegate.navigatorKey.currentContext ??
               context,
         ).showSnackBar(
           SnackBar(
@@ -284,10 +284,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         );
 
         if (state != LoginState.loggedIn) {
-          AutomateApp.router.go('/rooms');
+          PsygoApp.router.go('/rooms');
         }
       } else {
-        AutomateApp.router
+        PsygoApp.router
             .go(state == LoginState.loggedIn ? '/rooms' : '/home');
       }
     });
@@ -329,7 +329,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       //   this,
       //   onFcmError: (errorMsg, {Uri? link}) async {
       //     final result = await showOkCancelAlertDialog(
-      //       context: AutomateApp
+      //       context: PsygoApp
       //               .router.routerDelegate.navigatorKey.currentContext ??
       //           context,
       //       title: L10n.of(context).pushNotificationsNotAvailable,
@@ -375,7 +375,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       // 2. 通知点击回调（导航到对应房间）
       AliyunPushService.instance.onNotificationTapped = (roomId, eventId) {
         Logs().i('[Matrix] Notification tapped: room=$roomId, event=$eventId');
-        AutomateApp.router.go('/rooms/$roomId');
+        PsygoApp.router.go('/rooms/$roomId');
       };
 
       final success = await AliyunPushService.instance.initialize();

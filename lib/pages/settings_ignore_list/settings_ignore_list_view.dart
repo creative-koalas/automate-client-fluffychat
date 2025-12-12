@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
 import '../../widgets/matrix.dart';
 import 'settings_ignore_list.dart';
 

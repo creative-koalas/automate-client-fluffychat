@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat/recording_view_model.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat/recording_view_model.dart';
 
 class RecordingInputRow extends StatelessWidget {
   final RecordingViewModelState state;

@@ -1012,7 +1012,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "AutoMate",
+  "automate": "Psygo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -1199,7 +1199,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} invited you to AutoMate.\n1. Visit automate.app and install the app \n2. Sign up or sign in \n3. Open the invite link: \n {link}",
+  "inviteText": "{username} invited you to Psygo.\n1. Visit automate.app and install the app \n2. Sign up or sign in \n3. Open the invite link: \n {link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -1387,8 +1387,8 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInAutomate": "💬 New message in AutoMate",
-  "@newMessageInAutomate": {
+  "newMessageInPsygo": "💬 New message in Psygo",
+  "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
   },
@@ -2107,7 +2107,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "AutoMate",
+  "title": "Psygo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2470,7 +2470,7 @@
   "@emailOrUsername": {},
   "indexedDbErrorTitle": "Private mode issues",
   "@indexedDbErrorTitle": {},
-  "indexedDbErrorLong": "The message storage is unfortunately not enabled in private mode by default.\nPlease visit\n - about:config\n - set dom.indexedDB.privateBrowsing.enabled to true\nOtherwise, it is not possible to run AutoMate.",
+  "indexedDbErrorLong": "The message storage is unfortunately not enabled in private mode by default.\nPlease visit\n - about:config\n - set dom.indexedDB.privateBrowsing.enabled to true\nOtherwise, it is not possible to run Psygo.",
   "@indexedDbErrorLong": {},
   "switchToAccount": "Switch to account {number}",
   "@switchToAccount": {
@@ -2641,13 +2641,13 @@
   "@callingPermissions": {},
   "callingAccount": "Calling account",
   "@callingAccount": {},
-  "callingAccountDetails": "Allows Automate to use the native android dialer app.",
+  "callingAccountDetails": "Allows Psygo to use the native android dialer app.",
   "@callingAccountDetails": {},
   "appearOnTop": "Appear on top",
   "@appearOnTop": {},
   "appearOnTopDetails": "Allows the app to appear on top (not needed if you already have Fluffychat setup as a calling account)",
   "@appearOnTopDetails": {},
-  "otherCallingPermissions": "Microphone, camera and other Automate permissions",
+  "otherCallingPermissions": "Microphone, camera and other Psygo permissions",
   "@otherCallingPermissions": {},
   "whyIsThisMessageEncrypted": "Why is this message unreadable?",
   "@whyIsThisMessageEncrypted": {},
@@ -3155,7 +3155,7 @@
   "@noticeChatBackupDeviceVerification": {},
   "continueText": "Continue",
   "@continueText": {},
-  "welcomeText": "Hey Hey 👋 This is AutoMate. You can sign in to any homeserver, which is compatible with https://matrix.org. And then chat with anyone. It's a huge decentralized messaging network!",
+  "welcomeText": "Hey Hey 👋 This is Psygo. You can sign in to any homeserver, which is compatible with https://matrix.org. And then chat with anyone. It's a huge decentralized messaging network!",
   "@welcomeText": {},
   "blur": "Blur:",
   "@blur": {},
@@ -3216,7 +3216,7 @@
   "@open": {},
   "waitingForServer": "Waiting for server...",
   "@waitingForServer": {},
-  "appIntroduction": "Automate lets you chat with your friends across different messengers. Learn more at https://matrix.org or just tap *Continue*.",
+  "appIntroduction": "Psygo lets you chat with your friends across different messengers. Learn more at https://matrix.org or just tap *Continue*.",
   "@appIntroduction": {},
   "newChatRequest": "📩 New chat request",
   "@newChatRequest": {},
@@ -3238,7 +3238,7 @@
   "@notificationRuleMaster": {},
   "notificationRuleMasterDescription": "Overrides all other rules and disables all notifications.",
   "@notificationRuleMasterDescription": {},
-  "notificationRuleSuppressNotices": "Suppress Automated Messages",
+  "notificationRuleSuppressNotices": "Suppress Psygod Messages",
   "@notificationRuleSuppressNotices": {},
   "notificationRuleSuppressNoticesDescription": "Suppresses notifications from automated clients like bots.",
   "@notificationRuleSuppressNoticesDescription": {},
@@ -3800,7 +3800,7 @@
   "@orderInfo": {},
   "orderProduct": "Product",
   "@orderProduct": {},
-  "orderProductCredits": "Automate Credits",
+  "orderProductCredits": "Psygo Credits",
   "@orderProductCredits": {},
   "orderNumber": "Order No.",
   "@orderNumber": {},

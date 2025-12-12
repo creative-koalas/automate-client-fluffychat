@@ -8,12 +8,12 @@ import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/client_download_content_extension.dart';
-import 'package:automate/utils/client_manager.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/push_helper.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/client_download_content_extension.dart';
+import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/push_helper.dart';
 import '../config/app_config.dart';
 import '../config/setting_keys.dart';
 
@@ -112,7 +112,7 @@ Future<void> notificationTap(
     notificationResponse.notificationResponseType.name,
   );
   final payload =
-      AutomatePushPayload.fromString(notificationResponse.payload ?? '');
+      PsygoPushPayload.fromString(notificationResponse.payload ?? '');
   switch (notificationResponse.notificationResponseType) {
     case NotificationResponseType.selectedNotification:
       final roomId = payload.roomId;
@@ -136,7 +136,7 @@ Future<void> notificationTap(
             : '/rooms/$roomId',
       );
     case NotificationResponseType.selectedNotificationAction:
-      final actionType = AutomateNotificationActions.values.singleWhereOrNull(
+      final actionType = PsygoNotificationActions.values.singleWhereOrNull(
         (action) => action.name == notificationResponse.actionId,
       );
       if (actionType == null) {
@@ -156,13 +156,13 @@ Future<void> notificationTap(
         );
       }
       switch (actionType) {
-        case AutomateNotificationActions.markAsRead:
+        case PsygoNotificationActions.markAsRead:
           await room.setReadMarker(
             payload.eventId ?? room.lastEvent!.eventId,
             mRead: payload.eventId ?? room.lastEvent!.eventId,
             public: AppSettings.sendPublicReadReceipts.value,
           );
-        case AutomateNotificationActions.reply:
+        case PsygoNotificationActions.reply:
           final input = notificationResponse.input;
           if (input == null || input.isEmpty) {
             throw Exception(
@@ -227,7 +227,7 @@ Future<void> notificationTap(
                   enableVibration: false,
                   actions: <AndroidNotificationAction>[
                     AndroidNotificationAction(
-                      AutomateNotificationActions.reply.name,
+                      PsygoNotificationActions.reply.name,
                       l10n.reply,
                       inputs: [
                         AndroidNotificationActionInput(
@@ -239,14 +239,14 @@ Future<void> notificationTap(
                       semanticAction: SemanticAction.reply,
                     ),
                     AndroidNotificationAction(
-                      AutomateNotificationActions.markAsRead.name,
+                      PsygoNotificationActions.markAsRead.name,
                       l10n.markAsRead,
                       semanticAction: SemanticAction.markAsRead,
                     ),
                   ],
                 ),
               ),
-              payload: AutomatePushPayload(
+              payload: PsygoPushPayload(
                 client.clientName,
                 room.id,
                 eventId,
@@ -257,4 +257,4 @@ Future<void> notificationTap(
   }
 }
 
-enum AutomateNotificationActions { markAsRead, reply }
+enum PsygoNotificationActions { markAsRead, reply }

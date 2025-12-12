@@ -4,8 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:matrix/matrix.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/size_string.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/size_string.dart';
 
 extension MatrixFileExtension on MatrixFile {
   void save(BuildContext context) async {

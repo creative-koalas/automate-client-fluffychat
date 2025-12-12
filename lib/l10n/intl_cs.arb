@@ -826,7 +826,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "AutoMate",
+    "automate": "Psygo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -998,7 +998,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vás pozvali na AutoMate.\n1. Navštivte automate.app a nainstalujte si aplikaci.\n2. Zaregistrujte se anebo se přihlašte.\n3. Otevřete pozvánku: \n {link}",
+    "inviteText": "{username} vás pozvali na Psygo.\n1. Navštivte automate.app a nainstalujte si aplikaci.\n2. Zaregistrujte se anebo se přihlašte.\n3. Otevřete pozvánku: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1170,8 +1170,8 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "Nová zpráva ve Automateu",
-    "@newMessageInAutomate": {
+    "newMessageInPsygo": "Nová zpráva ve Psygou",
+    "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
@@ -1792,7 +1792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "AutoMate",
+    "title": "Psygo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2491,13 +2491,13 @@
     "@unlockOldMessages": {},
     "foregroundServiceRunning": "Toto oznámení se zobrazuje když běží služba na pozadí.",
     "@foregroundServiceRunning": {},
-    "screenSharingDetail": "Sdílíte svou obrazovku přes Automate",
+    "screenSharingDetail": "Sdílíte svou obrazovku přes Psygo",
     "@screenSharingDetail": {},
-    "callingAccountDetails": "Opravňuje Automate používat Android systémovou aplikaci pro vytáčení.",
+    "callingAccountDetails": "Opravňuje Psygo používat Android systémovou aplikaci pro vytáčení.",
     "@callingAccountDetails": {},
     "appearOnTop": "Zobrazovat nahoře",
     "@appearOnTop": {},
-    "otherCallingPermissions": "Mikrofon, kamera a ostatní oprávnění Automate",
+    "otherCallingPermissions": "Mikrofon, kamera a ostatní oprávnění Psygo",
     "@otherCallingPermissions": {},
     "encryptThisChat": "Zašifrovat tuto konverzaci",
     "@encryptThisChat": {},
@@ -2626,7 +2626,7 @@
     },
     "block": "Blokovat",
     "@block": {},
-    "indexedDbErrorLong": "Ukládání zpráv bohužel není ve výchozím nastavení v soukromém režimu povoleno.\nNavštivte prosím\n - about:config\n - nastavte dom.indexedDB.privateBrowsing.enabled na true\nV opačném případě nebude možné AutoMate spustit.",
+    "indexedDbErrorLong": "Ukládání zpráv bohužel není ve výchozím nastavení v soukromém režimu povoleno.\nNavštivte prosím\n - about:config\n - nastavte dom.indexedDB.privateBrowsing.enabled na true\nV opačném případě nebude možné Psygo spustit.",
     "@indexedDbErrorLong": {},
     "youInvitedToBy": "📩 Prostřednictvím odkazu jste byli pozváni na:\n{alias}",
     "@youInvitedToBy": {

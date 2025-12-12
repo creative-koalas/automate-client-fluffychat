@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat/events/video_player.dart';
-import 'package:automate/pages/image_viewer/image_viewer.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/widgets/mxc_image.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat/events/video_player.dart';
+import 'package:psygo/pages/image_viewer/image_viewer.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/widgets/mxc_image.dart';
 
 class ChatSearchImagesTab extends StatelessWidget {
   final Room room;

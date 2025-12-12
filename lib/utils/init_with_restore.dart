@@ -4,11 +4,11 @@ import 'dart:ui';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/client_manager.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 class SessionBackup {
   final String? olmAccount;

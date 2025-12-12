@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/pages/image_viewer/image_viewer_view.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/utils/show_scaffold_dialog.dart';
-import 'package:automate/widgets/share_scaffold_dialog.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/pages/image_viewer/image_viewer_view.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/show_scaffold_dialog.dart';
+import 'package:psygo/widgets/share_scaffold_dialog.dart';
 import '../../utils/matrix_sdk_extensions/event_extension.dart';
 
 class ImageViewer extends StatefulWidget {

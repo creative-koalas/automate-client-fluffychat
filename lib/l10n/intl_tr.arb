@@ -830,7 +830,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "AutoMate",
+    "automate": "Psygo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1002,7 +1002,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} sizi Automate'e davet etti.\n1. automate.app adresini ziyaret edin ve uygulamayı kurun \n2. Kaydolun veya oturum açın \n3. Davet bağlantısını açın: \n {link}",
+    "inviteText": "{username} sizi Psygo'e davet etti.\n1. automate.app adresini ziyaret edin ve uygulamayı kurun \n2. Kaydolun veya oturum açın \n3. Davet bağlantısını açın: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1174,8 +1174,8 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "💬 Automate'te yeni mesaj",
-    "@newMessageInAutomate": {
+    "newMessageInPsygo": "💬 Psygo'te yeni mesaj",
+    "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
@@ -1796,7 +1796,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "AutoMate",
+    "title": "Psygo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2352,7 +2352,7 @@
     "@dehydrateWarning": {},
     "hydrateTorLong": "TOR'da en son oturumunuzu dışa aktardınız mı? Hızlıca içe aktarın ve sohbete devam edin.",
     "@hydrateTorLong": {},
-    "indexedDbErrorLong": "Mesaj saklama özelliği ne yazık ki öntanımlı olarak gizli modda etkin değildir.\nLütfen\n - about:config sayfasına gidin ve\n - dom.indexedDB.privateBrowsing.enabled seçeneğini true olarak ayarlayın\nAksi takdirde Automate çalıştırılamaz.",
+    "indexedDbErrorLong": "Mesaj saklama özelliği ne yazık ki öntanımlı olarak gizli modda etkin değildir.\nLütfen\n - about:config sayfasına gidin ve\n - dom.indexedDB.privateBrowsing.enabled seçeneğini true olarak ayarlayın\nAksi takdirde Psygo çalıştırılamaz.",
     "@indexedDbErrorLong": {},
     "user": "Kullanıcı",
     "@user": {},
@@ -2381,7 +2381,7 @@
     "@screenSharingTitle": {},
     "callingPermissions": "Arama izinleri",
     "@callingPermissions": {},
-    "callingAccountDetails": "Automate'in yerel android telefon uygulamasını kullanmasına izin verir.",
+    "callingAccountDetails": "Psygo'in yerel android telefon uygulamasını kullanmasına izin verir.",
     "@callingAccountDetails": {},
     "appearOnTop": "Üstte görün",
     "@appearOnTop": {},
@@ -2391,7 +2391,7 @@
     "@enterRoom": {},
     "allSpaces": "Tüm alanlar",
     "@allSpaces": {},
-    "otherCallingPermissions": "Mikrofon, kamera ve diğer Automate izinleri",
+    "otherCallingPermissions": "Mikrofon, kamera ve diğer Psygo izinleri",
     "@otherCallingPermissions": {},
     "foregroundServiceRunning": "Bu bildirim, ön plan hizmeti çalışırken görünür.",
     "@foregroundServiceRunning": {},
@@ -3176,7 +3176,7 @@
             }
         }
     },
-    "welcomeText": "Hey Hey 👋 Karşınızda AutoMate. https://matrix.org ile uyumlu herhangi bir homeserver'a giriş yapabilirsiniz. Ve herkesle konuşabilirsiniz. Bu koca bir merkeziyetsiz mesajlaşma ağı!",
+    "welcomeText": "Hey Hey 👋 Karşınızda Psygo. https://matrix.org ile uyumlu herhangi bir homeserver'a giriş yapabilirsiniz. Ve herkesle konuşabilirsiniz. Bu koca bir merkeziyetsiz mesajlaşma ağı!",
     "@welcomeText": {},
     "setCustomPermissionLevel": "Özel izin düzeyi ayarla",
     "@setCustomPermissionLevel": {},

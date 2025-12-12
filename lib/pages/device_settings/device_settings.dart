@@ -5,12 +5,12 @@ import 'package:matrix/encryption/utils/key_verification.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/device_settings/device_settings_view.dart';
-import 'package:automate/pages/key_verification/key_verification_dialog.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
-import 'package:automate/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:automate/widgets/future_loading_dialog.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/device_settings/device_settings_view.dart';
+import 'package:psygo/pages/key_verification/key_verification_dialog.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../../widgets/matrix.dart';
 
 class DevicesSettings extends StatefulWidget {

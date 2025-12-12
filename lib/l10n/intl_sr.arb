@@ -773,7 +773,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "AutoMate",
+    "automate": "Psygo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -945,7 +945,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} вас позива у AutoMate. \n1. Инсталирајте Automate: https://automate.app \n2. Региструјте се или пријавите \n3. Отворите везу позивнице: {link}",
+    "inviteText": "{username} вас позива у Psygo. \n1. Инсталирајте Psygo: https://automate.app \n2. Региструјте се или пријавите \n3. Отворите везу позивнице: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1107,8 +1107,8 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInAutomate": "Нова порука — Automate",
-    "@newMessageInAutomate": {
+    "newMessageInPsygo": "Нова порука — Psygo",
+    "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
@@ -1142,7 +1142,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Чини се да немате Гугл услуге на телефону. То је добра одлука за вашу приватност! Да би се протурале нотификације у Automate, препоручујемо коришћење https://microg.org/ или https://unifiedpush.org/",
+    "noGoogleServicesWarning": "Чини се да немате Гугл услуге на телефону. То је добра одлука за вашу приватност! Да би се протурале нотификације у Psygo, препоручујемо коришћење https://microg.org/ или https://unifiedpush.org/",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1673,7 +1673,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "AutoMate",
+    "title": "Psygo",
     "@title": {
         "description": "Title for the application",
         "type": "String",

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/image_viewer/video_player.dart';
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/widgets/hover_builder.dart';
-import 'package:automate/widgets/mxc_image.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/image_viewer/video_player.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/hover_builder.dart';
+import 'package:psygo/widgets/mxc_image.dart';
 import 'image_viewer.dart';
 
 class ImageViewerView extends StatelessWidget {

@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'package:share_plus/share_plus.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import '../widgets/matrix.dart';
 
 abstract class FluffyShare {

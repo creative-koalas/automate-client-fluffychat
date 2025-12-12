@@ -940,7 +940,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "@newMessageInAutomate": {
+  "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
   },

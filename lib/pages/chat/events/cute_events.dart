@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
 
 class CuteContent extends StatefulWidget {
   final Event event;

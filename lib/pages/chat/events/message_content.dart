@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/setting_keys.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/pages/chat/events/poll.dart';
-import 'package:automate/pages/chat/events/video_player.dart';
-import 'package:automate/utils/adaptive_bottom_sheet.dart';
-import 'package:automate/utils/date_time_extension.dart';
-import 'package:automate/utils/markdown_helper.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:automate/widgets/avatar.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat/events/poll.dart';
+import 'package:psygo/pages/chat/events/video_player.dart';
+import 'package:psygo/utils/adaptive_bottom_sheet.dart';
+import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/markdown_helper.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/matrix.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/event_checkbox_extension.dart';
 import '../../../utils/platform_infos.dart';

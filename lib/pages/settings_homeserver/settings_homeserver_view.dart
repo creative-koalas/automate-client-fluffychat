@@ -6,11 +6,11 @@ import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/config/themes.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/localized_exception_extension.dart';
-import 'package:automate/widgets/layouts/max_width_body.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/widgets/layouts/max_width_body.dart';
 import '../../widgets/matrix.dart';
 import 'settings_homeserver.dart';
 

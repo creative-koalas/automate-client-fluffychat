@@ -7,8 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:automate/utils/platform_infos.dart';
-import 'package:automate/automate/core/config.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/core/config.dart';
 
 enum AppSettings<T> {
   textMessageMaxLength<int>('textMessageMaxLength', 16384),
@@ -18,9 +18,9 @@ enum AppSettings<T> {
   audioRecordingNoiseSuppress<bool>('audioRecordingNoiseSuppress', true),
   audioRecordingBitRate<int>('audioRecordingBitRate', 64000),
   audioRecordingSamplingRate<int>('audioRecordingSamplingRate', 44100),
-  showNoGoogle<bool>('com.automate.show_no_google', false),
-  unifiedPushRegistered<bool>('com.automate.unifiedpush.registered', false),
-  unifiedPushEndpoint<String>('com.automate.unifiedpush.endpoint', ''),
+  showNoGoogle<bool>('com.psygo.show_no_google', false),
+  unifiedPushRegistered<bool>('com.psygo.unifiedpush.registered', false),
+  unifiedPushEndpoint<String>('com.psygo.unifiedpush.endpoint', ''),
   pushNotificationsGatewayUrl<String>(
     'pushNotificationsGatewayUrl',
     'https://push.automate.app/_matrix/push/v1/notify',
@@ -29,39 +29,39 @@ enum AppSettings<T> {
     'pushNotificationsPusherFormat',
     'event_id_only',
   ),
-  renderHtml<bool>('com.automate.renderHtml', true),
-  fontSizeFactor<double>('com.automate.font_size_factor', 1.0),
-  hideRedactedEvents<bool>('com.automate.hideRedactedEvents', false),
-  hideUnknownEvents<bool>('com.automate.hideUnknownEvents', true),
-  separateChatTypes<bool>('com.automate.separateChatTypes', false),
-  autoplayImages<bool>('com.automate.autoplay_images', true),
-  sendTypingNotifications<bool>('com.automate.send_typing_notifications', true),
-  sendPublicReadReceipts<bool>('com.automate.send_public_read_receipts', true),
-  swipeRightToLeftToReply<bool>('com.automate.swipeRightToLeftToReply', true),
-  sendOnEnter<bool>('com.automate.send_on_enter', false),
-  showPresences<bool>('com.automate.show_presences', true),
-  displayNavigationRail<bool>('com.automate.display_navigation_rail', false),
-  experimentalVoip<bool>('com.automate.experimental_voip', false),
-  shareKeysWith<String>('com.automate.share_keys_with_2', 'all'),
+  renderHtml<bool>('com.psygo.renderHtml', true),
+  fontSizeFactor<double>('com.psygo.font_size_factor', 1.0),
+  hideRedactedEvents<bool>('com.psygo.hideRedactedEvents', false),
+  hideUnknownEvents<bool>('com.psygo.hideUnknownEvents', true),
+  separateChatTypes<bool>('com.psygo.separateChatTypes', false),
+  autoplayImages<bool>('com.psygo.autoplay_images', true),
+  sendTypingNotifications<bool>('com.psygo.send_typing_notifications', true),
+  sendPublicReadReceipts<bool>('com.psygo.send_public_read_receipts', true),
+  swipeRightToLeftToReply<bool>('com.psygo.swipeRightToLeftToReply', true),
+  sendOnEnter<bool>('com.psygo.send_on_enter', false),
+  showPresences<bool>('com.psygo.show_presences', true),
+  displayNavigationRail<bool>('com.psygo.display_navigation_rail', false),
+  experimentalVoip<bool>('com.psygo.experimental_voip', false),
+  shareKeysWith<String>('com.psygo.share_keys_with_2', 'all'),
   noEncryptionWarningShown<bool>(
-    'com.automate.no_encryption_warning_shown',
+    'com.psygo.no_encryption_warning_shown',
     false,
   ),
   displayChatDetailsColumn(
-    'com.automate.display_chat_details_column',
+    'com.psygo.display_chat_details_column',
     false,
   ),
   // AppConfig-mirrored settings
-  applicationName<String>('com.automate.application_name', 'AutoMate'),
+  applicationName<String>('com.psygo.application_name', 'AutoMate'),
   // homeserver 指向本地 K8s Synapse（从环境变量 K8S_NODE_IP 读取）
-  defaultHomeserver<String>('com.automate.default_homeserver', AutomateConfig.matrixHomeserver),
+  defaultHomeserver<String>('com.psygo.default_homeserver', PsygoConfig.matrixHomeserver),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>(
-    'com.automate.color_scheme_seed',
+    'com.psygo.color_scheme_seed',
     0xFF5625BA,
   ),
   emojiSuggestionLocale<String>('emoji_suggestion_locale', ''),
-  enableSoftLogout<bool>('com.automate.enable_soft_logout', false);
+  enableSoftLogout<bool>('com.psygo.enable_soft_logout', false);
 
   final String key;
   final T defaultValue;

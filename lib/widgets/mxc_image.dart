@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/themes.dart';
-import 'package:automate/utils/client_download_content_extension.dart';
-import 'package:automate/utils/matrix_sdk_extensions/matrix_file_extension.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/config/themes.dart';
+import 'package:psygo/utils/client_download_content_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 class MxcImage extends StatefulWidget {
   final Uri? uri;

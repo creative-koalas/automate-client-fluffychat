@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:automate/config/app_config.dart';
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/adaptive_bottom_sheet.dart';
-import 'package:automate/utils/date_time_extension.dart';
-import 'package:automate/widgets/avatar.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/adaptive_bottom_sheet.dart';
+import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/widgets/avatar.dart';
 
 extension EventInfoDialogExtension on Event {
   void showInfoDialog(BuildContext context) => showAdaptiveBottomSheet(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/widgets/layouts/login_scaffold.dart';
-import 'package:automate/widgets/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/layouts/login_scaffold.dart';
+import 'package:psygo/widgets/matrix.dart';
 import 'login.dart';
 
 class LoginView extends StatelessWidget {

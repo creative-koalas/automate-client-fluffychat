@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 
-import 'package:automate/l10n/l10n.dart';
-import 'package:automate/utils/platform_infos.dart';
+import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 /// Provides extra functionality for formatting the time.
 extension DateTimeExtension on DateTime {
