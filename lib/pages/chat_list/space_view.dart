@@ -173,7 +173,7 @@ class _SpaceViewState extends State<SpaceView> {
           context: context,
           title: L10n.of(context).areYouSure,
           message: L10n.of(context).archiveRoomDescription,
-          okLabel: L10n.of(context).leave,
+          okLabel: L10n.of(context).leaveSpace,
           cancelLabel: L10n.of(context).cancel,
           isDestructive: true,
         );
@@ -499,9 +499,17 @@ class _SpaceViewState extends State<SpaceView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.delete_outlined),
+                    Icon(
+                      Icons.delete_outlined,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     const SizedBox(width: 12),
-                    Text(L10n.of(context).leave),
+                    Text(
+                      L10n.of(context).leaveSpace,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                   ],
                 ),
               ),

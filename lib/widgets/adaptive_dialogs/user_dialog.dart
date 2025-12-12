@@ -184,22 +184,6 @@ class UserDialog extends StatelessWidget {
                   : L10n.of(context).sendAMessage,
             ),
           ),
-          AdaptiveDialogAction(
-            bigButtons: true,
-            borderRadius: AdaptiveDialogAction.centerRadius,
-            onPressed: () {
-              final router = GoRouter.of(context);
-              Navigator.of(context).pop();
-              router.go(
-                '/rooms/settings/security/ignorelist',
-                extra: profile.userId,
-              );
-            },
-            child: Text(
-              L10n.of(context).ignoreUser,
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-          ),
         ],
         AdaptiveDialogAction(
           bigButtons: true,

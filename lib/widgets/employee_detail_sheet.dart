@@ -398,7 +398,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       );
     }
 
-    final isWorking = employee.workStatus == 'working';
+    // 根据 is_active 判断状态
+    final isWorking = employee.isActive;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

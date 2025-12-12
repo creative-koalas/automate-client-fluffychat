@@ -274,16 +274,12 @@ class _EmployeeCardState extends State<EmployeeCard>
       return const SizedBox.shrink();
     }
 
+    // 根据 is_active 判断状态
     Color dotColor;
-    switch (widget.employee.workStatus) {
-      case 'working':
-        dotColor = Colors.green;
-        break;
-      case 'idle_long':
-        dotColor = Colors.orange;
-        break;
-      default:
-        dotColor = theme.colorScheme.outline;
+    if (widget.employee.isActive) {
+      dotColor = Colors.green;  // 激活状态 = 工作中
+    } else {
+      dotColor = theme.colorScheme.outline;  // 未激活 = 摸鱼
     }
 
     return Container(
@@ -302,13 +298,11 @@ class _EmployeeCardState extends State<EmployeeCard>
       return l10n.employeeOnboarding;
     }
 
-    switch (widget.employee.workStatus) {
-      case 'working':
-        return l10n.employeeWorking;
-      case 'idle_long':
-        return l10n.employeeIdleLong;
-      default:
-        return l10n.employeeIdle;
+    // 根据 is_active 判断状态
+    if (widget.employee.isActive) {
+      return l10n.employeeWorking;  // 激活 = 工作中
+    } else {
+      return l10n.employeeIdle;     // 未激活 = 摸鱼
     }
   }
 

@@ -14,7 +14,7 @@ import 'package:matrix/matrix.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:url_launcher/url_launcher_string.dart';
+
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/client_manager.dart';
@@ -28,7 +28,6 @@ import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../config/setting_keys.dart';
 import '../pages/key_verification/key_verification_dialog.dart';
-import '../utils/account_bundles.dart';
 import '../utils/aliyun_push_service.dart';
 import '../utils/background_push.dart';
 import 'local_notifications_extension.dart';
@@ -62,7 +61,6 @@ class Matrix extends StatefulWidget {
 
 class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   int _activeClient = -1;
-  String? activeBundle;
 
   SharedPreferences get store => widget.store;
 
@@ -74,7 +72,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
 
   Client get client {
     if (_activeClient < 0 || _activeClient >= widget.clients.length) {
-      return currentBundle!.first!;
+      return widget.clients.first;
     }
     return widget.clients[_activeClient];
   }
@@ -100,48 +98,13 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     }
   }
 
-  List<Client?>? get currentBundle {
-    if (!hasComplexBundles) {
-      return List.from(widget.clients);
-    }
-    final bundles = accountBundles;
-    if (bundles.containsKey(activeBundle)) {
-      return bundles[activeBundle];
-    }
-    return bundles.values.first;
-  }
+  List<Client> get currentBundle => widget.clients;
 
-  Map<String?, List<Client?>> get accountBundles {
-    final resBundles = <String?, List<_AccountBundleWithClient>>{};
-    for (var i = 0; i < widget.clients.length; i++) {
-      final bundles = widget.clients[i].accountBundles;
-      for (final bundle in bundles) {
-        if (bundle.name == null) {
-          continue;
-        }
-        resBundles[bundle.name] ??= [];
-        resBundles[bundle.name]!.add(
-          _AccountBundleWithClient(
-            client: widget.clients[i],
-            bundle: bundle,
-          ),
-        );
-      }
-    }
-    for (final b in resBundles.values) {
-      b.sort(
-        (a, b) => a.bundle!.priority == null
-            ? 1
-            : b.bundle!.priority == null
-                ? -1
-                : a.bundle!.priority!.compareTo(b.bundle!.priority!),
-      );
-    }
-    return resBundles
-        .map((k, v) => MapEntry(k, v.map((vv) => vv.client).toList()));
-  }
+  Map<String?, List<Client?>> get accountBundles => {
+    null: widget.clients,
+  };
 
-  bool get hasComplexBundles => accountBundles.values.any((v) => v.length > 1);
+  bool get hasComplexBundles => false;
 
   Client? _loginClientCandidate;
 
@@ -511,11 +474,4 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     final file = MatrixFile(bytes: exportBytes, name: exportFileName);
     file.save(context);
   }
-}
-
-class _AccountBundleWithClient {
-  final Client? client;
-  final AccountBundle? bundle;
-
-  _AccountBundleWithClient({this.client, this.bundle});
 }

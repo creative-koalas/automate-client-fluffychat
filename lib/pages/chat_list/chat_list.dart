@@ -24,7 +24,6 @@ import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/share_scaffold_dialog.dart';
-import '../../../utils/account_bundles.dart';
 import '../../config/setting_keys.dart';
 import '../../utils/url_launcher.dart';
 import '../../widgets/matrix.dart';
@@ -132,10 +131,6 @@ class ChatListController extends State<ChatList>
       return;
     }
 
-    if (room.membership == Membership.leave) {
-      context.go('/rooms/archive/${room.id}');
-      return;
-    }
 
     if (room.isSpace) {
       setActiveSpace(room.id);
@@ -585,15 +580,15 @@ class ChatListController extends State<ChatList>
             children: [
               Icon(
                 Icons.delete_outlined,
-                color: Theme.of(context).colorScheme.onErrorContainer,
+                color: Theme.of(context).colorScheme.error,
               ),
               const SizedBox(width: 12),
               Text(
                 room.membership == Membership.invite
                     ? L10n.of(context).delete
-                    : L10n.of(context).leave,
+                    : L10n.of(context).leaveChat,
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  color: Theme.of(context).colorScheme.error,
                 ),
               ),
             ],
@@ -655,20 +650,14 @@ class ChatListController extends State<ChatList>
         );
         return;
       case ChatContextAction.block:
-        final inviteEvent = room.getState(
-          EventTypes.RoomMember,
-          room.client.userID!,
-        );
-        context.go(
-          '/rooms/settings/security/ignorelist',
-          extra: inviteEvent?.senderId,
-        );
+        // 屏蔽功能已删除
+        return;
       case ChatContextAction.leave:
         final confirmed = await showOkCancelAlertDialog(
           context: context,
           title: L10n.of(context).areYouSure,
           message: L10n.of(context).archiveRoomDescription,
-          okLabel: L10n.of(context).leave,
+          okLabel: L10n.of(context).leaveChat,
           cancelLabel: L10n.of(context).cancel,
           isDestructive: true,
         );
@@ -770,34 +759,6 @@ class ChatListController extends State<ChatList>
       waitForFirstSync = true;
     });
 
-    if (client.userDeviceKeys[client.userID!]?.deviceKeys.values
-            .any((device) => !device.verified && !device.blocked) ??
-        false) {
-      late final ScaffoldFeatureController controller;
-      final theme = Theme.of(context);
-      controller = ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 15),
-          showCloseIcon: true,
-          backgroundColor: theme.colorScheme.errorContainer,
-          closeIconColor: theme.colorScheme.onErrorContainer,
-          content: Text(
-            L10n.of(context).oneOfYourDevicesIsNotVerified,
-            style: TextStyle(
-              color: theme.colorScheme.onErrorContainer,
-            ),
-          ),
-          action: SnackBarAction(
-            onPressed: () {
-              controller.close();
-              router.go('/rooms/settings/devices');
-            },
-            textColor: theme.colorScheme.onErrorContainer,
-            label: L10n.of(context).settings,
-          ),
-        ),
-      );
-    }
   }
 
   void setActiveFilter(ActiveFilter filter) {
@@ -816,86 +777,6 @@ class ChatListController extends State<ChatList>
     _clientStream.add(client);
   }
 
-  void setActiveBundle(String bundle) {
-    context.go('/rooms');
-    setState(() {
-      _activeSpaceId = null;
-      Matrix.of(context).activeBundle = bundle;
-      if (!Matrix.of(context)
-          .currentBundle!
-          .any((client) => client == Matrix.of(context).client)) {
-        Matrix.of(context)
-            .setActiveClient(Matrix.of(context).currentBundle!.first);
-      }
-    });
-  }
-
-  void editBundlesForAccount(String? userId, String? activeBundle) async {
-    final l10n = L10n.of(context);
-    final client = Matrix.of(context)
-        .widget
-        .clients[Matrix.of(context).getClientIndexByMatrixId(userId!)];
-    final action = await showModalActionPopup<EditBundleAction>(
-      context: context,
-      title: L10n.of(context).editBundlesForAccount,
-      cancelLabel: L10n.of(context).cancel,
-      actions: [
-        AdaptiveModalAction(
-          value: EditBundleAction.addToBundle,
-          label: L10n.of(context).addToBundle,
-        ),
-        if (activeBundle != client.userID)
-          AdaptiveModalAction(
-            value: EditBundleAction.removeFromBundle,
-            label: L10n.of(context).removeFromBundle,
-          ),
-      ],
-    );
-    if (action == null) return;
-    switch (action) {
-      case EditBundleAction.addToBundle:
-        final bundle = await showTextInputDialog(
-          context: context,
-          title: l10n.bundleName,
-          hintText: l10n.bundleName,
-        );
-        if (bundle == null || bundle.isEmpty || bundle.isEmpty) return;
-        await showFutureLoadingDialog(
-          context: context,
-          future: () => client.setAccountBundle(bundle),
-        );
-        break;
-      case EditBundleAction.removeFromBundle:
-        await showFutureLoadingDialog(
-          context: context,
-          future: () => client.removeFromAccountBundle(activeBundle!),
-        );
-    }
-  }
-
-  bool get displayBundles =>
-      Matrix.of(context).hasComplexBundles &&
-      Matrix.of(context).accountBundles.keys.length > 1;
-
-  String? get secureActiveBundle {
-    if (Matrix.of(context).activeBundle == null ||
-        !Matrix.of(context)
-            .accountBundles
-            .keys
-            .contains(Matrix.of(context).activeBundle)) {
-      return Matrix.of(context).accountBundles.keys.first;
-    }
-    return Matrix.of(context).activeBundle;
-  }
-
-  void resetActiveBundle() {
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      setState(() {
-        Matrix.of(context).activeBundle = null;
-      });
-    });
-  }
-
   @override
   Widget build(BuildContext context) => ChatListView(this);
 
@@ -905,8 +786,6 @@ class ChatListController extends State<ChatList>
 
   Future<void> dehydrate() => Matrix.of(context).dehydrateAction(context);
 }
-
-enum EditBundleAction { addToBundle, removeFromBundle }
 
 enum InviteActions {
   accept,
