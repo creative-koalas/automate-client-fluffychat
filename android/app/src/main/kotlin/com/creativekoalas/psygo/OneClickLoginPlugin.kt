@@ -4,6 +4,9 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -42,6 +45,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var phoneNumberAuthHelper: PhoneNumberAuthHelper? = null
     private var pendingResult: Result? = null
     private var isPreLoginSuccess: Boolean = false  // 预取号是否成功
+    private var previousDecorFitsSystemWindows: Boolean? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         context = flutterPluginBinding.applicationContext
@@ -235,6 +239,23 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             val screenWidth = act.resources.displayMetrics.widthPixels
             val btnWidthDp = ((screenWidth / density) - 64).toInt()
 
+            // 适配安全区，避免协议区域顶到状态栏
+            val window = act.window
+            val decorView = window.decorView
+            if (previousDecorFitsSystemWindows == null) {
+                previousDecorFitsSystemWindows = ViewCompat.getFitsSystemWindows(decorView)
+            }
+            WindowCompat.setDecorFitsSystemWindows(window, true)
+            val statusBarPx = ViewCompat.getRootWindowInsets(decorView)
+                ?.getInsets(WindowInsetsCompat.Type.statusBars())
+                ?.top ?: 0
+            val statusBarDp = (statusBarPx / density).toInt()
+
+            val logoOffsetY = 100 + statusBarDp
+            val sloganOffsetY = 210 + statusBarDp
+            val numFieldOffsetY = 260 + statusBarDp
+            val logBtnOffsetY = 340 + statusBarDp
+
             // 配置授权页 UI - 简洁全屏模式
             helper.setAuthUIConfig(
                 AuthUIConfig.Builder()
@@ -246,26 +267,26 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     // ========== 导航栏（简化） ==========
                     .setNavColor(Color.WHITE)
                     .setNavText("")
-                    .setNavReturnHidden(false)
+                    .setNavReturnHidden(true)
 
                     // ========== Logo ==========
                     .setLogoHidden(false)
                     .setLogoImgDrawable(act.getDrawable(R.drawable.auth_logo))
                     .setLogoWidth(90)
                     .setLogoHeight(90)
-                    .setLogoOffsetY(100)
+                    .setLogoOffsetY(logoOffsetY)
 
                     // ========== Slogan ==========
                     .setSloganHidden(false)
                     .setSloganText("Psygo")
                     .setSloganTextColor(Color.parseColor("#1A1A1A"))
                     .setSloganTextSize(20)
-                    .setSloganOffsetY(210)
+                    .setSloganOffsetY(sloganOffsetY)
 
                     // ========== 手机号 ==========
                     .setNumberColor(Color.parseColor("#1A1A1A"))
                     .setNumberSize(28)
-                    .setNumFieldOffsetY(260)
+                    .setNumFieldOffsetY(numFieldOffsetY)
 
                     // ========== 登录按钮 ==========
                     .setLogBtnText("本机号码一键登录")
@@ -273,7 +294,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setLogBtnTextSize(17)
                     .setLogBtnWidth(btnWidthDp)
                     .setLogBtnHeight(50)
-                    .setLogBtnOffsetY(340)
+                    .setLogBtnOffsetY(logBtnOffsetY)
                     .setLogBtnBackgroundDrawable(act.getDrawable(R.drawable.auth_login_btn))
 
                     // ========== 其他登录方式（已隐藏，目前只支持一键登录） ==========
@@ -286,9 +307,9 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setUncheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_unchecked))
                     .setPrivacyOffsetY_B(80)
                     .setPrivacyTextSize(12)
-                    // 协议名称和链接（使用本地 HTML 文件）
-                    .setAppPrivacyOne("《用户协议》", "file:///android_asset/user_agreement.html")
-                    .setAppPrivacyTwo("《隐私政策》", "file:///android_asset/privacy_policy.html")
+                    // 协议名称和链接（使用自定义 Scheme 跳转到 App 内页面，避免 SDK WebView 适配问题）
+                    .setAppPrivacyOne("《用户协议》", "app-privacy://user_agreement")
+                    .setAppPrivacyTwo("《隐私政策》", "app-privacy://privacy_policy")
                     .setAppPrivacyColor(Color.parseColor("#999999"), Color.parseColor("#007AFF"))
                     .setPrivacyBefore("登录即同意")
                     .setPrivacyEnd("")
@@ -324,13 +345,12 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setWebNavColor(Color.WHITE)
                     .setWebNavTextColor(Color.parseColor("#000000"))
                     .setWebNavTextSize(18)
+                    .setWebNavReturnImgDrawable(act.getDrawable(R.drawable.auth_close))
                     .setWebSupportedJavascript(true)
                     // WebView 状态栏配置（解决黑框问题）
                     .setWebViewStatusBarColor(Color.WHITE)
                     // 设置底部虚拟按键背景色为白色
                     .setBottomNavColor(Color.WHITE)
-                    // 设置状态栏 UI 标志为 0，使用正常布局模式（不延伸到状态栏）
-                    .setStatusBarUIFlag(0)
 
                     // ========== 页面背景 ==========
                     .setPageBackgroundDrawable(act.getDrawable(android.R.color.white))
@@ -418,6 +438,12 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun quitLoginPage(result: Result) {
         try {
             phoneNumberAuthHelper?.quitLoginPage()
+            val act = activity
+            val fitsSystemWindows = previousDecorFitsSystemWindows
+            if (act != null && fitsSystemWindows != null) {
+                WindowCompat.setDecorFitsSystemWindows(act.window, fitsSystemWindows)
+                previousDecorFitsSystemWindows = null
+            }
             result.success(true)
         } catch (e: Exception) {
             result.error("QUIT_FAILED", e.message, null)

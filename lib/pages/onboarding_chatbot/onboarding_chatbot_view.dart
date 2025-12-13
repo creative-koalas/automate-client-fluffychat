@@ -23,7 +23,7 @@ class OnboardingChatbotView extends StatelessWidget {
               backgroundColor: backgroundColor,
               elevation: 0,
               centerTitle: true,
-              title: const Text('Automate',
+              title: const Text('Psygo',
                   style: TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.w600,
