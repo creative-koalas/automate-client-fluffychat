@@ -109,21 +109,7 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
                             ),
                           ),
                         )
-                      : TextButton.icon(
-                          onPressed: controller.setServer,
-                          style: TextButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            textStyle: const TextStyle(fontSize: 12),
-                          ),
-                          icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: Text(
-                            controller.searchServer ??
-                                Matrix.of(context).client.homeserver!.host,
-                            maxLines: 2,
-                          ),
-                        )
+                      : null  // 隐藏服务器选择按钮
                   : SizedBox(
                       width: 0,
                       child: ClientChooserButton(controller),
