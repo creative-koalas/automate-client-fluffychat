@@ -456,18 +456,6 @@ class _WalletPageState extends State<WalletPage> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // 支付方式提示
-          Center(
-            child: Text(
-              l10n.walletSupportedPayments,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[500],
-              ),
-            ),
-          ),
         ],
       ),
     );
