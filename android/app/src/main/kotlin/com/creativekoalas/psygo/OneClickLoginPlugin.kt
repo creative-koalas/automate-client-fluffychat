@@ -3,6 +3,7 @@ package com.creativekoalas.psygo
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import android.view.View
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -239,6 +240,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 AuthUIConfig.Builder()
                     // ========== 状态栏 ==========
                     .setStatusBarColor(Color.WHITE)
+                    .setStatusBarHidden(false)  // 显式设置状态栏不隐藏
                     .setLightColor(true)
 
                     // ========== 导航栏（简化） ==========
@@ -320,9 +322,15 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setPrivacyAlertBtnHeigth(42)
                     // 协议页面（内置 WebView）导航栏配置
                     .setWebNavColor(Color.WHITE)
-                    .setWebNavTextColor(Color.parseColor("#1A1A1A"))
+                    .setWebNavTextColor(Color.parseColor("#000000"))
                     .setWebNavTextSize(18)
                     .setWebSupportedJavascript(true)
+                    // WebView 状态栏配置（解决黑框问题）
+                    .setWebViewStatusBarColor(Color.WHITE)
+                    // 设置底部虚拟按键背景色为白色
+                    .setBottomNavColor(Color.WHITE)
+                    // 设置状态栏 UI 标志为 0，使用正常布局模式（不延伸到状态栏）
+                    .setStatusBarUIFlag(0)
 
                     // ========== 页面背景 ==========
                     .setPageBackgroundDrawable(act.getDrawable(android.R.color.white))
@@ -332,10 +340,10 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
             // 控制返回键和左上角返回按钮
             helper.userControlAuthPageCancel()
-            // 横屏水滴屏全屏适配
-            helper.keepAuthPageLandscapeFullSreen(true)
-            // 隐藏底部导航栏
-            helper.keepAllPageHideNavigationBar()
+            // 禁用横屏水滴屏全屏适配，避免内容进入状态栏
+            // helper.keepAuthPageLandscapeFullSreen(true)
+            // 不隐藏底部导航栏，而是设置为白色（已在 UI 配置中设置）
+            // helper.keepAllPageHideNavigationBar()
             // 扩大协议按钮选择范围
             helper.expandAuthPageCheckedScope(true)
 
