@@ -259,10 +259,10 @@ class _EmployeeCardState extends State<EmployeeCard>
       case 'working':
         dotColor = Colors.green;  // 工作中 - 绿色
         break;
-      case 'idle':
+      case 'idle_long':
         dotColor = Colors.blue;   // 睡觉中 - 蓝色
         break;
-      case 'idle_long':
+      case 'idle':
       default:
         dotColor = Colors.orange; // 摸鱼中 - 橙色
     }
@@ -291,9 +291,9 @@ class _EmployeeCardState extends State<EmployeeCard>
     switch (widget.employee.workStatus) {
       case 'working':
         return '💼 ${l10n.employeeWorking}';   // 工作中
-      case 'idle':
-        return '😴 ${l10n.employeeSleeping}';  // 睡觉中
       case 'idle_long':
+        return '😴 ${l10n.employeeSleeping}';  // 睡觉中
+      case 'idle':
       default:
         return '🐟 ${l10n.employeeSlacking}';  // 摸鱼中
     }
