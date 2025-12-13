@@ -391,6 +391,101 @@ class PsygoApiClient {
     );
   }
 
+  /// 创建充值订单
+  Future<RechargeOrderResponse> createRechargeOrder(double amount) async {
+    final userIdInt = auth.userIdInt;
+    if (userIdInt == null || userIdInt == 0) {
+      throw AutomateBackendException('User ID not found');
+    }
+
+    final token = auth.primaryToken;
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/payments/recharge/create',
+      data: {
+        'user_id': userIdInt,
+        'total_amount': amount,
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to create recharge order',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return RechargeOrderResponse.fromJson(respData);
+  }
+
+  /// 查询订单状态
+  Future<PaymentOrder> getOrderStatus(String outTradeNo) async {
+    final token = auth.primaryToken;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/payments/orders/$outTradeNo',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to get order status',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return PaymentOrder.fromJson(respData);
+  }
+
+  /// 获取用户信息（包含余额）
+  Future<UserInfo> getUserInfo() async {
+    final userIdInt = auth.userIdInt;
+    if (userIdInt == null || userIdInt == 0) {
+      throw AutomateBackendException('User ID not found');
+    }
+
+    final token = auth.primaryToken;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/users/$userIdInt',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to get user info',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    // 服务端返回格式: {"code": 0, "data": {"user": {...}}}
+    final userData = respData['user'] as Map<String, dynamic>?;
+    if (userData == null) {
+      throw AutomateBackendException('Missing user data');
+    }
+
+    return UserInfo.fromJson(userData);
+  }
+
   Stream<ChatStreamEvent> streamChatResponse(String message) async* {
     final token = auth.chatbotToken;
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');
@@ -635,4 +730,122 @@ class ChatStreamEvent {
   factory ChatStreamEvent.done() => ChatStreamEvent._(
         type: ChatStreamEventType.done,
       );
+}
+
+/// 充值订单创建请求
+class CreateRechargeOrderRequest {
+  final int userId;
+  final double totalAmount;
+
+  CreateRechargeOrderRequest({
+    required this.userId,
+    required this.totalAmount,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'user_id': userId,
+        'total_amount': totalAmount,
+      };
+}
+
+/// 充值订单响应
+class RechargeOrderResponse {
+  final String outTradeNo;    // 商户订单号
+  final String orderString;   // 支付宝订单字符串（传给 SDK）
+  final double totalAmount;   // 订单金额（元）
+  final int creditsAmount;    // 充值积分数
+
+  RechargeOrderResponse({
+    required this.outTradeNo,
+    required this.orderString,
+    required this.totalAmount,
+    required this.creditsAmount,
+  });
+
+  factory RechargeOrderResponse.fromJson(Map<String, dynamic> json) {
+    return RechargeOrderResponse(
+      outTradeNo: json['out_trade_no'] as String? ?? '',
+      orderString: json['order_string'] as String? ?? '',
+      totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+      creditsAmount: json['credits_amount'] as int? ?? 0,
+    );
+  }
+}
+
+/// 订单状态
+class PaymentOrder {
+  final int id;
+  final String outTradeNo;
+  final String? tradeNo;
+  final int userId;
+  final String productType;
+  final double totalAmount;
+  final int creditsAmount;
+  final String subject;
+  final String status; // pending, paid, closed, refunded
+  final String? tradeStatus;
+  final String? notifyTime;
+  final String createdAt;
+
+  PaymentOrder({
+    required this.id,
+    required this.outTradeNo,
+    this.tradeNo,
+    required this.userId,
+    required this.productType,
+    required this.totalAmount,
+    required this.creditsAmount,
+    required this.subject,
+    required this.status,
+    this.tradeStatus,
+    this.notifyTime,
+    required this.createdAt,
+  });
+
+  factory PaymentOrder.fromJson(Map<String, dynamic> json) {
+    return PaymentOrder(
+      id: json['id'] as int? ?? 0,
+      outTradeNo: json['out_trade_no'] as String? ?? '',
+      tradeNo: json['trade_no'] as String?,
+      userId: json['user_id'] as int? ?? 0,
+      productType: json['product_type'] as String? ?? '',
+      totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+      creditsAmount: json['credits_amount'] as int? ?? 0,
+      subject: json['subject'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      tradeStatus: json['trade_status'] as String?,
+      notifyTime: json['notify_time'] as String?,
+      createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
+/// 用户信息（包含余额）
+class UserInfo {
+  final int id;
+  final String username;
+  final String? email;
+  final String? phone;
+  final int type;
+  final int creditBalance; // 积分余额（分）
+
+  UserInfo({
+    required this.id,
+    required this.username,
+    this.email,
+    this.phone,
+    required this.type,
+    required this.creditBalance,
+  });
+
+  factory UserInfo.fromJson(Map<String, dynamic> json) {
+    return UserInfo(
+      id: json['id'] as int? ?? 0,
+      username: json['username'] as String? ?? '',
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      type: json['type'] as int? ?? 3,
+      creditBalance: json['credit_balance'] as int? ?? 0,
+    );
+  }
 }
