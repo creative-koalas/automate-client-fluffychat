@@ -121,7 +121,8 @@ enum _AuthState {
   error,         // Error occurred
 }
 
-class _AutomateAuthGateState extends State<_AutomateAuthGate> {
+class _AutomateAuthGateState extends State<_AutomateAuthGate>
+    with WidgetsBindingObserver {
   _AuthState _state = _AuthState.checking;
   String? _errorMessage;
   bool _hasTriedAuth = false;
@@ -142,6 +143,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _invitationCodeController.dispose();
     super.dispose();
   }
@@ -149,7 +151,36 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkAuthState());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // 当应用从后台恢复时
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[AuthGate] App resumed from background');
+
+      final auth = context.read<PsygoAuthState>();
+
+      // 如果当前还在 checking 状态且未登录，说明之前的认证流程可能被中断
+      if (_state == _AuthState.checking && !auth.isLoggedIn) {
+        debugPrint('[AuthGate] Auth interrupted, restarting check...');
+
+        // 重置状态并重新检查
+        setState(() {
+          _hasTriedAuth = false;  // 重置，允许重新尝试
+        });
+
+        // 关闭可能还在显示的授权页
+        OneClickLoginService.quitLoginPage();
+
+        // 重新触发认证检查
+        _checkAuthState();
+      }
+    }
   }
 
   Future<void> _checkAuthState() async {
@@ -429,9 +460,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate> {
 
     switch (_state) {
       case _AuthState.checking:
-        // 检查 token 时不显示任何东西，保持原生启动画面
-        // 这样 SDK 授权页弹出时用户不会看到中间的 loading
-        return const SizedBox.shrink();
+        // 显示加载界面，避免黑屏
+        return _buildLoadingScreen('正在检查登录状态...');
 
       case _AuthState.refreshing:
         return _buildLoadingScreen('正在验证登录状态...');
