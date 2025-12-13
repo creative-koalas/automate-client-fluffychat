@@ -62,13 +62,7 @@ class PublicRoomDialog extends StatelessWidget {
     if (result.error != null) return;
     if (!context.mounted) return;
     Navigator.of(context).pop<bool>(true);
-    // don't open the room if the joined room is a space
-    if (chunk?.roomType != 'm.space' &&
-        !client.getRoomById(result.result!)!.isSpace) {
-      context.go('/rooms/$roomId');
-    } else {
-      context.go('/rooms?spaceId=$roomId');
-    }
+    context.go('/rooms/$roomId');
     return;
   }
 
@@ -220,9 +214,7 @@ class PublicRoomDialog extends StatelessWidget {
             chunk?.joinRule == 'knock' &&
                     Matrix.of(context).client.getRoomById(chunk!.roomId) == null
                 ? L10n.of(context).knock
-                : chunk?.roomType == 'm.space'
-                    ? L10n.of(context).joinSpace
-                    : L10n.of(context).joinRoom,
+                : L10n.of(context).joinRoom,
           ),
         ),
         AdaptiveDialogAction(

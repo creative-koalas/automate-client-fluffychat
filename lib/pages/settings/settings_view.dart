@@ -12,7 +12,6 @@ import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
-import 'package:psygo/widgets/navigation_rail.dart';
 import '../../widgets/mxc_image_viewer.dart';
 import 'settings.dart';
 
@@ -35,17 +34,6 @@ class SettingsView extends StatelessWidget {
         ?.tryGet<String>('account');
     return Row(
       children: [
-        if (FluffyThemes.isColumnMode(context)) ...[
-          SpacesNavigationRail(
-            activeSpaceId: null,
-            onGoToChats: () => context.go('/rooms'),
-            onGoToSpaceId: (spaceId) => context.go('/rooms?spaceId=$spaceId'),
-          ),
-          Container(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
-        ],
         Expanded(
           child: Scaffold(
             appBar: FluffyThemes.isColumnMode(context)

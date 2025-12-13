@@ -70,7 +70,6 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
         .where(
           (room) =>
               room.canSendDefaultMessages &&
-              !room.isSpace &&
               room.membership == Membership.join,
         )
         .toList();

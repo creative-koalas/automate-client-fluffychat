@@ -153,7 +153,6 @@ abstract class AppRoutes {
             ? TwoColumnLayout(
                 mainView: ChatList(
                   activeChat: state.pathParameters['roomid'],
-                  activeSpace: state.uri.queryParameters['spaceId'],
                   displayNavigationRail:
                       state.path?.startsWith('/rooms/settings') != true,
                 ),
@@ -172,7 +171,6 @@ abstract class AppRoutes {
                 ? const EmptyPage()
                 : MainScreen(
                     activeChat: state.pathParameters['roomid'],
-                    activeSpace: state.uri.queryParameters['spaceId'],
                     initialPage: 0,
                   ),
           ),
@@ -203,15 +201,6 @@ abstract class AppRoutes {
                 context,
                 state,
                 const NewGroup(),
-              ),
-              redirect: loggedOutRedirect,
-            ),
-            GoRoute(
-              path: 'newspace',
-              pageBuilder: (context, state) => defaultPageBuilder(
-                context,
-                state,
-                const NewGroup(createGroupType: CreateGroupType.space),
               ),
               redirect: loggedOutRedirect,
             ),

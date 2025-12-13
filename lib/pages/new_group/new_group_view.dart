@@ -26,32 +26,13 @@ class NewGroupView extends StatelessWidget {
           ),
         ),
         title: Text(
-          controller.createGroupType == CreateGroupType.space
-              ? L10n.of(context).newSpace
-              : L10n.of(context).createGroup,
+          L10n.of(context).createGroup,
         ),
       ),
       body: MaxWidthBody(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SegmentedButton<CreateGroupType>(
-                selected: {controller.createGroupType},
-                onSelectionChanged: controller.setCreateGroupType,
-                segments: [
-                  ButtonSegment(
-                    value: CreateGroupType.group,
-                    label: Text(L10n.of(context).group),
-                  ),
-                  ButtonSegment(
-                    value: CreateGroupType.space,
-                    label: Text(L10n.of(context).space),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 16),
             InkWell(
               borderRadius: BorderRadius.circular(90),
@@ -81,9 +62,7 @@ class NewGroupView extends StatelessWidget {
                 readOnly: controller.loading,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.people_outlined),
-                  labelText: controller.createGroupType == CreateGroupType.space
-                      ? L10n.of(context).spaceName
-                      : L10n.of(context).groupName,
+                  labelText: L10n.of(context).groupName,
                 ),
               ),
             ),
@@ -92,9 +71,7 @@ class NewGroupView extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 32),
               secondary: const Icon(Icons.public_outlined),
               title: Text(
-                controller.createGroupType == CreateGroupType.space
-                    ? L10n.of(context).spaceIsPublic
-                    : L10n.of(context).groupIsPublic,
+                L10n.of(context).groupIsPublic,
               ),
               value: controller.publicGroup,
               onChanged: controller.loading ? null : controller.setPublicGroup,
@@ -115,12 +92,7 @@ class NewGroupView extends StatelessWidget {
                     )
                   : const SizedBox.shrink(),
             ),
-            AnimatedSize(
-              duration: FluffyThemes.animationDuration,
-              curve: FluffyThemes.animationCurve,
-              child: controller.createGroupType == CreateGroupType.space
-                  ? const SizedBox.shrink()
-                  : SwitchListTile.adaptive(
+            SwitchListTile.adaptive(
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 32),
                       secondary: Icon(
@@ -136,22 +108,6 @@ class NewGroupView extends StatelessWidget {
                       value: !controller.publicGroup,
                       onChanged: null,
                     ),
-            ),
-            AnimatedSize(
-              duration: FluffyThemes.animationDuration,
-              curve: FluffyThemes.animationCurve,
-              child: controller.createGroupType == CreateGroupType.space
-                  ? ListTile(
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 32),
-                      trailing: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Icon(Icons.info_outlined),
-                      ),
-                      subtitle: Text(L10n.of(context).newSpaceDescription),
-                    )
-                  : const SizedBox.shrink(),
-            ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: SizedBox(
@@ -162,9 +118,7 @@ class NewGroupView extends StatelessWidget {
                   child: controller.loading
                       ? const LinearProgressIndicator()
                       : Text(
-                          controller.createGroupType == CreateGroupType.space
-                              ? L10n.of(context).createNewSpace
-                              : L10n.of(context).createGroupAndInviteUsers,
+                          L10n.of(context).createGroupAndInviteUsers,
                         ),
                 ),
               ),
