@@ -255,7 +255,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
                     // ========== Slogan ==========
                     .setSloganHidden(false)
-                    .setSloganText("AutoMate")
+                    .setSloganText("Psygo")
                     .setSloganTextColor(Color.parseColor("#1A1A1A"))
                     .setSloganTextSize(20)
                     .setSloganOffsetY(210)
