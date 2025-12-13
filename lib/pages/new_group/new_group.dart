@@ -66,6 +66,7 @@ class NewGroupController extends State<NewGroup> {
   Future<void> _createGroup() async {
     if (!mounted) return;
     final roomId = await Matrix.of(context).client.createGroupChat(
+      enableEncryption: false,
       visibility:
           groupCanBeFound ? sdk.Visibility.public : sdk.Visibility.private,
       preset: publicGroup

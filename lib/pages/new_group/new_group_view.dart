@@ -92,22 +92,6 @@ class NewGroupView extends StatelessWidget {
                     )
                   : const SizedBox.shrink(),
             ),
-            SwitchListTile.adaptive(
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 32),
-                      secondary: Icon(
-                        Icons.lock_outlined,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        L10n.of(context).enableEncryption,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      value: !controller.publicGroup,
-                      onChanged: null,
-                    ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: SizedBox(
