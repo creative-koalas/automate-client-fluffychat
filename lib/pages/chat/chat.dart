@@ -37,7 +37,7 @@ import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/share_scaffold_dialog.dart';
-import '../../utils/account_bundles.dart';
+
 import '../../utils/localized_exception_extension.dart';
 import 'send_file_dialog.dart';
 import 'send_location_dialog.dart';
@@ -896,9 +896,8 @@ class ChatController extends State<ChatPageWithRoom>
             if (event.canRedact) {
               await event.redactEvent(reason: reason);
             } else {
-              final client = currentRoomBundle.firstWhere(
-                (cl) => selectedEvents.first.senderId == cl!.userID,
-                orElse: () => null,
+              final client = currentRoomBundle.firstWhereOrNull(
+                (cl) => selectedEvents.first.senderId == cl.userID,
               );
               if (client == null) {
                 return;
@@ -920,9 +919,9 @@ class ChatController extends State<ChatPageWithRoom>
     });
   }
 
-  List<Client?> get currentRoomBundle {
-    final clients = Matrix.of(context).currentBundle!;
-    clients.removeWhere((c) => c!.getRoomById(roomId) == null);
+  List<Client> get currentRoomBundle {
+    final clients = Matrix.of(context).currentBundle;
+    clients.removeWhere((c) => c.getRoomById(roomId) == null);
     return clients;
   }
 
@@ -932,7 +931,7 @@ class ChatController extends State<ChatPageWithRoom>
     for (final event in selectedEvents) {
       if (!event.status.isSent) return false;
       if (event.canRedact == false &&
-          !(clients!.any((cl) => event.senderId == cl!.userID))) {
+          !(clients.any((cl) => event.senderId == cl.userID))) {
         return false;
       }
     }
@@ -957,7 +956,7 @@ class ChatController extends State<ChatPageWithRoom>
       return false;
     }
     return currentRoomBundle
-        .any((cl) => selectedEvents.first.senderId == cl!.userID);
+        .any((cl) => selectedEvents.first.senderId == cl.userID);
   }
 
   void forwardEventsAction() async {
@@ -1103,9 +1102,8 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void editSelectedEventAction() {
-    final client = currentRoomBundle.firstWhere(
-      (cl) => selectedEvents.first.senderId == cl!.userID,
-      orElse: () => null,
+    final client = currentRoomBundle.firstWhereOrNull(
+      (cl) => selectedEvents.first.senderId == cl.userID,
     );
     if (client == null) {
       return;
@@ -1270,20 +1268,6 @@ class ChatController extends State<ChatPageWithRoom>
       final prefs = Matrix.of(context).store;
       await prefs.setString('draft_$roomId', text);
     });
-    if (text.endsWith(' ') && Matrix.of(context).hasComplexBundles) {
-      final clients = currentRoomBundle;
-      for (final client in clients) {
-        final prefix = client!.sendPrefix;
-        if ((prefix.isNotEmpty) &&
-            text.toLowerCase() == '${prefix.toLowerCase()} ') {
-          setSendingClient(client);
-          setState(() {
-            sendController.clear();
-          });
-          return;
-        }
-      }
-    }
     if (AppSettings.sendTypingNotifications.value) {
       typingCoolDown?.cancel();
       typingCoolDown = Timer(const Duration(seconds: 2), () {

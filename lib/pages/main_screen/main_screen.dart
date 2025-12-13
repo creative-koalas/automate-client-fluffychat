@@ -9,13 +9,11 @@ import 'package:psygo/pages/team/team_page.dart';
 /// Supports horizontal swipe navigation on mobile devices
 class MainScreen extends StatefulWidget {
   final String? activeChat;
-  final String? activeSpace;
   final int initialPage;
 
   const MainScreen({
     super.key,
     this.activeChat,
-    this.activeSpace,
     this.initialPage = 0,
   });
 
@@ -84,7 +82,6 @@ class _MainScreenState extends State<MainScreen> {
       return _currentPage == 0
           ? ChatList(
               activeChat: widget.activeChat,
-              activeSpace: widget.activeSpace,
             )
           : const TeamPage();
     }
@@ -98,7 +95,6 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           ChatList(
             activeChat: widget.activeChat,
-            activeSpace: widget.activeSpace,
           ),
           const TeamPage(),
         ],

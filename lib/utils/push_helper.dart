@@ -280,7 +280,7 @@ Future<void> _tryPushHelper(
     ),
     importance: Importance.high,
     priority: Priority.max,
-    groupKey: event.room.spaceParents.firstOrNull?.roomId ?? 'rooms',
+    groupKey: 'rooms',
     actions: event.type == EventTypes.RoomMember || !useNotificationActions
         ? null
         : <AndroidNotificationAction>[

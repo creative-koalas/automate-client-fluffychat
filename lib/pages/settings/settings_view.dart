@@ -12,7 +12,6 @@ import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
-import 'package:psygo/widgets/navigation_rail.dart';
 import '../../widgets/mxc_image_viewer.dart';
 import 'settings.dart';
 
@@ -35,17 +34,6 @@ class SettingsView extends StatelessWidget {
         ?.tryGet<String>('account');
     return Row(
       children: [
-        if (FluffyThemes.isColumnMode(context)) ...[
-          SpacesNavigationRail(
-            activeSpaceId: null,
-            onGoToChats: () => context.go('/rooms'),
-            onGoToSpaceId: (spaceId) => context.go('/rooms?spaceId=$spaceId'),
-          ),
-          Container(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
-        ],
         Expanded(
           child: Scaffold(
             appBar: FluffyThemes.isColumnMode(context)
@@ -90,19 +78,6 @@ class SettingsView extends StatelessWidget {
                                           )
                                       : null,
                                 ),
-                                if (profile != null)
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: FloatingActionButton.small(
-                                      elevation: 2,
-                                      onPressed: controller.setAvatarAction,
-                                      heroTag: null,
-                                      child: const Icon(
-                                        Icons.camera_alt_outlined,
-                                      ),
-                                    ),
-                                  ),
                               ],
                             ),
                           ),
@@ -218,35 +193,7 @@ class SettingsView extends StatelessWidget {
                         ? theme.colorScheme.surfaceContainerHigh
                         : null,
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.shield_outlined),
-                    title: Text(L10n.of(context).security),
-                    onTap: () => context.go('/rooms/settings/security'),
-                    tileColor:
-                        activeRoute.startsWith('/rooms/settings/security')
-                            ? theme.colorScheme.surfaceContainerHigh
-                            : null,
-                  ),
                   Divider(color: theme.dividerColor),
-                  ListTile(
-                    leading: const Icon(Icons.dns_outlined),
-                    title: Text(
-                      L10n.of(context).aboutHomeserver(
-                        Matrix.of(context).client.userID?.domain ??
-                            'homeserver',
-                      ),
-                    ),
-                    onTap: () => context.go('/rooms/settings/homeserver'),
-                    tileColor:
-                        activeRoute.startsWith('/rooms/settings/homeserver')
-                            ? theme.colorScheme.surfaceContainerHigh
-                            : null,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.privacy_tip_outlined),
-                    title: Text(L10n.of(context).privacy),
-                    onTap: () => launchUrl(AppConfig.privacyUrl),
-                  ),
                   ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(L10n.of(context).about),

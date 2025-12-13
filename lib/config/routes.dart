@@ -6,11 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/themes.dart';
-import 'package:psygo/pages/archive/archive.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_access_settings/chat_access_settings_controller.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
-import 'package:psygo/pages/chat_encryption_settings/chat_encryption_settings.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/chat_members/chat_members.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
@@ -27,14 +25,8 @@ import 'package:psygo/pages/login/login.dart';
 import 'package:psygo/pages/new_group/new_group.dart';
 import 'package:psygo/pages/new_private_chat/new_private_chat.dart';
 import 'package:psygo/pages/settings/settings.dart';
-import 'package:psygo/pages/settings_3pid/settings_3pid.dart';
 import 'package:psygo/pages/settings_chat/settings_chat.dart';
-import 'package:psygo/pages/settings_emotes/settings_emotes.dart';
-import 'package:psygo/pages/settings_homeserver/settings_homeserver.dart';
-import 'package:psygo/pages/settings_ignore_list/settings_ignore_list.dart';
 import 'package:psygo/pages/settings_notifications/settings_notifications.dart';
-import 'package:psygo/pages/settings_password/settings_password.dart';
-import 'package:psygo/pages/settings_security/settings_security.dart';
 import 'package:psygo/pages/settings_style/settings_style.dart';
 import 'package:psygo/widgets/config_viewer.dart';
 import 'package:psygo/widgets/layouts/empty_page.dart';
@@ -161,7 +153,6 @@ abstract class AppRoutes {
             ? TwoColumnLayout(
                 mainView: ChatList(
                   activeChat: state.pathParameters['roomid'],
-                  activeSpace: state.uri.queryParameters['spaceId'],
                   displayNavigationRail:
                       state.path?.startsWith('/rooms/settings') != true,
                 ),
@@ -180,7 +171,6 @@ abstract class AppRoutes {
                 ? const EmptyPage()
                 : MainScreen(
                     activeChat: state.pathParameters['roomid'],
-                    activeSpace: state.uri.queryParameters['spaceId'],
                     initialPage: 0,
                   ),
           ),
@@ -194,29 +184,6 @@ abstract class AppRoutes {
                     ? const TeamPage()
                     : const MainScreen(initialPage: 1),
               ),
-              redirect: loggedOutRedirect,
-            ),
-            GoRoute(
-              path: 'archive',
-              pageBuilder: (context, state) => defaultPageBuilder(
-                context,
-                state,
-                const Archive(),
-              ),
-              routes: [
-                GoRoute(
-                  path: ':roomid',
-                  pageBuilder: (context, state) => defaultPageBuilder(
-                    context,
-                    state,
-                    ChatPage(
-                      roomId: state.pathParameters['roomid']!,
-                      eventId: state.uri.queryParameters['event'],
-                    ),
-                  ),
-                  redirect: loggedOutRedirect,
-                ),
-              ],
               redirect: loggedOutRedirect,
             ),
             GoRoute(
@@ -234,15 +201,6 @@ abstract class AppRoutes {
                 context,
                 state,
                 const NewGroup(),
-              ),
-              redirect: loggedOutRedirect,
-            ),
-            GoRoute(
-              path: 'newspace',
-              pageBuilder: (context, state) => defaultPageBuilder(
-                context,
-                state,
-                const NewGroup(createGroupType: CreateGroupType.space),
               ),
               redirect: loggedOutRedirect,
             ),
@@ -302,94 +260,7 @@ abstract class AppRoutes {
                         state,
                         const SettingsChat(),
                       ),
-                      routes: [
-                        GoRoute(
-                          path: 'emotes',
-                          pageBuilder: (context, state) => defaultPageBuilder(
-                            context,
-                            state,
-                            EmotesSettings(
-                              roomId: state.pathParameters['roomid'],
-                            ),
-                          ),
-                        ),
-                      ],
                       redirect: loggedOutRedirect,
-                    ),
-                    GoRoute(
-                      path: 'addaccount',
-                      redirect: loggedOutRedirect,
-                      pageBuilder: (context, state) => defaultPageBuilder(
-                        context,
-                        state,
-                        const HomeserverPicker(addMultiAccount: true),
-                      ),
-                      routes: [
-                        GoRoute(
-                          path: 'login',
-                          pageBuilder: (context, state) => defaultPageBuilder(
-                            context,
-                            state,
-                            Login(client: state.extra as Client),
-                          ),
-                          redirect: loggedOutRedirect,
-                        ),
-                      ],
-                    ),
-                    GoRoute(
-                      path: 'homeserver',
-                      pageBuilder: (context, state) {
-                        return defaultPageBuilder(
-                          context,
-                          state,
-                          const SettingsHomeserver(),
-                        );
-                      },
-                      redirect: loggedOutRedirect,
-                    ),
-                    GoRoute(
-                      path: 'security',
-                      redirect: loggedOutRedirect,
-                      pageBuilder: (context, state) => defaultPageBuilder(
-                        context,
-                        state,
-                        const SettingsSecurity(),
-                      ),
-                      routes: [
-                        GoRoute(
-                          path: 'password',
-                          pageBuilder: (context, state) {
-                            return defaultPageBuilder(
-                              context,
-                              state,
-                              const SettingsPassword(),
-                            );
-                          },
-                          redirect: loggedOutRedirect,
-                        ),
-                        GoRoute(
-                          path: 'ignorelist',
-                          pageBuilder: (context, state) {
-                            return defaultPageBuilder(
-                              context,
-                              state,
-                              SettingsIgnoreList(
-                                initialUserId: state.extra?.toString(),
-                              ),
-                            );
-                          },
-                          redirect: loggedOutRedirect,
-                        ),
-                        GoRoute(
-                          path: '3pid',
-                          pageBuilder: (context, state) => defaultPageBuilder(
-                            context,
-                            state,
-                            const Settings3Pid(),
-                          ),
-                          redirect: loggedOutRedirect,
-                        ),
-                      ],
                     ),
                   ],
                   redirect: loggedOutRedirect,
@@ -427,15 +298,6 @@ abstract class AppRoutes {
                     ChatSearchPage(
                       roomId: state.pathParameters['roomid']!,
                     ),
-                  ),
-                  redirect: loggedOutRedirect,
-                ),
-                GoRoute(
-                  path: 'encryption',
-                  pageBuilder: (context, state) => defaultPageBuilder(
-                    context,
-                    state,
-                    const ChatEncryptionSettings(),
                   ),
                   redirect: loggedOutRedirect,
                 ),
@@ -498,17 +360,6 @@ abstract class AppRoutes {
                         state,
                         InvitationSelection(
                           roomId: state.pathParameters['roomid']!,
-                        ),
-                      ),
-                      redirect: loggedOutRedirect,
-                    ),
-                    GoRoute(
-                      path: 'emotes',
-                      pageBuilder: (context, state) => defaultPageBuilder(
-                        context,
-                        state,
-                        EmotesSettings(
-                          roomId: state.pathParameters['roomid'],
                         ),
                       ),
                       redirect: loggedOutRedirect,

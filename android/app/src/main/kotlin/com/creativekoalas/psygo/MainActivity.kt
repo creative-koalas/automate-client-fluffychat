@@ -84,7 +84,7 @@ class MainActivity : FlutterActivity() {
             // 创建高优先级通知渠道
             val channelId = "automate_push_channel"
             val channelName = "消息通知"
-            val channelDescription = "接收 AutoMate 的消息推送通知"
+            val channelDescription = "接收 Psygo 的消息推送通知"
             val importance = NotificationManager.IMPORTANCE_HIGH
 
             val channel = NotificationChannel(channelId, channelName, importance).apply {

@@ -31,11 +31,10 @@ abstract class AppConfig {
   static const String appOpenUrlScheme = 'com.psygo';
 
   static const String sourceCodeUrl =
-      'https://github.com/krille-chan/fluffychat';
+      'https://github.com/creative-koalas/automate-client-fluffychat';
   static const String supportUrl =
-      'https://github.com/krille-chan/fluffychat/issues';
+      'https://github.com/creative-koalas/automate-client-fluffychat/issues';
   static const String changelogUrl = 'https://fluffy.chat/en/changelog/';
-  static const String donationUrl = 'https://ko-fi.com/krille';
 
   static const Set<String> defaultReactions = {'👍', '❤️', '😂', '😮', '😢'};
 

@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/setting_keys.dart';
@@ -10,7 +9,6 @@ import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/chat_list/chat_list_item.dart';
 import 'package:psygo/pages/chat_list/dummy_chat_list_item.dart';
 import 'package:psygo/pages/chat_list/search_title.dart';
-import 'package:psygo/pages/chat_list/space_view.dart';
 import 'package:psygo/utils/stream_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/public_room_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -29,32 +27,7 @@ class ChatListViewBody extends StatelessWidget {
     final theme = Theme.of(context);
 
     final client = Matrix.of(context).client;
-    final activeSpace = controller.activeSpaceId;
-    if (activeSpace != null) {
-      return SpaceView(
-        key: ValueKey(activeSpace),
-        spaceId: activeSpace,
-        onBack: controller.clearActiveSpace,
-        onChatTab: (room) => controller.onChatTap(room),
-        activeChat: controller.activeChat,
-      );
-    }
-    final spaces = client.rooms.where((r) => r.isSpace);
-    final spaceDelegateCandidates = <String, Room>{};
-    for (final space in spaces) {
-      for (final spaceChild in space.spaceChildren) {
-        final roomId = spaceChild.roomId;
-        if (roomId == null) continue;
-        spaceDelegateCandidates[roomId] = space;
-      }
-    }
-
-    final publicRooms = controller.roomSearchResult?.chunk
-        .where((room) => room.roomType != 'm.space')
-        .toList();
-    final publicSpaces = controller.roomSearchResult?.chunk
-        .where((room) => room.roomType == 'm.space')
-        .toList();
+    final publicRooms = controller.roomSearchResult?.chunk.toList();
     final userSearchResult = controller.userSearchResult;
     const dummyChatCount = 4;
     final filter = controller.searchController.text.toLowerCase();
@@ -82,11 +55,6 @@ class ChatListViewBody extends StatelessWidget {
                         icon: const Icon(Icons.explore_outlined),
                       ),
                       PublicRoomsHorizontalList(publicRooms: publicRooms),
-                      SearchTitle(
-                        title: L10n.of(context).publicSpaces,
-                        icon: const Icon(Icons.workspaces_outlined),
-                      ),
-                      PublicRoomsHorizontalList(publicRooms: publicSpaces),
                       SearchTitle(
                         title: L10n.of(context).users,
                         icon: const Icon(Icons.group_outlined),
@@ -148,10 +116,6 @@ class ChatListViewBody extends StatelessWidget {
                                 ActiveFilter.allChats,
                               ActiveFilter.groups,
                               ActiveFilter.unread,
-                              if (spaceDelegateCandidates.isNotEmpty &&
-                                  !AppSettings.displayNavigationRail.value &&
-                                  !FluffyThemes.isColumnMode(context))
-                                ActiveFilter.spaces,
                             ].map(
                               (filter) => Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -237,15 +201,13 @@ class ChatListViewBody extends StatelessWidget {
                   itemCount: rooms.length,
                   itemBuilder: (BuildContext context, int i) {
                     final room = rooms[i];
-                    final space = spaceDelegateCandidates[room.id];
                     return ChatListItem(
                       room,
-                      space: space,
                       key: Key('chat_list_item_${room.id}'),
                       filter: filter,
                       onTap: () => controller.onChatTap(room),
                       onLongPress: (context) =>
-                          controller.chatContextAction(room, context, space),
+                          controller.chatContextAction(room, context),
                       activeChat: controller.activeChat == room.id,
                     );
                   },

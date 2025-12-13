@@ -395,9 +395,9 @@ class _ChatAccountPicker extends StatelessWidget {
 
   void _popupMenuButtonSelected(String mxid, BuildContext context) {
     final client = Matrix.of(context)
-        .currentBundle!
-        .firstWhere((cl) => cl!.userID == mxid, orElse: () => null);
-    if (client == null) {
+        .currentBundle
+        .firstWhere((cl) => cl.userID == mxid, orElse: () => Matrix.of(context).client);
+    if (client.userID != mxid) {
       Logs().w('Attempted to switch to a non-existing client $mxid');
       return;
     }

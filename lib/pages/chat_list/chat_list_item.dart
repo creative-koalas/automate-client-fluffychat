@@ -113,22 +113,13 @@ class ChatListItem extends StatelessWidget {
                           right: 0,
                           child: Avatar(
                             border: space == null
-                                ? room.isSpace
-                                    ? BorderSide(
-                                        width: 1,
-                                        color: theme.dividerColor,
-                                      )
-                                    : null
+                                ? null
                                 : BorderSide(
                                     width: 2,
                                     color: backgroundColor ??
                                         theme.colorScheme.surface,
                                   ),
-                            borderRadius: room.isSpace
-                                ? BorderRadius.circular(
-                                    AppConfig.borderRadius / 4,
-                                  )
-                                : null,
+                            borderRadius: null,
                             mxContent: room.avatar,
                             size: space != null
                                 ? Avatar.defaultSize * 0.75
@@ -198,7 +189,7 @@ class ChatListItem extends StatelessWidget {
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                  if (!room.isSpace && room.membership != Membership.invite)
+                  if (room.membership != Membership.invite)
                     Padding(
                       padding: const EdgeInsets.only(left: 4.0),
                       child: Text(
@@ -275,14 +266,8 @@ class ChatListItem extends StatelessWidget {
                             : const SizedBox.shrink(),
                   ),
                   Expanded(
-                    child: room.isSpace && room.membership == Membership.join
+                    child: typingText.isNotEmpty
                         ? Text(
-                            L10n.of(context)
-                                .countChats(room.spaceChildren.length),
-                            style: TextStyle(color: theme.colorScheme.outline),
-                          )
-                        : typingText.isNotEmpty
-                            ? Text(
                                 typingText,
                                 style: TextStyle(
                                   color: theme.colorScheme.primary,

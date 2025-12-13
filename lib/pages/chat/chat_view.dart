@@ -13,7 +13,6 @@ import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat/chat_app_bar_list_tile.dart';
 import 'package:psygo/pages/chat/chat_app_bar_title.dart';
 import 'package:psygo/pages/chat/chat_event_list.dart';
-import 'package:psygo/pages/chat/encryption_button.dart';
 import 'package:psygo/pages/chat/pinned_events.dart';
 import 'package:psygo/pages/chat/reply_display.dart';
 import 'package:psygo/utils/account_config.dart';
@@ -143,7 +142,6 @@ class ChatView extends StatelessWidget {
             icon: const Icon(Icons.call_outlined),
             tooltip: L10n.of(context).placeCall,
           ),
-        EncryptionButton(controller.room),
         ChatSettingsPopupMenu(controller.room, true),
       ];
     }
@@ -396,7 +394,7 @@ class ChatView extends StatelessWidget {
                                             ),
                                             onPressed: controller.leaveChat,
                                             label: Text(
-                                              L10n.of(context).leave,
+                                              L10n.of(context).declineInvitation,
                                             ),
                                           ),
                                           TextButton.icon(

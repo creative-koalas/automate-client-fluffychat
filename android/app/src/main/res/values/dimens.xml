@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 覆盖阿里云一键登录 SDK 的导航栏高度，增加状态栏高度避免重叠 -->
+    <!-- SDK 默认: 50dp, 增加 28dp 状态栏高度 = 78dp -->
+    <dimen name="pns_action_bar_height">78dp</dimen>
+</resources>

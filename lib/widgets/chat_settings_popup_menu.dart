@@ -31,9 +31,6 @@ class ChatSettingsPopupMenuState extends State<ChatSettingsPopupMenu> {
     super.dispose();
   }
 
-  void goToEmoteSettings() =>
-      context.push('/rooms/${widget.room.id}/details/emotes');
-
   @override
   Widget build(BuildContext context) {
     notificationChangeSub ??= Matrix.of(context)
@@ -64,7 +61,7 @@ class ChatSettingsPopupMenuState extends State<ChatSettingsPopupMenu> {
                   context: context,
                   title: L10n.of(context).areYouSure,
                   message: L10n.of(context).archiveRoomDescription,
-                  okLabel: L10n.of(context).leave,
+                  okLabel: L10n.of(context).leaveChat,
                   cancelLabel: L10n.of(context).cancel,
                   isDestructive: true,
                 );
@@ -99,7 +96,7 @@ class ChatSettingsPopupMenuState extends State<ChatSettingsPopupMenu> {
                 context.go('/rooms/${widget.room.id}/search');
                 break;
               case ChatPopupMenuActions.emote:
-                goToEmoteSettings();
+                break;
             }
           },
           itemBuilder: (BuildContext context) => [
@@ -147,22 +144,20 @@ class ChatSettingsPopupMenuState extends State<ChatSettingsPopupMenu> {
               ),
             ),
             PopupMenuItem<ChatPopupMenuActions>(
-              value: ChatPopupMenuActions.emote,
-              child: Row(
-                children: [
-                  const Icon(Icons.emoji_emotions_outlined),
-                  const SizedBox(width: 12),
-                  Text(L10n.of(context).emoteSettings),
-                ],
-              ),
-            ),
-            PopupMenuItem<ChatPopupMenuActions>(
               value: ChatPopupMenuActions.leave,
               child: Row(
                 children: [
-                  const Icon(Icons.delete_outlined),
+                  Icon(
+                    Icons.delete_outlined,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                   const SizedBox(width: 12),
-                  Text(L10n.of(context).leave),
+                  Text(
+                    L10n.of(context).leaveChat,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ],
               ),
             ),
