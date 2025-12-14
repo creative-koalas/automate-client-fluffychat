@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +32,6 @@ class _WalletPageState extends State<WalletPage> {
 
   // 用户余额（分）- 从后端获取
   int _balanceCredits = 0;
-  bool _isLoadingBalance = true;
 
   // 自动刷新定时器（每5秒刷新余额）
   Timer? _refreshTimer;
@@ -58,23 +58,19 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> _loadUserBalance() async {
-    setState(() => _isLoadingBalance = true);
+    if (!mounted) return;
+    // 不显示加载指示器，静默刷新
     try {
       final apiClient = context.read<PsygoApiClient>();
       final userInfo = await apiClient.getUserInfo();
+      if (!mounted) return;
       setState(() {
         _balanceCredits = userInfo.creditBalance;
-        _isLoadingBalance = false;
       });
     } catch (e) {
-      setState(() => _isLoadingBalance = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load balance: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      // 静默失败，不显示错误提示
+      if (kDebugMode) {
+        print('Failed to load balance: $e');
       }
     }
   }
@@ -239,45 +235,49 @@ class _WalletPageState extends State<WalletPage> {
           ),
           const SizedBox(height: 16),
 
-          // 余额数字
-          _isLoadingBalance
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(_primaryGreen),
-                    ),
-                  ),
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      _balanceCredits.toString().replaceAllMapped(
-                            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                            (Match m) => '${m[1]},',
-                          ),
-                      style: const TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                        height: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      l10n.walletCreditsUnit,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
+          // 余额数字 - 使用 AnimatedSwitcher 实现平滑切换
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.2),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
                 ),
+              );
+            },
+            child: Row(
+              key: ValueKey(_balanceCredits),
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  _balanceCredits.toString().replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (Match m) => '${m[1]},',
+                      ),
+                  style: const TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  l10n.walletCreditsUnit,
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 4),
 
           // 人民币换算
