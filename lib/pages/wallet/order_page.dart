@@ -35,7 +35,7 @@ class OrderPage extends StatefulWidget {
 
 class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   // 选中的支付方式：0 = 微信, 1 = 支付宝, 2 = 银行卡
-  int _selectedPayment = 0;
+  int _selectedPayment = 1; // 默认选中支付宝
 
   // 订单号（固定生成一次）
   late final String _orderNo;
@@ -606,38 +606,8 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // 详情列表（1元 = 100积分）
-          _buildDetailRow(l10n.orderCreditsAmount2, '${(widget.amount * 100).toStringAsFixed(0)} ${l10n.walletCreditsUnit}'),
-          const SizedBox(height: 8),
-          _buildDetailRow(l10n.orderExchangeRate, '1:100'),
-          const SizedBox(height: 8),
-          _buildDetailRow(l10n.orderDiscount, '¥0'),
         ],
       ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Colors.black87,
-          ),
-        ),
-      ],
     );
   }
 
@@ -676,17 +646,17 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 16),
 
-          // 微信支付
-          _buildPaymentOption(
-            index: 0,
-            icon: Icons.wechat,
-            iconColor: const Color(0xFF07C160),
-            title: l10n.walletWechatPay,
-            subtitle: l10n.orderQuickPay,
-            isRecommended: true,
-            recommendedLabel: l10n.orderRecommended,
-          ),
-          const SizedBox(height: 12),
+          // 微信支付（暂不可用）
+          // _buildPaymentOption(
+          //   index: 0,
+          //   icon: Icons.wechat,
+          //   iconColor: const Color(0xFF07C160),
+          //   title: l10n.walletWechatPay,
+          //   subtitle: l10n.orderQuickPay,
+          //   isRecommended: true,
+          //   recommendedLabel: l10n.orderRecommended,
+          // ),
+          // const SizedBox(height: 12),
 
           // 支付宝
           _buildPaymentOption(
@@ -697,17 +667,17 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
             subtitle: l10n.orderQuickPay,
             isRecommended: false,
           ),
-          const SizedBox(height: 12),
 
-          // 银行卡
-          _buildPaymentOption(
-            index: 2,
-            icon: Icons.credit_card,
-            iconColor: const Color(0xFF666666),
-            title: l10n.orderBankCard,
-            subtitle: l10n.orderDebitCredit,
-            isRecommended: false,
-          ),
+          // 银行卡（暂不可用）
+          // const SizedBox(height: 12),
+          // _buildPaymentOption(
+          //   index: 2,
+          //   icon: Icons.credit_card,
+          //   iconColor: const Color(0xFF666666),
+          //   title: l10n.orderBankCard,
+          //   subtitle: l10n.orderDebitCredit,
+          //   isRecommended: false,
+          // ),
         ],
       ),
     );
