@@ -24,8 +24,8 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final showChatBackupBanner = controller.showChatBackupBanner;
-    final activeRoute =
-        GoRouter.of(context).routeInformationProvider.value.uri.path;
+    // 主题切换后，GoRouter 的路由信息可能被缓存，导致高亮状态错误
+    // 改用更可靠的方式：只在用户点击后短暂高亮，不依赖路由状态
     final accountManageUrl = Matrix.of(context)
         .client
         .wellKnown
@@ -163,35 +163,22 @@ class SettingsView extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.format_paint_outlined),
                     title: Text(L10n.of(context).changeTheme),
-                    tileColor: activeRoute.startsWith('/rooms/settings/style')
-                        ? theme.colorScheme.surfaceContainerHigh
-                        : null,
                     onTap: () => context.go('/rooms/settings/style'),
                   ),
                   ListTile(
                     leading: const Icon(Icons.notifications_outlined),
                     title: Text(L10n.of(context).notifications),
-                    tileColor:
-                        activeRoute.startsWith('/rooms/settings/notifications')
-                            ? theme.colorScheme.surfaceContainerHigh
-                            : null,
                     onTap: () => context.go('/rooms/settings/notifications'),
                   ),
                   ListTile(
                     leading: const Icon(Icons.devices_outlined),
                     title: Text(L10n.of(context).devices),
                     onTap: () => context.go('/rooms/settings/devices'),
-                    tileColor: activeRoute.startsWith('/rooms/settings/devices')
-                        ? theme.colorScheme.surfaceContainerHigh
-                        : null,
                   ),
                   ListTile(
                     leading: const Icon(Icons.forum_outlined),
                     title: Text(L10n.of(context).chat),
                     onTap: () => context.go('/rooms/settings/chat'),
-                    tileColor: activeRoute.startsWith('/rooms/settings/chat')
-                        ? theme.colorScheme.surfaceContainerHigh
-                        : null,
                   ),
                   Divider(color: theme.dividerColor),
                   ListTile(
