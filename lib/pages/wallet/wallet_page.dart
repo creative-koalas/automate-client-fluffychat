@@ -149,11 +149,15 @@ class _WalletPageState extends State<WalletPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
+        iconTheme: const IconThemeData(
+          color: Colors.black, // 返回按钮固定为黑色
+        ),
         title: Text(
           l10n.walletTitle,
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 18,
+            color: Colors.black, // 标题固定为黑色
           ),
         ),
         centerTitle: true,
@@ -490,7 +494,7 @@ class _WalletPageState extends State<WalletPage> {
           // 将获得积分提示
           Center(
             child: Text(
-              '${l10n.walletWillGet} $_customAmount${l10n.walletCreditsUnit}',
+              '${l10n.walletWillGet} ${_customAmount * 100}${l10n.walletCreditsUnit}',
               style: TextStyle(
                 fontSize: 13,
                 color: _primaryGreen,
