@@ -88,7 +88,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "areYouSureYouWantToLogout": "你确定要注销吗？",
+    "areYouSureYouWantToLogout": "你确定要退出登录吗？",
     "@areYouSureYouWantToLogout": {
         "type": "String",
         "placeholders": {}
@@ -1087,7 +1087,7 @@
             }
         }
     },
-    "logout": "注销",
+    "logout": "退出登录",
     "@logout": {
         "type": "String",
         "placeholders": {}
@@ -2511,7 +2511,7 @@
     },
     "reportErrorDescription": "😭 哦不。出了点差错。如果你愿意，可以向开发人员报告此错误。",
     "@reportErrorDescription": {},
-    "noBackupWarning": "警告！如果不启用聊天备份，你将无法访问加密消息。强烈建议在注销前先启用聊天备份。",
+    "noBackupWarning": "警告！如果退出登录你的员工将会停止工作。",
     "@noBackupWarning": {},
     "signInWithPassword": "使用密码登录",
     "@signInWithPassword": {},
@@ -3374,9 +3374,9 @@
             }
         }
     },
-    "commandHint_logout": "注销当前设备",
+    "commandHint_logout": "退出登录当前设备",
     "@commandHint_logout": {},
-    "commandHint_logoutall": "注销所有活动设备",
+    "commandHint_logoutall": "退出登录所有活动设备",
     "@commandHint_logoutall": {},
     "displayNavigationRail": "在移动设备上显示导航栏",
     "@displayNavigationRail": {},

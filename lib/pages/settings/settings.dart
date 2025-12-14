@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
+import 'package:provider/provider.dart';
 
+import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -73,10 +75,19 @@ class SettingsController extends State<Settings> {
         OkCancelResult.cancel) {
       return;
     }
+
+    // 同时退出 Matrix 和 Automate
     final matrix = Matrix.of(context);
+    final auth = context.read<PsygoAuthState>();
+
     await showFutureLoadingDialog(
       context: context,
-      future: () => matrix.client.logout(),
+      future: () async {
+        // 1. 退出 Matrix
+        await matrix.client.logout();
+        // 2. 清除 Automate 认证状态
+        await auth.markLoggedOut();
+      },
     );
   }
 

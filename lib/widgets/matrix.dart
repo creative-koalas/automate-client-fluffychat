@@ -251,7 +251,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         }
       } else {
         PsygoApp.router
-            .go(state == LoginState.loggedIn ? '/rooms' : '/home');
+            .go(state == LoginState.loggedIn ? '/rooms' : '/login-signup');
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);

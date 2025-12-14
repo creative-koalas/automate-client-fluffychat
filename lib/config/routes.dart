@@ -107,21 +107,35 @@ abstract class AppRoutes {
     ),
     GoRoute(
       path: '/home',
+      // 重定向到新版登录页面，不让用户看到旧版页面
+      redirect: (context, state) {
+        // 如果已登录，跳转到主页
+        if (Matrix.of(context).widget.clients.any((client) => client.isLogged())) {
+          return '/rooms';
+        }
+        // 未登录，强制跳转到新版登录页
+        return '/login-signup';
+      },
       pageBuilder: (context, state) => defaultPageBuilder(
         context,
         state,
         const HomeserverPicker(addMultiAccount: false),
       ),
-      redirect: loggedInRedirect,
       routes: [
         GoRoute(
           path: 'login',
+          // 同样重定向到新版登录
+          redirect: (context, state) {
+            if (Matrix.of(context).widget.clients.any((client) => client.isLogged())) {
+              return '/rooms';
+            }
+            return '/login-signup';
+          },
           pageBuilder: (context, state) => defaultPageBuilder(
             context,
             state,
             Login(client: state.extra as Client),
           ),
-          redirect: loggedInRedirect,
         ),
       ],
     ),
