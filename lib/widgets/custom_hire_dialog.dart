@@ -334,55 +334,75 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 640),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 标题栏
-            _buildHeader(theme, l10n),
-            // 步骤指示器
-            _buildStepIndicator(theme, l10n),
-            // 内容区域
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: _buildContent(theme, l10n),
-              ),
+    return GestureDetector(
+      onTap: () {}, // 阻止点击传递到背景
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.3,
+        maxChildSize: 0.95,
+        snap: true,
+        snapSizes: const [0.9],
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
-            // 错误提示
-            if (_error != null) _buildErrorBanner(theme),
-            // 底部按钮
-            _buildActions(theme, l10n),
-          ],
-        ),
+            child: Column(
+              children: [
+                // 顶部拖拽指示器 - 可拖拽区域
+                Container(
+                  width: double.infinity,
+                  color: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+                // 标题栏
+                _buildHeader(theme, l10n),
+                // 步骤指示器
+                _buildStepIndicator(theme, l10n),
+                // 内容区域
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                    children: [
+                      _buildContent(theme, l10n),
+                    ],
+                  ),
+                ),
+                // 错误提示
+                if (_error != null) _buildErrorBanner(theme),
+                // 底部按钮
+                _buildActions(theme, l10n),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildHeader(ThemeData theme, L10n l10n) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 16, 16),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Row(
         children: [
-          // 图标
+          // 左侧图标
           Container(
-            width: 52,
-            height: 52,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.primary.withOpacity(0.15),
-                  theme.colorScheme.secondary.withOpacity(0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
@@ -392,16 +412,15 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             ),
           ),
           const SizedBox(width: 16),
-          // 标题
+          // 标题和副标题
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   l10n.customHire,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -412,17 +431,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                   ),
                 ),
               ],
-            ),
-          ),
-          // 关闭按钮
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(
-              Icons.close_rounded,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
             ),
           ),
         ],

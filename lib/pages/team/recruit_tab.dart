@@ -119,8 +119,12 @@ class _RecruitTabState extends State<RecruitTab>
   }
 
   Future<void> _onCustomHire() async {
-    final result = await showDialog<UnifiedCreateAgentResponse>(
+    final result = await showModalBottomSheet<UnifiedCreateAgentResponse>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true, // 允许点击外部关闭
+      enableDrag: true, // 允许拖拽关闭
       builder: (context) => CustomHireDialog(
         repository: _repository,
       ),
