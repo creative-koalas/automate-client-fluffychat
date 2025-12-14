@@ -364,14 +364,14 @@ class _WalletPageState extends State<WalletPage> {
               color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
 
           // 自定义金额输入（带 +/- 按钮）
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
@@ -416,7 +416,7 @@ class _WalletPageState extends State<WalletPage> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
           // 将获得积分提示
           Center(
@@ -428,19 +428,19 @@ class _WalletPageState extends State<WalletPage> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
 
           // 充值按钮
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 56,
             child: ElevatedButton(
               onPressed: _onRecharge,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryGreen,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(28),
                 ),
                 elevation: 0,
               ),
