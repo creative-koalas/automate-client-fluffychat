@@ -103,17 +103,14 @@ class _WalletPageState extends State<WalletPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            const SizedBox(height: 24),
             // 余额卡片
             _buildBalanceCard(l10n),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // 充值区域
             _buildRechargeCard(l10n),
-            const SizedBox(height: 16),
-
-            // 为什么选择我们
-            _buildWhyChooseUs(l10n),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -484,123 +481,6 @@ class _WalletPageState extends State<WalletPage> {
           size: 20,
           color: enabled ? Colors.grey[700] : Colors.grey[400],
         ),
-      ),
-    );
-  }
-
-  Widget _buildWhyChooseUs(L10n l10n) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.walletWhyChooseUs,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFeatureCard(
-                  icon: Icons.auto_awesome,
-                  title: l10n.walletFeature1Title,
-                  subtitle: l10n.walletFeature1Desc,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildFeatureCard(
-                  icon: Icons.flash_on,
-                  title: l10n.walletFeature2Title,
-                  subtitle: l10n.walletFeature2Desc,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFeatureCard(
-                  icon: Icons.security,
-                  title: l10n.walletFeature3Title,
-                  subtitle: l10n.walletFeature3Desc,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildFeatureCard(
-                  icon: Icons.receipt_long,
-                  title: l10n.walletFeature4Title,
-                  subtitle: l10n.walletFeature4Desc,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _lightGreen,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: _primaryGreen,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[500],
-              height: 1.3,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
       ),
     );
   }
