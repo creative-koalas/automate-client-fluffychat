@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/backend/api_client.dart';
 
 import 'order_page.dart';
 
@@ -25,8 +29,12 @@ class _WalletPageState extends State<WalletPage> {
   // 自定义金额
   int _customAmount = 50;
 
-  // 模拟余额（分）
-  final int _balanceCredits = 1234;
+  // 用户余额（分）- 从后端获取
+  int _balanceCredits = 0;
+  bool _isLoadingBalance = true;
+
+  // 自动刷新定时器（每5秒刷新余额）
+  Timer? _refreshTimer;
 
   // 主题绿色
   static const Color _primaryGreen = Color(0xFF4CAF50);
@@ -36,6 +44,39 @@ class _WalletPageState extends State<WalletPage> {
   void initState() {
     super.initState();
     _customAmount = _presetAmounts[_selectedPresetIndex];
+    _loadUserBalance();
+    // 启动定时器，每5秒自动刷新余额
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _loadUserBalance();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadUserBalance() async {
+    setState(() => _isLoadingBalance = true);
+    try {
+      final apiClient = context.read<PsygoApiClient>();
+      final userInfo = await apiClient.getUserInfo();
+      setState(() {
+        _balanceCredits = userInfo.creditBalance;
+        _isLoadingBalance = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingBalance = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load balance: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _onPresetTap(int index) {
@@ -61,7 +102,7 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
-  void _onRecharge() {
+  Future<void> _onRecharge() async {
     if (_customAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -73,11 +114,29 @@ class _WalletPageState extends State<WalletPage> {
     }
 
     // 跳转到订单页面
-    Navigator.of(context).push(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => OrderPage(amount: _customAmount.toDouble()),
       ),
     );
+
+    // 如果支付成功，刷新余额并显示提示
+    if (result == true && mounted) {
+      // 刷新余额
+      await _loadUserBalance();
+
+      // 显示成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(L10n.of(context).orderPaymentSuccess),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -153,9 +212,7 @@ class _WalletPageState extends State<WalletPage> {
                 ],
               ),
               GestureDetector(
-                onTap: () {
-                  // TODO: 实时更新余额
-                },
+                onTap: _loadUserBalance,
                 child: Row(
                   children: [
                     Icon(
@@ -179,32 +236,44 @@ class _WalletPageState extends State<WalletPage> {
           const SizedBox(height: 16),
 
           // 余额数字
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                _balanceCredits.toString().replaceAllMapped(
-                      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                      (Match m) => '${m[1]},',
+          _isLoadingBalance
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(_primaryGreen),
                     ),
-                style: const TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  height: 1,
+                  ),
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      _balanceCredits.toString().replaceAllMapped(
+                            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                            (Match m) => '${m[1]},',
+                          ),
+                      style: const TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      l10n.walletCreditsUnit,
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                l10n.walletCreditsUnit,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey[700],
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 4),
 
           // 人民币换算
