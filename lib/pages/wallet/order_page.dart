@@ -857,22 +857,10 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildSecurityBadge(Icons.lock, l10n.orderSSL),
-                const SizedBox(width: 24),
                 _buildSecurityBadge(Icons.security, l10n.orderFundSafe),
                 const SizedBox(width: 24),
                 _buildSecurityBadge(Icons.flash_on, l10n.orderInstant),
               ],
-            ),
-            const SizedBox(height: 12),
-
-            // 底部提示文字
-            Text(
-              l10n.orderSecurityHint,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[400],
-              ),
             ),
           ],
         ),
