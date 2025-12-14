@@ -134,11 +134,7 @@ class SettingsStyleController extends State<SettingsStyle> {
     Colors.pink,
     Colors.pinkAccent,
     Colors.purple,
-    Colors.purpleAccent,
-    Colors.blueGrey,
-    Colors.grey,
-    Colors.white,
-    Colors.black,
+
   ];
 
   void switchTheme(ThemeMode? newTheme) {
