@@ -86,10 +86,10 @@ class _WalletPageState extends State<WalletPage> {
     final l10n = L10n.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: theme.colorScheme.surface,
+        surfaceTintColor: theme.colorScheme.surfaceTint,
         title: Text(
           l10n.walletTitle,
           style: const TextStyle(
@@ -118,11 +118,15 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Widget _buildBalanceCard(L10n l10n) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final lightPrimaryColor = theme.colorScheme.primaryContainer;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _lightGreen,
+        color: lightPrimaryColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -137,8 +141,8 @@ class _WalletPageState extends State<WalletPage> {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: _primaryGreen,
+                    decoration: BoxDecoration(
+                      color: primaryColor,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -146,7 +150,7 @@ class _WalletPageState extends State<WalletPage> {
                   Text(
                     l10n.walletBalance,
                     style: TextStyle(
-                      color: Colors.grey[700],
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -161,13 +165,13 @@ class _WalletPageState extends State<WalletPage> {
                     Icon(
                       Icons.refresh,
                       size: 14,
-                      color: _primaryGreen,
+                      color: primaryColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       l10n.walletRefresh,
-                      style: const TextStyle(
-                        color: _primaryGreen,
+                      style: TextStyle(
+                        color: primaryColor,
                         fontSize: 13,
                       ),
                     ),
@@ -188,10 +192,10 @@ class _WalletPageState extends State<WalletPage> {
                       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                       (Match m) => '${m[1]},',
                     ),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 42,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                   height: 1,
                 ),
               ),
@@ -200,7 +204,7 @@ class _WalletPageState extends State<WalletPage> {
                 l10n.walletCreditsUnit,
                 style: TextStyle(
                   fontSize: 18,
-                  color: Colors.grey[700],
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],
@@ -212,7 +216,7 @@ class _WalletPageState extends State<WalletPage> {
             '${l10n.walletEquivalent} ¥${(_balanceCredits / 100).toStringAsFixed(2)}',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 12),
@@ -221,7 +225,7 @@ class _WalletPageState extends State<WalletPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
+              color: theme.colorScheme.surface.withOpacity(0.6),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -230,14 +234,14 @@ class _WalletPageState extends State<WalletPage> {
                 Icon(
                   Icons.info_outline,
                   size: 14,
-                  color: Colors.grey[600],
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   l10n.walletExchangeRate,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ],
@@ -249,15 +253,21 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Widget _buildRechargeCard(L10n l10n) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final lightPrimaryColor = theme.colorScheme.primaryContainer;
+    final surfaceColor = theme.colorScheme.surface;
+    final onSurfaceColor = theme.colorScheme.onSurface;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: theme.shadowColor.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -272,22 +282,22 @@ class _WalletPageState extends State<WalletPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _lightGreen,
+                  color: lightPrimaryColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.bolt,
                       size: 16,
-                      color: _primaryGreen,
+                      color: primaryColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       l10n.walletCustomRecharge,
-                      style: const TextStyle(
-                        color: _primaryGreen,
+                      style: TextStyle(
+                        color: primaryColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -302,7 +312,7 @@ class _WalletPageState extends State<WalletPage> {
             l10n.walletFlexibleRecharge,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[500],
+              color: onSurfaceColor.withOpacity(0.5),
             ),
           ),
           const SizedBox(height: 20),
@@ -312,7 +322,7 @@ class _WalletPageState extends State<WalletPage> {
             l10n.walletQuickAmount,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: onSurfaceColor.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 10),
@@ -332,10 +342,10 @@ class _WalletPageState extends State<WalletPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: isSelected ? _primaryGreen : Colors.grey[100],
+                      color: isSelected ? primaryColor : theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? _primaryGreen : Colors.grey[300]!,
+                        color: isSelected ? primaryColor : theme.colorScheme.outline.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
@@ -343,7 +353,7 @@ class _WalletPageState extends State<WalletPage> {
                       child: Text(
                         '¥$amount',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[700],
+                          color: isSelected ? theme.colorScheme.onPrimary : onSurfaceColor.withOpacity(0.7),
                           fontWeight: FontWeight.w500,
                           fontSize: 13,
                         ),
@@ -354,24 +364,24 @@ class _WalletPageState extends State<WalletPage> {
               );
             }),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // 自定义金额标签
           Text(
             l10n.walletCustomAmount,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: onSurfaceColor.withOpacity(0.6),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
 
           // 自定义金额输入（带 +/- 按钮）
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
@@ -391,16 +401,16 @@ class _WalletPageState extends State<WalletPage> {
                           '¥',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey[600],
+                            color: onSurfaceColor.withOpacity(0.6),
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           _customAmount.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: onSurfaceColor,
                           ),
                         ),
                       ],
@@ -416,7 +426,7 @@ class _WalletPageState extends State<WalletPage> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
           // 将获得积分提示
           Center(
@@ -424,21 +434,21 @@ class _WalletPageState extends State<WalletPage> {
               '${l10n.walletWillGet} $_customAmount${l10n.walletCreditsUnit}',
               style: TextStyle(
                 fontSize: 13,
-                color: _primaryGreen,
+                color: primaryColor,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
 
           // 充值按钮
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 52,
             child: ElevatedButton(
               onPressed: _onRecharge,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryGreen,
-                foregroundColor: Colors.white,
+                backgroundColor: primaryColor,
+                foregroundColor: theme.colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -463,23 +473,27 @@ class _WalletPageState extends State<WalletPage> {
     required VoidCallback onTap,
     required bool enabled,
   }) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Colors.grey[300]!,
+            color: theme.colorScheme.outline.withOpacity(0.3),
             width: 1,
           ),
         ),
         child: Icon(
           icon,
           size: 20,
-          color: enabled ? Colors.grey[700] : Colors.grey[400],
+          color: enabled
+              ? theme.colorScheme.onSurface.withOpacity(0.7)
+              : theme.colorScheme.onSurface.withOpacity(0.4),
         ),
       ),
     );
