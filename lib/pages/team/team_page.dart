@@ -126,18 +126,11 @@ class TeamPageView extends StatelessWidget {
         automaticallyImplyLeading: false, // Remove back arrow
         title: Row(
           children: [
-            // Team icon with subtle background
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.groups,
-                color: theme.colorScheme.primary,
-                size: 24,
-              ),
+            // Team icon
+            Icon(
+              Icons.groups,
+              color: theme.colorScheme.primary,
+              size: 28,
             ),
             const SizedBox(width: 12),
             // Title text
