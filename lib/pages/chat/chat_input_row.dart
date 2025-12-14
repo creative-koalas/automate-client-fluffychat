@@ -139,35 +139,37 @@ class ChatInputRow extends StatelessWidget {
                       iconColor: theme.colorScheme.onPrimaryContainer,
                       onSelected: controller.onAddPopupMenuButtonSelected,
                       itemBuilder: (BuildContext context) => [
-                        if (PlatformInfos.isMobile)
-                          PopupMenuItem(
-                            value: AddPopupMenuActions.location,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                child: const Icon(Icons.gps_fixed_outlined),
-                              ),
-                              title: Text(L10n.of(context).shareLocation),
-                              contentPadding: const EdgeInsets.all(0),
-                            ),
-                          ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.poll,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(Icons.poll_outlined),
-                            ),
-                            title: Text(L10n.of(context).startPoll),
-                            contentPadding: const EdgeInsets.all(0),
-                          ),
-                        ),
+                        // 禁用分享位置功能
+                        // if (PlatformInfos.isMobile)
+                        //   PopupMenuItem(
+                        //     value: AddPopupMenuActions.location,
+                        //     child: ListTile(
+                        //       leading: CircleAvatar(
+                        //         backgroundColor:
+                        //             theme.colorScheme.onPrimaryContainer,
+                        //         foregroundColor:
+                        //             theme.colorScheme.primaryContainer,
+                        //         child: const Icon(Icons.gps_fixed_outlined),
+                        //       ),
+                        //       title: Text(L10n.of(context).shareLocation),
+                        //       contentPadding: const EdgeInsets.all(0),
+                        //     ),
+                        //   ),
+                        // 禁用启动投票功能
+                        // PopupMenuItem(
+                        //   value: AddPopupMenuActions.poll,
+                        //   child: ListTile(
+                        //     leading: CircleAvatar(
+                        //       backgroundColor:
+                        //           theme.colorScheme.onPrimaryContainer,
+                        //       foregroundColor:
+                        //           theme.colorScheme.primaryContainer,
+                        //       child: const Icon(Icons.poll_outlined),
+                        //     ),
+                        //     title: Text(L10n.of(context).startPoll),
+                        //     contentPadding: const EdgeInsets.all(0),
+                        //   ),
+                        // ),
                         PopupMenuItem(
                           value: AddPopupMenuActions.image,
                           child: ListTile(
@@ -182,21 +184,22 @@ class ChatInputRow extends StatelessWidget {
                             contentPadding: const EdgeInsets.all(0),
                           ),
                         ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.video,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child:
-                                  const Icon(Icons.video_camera_back_outlined),
-                            ),
-                            title: Text(L10n.of(context).sendVideo),
-                            contentPadding: const EdgeInsets.all(0),
-                          ),
-                        ),
+                        // 禁用发送视频功能
+                        // PopupMenuItem(
+                        //   value: AddPopupMenuActions.video,
+                        //   child: ListTile(
+                        //     leading: CircleAvatar(
+                        //       backgroundColor:
+                        //           theme.colorScheme.onPrimaryContainer,
+                        //       foregroundColor:
+                        //           theme.colorScheme.primaryContainer,
+                        //       child:
+                        //           const Icon(Icons.video_camera_back_outlined),
+                        //     ),
+                        //     title: Text(L10n.of(context).sendVideo),
+                        //     contentPadding: const EdgeInsets.all(0),
+                        //   ),
+                        // ),
                         PopupMenuItem(
                           value: AddPopupMenuActions.file,
                           child: ListTile(
@@ -225,42 +228,51 @@ class ChatInputRow extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
                       clipBehavior: Clip.hardEdge,
-                      child: PopupMenuButton(
-                        useRootNavigator: true,
+                      // 禁用录像功能，点击相机按钮直接拍照
+                      child: IconButton(
                         icon: const Icon(Icons.camera_alt_outlined),
-                        onSelected: controller.onAddPopupMenuButtonSelected,
-                        iconColor: theme.colorScheme.onPrimaryContainer,
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: AddPopupMenuActions.videoCamera,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                child: const Icon(Icons.videocam_outlined),
-                              ),
-                              title: Text(L10n.of(context).recordAVideo),
-                              contentPadding: const EdgeInsets.all(0),
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: AddPopupMenuActions.photoCamera,
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                child: const Icon(Icons.camera_alt_outlined),
-                              ),
-                              title: Text(L10n.of(context).takeAPhoto),
-                              contentPadding: const EdgeInsets.all(0),
-                            ),
-                          ),
-                        ],
+                        onPressed: () => controller.onAddPopupMenuButtonSelected(
+                          AddPopupMenuActions.photoCamera,
+                        ),
+                        iconSize: height * 0.5,
+                        color: theme.colorScheme.onPrimaryContainer,
                       ),
+                      // child: PopupMenuButton(
+                      //   useRootNavigator: true,
+                      //   icon: const Icon(Icons.camera_alt_outlined),
+                      //   onSelected: controller.onAddPopupMenuButtonSelected,
+                      //   iconColor: theme.colorScheme.onPrimaryContainer,
+                      //   itemBuilder: (context) => [
+                      //     PopupMenuItem(
+                      //       value: AddPopupMenuActions.videoCamera,
+                      //       child: ListTile(
+                      //         leading: CircleAvatar(
+                      //           backgroundColor:
+                      //               theme.colorScheme.onPrimaryContainer,
+                      //           foregroundColor:
+                      //               theme.colorScheme.primaryContainer,
+                      //           child: const Icon(Icons.videocam_outlined),
+                      //         ),
+                      //         title: Text(L10n.of(context).recordAVideo),
+                      //         contentPadding: const EdgeInsets.all(0),
+                      //       ),
+                      //     ),
+                      //     PopupMenuItem(
+                      //       value: AddPopupMenuActions.photoCamera,
+                      //       child: ListTile(
+                      //         leading: CircleAvatar(
+                      //           backgroundColor:
+                      //               theme.colorScheme.onPrimaryContainer,
+                      //           foregroundColor:
+                      //               theme.colorScheme.primaryContainer,
+                      //           child: const Icon(Icons.camera_alt_outlined),
+                      //         ),
+                      //         title: Text(L10n.of(context).takeAPhoto),
+                      //         contentPadding: const EdgeInsets.all(0),
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
                     ),
                   Container(
                     height: height,
