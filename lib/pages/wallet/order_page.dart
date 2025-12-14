@@ -368,8 +368,11 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        iconTheme: const IconThemeData(
+          color: Colors.black, // 返回按钮固定为黑色
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 20),
+          icon: const Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
           onPressed: isProcessing ? null : () => Navigator.of(context).pop(),
         ),
         title: Column(
@@ -379,6 +382,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 17,
+                color: Colors.black, // 标题固定为黑色
               ),
             ),
             const SizedBox(height: 2),

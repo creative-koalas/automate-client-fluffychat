@@ -86,23 +86,17 @@ class SettingsView extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                TextButton.icon(
-                                  onPressed: controller.setDisplaynameAction,
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 16,
-                                  ),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor:
-                                        theme.colorScheme.onSurface,
-                                    iconColor: theme.colorScheme.onSurface,
-                                  ),
-                                  label: Text(
+                                // 显示昵称（不可编辑）
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  child: Text(
                                     displayname,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                 ),
@@ -143,23 +137,6 @@ class SettingsView extends StatelessWidget {
                       ),
                     ),
                   Divider(color: theme.dividerColor),
-                  if (showChatBackupBanner == null)
-                    ListTile(
-                      leading: const Icon(Icons.backup_outlined),
-                      title: Text(L10n.of(context).chatBackup),
-                      trailing: const CircularProgressIndicator.adaptive(),
-                    )
-                  else
-                    SwitchListTile.adaptive(
-                      controlAffinity: ListTileControlAffinity.trailing,
-                      value: controller.showChatBackupBanner == false,
-                      secondary: const Icon(Icons.backup_outlined),
-                      title: Text(L10n.of(context).chatBackup),
-                      onChanged: controller.firstRunBootstrapAction,
-                    ),
-                  Divider(
-                    color: theme.dividerColor,
-                  ),
                   ListTile(
                     leading: const Icon(Icons.format_paint_outlined),
                     title: Text(L10n.of(context).changeTheme),
