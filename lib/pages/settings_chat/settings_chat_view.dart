@@ -57,6 +57,24 @@ class SettingsChatView extends StatelessWidget {
                 title: L10n.of(context).swipeRightToLeftToReply,
                 setting: AppSettings.swipeRightToLeftToReply,
               ),
+              Divider(color: theme.dividerColor),
+              ListTile(
+                title: Text(
+                  L10n.of(context).calls,
+                  style: TextStyle(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              SettingsSwitchListTile.adaptive(
+                title: L10n.of(context).experimentalVideoCalls,
+                onChanged: (b) {
+                  Matrix.of(context).createVoipPlugin();
+                  return;
+                },
+                setting: AppSettings.experimentalVoip,
+              ),
             ],
           ),
         ),
