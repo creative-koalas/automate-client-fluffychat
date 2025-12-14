@@ -350,28 +350,31 @@ class ChatInputRow extends StatelessWidget {
                     height: height,
                     width: height,
                     alignment: Alignment.center,
-                    child: PlatformInfos.platformCanRecord &&
-                            controller.sendController.text.isEmpty
-                        ? IconButton(
-                            tooltip: L10n.of(context).voiceMessage,
-                            onPressed: () =>
-                                ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  L10n.of(context)
-                                      .longPressToRecordVoiceMessage,
-                                ),
-                              ),
-                            ),
-                            onLongPress: () => recordingViewModel
-                                .startRecording(controller.room),
-                            style: IconButton.styleFrom(
-                              backgroundColor: theme.bubbleColor,
-                              foregroundColor: theme.onBubbleColor,
-                            ),
-                            icon: const Icon(Icons.mic_none_outlined),
-                          )
-                        : IconButton(
+                    child:
+                        // 禁用语音消息功能，始终显示发送按钮
+                        // PlatformInfos.platformCanRecord &&
+                        //         controller.sendController.text.isEmpty
+                        //     ? IconButton(
+                        //         tooltip: L10n.of(context).voiceMessage,
+                        //         onPressed: () =>
+                        //             ScaffoldMessenger.of(context).showSnackBar(
+                        //           SnackBar(
+                        //             content: Text(
+                        //               L10n.of(context)
+                        //                   .longPressToRecordVoiceMessage,
+                        //             ),
+                        //           ),
+                        //         ),
+                        //         onLongPress: () => recordingViewModel
+                        //             .startRecording(controller.room),
+                        //         style: IconButton.styleFrom(
+                        //           backgroundColor: theme.bubbleColor,
+                        //           foregroundColor: theme.onBubbleColor,
+                        //         ),
+                        //         icon: const Icon(Icons.mic_none_outlined),
+                        //       )
+                        //     :
+                        IconButton(
                             tooltip: L10n.of(context).send,
                             onPressed: controller.send,
                             style: IconButton.styleFrom(
