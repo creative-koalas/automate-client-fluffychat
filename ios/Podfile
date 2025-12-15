@@ -37,6 +37,9 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
+  # 阿里云一键登录 SDK
+  pod 'ATAuthSDK', :path => 'Runner/Frameworks'
+
   # From package https://pub.dev/packages/receive_sharing_intent
   target 'Automate Share' do
     inherit! :search_paths

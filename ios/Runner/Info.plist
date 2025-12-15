@@ -36,6 +36,7 @@
 					<string>ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 					<string>psygo</string>
 					<string>matrix</string>
+					<string>app-privacy</string>
 				</array>
 			</dict>
 		</array>
