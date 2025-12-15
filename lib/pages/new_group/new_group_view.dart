@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/new_group/new_group.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
-import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 
 class NewGroupView extends StatelessWidget {
@@ -15,8 +13,6 @@ class NewGroupView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    final avatar = controller.avatar;
     final error = controller.error;
     return Scaffold(
       appBar: AppBar(
@@ -34,25 +30,6 @@ class NewGroupView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             const SizedBox(height: 16),
-            InkWell(
-              borderRadius: BorderRadius.circular(90),
-              onTap: controller.loading ? null : controller.selectPhoto,
-              child: CircleAvatar(
-                radius: Avatar.defaultSize,
-                child: avatar == null
-                    ? const Icon(Icons.add_a_photo_outlined)
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(90),
-                        child: Image.memory(
-                          avatar,
-                          width: Avatar.defaultSize * 2,
-                          height: Avatar.defaultSize * 2,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: TextField(
