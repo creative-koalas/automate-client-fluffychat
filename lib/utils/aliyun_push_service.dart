@@ -27,7 +27,33 @@ class AliyunPushService {
   /// 通知点击回调（由 MatrixState 设置）
   void Function(String roomId, String? eventId)? onNotificationTapped;
 
+  /// 已显示通知的 event_id 集合（防止重复通知）
+  /// 使用 LinkedHashSet 限制大小，避免内存无限增长
+  final Set<String> _shownEventIds = {};
+  static const int _maxShownEventIds = 100;
+
+  /// 正在导航到的房间 ID（用于防止导航过程中的竞态条件）
+  String? _navigatingToRoomId;
+
   AliyunPushService._();
+
+  /// 标记正在进入某个房间（防止导航过程中的重复通知）
+  ///
+  /// 当用户点击聊天列表进入房间时调用，500ms 后自动清除
+  void markEnteringRoom(String roomId) {
+    _navigatingToRoomId = roomId;
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_navigatingToRoomId == roomId) {
+        _navigatingToRoomId = null;
+      }
+    });
+    Logs().d('[AliyunPush] Marked entering room: $roomId');
+  }
+
+  /// 清除进入房间标记（用于取消导航时调用）
+  void clearEnteringRoom() {
+    _navigatingToRoomId = null;
+  }
 
   /// 阿里云推送配置
   /// Android: appKey=335631945, appSecret=5972362998844c5c8cdb8b0d38e16969
@@ -135,6 +161,16 @@ class AliyunPushService {
       final eventId = data['event_id'] as String?;
 
       if (roomId != null && onNotificationTapped != null) {
+        // 设置正在导航的房间 ID，防止导航过程中收到该房间的重复通知
+        _navigatingToRoomId = roomId;
+
+        // 延迟清除导航标志，给路由更新留出时间
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (_navigatingToRoomId == roomId) {
+            _navigatingToRoomId = null;
+          }
+        });
+
         onNotificationTapped!(roomId, eventId);
       }
     } catch (e) {
@@ -240,13 +276,35 @@ class AliyunPushService {
 
       Logs().d('[AliyunPush] Matrix message: room=$roomId, event=$eventId, title=$title');
 
+      // 检查 event_id 去重（防止同一消息多次显示通知）
+      if (eventId != null && _shownEventIds.contains(eventId)) {
+        Logs().d('[AliyunPush] Event already shown, skip duplicate: $eventId');
+        setBadgeNumber(badge);
+        return;
+      }
+
       // 检查用户是否在当前房间
       final activeRoomId = activeRoomIdGetter?.call();
       if (activeRoomId != null && activeRoomId == roomId) {
         Logs().d('[AliyunPush] User is in current room, skip notification');
-        // 更新角标
         setBadgeNumber(badge);
         return;
+      }
+
+      // 检查用户是否正在导航到该房间（防止点击通知后的竞态条件）
+      if (_navigatingToRoomId != null && _navigatingToRoomId == roomId) {
+        Logs().d('[AliyunPush] User is navigating to this room, skip notification');
+        setBadgeNumber(badge);
+        return;
+      }
+
+      // 记录已显示的 event_id（维护集合大小）
+      if (eventId != null) {
+        _shownEventIds.add(eventId);
+        // 如果超过最大数量，移除最旧的（LinkedHashSet 保持插入顺序）
+        while (_shownEventIds.length > _maxShownEventIds) {
+          _shownEventIds.remove(_shownEventIds.first);
+        }
       }
 
       // 用户不在当前房间，显示本地通知

@@ -13,6 +13,7 @@ import 'package:psygo/pages/chat_list/chat_list_view.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/aliyun_push_service.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/show_update_snackbar.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -104,6 +105,11 @@ class ChatListController extends State<ChatList>
         ),
       );
       return;
+    }
+
+    // 标记正在进入房间，防止导航过程中的重复通知（仅移动端）
+    if (PlatformInfos.isMobile) {
+      AliyunPushService.instance.markEnteringRoom(room.id);
     }
 
     context.go('/rooms/${room.id}');
