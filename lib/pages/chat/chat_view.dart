@@ -78,18 +78,6 @@ class ChatView extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
-              PopupMenuItem(
-                onTap: controller.copyEventsAction,
-                value: null,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.copy_outlined),
-                    const SizedBox(width: 12),
-                    Text(L10n.of(context).copy),
-                  ],
-                ),
-              ),
               if (controller.canSaveSelectedEvent)
                 PopupMenuItem(
                   onTap: () => controller.saveSelectedEvent(context),

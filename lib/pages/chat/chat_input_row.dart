@@ -88,6 +88,20 @@ class ChatInputRow extends StatelessWidget {
                         ),
                       ),
                     ),
+                  SizedBox(
+                    height: height,
+                    child: TextButton(
+                      style: selectedTextButtonStyle,
+                      onPressed: controller.copyEventsAction,
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(Icons.copy_outlined),
+                          const SizedBox(width: 4),
+                          Text(L10n.of(context).copy),
+                        ],
+                      ),
+                    ),
+                  ),
                   controller.selectedEvents.length == 1
                       ? controller.selectedEvents.first
                               .getDisplayEvent(controller.timeline!)
