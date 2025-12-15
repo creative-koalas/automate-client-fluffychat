@@ -1,19 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
 import 'package:cross_file/cross_file.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
-
-import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/size_string.dart';
-import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
-import 'package:psygo/widgets/adaptive_dialogs/dialog_text_field.dart';
 import '../../utils/resize_video.dart';
 
 class SendFileDialog extends StatefulWidget {
@@ -183,11 +178,6 @@ class SendFileDialogState extends State<SendFileDialog> {
     final fileName = widget.files.length == 1
         ? widget.files.single.name
         : L10n.of(context).countFiles(widget.files.length);
-    final fileTypes = widget.files
-        .map((file) => file.name.split('.').last)
-        .toSet()
-        .join(', ')
-        .toUpperCase();
 
     if (uniqueFileType == 'image') {
       if (widget.files.length == 1) {
@@ -210,208 +200,372 @@ class SendFileDialogState extends State<SendFileDialog> {
         final sizeString =
             snapshot.data ?? L10n.of(context).calculatingFileSize;
 
-        return AlertDialog.adaptive(
-          title: Text(sendStr),
-          content: SizedBox(
-            width: 256,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 12),
-                  if (uniqueFileType == 'image')
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: SizedBox(
-                        height: 256,
-                        child: Center(
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: widget.files.length,
-                            scrollDirection: Axis.horizontal,
-                            itemBuilder: (context, i) => Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: Material(
-                                borderRadius: BorderRadius.circular(
-                                  AppConfig.borderRadius / 2,
-                                ),
-                                color: Colors.black,
-                                clipBehavior: Clip.hardEdge,
-                                child: FutureBuilder(
-                                  future: widget.files[i].readAsBytes(),
-                                  builder: (context, snapshot) {
-                                    final bytes = snapshot.data;
-                                    if (bytes == null) {
-                                      return const Center(
-                                        child: CircularProgressIndicator
-                                            .adaptive(),
-                                      );
-                                    }
-                                    if (snapshot.error != null) {
-                                      Logs().w(
-                                        'Unable to preview image',
-                                        snapshot.error,
-                                        snapshot.stackTrace,
-                                      );
-                                      return const Center(
-                                        child: SizedBox(
-                                          width: 256,
-                                          height: 256,
-                                          child: Icon(
-                                            Icons.broken_image_outlined,
-                                            size: 64,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    return Image.memory(
-                                      bytes,
-                                      height: 256,
-                                      width: widget.files.length == 1
-                                          ? 256 - 36
-                                          : null,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (context, e, s) {
-                                        Logs()
-                                            .w('Unable to preview image', e, s);
-                                        return const Center(
-                                          child: SizedBox(
-                                            width: 256,
-                                            height: 256,
-                                            child: Icon(
-                                              Icons.broken_image_outlined,
-                                              size: 64,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 600),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 顶部区域（标题 + 关闭按钮）
+                Row(
+                  children: [
+                    // 蓝色圆形图标
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2196F3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // 标题
+                    Expanded(
+                      child: Text(
+                        sendStr,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                  if (uniqueFileType != 'image')
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: Row(
-                        children: [
-                          Icon(
-                            uniqueFileType == null
-                                ? Icons.description_outlined
-                                : uniqueFileType == 'video'
-                                    ? Icons.video_file_outlined
-                                    : uniqueFileType == 'audio'
-                                        ? Icons.audio_file_outlined
-                                        : Icons.description_outlined,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    // 关闭按钮
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () =>
+                          Navigator.of(context, rootNavigator: false).pop(),
+                      style: IconButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(28, 28),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Divider(color: theme.dividerColor, height: 1),
+                const SizedBox(height: 12),
+                // 内容区域
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 图片预览
+                        if (uniqueFileType == 'image')
+                          Center(
+                            child: Stack(
                               children: [
-                                Text(
-                                  fileName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                Container(
+                                  height: 300,
+                                  constraints: const BoxConstraints(maxWidth: 400),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  clipBehavior: Clip.hardEdge,
+                                  child: widget.files.length == 1
+                                      ? FutureBuilder(
+                                          future: widget.files[0].readAsBytes(),
+                                          builder: (context, snapshot) {
+                                            final bytes = snapshot.data;
+                                            if (bytes == null) {
+                                              return const Center(
+                                                child: CircularProgressIndicator
+                                                    .adaptive(),
+                                              );
+                                            }
+                                            return Image.memory(
+                                              bytes,
+                                              fit: BoxFit.contain,
+                                            );
+                                          },
+                                        )
+                                      : ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: widget.files.length,
+                                          itemBuilder: (context, i) => Padding(
+                                            padding:
+                                                const EdgeInsets.only(right: 8.0),
+                                            child: FutureBuilder(
+                                              future: widget.files[i].readAsBytes(),
+                                              builder: (context, snapshot) {
+                                                final bytes = snapshot.data;
+                                                if (bytes == null) {
+                                                  return const SizedBox(
+                                                    width: 200,
+                                                    child: Center(
+                                                      child:
+                                                          CircularProgressIndicator
+                                                              .adaptive(),
+                                                    ),
+                                                  );
+                                                }
+                                                return Image.memory(
+                                                  bytes,
+                                                  fit: BoxFit.contain,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
                                 ),
-                                Text(
-                                  '$sizeString - $fileTypes',
-                                  style: theme.textTheme.labelSmall,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                // 右下角放大按钮
+                                Positioned(
+                                  right: 12,
+                                  bottom: 12,
+                                  child: Material(
+                                    color: Colors.black.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: InkWell(
+                                      onTap: () => _showFullScreenImage(context),
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        child: const Icon(
+                                          Icons.zoom_in,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  if (widget.files.length == 1)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: DialogTextField(
-                        controller: _labelTextController,
-                        labelText: L10n.of(context).optionalMessage,
-                        minLines: 1,
-                        maxLines: 3,
-                        maxLength: 255,
-                        counterText: '',
-                      ),
-                    ),
-                  // Workaround for SwitchListTile.adaptive crashes in CupertinoDialog
-                  if ({'image', 'video'}.contains(uniqueFileType))
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        if ({TargetPlatform.iOS, TargetPlatform.macOS}
-                            .contains(theme.platform))
-                          CupertinoSwitch(
-                            value: compressionSupported && compress,
-                            onChanged: compressionSupported
-                                ? (v) => setState(() => compress = v)
-                                : null,
-                          )
-                        else
-                          Switch.adaptive(
-                            value: compressionSupported && compress,
-                            onChanged: compressionSupported
-                                ? (v) => setState(() => compress = v)
-                                : null,
-                          ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    L10n.of(context).compress,
-                                    style: theme.textTheme.titleMedium,
-                                    textAlign: TextAlign.left,
-                                  ),
-                                ],
-                              ),
-                              if (!compress)
-                                Text(
-                                  ' ($sizeString)',
-                                  style: theme.textTheme.labelSmall,
-                                ),
-                              if (!compressionSupported)
-                                Text(
-                                  L10n.of(context).notSupportedOnThisDevice,
-                                  style: theme.textTheme.labelSmall,
-                                ),
-                            ],
+                        const SizedBox(height: 12),
+                        // 图片名称输入框
+                        Text(
+                          '图片名称',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _labelTextController,
+                          decoration: InputDecoration(
+                            hintText: '(可选) 输入图片名称...',
+                            filled: true,
+                            fillColor: theme.colorScheme.surfaceContainerHighest,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                          ),
+                          maxLines: 1,
+                          maxLength: 255,
+                          buildCounter: (context,
+                                  {required currentLength,
+                                  required isFocused,
+                                  maxLength}) =>
+                              null,
+                        ),
+                        const SizedBox(height: 12),
+                        // 压缩选项
+                        if ({'image', 'video'}.contains(uniqueFileType))
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF4CAF50),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.image_outlined,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '压缩图片',
+                                        style: theme.textTheme.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF2E7D32),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        '减小文件大小，加快发送',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: const Color(0xFF2E7D32),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: compressionSupported && compress,
+                                  onChanged: compressionSupported
+                                      ? (v) => setState(() => compress = v)
+                                      : null,
+                                  activeColor: const Color(0xFF4CAF50),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
-                ],
-              ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 底部按钮
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () =>
+                            Navigator.of(context, rootNavigator: false).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          L10n.of(context).cancel,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _send,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: const Color(0xFF2196F3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          L10n.of(context).send,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          actions: <Widget>[
-            AdaptiveDialogAction(
-              onPressed: () =>
-                  Navigator.of(context, rootNavigator: false).pop(),
-              child: Text(L10n.of(context).cancel),
-            ),
-            AdaptiveDialogAction(
-              onPressed: _send,
-              child: Text(L10n.of(context).send),
-            ),
-          ],
         );
       },
+    );
+  }
+
+  // 显示全屏图片预览
+  void _showFullScreenImage(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            // 全屏图片
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: widget.files.length == 1
+                    ? FutureBuilder(
+                        future: widget.files[0].readAsBytes(),
+                        builder: (context, snapshot) {
+                          final bytes = snapshot.data;
+                          if (bytes == null) {
+                            return const CircularProgressIndicator.adaptive();
+                          }
+                          return Image.memory(
+                            bytes,
+                            fit: BoxFit.contain,
+                          );
+                        },
+                      )
+                    : PageView.builder(
+                        itemCount: widget.files.length,
+                        itemBuilder: (context, i) => FutureBuilder(
+                          future: widget.files[i].readAsBytes(),
+                          builder: (context, snapshot) {
+                            final bytes = snapshot.data;
+                            if (bytes == null) {
+                              return const Center(
+                                child: CircularProgressIndicator.adaptive(),
+                              );
+                            }
+                            return InteractiveViewer(
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              child: Image.memory(
+                                bytes,
+                                fit: BoxFit.contain,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ),
+            // 关闭按钮
+            Positioned(
+              top: 40,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black.withOpacity(0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
