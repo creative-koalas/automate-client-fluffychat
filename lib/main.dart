@@ -1,20 +1,16 @@
 import 'dart:isolate';
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
-
 import 'package:collection/collection.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'config/setting_keys.dart';
-import 'utils/background_push.dart';
 import 'widgets/fluffy_chat_app.dart';
 
 ReceivePort? mainIsolateReceivePort;
