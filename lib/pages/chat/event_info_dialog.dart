@@ -68,24 +68,6 @@ class EventInfoDialog extends StatelessWidget {
             title: Text('${L10n.of(context).status}:'),
             subtitle: Text(event.status.name),
           ),
-          ListTile(title: Text('${L10n.of(context).sourceCode}:')),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Material(
-              borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-              color: theme.colorScheme.surfaceContainer,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                scrollDirection: Axis.horizontal,
-                child: SelectableText(
-                  prettyJson(MatrixEvent.fromJson(event.toJson())),
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ),
-          ),
           if (originalSource != null) ...[
             ListTile(title: Text('${L10n.of(context).encrypted}:')),
             Padding(
