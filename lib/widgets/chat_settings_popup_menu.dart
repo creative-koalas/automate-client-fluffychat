@@ -162,7 +162,7 @@ class ChatSettingsPopupMenuState extends State<ChatSettingsPopupMenu> {
               child: Row(
                 children: [
                   Icon(
-                    Icons.delete_outlined,
+                    Icons.exit_to_app,
                     color: Theme.of(context).colorScheme.error,
                   ),
                   const SizedBox(width: 12),

@@ -492,7 +492,7 @@ class ChatListController extends State<ChatList>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.delete_outlined,
+                Icons.exit_to_app,
                 color: Theme.of(context).colorScheme.error,
               ),
               const SizedBox(width: 12),

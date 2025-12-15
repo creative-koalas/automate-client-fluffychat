@@ -1799,7 +1799,7 @@
             }
         }
     },
-    "unmuteChat": "取消静音聊天",
+    "unmuteChat": "关闭消息免打扰",
     "@unmuteChat": {
         "type": "String",
         "placeholders": {}
