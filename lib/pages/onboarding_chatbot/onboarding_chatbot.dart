@@ -1,12 +1,10 @@
 /// The onboarding chatbot page.
 /// Loads past messages, streams replies, and auto-completion suggestions.
 library;
-
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart' hide Matrix; // Hide Matrix widget to avoid conflict
 import 'package:provider/provider.dart';
 import 'package:psygo/widgets/matrix.dart'; // Helper widget
 import 'package:psygo/backend/backend.dart';

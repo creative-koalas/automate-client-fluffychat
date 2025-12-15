@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-
-import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/fluffy_share.dart';
@@ -23,7 +19,6 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final showChatBackupBanner = controller.showChatBackupBanner;
     // 主题切换后，GoRouter 的路由信息可能被缓存，导致高亮状态错误
     // 改用更可靠的方式：只在用户点击后短暂高亮，不依赖路由状态
     final accountManageUrl = Matrix.of(context)

@@ -1,12 +1,7 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart' as sdk;
-import 'package:matrix/matrix.dart';
-
-import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/new_group/new_group_view.dart';
 import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/widgets/matrix.dart';

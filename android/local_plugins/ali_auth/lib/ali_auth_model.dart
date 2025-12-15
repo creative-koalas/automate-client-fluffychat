@@ -1,7 +1,5 @@
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
-
 /// 本机号码校验
 const int SERVICE_TYPE_AUTH = 1;
 

@@ -1,8 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'package:app_links/app_links.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter_shortcuts_new/flutter_shortcuts_new.dart';
@@ -10,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart' as sdk;
 import 'package:matrix/matrix.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/chat_list_view.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
@@ -18,7 +15,6 @@ import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/show_update_snackbar.dart';
-import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -626,7 +622,6 @@ class ChatListController extends State<ChatList>
   bool waitForFirstSync = false;
 
   Future<void> _waitForFirstSync() async {
-    final router = GoRouter.of(context);
     final client = Matrix.of(context).client;
     await client.roomsLoading;
     await client.accountDataLoading;

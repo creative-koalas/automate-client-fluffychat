@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-
 import 'package:matrix/matrix.dart';
-
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/settings_notifications/push_rule_extensions.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
-import '../../utils/localized_exception_extension.dart';
 import '../../widgets/matrix.dart';
 import 'settings_notifications.dart';
 

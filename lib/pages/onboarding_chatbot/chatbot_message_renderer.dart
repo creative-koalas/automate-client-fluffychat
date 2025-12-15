@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
-import 'package:highlight/highlight.dart' show highlight;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as parser;
 import 'package:markdown/markdown.dart' as md;

@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
-
 import '../../models/agent_template.dart';
 import '../../repositories/agent_repository.dart';
 import '../../repositories/agent_template_repository.dart';

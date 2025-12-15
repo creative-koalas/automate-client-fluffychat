@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-
-import 'package:go_router/go_router.dart';
-
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';

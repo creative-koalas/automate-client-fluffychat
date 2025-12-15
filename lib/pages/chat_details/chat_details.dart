@@ -1,16 +1,7 @@
 import 'package:flutter/material.dart';
-
-import 'package:collection/collection.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:matrix/matrix.dart';
-
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_details/chat_details_view.dart';
-import 'package:psygo/pages/settings/settings.dart';
-import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
-import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';

@@ -1,13 +1,9 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tobias/tobias.dart' as tobias;
-
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/backend/api_client.dart';
-import 'package:psygo/backend/auth_state.dart';
 
 /// 支付状态枚举
 enum PaymentState {

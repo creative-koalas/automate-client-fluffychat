@@ -1,17 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
-
 import 'package:aliyun_push/aliyun_push.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
-
 import 'package:psygo/core/config.dart';
-import 'package:psygo/config/app_config.dart';
-import 'package:psygo/l10n/l10n.dart';
 
 /// 阿里云移动推送服务
 ///
