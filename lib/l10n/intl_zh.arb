@@ -3325,7 +3325,7 @@
     "@crossVerifiedDevicesIfEnabled": {},
     "verifiedDevicesOnly": "仅已验证设备",
     "@verifiedDevicesOnly": {},
-    "optionalMessage": "（可选）消息…",
+    "optionalMessage": "(可选)  图片名称…",
     "@optionalMessage": {},
     "takeAPhoto": "拍照",
     "@takeAPhoto": {},
