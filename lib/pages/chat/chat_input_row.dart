@@ -133,88 +133,13 @@ class ChatInputRow extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(),
                     clipBehavior: Clip.hardEdge,
-                    child: PopupMenuButton<AddPopupMenuActions>(
-                      useRootNavigator: true,
+                    child: IconButton(
                       icon: const Icon(Icons.add_circle_outline),
-                      iconColor: theme.colorScheme.onPrimaryContainer,
-                      onSelected: controller.onAddPopupMenuButtonSelected,
-                      itemBuilder: (BuildContext context) => [
-                        // 禁用分享位置功能
-                        // if (PlatformInfos.isMobile)
-                        //   PopupMenuItem(
-                        //     value: AddPopupMenuActions.location,
-                        //     child: ListTile(
-                        //       leading: CircleAvatar(
-                        //         backgroundColor:
-                        //             theme.colorScheme.onPrimaryContainer,
-                        //         foregroundColor:
-                        //             theme.colorScheme.primaryContainer,
-                        //         child: const Icon(Icons.gps_fixed_outlined),
-                        //       ),
-                        //       title: Text(L10n.of(context).shareLocation),
-                        //       contentPadding: const EdgeInsets.all(0),
-                        //     ),
-                        //   ),
-                        // 禁用启动投票功能
-                        // PopupMenuItem(
-                        //   value: AddPopupMenuActions.poll,
-                        //   child: ListTile(
-                        //     leading: CircleAvatar(
-                        //       backgroundColor:
-                        //           theme.colorScheme.onPrimaryContainer,
-                        //       foregroundColor:
-                        //           theme.colorScheme.primaryContainer,
-                        //       child: const Icon(Icons.poll_outlined),
-                        //     ),
-                        //     title: Text(L10n.of(context).startPoll),
-                        //     contentPadding: const EdgeInsets.all(0),
-                        //   ),
-                        // ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.image,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(Icons.photo_outlined),
-                            ),
-                            title: Text(L10n.of(context).sendImage),
-                            contentPadding: const EdgeInsets.all(0),
-                          ),
-                        ),
-                        // 禁用发送视频功能
-                        // PopupMenuItem(
-                        //   value: AddPopupMenuActions.video,
-                        //   child: ListTile(
-                        //     leading: CircleAvatar(
-                        //       backgroundColor:
-                        //           theme.colorScheme.onPrimaryContainer,
-                        //       foregroundColor:
-                        //           theme.colorScheme.primaryContainer,
-                        //       child:
-                        //           const Icon(Icons.video_camera_back_outlined),
-                        //     ),
-                        //     title: Text(L10n.of(context).sendVideo),
-                        //     contentPadding: const EdgeInsets.all(0),
-                        //   ),
-                        // ),
-                        PopupMenuItem(
-                          value: AddPopupMenuActions.file,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              child: const Icon(Icons.attachment_outlined),
-                            ),
-                            title: Text(L10n.of(context).sendFile),
-                            contentPadding: const EdgeInsets.all(0),
-                          ),
-                        ),
-                      ],
+                      color: theme.colorScheme.onPrimaryContainer,
+                      onPressed: () => _showAttachmentBottomSheet(
+                        context,
+                        controller,
+                      ),
                     ),
                   ),
                   if (PlatformInfos.isMobile)
@@ -307,7 +232,7 @@ class ChatInputRow extends StatelessWidget {
                   ),
                   if (Matrix.of(context).isMultiAccount &&
                       Matrix.of(context).hasComplexBundles &&
-                      Matrix.of(context).currentBundle!.length > 1)
+                      Matrix.of(context).currentBundle.length > 1)
                     Container(
                       height: height,
                       width: height,
@@ -432,7 +357,7 @@ class _ChatAccountPicker extends StatelessWidget {
           itemBuilder: (BuildContext context) => clients
               .map(
                 (client) => PopupMenuItem(
-                  value: client!.userID,
+                  value: client.userID,
                   child: FutureBuilder<Profile>(
                     future: client.fetchOwnProfile(),
                     builder: (context, snapshot) => ListTile(
@@ -460,3 +385,148 @@ class _ChatAccountPicker extends StatelessWidget {
     );
   }
 }
+
+/// 显示底部附件选择菜单
+void _showAttachmentBottomSheet(
+  BuildContext context,
+  ChatController controller,
+) {
+  final l10n = L10n.of(context);
+  final theme = Theme.of(context);
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 顶部拖拽指示器
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // 标题
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 20),
+            child: Text(
+              '选择附件类型',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          // 发送图像
+          _buildAttachmentItem(
+            context: context,
+            icon: Icons.image_outlined,
+            iconColor: const Color(0xFF2196F3),
+            iconBgColor: const Color(0xFFE3F2FD),
+            title: l10n.sendImage,
+            subtitle: '从相册选择图片',
+            onTap: () {
+              Navigator.pop(context);
+              controller.onAddPopupMenuButtonSelected(AddPopupMenuActions.image);
+            },
+          ),
+          const SizedBox(height: 12),
+          // 发送文件
+          _buildAttachmentItem(
+            context: context,
+            icon: Icons.attach_file,
+            iconColor: const Color(0xFF4CAF50),
+            iconBgColor: const Color(0xFFE8F5E9),
+            title: l10n.sendFile,
+            subtitle: '选择文档或其他文件',
+            onTap: () {
+              Navigator.pop(context);
+              controller.onAddPopupMenuButtonSelected(AddPopupMenuActions.file);
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    ),
+  );
+}
+
+/// 构建附件列表项
+Widget _buildAttachmentItem({
+  required BuildContext context,
+  required IconData icon,
+  required Color iconColor,
+  required Color iconBgColor,
+  required String title,
+  required String subtitle,
+  required VoidCallback onTap,
+}) {
+  final theme = Theme.of(context);
+
+  return Material(
+    color: theme.colorScheme.surfaceContainerLow,
+    borderRadius: BorderRadius.circular(16),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
