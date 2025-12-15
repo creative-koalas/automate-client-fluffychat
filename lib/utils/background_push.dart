@@ -139,14 +139,15 @@ class BackgroundPush {
       //<GOOGLE_SERVICES>    flutterLocalNotificationsPlugin: _flutterLocalNotificationsPlugin,
       //<GOOGLE_SERVICES>  ),
       //<GOOGLE_SERVICES>);
-      if (Platform.isAndroid) {
-        await UnifiedPush.initialize(
-          onNewEndpoint: _newUpEndpoint,
-          onRegistrationFailed: (_, i) => _upUnregistered(i),
-          onUnregistered: _upUnregistered,
-          onMessage: _onUpMessage,
-        );
-      }
+      // UnifiedPush 已被阿里云推送替代，禁用以避免双重通知
+      // if (Platform.isAndroid) {
+      //   await UnifiedPush.initialize(
+      //     onNewEndpoint: _newUpEndpoint,
+      //     onRegistrationFailed: (_, i) => _upUnregistered(i),
+      //     onUnregistered: _upUnregistered,
+      //     onMessage: _onUpMessage,
+      //   );
+      // }
     } catch (e, s) {
       Logs().e('Unable to initialize Flutter local notifications', e, s);
     }
