@@ -450,6 +450,43 @@ class PsygoApiClient {
     return PaymentOrder.fromJson(respData);
   }
 
+  /// 提交用户反馈
+  Future<void> submitFeedback({
+    required String content,
+    String? replyEmail,
+    String? category,
+    String? appVersion,
+    String? deviceInfo,
+  }) async {
+    final userIdInt = auth.userIdInt;
+    if (userIdInt == null || userIdInt == 0) {
+      throw AutomateBackendException('User ID not found');
+    }
+
+    final token = auth.primaryToken;
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/feedback/',
+      data: {
+        'user_id': userIdInt,
+        'content': content,
+        if (replyEmail != null && replyEmail.isNotEmpty) 'reply_email': replyEmail,
+        if (category != null && category.isNotEmpty) 'category': category,
+        if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
+        if (deviceInfo != null && deviceInfo.isNotEmpty) 'device_info': deviceInfo,
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to submit feedback',
+        statusCode: res.statusCode,
+      );
+    }
+  }
+
   /// 获取用户信息（包含余额）
   Future<UserInfo> getUserInfo() async {
     final userIdInt = auth.userIdInt;
