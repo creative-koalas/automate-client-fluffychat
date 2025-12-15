@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
-
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
-
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/new_private_chat/new_private_chat.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/utils/url_launcher.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -33,13 +30,6 @@ class NewPrivateChatView extends StatelessWidget {
         leading: const Center(child: BackButton()),
         title: Text(L10n.of(context).newChat),
         backgroundColor: theme.scaffoldBackgroundColor,
-        actions: [
-          TextButton(
-            onPressed:
-                UrlLauncher(context, AppConfig.startChatTutorial).launchUrl,
-            child: Text(L10n.of(context).help),
-          ),
-        ],
       ),
       body: MaxWidthBody(
         withScrolling: false,
