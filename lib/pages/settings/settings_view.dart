@@ -149,6 +149,11 @@ class SettingsView extends StatelessWidget {
                   ),
                   Divider(color: theme.dividerColor),
                   ListTile(
+                    leading: const Icon(Icons.feedback_outlined),
+                    title: const Text('意见反馈'),
+                    onTap: controller.submitFeedbackAction,
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(L10n.of(context).about),
                     onTap: () => PlatformInfos.showDialog(context),
