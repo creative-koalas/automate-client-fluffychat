@@ -118,6 +118,7 @@ class NewPrivateChatView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
+                          // TODO: Implement share invite link feature
                           ListTile(
                             leading: CircleAvatar(
                               backgroundColor:
