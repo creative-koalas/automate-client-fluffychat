@@ -1112,8 +1112,18 @@
         "type": "String",
         "placeholders": {}
     },
-    "muteChat": "静音聊天",
+    "muteChat": "消息免打扰",
     "@muteChat": {
+        "type": "String",
+        "placeholders": {}
+    },
+    "muteChatEnabled": "已开启",
+    "@muteChatEnabled": {
+        "type": "String",
+        "placeholders": {}
+    },
+    "muteChatDisabled": "关闭通知提醒",
+    "@muteChatDisabled": {
         "type": "String",
         "placeholders": {}
     },

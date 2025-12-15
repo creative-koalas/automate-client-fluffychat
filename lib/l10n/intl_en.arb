@@ -1372,8 +1372,18 @@
     "type": "String",
     "placeholders": {}
   },
-  "muteChat": "Mute chat",
+  "muteChat": "Do Not Disturb",
   "@muteChat": {
+    "type": "String",
+    "placeholders": {}
+  },
+  "muteChatEnabled": "Enabled",
+  "@muteChatEnabled": {
+    "type": "String",
+    "placeholders": {}
+  },
+  "muteChatDisabled": "Turn off notifications",
+  "@muteChatDisabled": {
     "type": "String",
     "placeholders": {}
   },
