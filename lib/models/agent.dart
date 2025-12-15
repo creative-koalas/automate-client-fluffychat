@@ -123,15 +123,39 @@ class Agent {
     );
   }
 
-  /// 是否正在工作
-  bool get isWorking => workStatus == 'working';
+  /// 根据最后活跃时间计算实际工作状态
+  /// 规则：
+  /// - 0 < 最后活跃时间 < 5分钟：摸鱼中 (idle)
+  /// - 最后活跃时间 > 5分钟：睡觉中 (idle_long)
+  String get computedWorkStatus {
+    if (lastActiveAt == null) {
+      return 'idle_long'; // 没有活跃记录，默认睡觉中
+    }
 
-  /// 是否长时间空闲
-  bool get isIdleLong => workStatus == 'idle_long';
+    try {
+      final lastActive = DateTime.parse(lastActiveAt!);
+      final now = DateTime.now();
+      final difference = now.difference(lastActive);
 
-  /// 获取工作状态显示文本的 key
+      if (difference.inMinutes < 5) {
+        return 'idle'; // 摸鱼中
+      } else {
+        return 'idle_long'; // 睡觉中
+      }
+    } catch (_) {
+      return 'idle_long'; // 解析失败，默认睡觉中
+    }
+  }
+
+  /// 是否正在工作（基于计算的状态）
+  bool get isWorking => computedWorkStatus == 'working';
+
+  /// 是否长时间空闲（基于计算的状态）
+  bool get isIdleLong => computedWorkStatus == 'idle_long';
+
+  /// 获取工作状态显示文本的 key（基于计算的状态）
   String get workStatusKey {
-    switch (workStatus) {
+    switch (computedWorkStatus) {
       case 'working':
         return 'employee_working';
       case 'idle_long':

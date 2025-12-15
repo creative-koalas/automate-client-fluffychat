@@ -398,11 +398,11 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       );
     }
 
-    // 根据 work_status 判断状态
+    // 根据计算后的 work_status 判断状态
     Color statusColor;
     String statusText;
 
-    switch (employee.workStatus) {
+    switch (employee.computedWorkStatus) {
       case 'working':
         statusColor = Colors.green;
         statusText = '💼 ${l10n.employeeWorking}';

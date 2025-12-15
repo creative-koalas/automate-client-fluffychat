@@ -253,9 +253,9 @@ class _EmployeeCardState extends State<EmployeeCard>
       return const SizedBox.shrink();
     }
 
-    // 根据 work_status 判断状态
+    // 根据计算后的 work_status 判断状态
     Color dotColor;
-    switch (widget.employee.workStatus) {
+    switch (widget.employee.computedWorkStatus) {
       case 'working':
         dotColor = Colors.green;  // 工作中 - 绿色
         break;
@@ -287,8 +287,8 @@ class _EmployeeCardState extends State<EmployeeCard>
       return l10n.employeeOnboarding;
     }
 
-    // 根据 work_status 判断状态，添加 emoji
-    switch (widget.employee.workStatus) {
+    // 根据计算后的 work_status 判断状态，添加 emoji
+    switch (widget.employee.computedWorkStatus) {
       case 'working':
         return '💼 ${l10n.employeeWorking}';   // 工作中
       case 'idle_long':
