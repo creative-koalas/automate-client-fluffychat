@@ -288,26 +288,14 @@ class Message extends StatelessWidget {
                                 bottom: 0,
                                 left: 0,
                                 right: 0,
-                                child: InkWell(
-                                  hoverColor: longPressSelect
-                                      ? Colors.transparent
-                                      : null,
-                                  enableFeedback: !selected,
-                                  onTap: longPressSelect
-                                      ? null
-                                      : () => onSelect(event),
+                                child: Material(
                                   borderRadius: BorderRadius.circular(
                                     AppConfig.borderRadius / 2,
                                   ),
-                                  child: Material(
-                                    borderRadius: BorderRadius.circular(
-                                      AppConfig.borderRadius / 2,
-                                    ),
-                                    color: selected || highlightMarker
-                                        ? theme.colorScheme.secondaryContainer
-                                            .withAlpha(128)
-                                        : Colors.transparent,
-                                  ),
+                                  color: selected || highlightMarker
+                                      ? theme.colorScheme.secondaryContainer
+                                          .withAlpha(128)
+                                      : Colors.transparent,
                                 ),
                               ),
                               Row(
