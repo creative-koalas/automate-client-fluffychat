@@ -128,6 +128,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _hasTriedAuth = false;
   bool _needsRetryAfterStaleCredentials = false;
   bool _hasRetriedMatrixLogin = false;  // Track if we already retried Matrix login
+  int _resumeRetryCount = 0;  // Track resume retry attempts to avoid infinite loops
+  static const int _maxResumeRetries = 3;  // Max retries on resume
 
   // Pending new user registration data
   String? _pendingToken;
@@ -171,25 +173,33 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 当应用从后台恢复时
     if (state == AppLifecycleState.resumed) {
-      debugPrint('[AuthGate] App resumed from background, state=$_state');
+      debugPrint('[AuthGate] App resumed from background, state=$_state, resumeRetryCount=$_resumeRetryCount');
 
       // iOS CRITICAL FIX: Always close Aliyun auth page when resuming from background
       // This prevents black screen caused by lingering auth page overlay
       OneClickLoginService.quitLoginPage();
 
-      // iOS FIX: Don't trigger re-authentication on app resume if we're still checking
-      // This prevents race condition where didChangeAppLifecycleState fires before
-      // auth.load() completes, causing unnecessary one-click login attempts
+      // iOS FIX: Handle permission approval during auth check
+      // When user slowly approves network permissions, SDK initialization may timeout
+      // Auto-retry when app resumes after permission approval (with retry limit)
+      if ((_state == _AuthState.checking || _state == _AuthState.error) &&
+          _resumeRetryCount < _maxResumeRetries) {
+        debugPrint('[AuthGate] In $_state state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)');
+        _resumeRetryCount++;
 
-      // Only restart auth check if truly needed (user explicitly in error state)
-      if (_state == _AuthState.error) {
-        debugPrint('[AuthGate] In error state, allowing retry on resume');
         setState(() {
-          _hasTriedAuth = false;  // Allow retry from error state
-          _hasRetriedMatrixLogin = false;  // Reset retry flag
+          _hasTriedAuth = false;
+          _hasRetriedMatrixLogin = false;
           _state = _AuthState.checking;
         });
-        _checkAuthStateSafe();
+
+        // Wait a bit for network to be fully ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _checkAuthStateSafe();
+        });
+      } else if (_resumeRetryCount >= _maxResumeRetries && _state == _AuthState.error) {
+        debugPrint('[AuthGate] Max resume retries reached, showing persistent error');
+        // Stay in error state to show the error message
       }
     }
   }
@@ -393,11 +403,18 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   String _parseErrorMessage(String error) {
+    // 网络权限被拒绝的常见错误
+    if (error.contains('网络不可用') ||
+        error.contains('Network is unreachable') ||
+        error.contains('网络连接失败') ||
+        error.contains('Connection failed')) {
+      return '网络连接失败\n\n请检查：\n1. 是否允许了"无线局域网与蜂窝网络"权限\n2. 网络连接是否正常\n\n如需修改权限，请点击下方"打开设置"按钮';
+    }
     if (error.contains('预取号失败')) {
-      return '网络环境不支持一键登录，请使用其他方式';
+      return '网络环境不支持一键登录\n\n可能原因：\n- 未连接到运营商网络\n- 网络权限被拒绝\n\n请检查网络设置或使用其他登录方式';
     }
     if (error.contains('SDK初始化失败')) {
-      return '初始化失败，请检查网络连接';
+      return '初始化失败\n\n请检查：\n- 网络连接是否正常\n- 是否允许了网络权限\n\n如需修改权限，请点击"打开设置"';
     }
     return error.replaceAll('Exception: ', '');
   }
@@ -669,6 +686,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   Widget _buildErrorScreen() {
     final isMatrixError = _errorMessage?.contains('Matrix') ?? false;
+    final isNetworkError = _errorMessage?.contains('网络') ?? false;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -699,8 +717,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                 ),
               ),
               const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
                   OutlinedButton(
                     onPressed: () {
@@ -708,13 +728,22 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                         _state = _AuthState.checking;
                         _hasTriedAuth = false;
                         _hasRetriedMatrixLogin = false;
+                        _resumeRetryCount = 0;  // Reset retry counter
                       });
                       _checkAuthStateSafe();
                     },
                     child: const Text('重试'),
                   ),
+                  if (isNetworkError) ...[
+                    FilledButton.icon(
+                      onPressed: () async {
+                        await PermissionService.instance.openSettings();
+                      },
+                      icon: const Icon(Icons.settings, size: 18),
+                      label: const Text('打开设置'),
+                    ),
+                  ],
                   if (isMatrixError) ...[
-                    const SizedBox(width: 16),
                     FilledButton(
                       onPressed: () async {
                         // Clear all credentials and force re-login
@@ -725,6 +754,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                           _state = _AuthState.checking;
                           _hasTriedAuth = false;
                           _hasRetriedMatrixLogin = false;
+                          _resumeRetryCount = 0;  // Reset retry counter
                         });
                         _checkAuthStateSafe();
                       },
@@ -741,81 +771,80 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Widget _buildInvitationCodeScreen() {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/logo.png',
-                width: 100,
-                height: 100,
-              ),
-              const SizedBox(height: 32),
-              Text(
-                '新用户注册',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/logo.png',
+                  width: 100,
+                  height: 100,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '手机号：$_pendingPhone',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(height: 32),
+                const Text(
+                  '新用户注册',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 32),
-              const Text('请输入邀请码完成注册'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _invitationCodeController,
-                decoration: InputDecoration(
-                  labelText: '邀请码',
-                  hintText: '请输入邀请码',
-                  prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  errorText: _invitationCodeError,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                const SizedBox(height: 12),
+                Text(
+                  '手机号：$_pendingPhone',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-                textCapitalization: TextCapitalization.characters,
-                enabled: !_submittingInvitation,
-                onChanged: (_) {
-                  if (_invitationCodeError != null) {
-                    setState(() => _invitationCodeError = null);
-                  }
-                },
-                onSubmitted: (_) => _submitInvitationCode(),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _submittingInvitation ? null : _retryOneClickLogin,
-                      child: const Text('取消'),
+                const SizedBox(height: 32),
+                const Text('请输入邀请码完成注册'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _invitationCodeController,
+                  decoration: InputDecoration(
+                    labelText: '邀请码',
+                    hintText: '请输入邀请码',
+                    prefixIcon: const Icon(Icons.vpn_key_outlined),
+                    errorText: _invitationCodeError,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _submittingInvitation ? null : _submitInvitationCode,
-                      child: _submittingInvitation
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('确认'),
+                  textCapitalization: TextCapitalization.characters,
+                  enabled: !_submittingInvitation,
+                  onChanged: (_) {
+                    if (_invitationCodeError != null) {
+                      setState(() => _invitationCodeError = null);
+                    }
+                  },
+                  onSubmitted: (_) => _submitInvitationCode(),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _submittingInvitation ? null : _retryOneClickLogin,
+                        child: const Text('取消'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _submittingInvitation ? null : _submitInvitationCode,
+                        child: _submittingInvitation
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('确认'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
