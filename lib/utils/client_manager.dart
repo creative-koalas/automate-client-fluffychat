@@ -115,7 +115,7 @@ abstract class ClientManager {
         // To make room emotes work
         'im.ponies.room_emotes',
       },
-      logLevel: kReleaseMode ? Level.warning : Level.verbose,
+      logLevel: Level.verbose,
       database: await flutterMatrixSdkDatabaseBuilder(clientName),
       supportedLoginTypes: {
         AuthenticationTypes.password,

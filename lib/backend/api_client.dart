@@ -57,10 +57,20 @@ class PsygoApiClient {
     );
   }
 
-  /// 发送验证码（暂时 mock）
+  /// 发送短信验证码
   Future<void> sendVerificationCode(String phone) async {
-    // TODO: 实现真实的验证码发送
-    await Future.delayed(const Duration(milliseconds: 200));
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/auth/send-code',
+      data: {'phone': phone},
+    );
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? '验证码发送失败',
+        statusCode: res.statusCode,
+      );
+    }
   }
 
   /// 手机号登录/注册

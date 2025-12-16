@@ -240,13 +240,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 3. No valid token -> need to authenticate
     debugPrint('[AuthGate] No valid token, need authentication');
 
-    // On web, redirect to login page (one-click login not supported)
-    if (kIsWeb) {
+    // On web or desktop, redirect to login page (one-click login SDK not supported)
+    // One-click login SDK only works on mobile (Android/iOS)
+    if (kIsWeb || PlatformInfos.isDesktop) {
       _redirectToLoginPage();
       return;
     }
 
-    // On mobile, directly trigger one-click login
+    // On mobile only, directly trigger one-click login
     if (!_hasTriedAuth) {
       _hasTriedAuth = true;
       await _performDirectLogin();
