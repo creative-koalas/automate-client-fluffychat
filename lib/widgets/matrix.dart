@@ -345,8 +345,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       if (success) {
         Logs().i('[Matrix] Aliyun Push initialized successfully');
 
-        // 如果用户已登录
-        if (client.isLogged() && client.userID != null) {
+        // 如果用户已登录（确保客户端列表不为空）
+        if (widget.clients.isNotEmpty && client.isLogged() && client.userID != null) {
           // 绑定账号用于精准推送
           await AliyunPushService.instance.bindAccount(client.userID!);
 

@@ -76,7 +76,6 @@ abstract class AppRoutes {
         const EmptyPage(),
       ),
     ),
-    // FIXME: Temporary route for testing login-signup page
     GoRoute(
       path: '/login-signup',
       pageBuilder: (context, state) => defaultPageBuilder(
@@ -84,8 +83,7 @@ abstract class AppRoutes {
         state,
         const LoginSignup(),
       ),
-      // FIXME: Redirect commented out for testing
-      // redirect: loggedInRedirect,
+      redirect: loggedInRedirect,
     ),
     // 暂时只支持一键登录，手机号验证码登录入口关闭
     // GoRoute(

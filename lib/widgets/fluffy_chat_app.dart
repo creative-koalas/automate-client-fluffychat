@@ -126,6 +126,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   _AuthState _state = _AuthState.checking;
   String? _errorMessage;
   bool _hasTriedAuth = false;
+  bool _needsRetryAfterStaleCredentials = false;
+  bool _hasRetriedMatrixLogin = false;  // Track if we already retried Matrix login
 
   // Pending new user registration data
   String? _pendingToken;
@@ -152,7 +154,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAuthState());
+    // iOS FIX: Delay auth check to give system services time to initialize
+    // On cold start, carrier/network services need time to become available
+    // before Aliyun SDK can initialize properly
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Wait 1 second after first frame to let iOS services initialize
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) _checkAuthStateSafe();
+      });
+    });
   }
 
   @override
@@ -161,25 +171,40 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 当应用从后台恢复时
     if (state == AppLifecycleState.resumed) {
-      debugPrint('[AuthGate] App resumed from background');
+      debugPrint('[AuthGate] App resumed from background, state=$_state');
 
-      final auth = context.read<PsygoAuthState>();
+      // iOS CRITICAL FIX: Always close Aliyun auth page when resuming from background
+      // This prevents black screen caused by lingering auth page overlay
+      OneClickLoginService.quitLoginPage();
 
-      // 如果当前还在 checking 状态且未登录，说明之前的认证流程可能被中断
-      if (_state == _AuthState.checking && !auth.isLoggedIn) {
-        debugPrint('[AuthGate] Auth interrupted, restarting check...');
+      // iOS FIX: Don't trigger re-authentication on app resume if we're still checking
+      // This prevents race condition where didChangeAppLifecycleState fires before
+      // auth.load() completes, causing unnecessary one-click login attempts
 
-        // 重置状态并重新检查
+      // Only restart auth check if truly needed (user explicitly in error state)
+      if (_state == _AuthState.error) {
+        debugPrint('[AuthGate] In error state, allowing retry on resume');
         setState(() {
-          _hasTriedAuth = false;  // 重置，允许重新尝试
+          _hasTriedAuth = false;  // Allow retry from error state
+          _hasRetriedMatrixLogin = false;  // Reset retry flag
+          _state = _AuthState.checking;
         });
-
-        // 关闭可能还在显示的授权页
-        OneClickLoginService.quitLoginPage();
-
-        // 重新触发认证检查
-        _checkAuthState();
+        _checkAuthStateSafe();
       }
+    }
+  }
+
+  Future<void> _checkAuthStateSafe() async {
+    try {
+      await _checkAuthState();
+    } catch (e, s) {
+      debugPrint('[AuthGate] Unhandled error in auth check: $e');
+      debugPrint('$s');
+      if (!mounted) return;
+      setState(() {
+        _state = _AuthState.error;
+        _errorMessage = '登录状态检查失败，请重试';
+      });
     }
   }
 
@@ -193,6 +218,21 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     await auth.load();
 
     debugPrint('[AuthGate] Checking auth state...');
+
+    // iOS CRITICAL FIX: Handle retry after stale credentials detected
+    if (_needsRetryAfterStaleCredentials) {
+      debugPrint('[AuthGate] Retrying after stale credentials, directly triggering one-click login...');
+      _needsRetryAfterStaleCredentials = false;
+
+      // On mobile, directly trigger one-click login
+      if (!kIsWeb && !_hasTriedAuth) {
+        _hasTriedAuth = true;
+        await _performDirectLogin();
+      } else {
+        _redirectToLoginPage();
+      }
+      return;
+    }
 
     // 1. Check if already logged in with valid token
     if (auth.isLoggedIn && auth.hasValidToken) {
@@ -275,12 +315,17 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // Step 1: Verify phone number
       final api = context.read<PsygoApiClient>();
       final verifyResponse = await api.verifyPhone(loginToken);
-      debugPrint('[AuthGate] Phone verified: ${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
+      debugPrint('[AuthGate] ===== Backend verifyPhone Response =====');
+      debugPrint('[AuthGate] Phone: ${verifyResponse.phone}');
+      debugPrint('[AuthGate] isNewUser: ${verifyResponse.isNewUser}');
+      debugPrint('[AuthGate] pendingToken: ${verifyResponse.pendingToken}');
+      debugPrint('[AuthGate] =========================================');
 
       if (!mounted) return;
 
       // Step 2: New user needs invitation code
       if (verifyResponse.isNewUser) {
+        debugPrint('[AuthGate] Backend says isNewUser=true, showing invitation code screen');
         // Close Aliyun auth page
         await OneClickLoginService.quitLoginPage();
 
@@ -300,11 +345,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       if (!mounted) return;
 
       // Step 3: Complete login (old user, no invitation code needed)
+      debugPrint('[AuthGate] Backend says isNewUser=false, proceeding with login (no invitation code needed)');
       final authResponse = await api.completeLogin(
         verifyResponse.pendingToken,
       );
 
-      debugPrint('[AuthGate] Backend login success, onboardingCompleted=${authResponse.onboardingCompleted}');
+      debugPrint('[AuthGate] Backend completeLogin success, onboardingCompleted=${authResponse.onboardingCompleted}');
 
       // Handle based on onboarding status
       if (authResponse.onboardingCompleted) {
@@ -360,6 +406,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     final auth = context.read<PsygoAuthState>();
     final matrixAccessToken = auth.matrixAccessToken;
     final matrixUserId = auth.matrixUserId;
+    final matrixDeviceId = auth.matrixDeviceId;
 
     if (matrixAccessToken == null || matrixUserId == null) {
       debugPrint('[AuthGate] Missing Matrix credentials for Matrix login');
@@ -370,40 +417,129 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       return;
     }
 
+    debugPrint('[AuthGate] Matrix credentials: userId=$matrixUserId, deviceId=$matrixDeviceId');
+
     try {
       final matrix = Matrix.of(context);
-      final client = await matrix.getLoginClient();
 
-      // Set homeserver before login
-      final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
-      debugPrint('[AuthGate] Setting homeserver: $homeserverUrl');
-      await client.checkHomeserver(homeserverUrl);
+      // Get login client - this handles returning the main client if not logged in
+      var client = await matrix.getLoginClient();
 
-      debugPrint('[AuthGate] Attempting Matrix login: matrixUserId=$matrixUserId');
+      debugPrint('[AuthGate] Client database: ${client.database}');
+      debugPrint('[AuthGate] Client name: ${client.clientName}');
+      debugPrint('[AuthGate] Client isLogged: ${client.isLogged()}');
+      debugPrint('[AuthGate] Client deviceID: ${client.deviceID}');
 
-      // Use access_token directly (no password login needed)
-      await client.init(
-        newToken: matrixAccessToken,
-        newUserID: matrixUserId,
-        newHomeserver: homeserverUrl,
-        newDeviceName: PlatformInfos.clientName,
-      );
-      debugPrint('[AuthGate] Matrix login success');
+      // Note: Encryption is disabled for this Matrix server
+      if (!client.isLogged()) {
+        debugPrint('[AuthGate] Client not logged in, performing Matrix login...');
 
+        // Clear old data before login
+        await client.clear();
+        debugPrint('[AuthGate] Client data cleared');
+
+        // Set homeserver before login
+        final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
+        debugPrint('[AuthGate] Setting homeserver: $homeserverUrl');
+        await client.checkHomeserver(homeserverUrl);
+
+        debugPrint('[AuthGate] Attempting Matrix login: matrixUserId=$matrixUserId');
+
+        // Use access_token directly
+        await client.init(
+          newToken: matrixAccessToken,
+          newUserID: matrixUserId,
+          newHomeserver: homeserverUrl,
+          newDeviceName: PlatformInfos.clientName,
+        );
+        debugPrint('[AuthGate] Matrix login success, deviceID=${client.deviceID}');
+
+        setState(() => _state = _AuthState.authenticated);
+
+        // Navigate to main page after successful login
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final router = GoRouter.of(context);
+            if (router.routerDelegate.currentConfiguration.fullPath != '/rooms') {
+              router.go('/rooms');
+            }
+          }
+        });
+
+        if (PlatformInfos.isMobile) {
+          Future.delayed(const Duration(seconds: 1), () {
+            PermissionService.instance.requestPushPermissions();
+          });
+        }
+        return;
+      }
+
+      // Client is already logged in, just proceed
+      debugPrint('[AuthGate] Client already logged in with deviceID=${client.deviceID}');
       setState(() => _state = _AuthState.authenticated);
 
-      // 登录成功后异步请求推送权限（不阻塞跳转）
+      // Navigate to main page if not already there
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final router = GoRouter.of(context);
+          if (router.routerDelegate.currentConfiguration.fullPath != '/rooms') {
+            router.go('/rooms');
+          }
+        }
+      });
+
       if (PlatformInfos.isMobile) {
         Future.delayed(const Duration(seconds: 1), () {
           PermissionService.instance.requestPushPermissions();
         });
       }
-      // Matrix login triggers auto navigation to /rooms
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[AuthGate] Matrix login failed: $e');
+      debugPrint('[AuthGate] Stack trace: $stackTrace');
+
+      // iOS FIX: Auto-retry with fresh credentials on first failure
+      // On cold start after deleting data, the credentials from backend might be stale
+      // Clear all credentials and trigger a fresh one-click login flow
+      if (!_hasRetriedMatrixLogin) {
+        debugPrint('[AuthGate] Matrix login failed, clearing credentials and retrying with fresh login...');
+        _hasRetriedMatrixLogin = true;  // Mark that we've retried once
+
+        final auth = context.read<PsygoAuthState>();
+        await auth.markLoggedOut();
+
+        if (!mounted) return;
+
+        setState(() {
+          _state = _AuthState.checking;
+          _hasTriedAuth = false;
+        });
+
+        // Trigger fresh one-click login (will call _loginMatrixAndProceed again with new credentials)
+        await _checkAuthState();
+        return;
+      }
+
+      // iOS FIX: Handle Matrix login failures after retry
+      // Common causes: Network issues, stale credentials, encryption problems
+      // Don't force logout - user's automate token is still valid!
+      if (e.toString().contains('Upload key failed') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('SocketException')) {
+        debugPrint('[AuthGate] Matrix encryption/network error - possible causes:');
+        debugPrint('[AuthGate] 1. Network issue (cannot reach Matrix homeserver)');
+        debugPrint('[AuthGate] 2. Stale encryption keys or database corruption');
+        debugPrint('[AuthGate] 3. Matrix server not running or not accessible');
+
+        setState(() {
+          _state = _AuthState.error;
+          _errorMessage = 'Matrix 服务器连接失败\n\n可能原因：\n- Matrix 服务器未启动或无法访问\n- 网络连接问题\n- 数据库损坏\n\n请确保：\n1. Matrix 服务器正在运行\n2. 网络连接正常\n3. 或重新登录获取新凭证';
+        });
+        return;
+      }
+
       setState(() {
         _state = _AuthState.error;
-        _errorMessage = 'Matrix 服务连接失败，请重试';
+        _errorMessage = 'Matrix 服务连接失败: ${e.toString()}\n\n请重试或重新登录';
       });
     }
   }
@@ -424,6 +560,28 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         router.go('/login-signup');
       }
     });
+  }
+
+  /// Retry one-click login after canceling invitation code input
+  void _retryOneClickLogin() {
+    debugPrint('[AuthGate] User canceled invitation code, retrying one-click login');
+
+    // Clear invitation code state
+    _pendingToken = null;
+    _pendingPhone = null;
+    _invitationCodeController.clear();
+    _invitationCodeError = null;
+
+    // Reset auth attempt flags to allow one-click login again
+    _hasTriedAuth = false;
+    _hasRetriedMatrixLogin = false;
+
+    // Go back to checking state and retry
+    setState(() {
+      _state = _AuthState.checking;
+    });
+
+    _checkAuthStateSafe();
   }
 
   void _navigateToOnboarding() {
@@ -453,6 +611,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         setState(() {
           _state = _AuthState.checking;
           _hasTriedAuth = false;
+          _hasRetriedMatrixLogin = false;
         });
         _checkAuthState();
       });
@@ -509,6 +668,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Widget _buildErrorScreen() {
+    final isMatrixError = _errorMessage?.contains('Matrix') ?? false;
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
@@ -538,15 +699,39 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                 ),
               ),
               const SizedBox(height: 32),
-              OutlinedButton(
-                onPressed: () {
-                  setState(() {
-                    _state = _AuthState.checking;
-                    _hasTriedAuth = false;
-                  });
-                  _checkAuthState();
-                },
-                child: const Text('重试'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _state = _AuthState.checking;
+                        _hasTriedAuth = false;
+                        _hasRetriedMatrixLogin = false;
+                      });
+                      _checkAuthStateSafe();
+                    },
+                    child: const Text('重试'),
+                  ),
+                  if (isMatrixError) ...[
+                    const SizedBox(width: 16),
+                    FilledButton(
+                      onPressed: () async {
+                        // Clear all credentials and force re-login
+                        final auth = context.read<PsygoAuthState>();
+                        await auth.markLoggedOut();
+
+                        setState(() {
+                          _state = _AuthState.checking;
+                          _hasTriedAuth = false;
+                          _hasRetriedMatrixLogin = false;
+                        });
+                        _checkAuthStateSafe();
+                      },
+                      child: const Text('重新登录'),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -611,7 +796,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _submittingInvitation ? null : _redirectToLoginPage,
+                      onPressed: _submittingInvitation ? null : _retryOneClickLogin,
                       child: const Text('取消'),
                     ),
                   ),

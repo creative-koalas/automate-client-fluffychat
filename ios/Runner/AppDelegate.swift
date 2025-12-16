@@ -17,6 +17,14 @@ import Flutter
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     }
+
+    // iOS FIX: Prevent black screen when resuming from background
+    // Set FlutterViewController background color to prevent black screen
+    // when native modal views (like Aliyun auth) are dismissed
+    if let controller = window?.rootViewController as? FlutterViewController {
+      controller.view.backgroundColor = UIColor.white
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

@@ -1,8 +1,8 @@
-app_identifier("im.fluffychat.app") # The bundle identifier of your app
-apple_id("christian-kussowski@posteo.de") # Your Apple email address
+app_identifier("com.creativekoalas.psygo") # The bundle identifier of your app
+# apple_id("your-email@example.com") # Your Apple email address (uncomment and update if needed)
 
-itc_team_id("122628977") # App Store Connect Team ID
-team_id("4NXF6Z997G") # Developer Portal Team ID
+# itc_team_id("YOUR_TEAM_ID") # App Store Connect Team ID (uncomment and update if needed)
+# team_id("YOUR_TEAM_ID") # Developer Portal Team ID (uncomment and update if needed)
 
 # For more information about the Appfile, see:
 #     https://docs.fastlane.tools/advanced/#appfile

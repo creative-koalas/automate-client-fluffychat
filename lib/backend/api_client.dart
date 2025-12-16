@@ -130,6 +130,7 @@ class PsygoApiClient {
       data: {'fusion_token': fusionToken},
     );
     final data = res.data ?? {};
+    debugPrint('[API] verifyPhone raw response: $data');
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
       throw AutomateBackendException(
@@ -142,6 +143,8 @@ class PsygoApiClient {
     if (respData == null) {
       throw AutomateBackendException('Empty response data');
     }
+
+    debugPrint('[API] verifyPhone parsed data: phone=${respData['phone']}, is_new_user=${respData['is_new_user']}, pending_token=${respData['pending_token']}');
 
     return VerifyPhoneResponse(
       phone: respData['phone'] as String? ?? '',
