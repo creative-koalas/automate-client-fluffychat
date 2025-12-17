@@ -2,6 +2,8 @@
 /// User is automatically redirected to this page if credentials are not found or invalid.
 library;
 
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:provider/provider.dart';
@@ -234,72 +236,197 @@ class PolicyBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
+    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+    final subtextColor = isDark ? Colors.white.withOpacity(0.7) : const Color(0xFF666666);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF0A1628).withOpacity(0.98),
+                  const Color(0xFF0D2233).withOpacity(0.98),
+                  const Color(0xFF0F3D3E).withOpacity(0.98),
+                ]
+              : [
+                  const Color(0xFFF0F4F8).withOpacity(0.99),
+                  const Color(0xFFE8EFF5).withOpacity(0.99),
+                  const Color(0xFFE0F2F1).withOpacity(0.99),
+                ],
+        ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(false),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Text.rich(
-                TextSpan(
-                  children: _parseMarkdown(content, theme),
-                ),
-              ),
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // Footer
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text('同意并继续'),
-            ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.1)
+              : Colors.black.withOpacity(0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Column(
+            children: [
+              // 顶部装饰条
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.black.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.black.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.6)
+                              : Colors.black.withOpacity(0.5),
+                        ),
+                        onPressed: () => Navigator.of(context).pop(false),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 分隔线
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.08),
+              ),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Text.rich(
+                    TextSpan(
+                      children: _parseMarkdown(content, isDark, textColor, accentColor, subtextColor),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 底部分隔线
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.08),
+              ),
+
+              // Footer - 渐变按钮
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: isDark
+                          ? [
+                              const Color(0xFF00B386),
+                              const Color(0xFF00D4A1),
+                            ]
+                          : [
+                              accentColor.withOpacity(0.9),
+                              accentColor,
+                            ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isDark ? const Color(0xFF00D3A1) : accentColor)
+                            .withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).pop(true),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          '同意并继续',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   // Simple Markdown Parsing Logic
-  List<InlineSpan> _parseMarkdown(String text, ThemeData theme) {
+  List<InlineSpan> _parseMarkdown(
+    String text,
+    bool isDark,
+    Color textColor,
+    Color accentColor,
+    Color subtextColor,
+  ) {
     final spans = <InlineSpan>[];
     final lines = text.split('\n');
 
@@ -308,18 +435,30 @@ class PolicyBottomSheet extends StatelessWidget {
         // H1
         spans.add(TextSpan(
           text: '${line.substring(2)}\n\n',
-          style: theme.textTheme.headlineSmall?.copyWith(
+          style: TextStyle(
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
+            color: accentColor,
           ),
         ));
       } else if (line.startsWith('## ')) {
         // H2
         spans.add(TextSpan(
           text: '${line.substring(3)}\n\n',
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: TextStyle(
+            fontSize: 17,
             fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
+            color: textColor,
+          ),
+        ));
+      } else if (line.startsWith('### ')) {
+        // H3
+        spans.add(TextSpan(
+          text: '${line.substring(4)}\n\n',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: textColor,
           ),
         ));
       } else if (line.startsWith('- ')) {
@@ -330,8 +469,21 @@ class PolicyBottomSheet extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('• ', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-                Expanded(child: Text.rich(TextSpan(children: _parseInline(line.substring(2), theme)))),
+                Text(
+                  '• ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                    fontSize: 15,
+                  ),
+                ),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: _parseInline(line.substring(2), isDark, textColor, subtextColor),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -339,14 +491,15 @@ class PolicyBottomSheet extends StatelessWidget {
         spans.add(const TextSpan(text: '\n'));
       } else if (line.trim().isEmpty) {
         // Empty Line
-         spans.add(const TextSpan(text: '\n'));
+        spans.add(const TextSpan(text: '\n'));
       } else {
         // Paragraph
         spans.add(TextSpan(
-          children: _parseInline(line, theme),
-          style: theme.textTheme.bodyLarge?.copyWith(
-            height: 1.5,
-            color: theme.colorScheme.onSurfaceVariant,
+          children: _parseInline(line, isDark, textColor, subtextColor),
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.6,
+            color: subtextColor,
           ),
         ));
         spans.add(const TextSpan(text: '\n\n'));
@@ -355,19 +508,30 @@ class PolicyBottomSheet extends StatelessWidget {
     return spans;
   }
 
-  List<InlineSpan> _parseInline(String text, ThemeData theme) {
+  List<InlineSpan> _parseInline(
+    String text,
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+  ) {
     final spans = <InlineSpan>[];
     final parts = text.split('**');
 
     for (int i = 0; i < parts.length; i++) {
       if (i % 2 == 0) {
         // Normal text
-        spans.add(TextSpan(text: parts[i]));
+        spans.add(TextSpan(
+          text: parts[i],
+          style: TextStyle(color: subtextColor),
+        ));
       } else {
         // Bold text
         spans.add(TextSpan(
           text: parts[i],
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: textColor,
+          ),
         ));
       }
     }

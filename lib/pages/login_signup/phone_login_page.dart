@@ -158,65 +158,198 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   Future<bool> _ensureEulaAccepted() async {
     if (agreedToEula) return true;
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
+    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+
     final shouldAccept = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '服务协议与隐私政策',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1628).withOpacity(0.95),
+                    const Color(0xFF0D2233).withOpacity(0.95),
+                    const Color(0xFF0F3D3E).withOpacity(0.95),
+                  ]
+                : [
+                    const Color(0xFFF0F4F8).withOpacity(0.98),
+                    const Color(0xFFE8EFF5).withOpacity(0.98),
+                    const Color(0xFFE0F2F1).withOpacity(0.98),
+                  ],
+          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withOpacity(0.1)
+                : Colors.black.withOpacity(0.08),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
             ),
-            const SizedBox(height: 16),
-            Text.rich(
-              TextSpan(
-                text: '请您务必审慎阅读、充分理解',
-                style: Theme.of(context).textTheme.bodyMedium,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextSpan(
-                    text: '"用户协议"',
-                    style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                  // 顶部装饰条
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                  const TextSpan(text: '和'),
-                  TextSpan(
-                    text: '"隐私政策"',
-                    style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(height: 24),
+
+                  // 标题
+                  Text(
+                    '服务协议与隐私政策',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const TextSpan(text: '各条款。点击"同意并继续"代表您已阅读并同意全部内容。'),
+                  const SizedBox(height: 20),
+
+                  // 说明文字
+                  Text.rich(
+                    TextSpan(
+                      text: '请您务必审慎阅读、充分理解',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.white.withOpacity(0.7)
+                            : const Color(0xFF666666),
+                        height: 1.6,
+                      ),
+                      children: [
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.baseline,
+                          baseline: TextBaseline.alphabetic,
+                          child: _ClickableLink(
+                            text: '《用户协议》',
+                            accentColor: accentColor,
+                            onTap: () {
+                              Navigator.of(context).pop(false);
+                              showEula();
+                            },
+                          ),
+                        ),
+                        const TextSpan(text: '和'),
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.baseline,
+                          baseline: TextBaseline.alphabetic,
+                          child: _ClickableLink(
+                            text: '《隐私政策》',
+                            accentColor: accentColor,
+                            onTap: () {
+                              Navigator.of(context).pop(false);
+                              showPrivacyPolicy();
+                            },
+                          ),
+                        ),
+                        const TextSpan(text: '各条款。点击"同意并继续"代表您已阅读并同意全部内容。'),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 同意按钮（使用渐变样式）
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: isDark
+                            ? [
+                                const Color(0xFF00B386),
+                                const Color(0xFF00D4A1),
+                              ]
+                            : [
+                                accentColor.withOpacity(0.9),
+                                accentColor,
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isDark ? const Color(0xFF00D3A1) : accentColor)
+                              .withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(true),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            '同意并继续',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 不同意按钮
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      foregroundColor: isDark
+                          ? Colors.white.withOpacity(0.5)
+                          : const Color(0xFF999999),
+                    ),
+                    child: const Text(
+                      '不同意',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              child: const Text('同意并继续'),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('不同意'),
-            ),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
     );
@@ -676,30 +809,24 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                   children: [
                     const TextSpan(text: '我已阅读并同意 '),
                     WidgetSpan(
-                      child: GestureDetector(
-                        onTap: loading ? null : showEula,
-                        child: Text(
-                          '《用户协议》',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: accentColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: _ClickableLink(
+                        text: '《用户协议》',
+                        accentColor: accentColor,
+                        onTap: loading ? () {} : showEula,
+                        fontSize: 13,
                       ),
                     ),
                     const TextSpan(text: ' 和 '),
                     WidgetSpan(
-                      child: GestureDetector(
-                        onTap: loading ? null : showPrivacyPolicy,
-                        child: Text(
-                          '《隐私政策》',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: accentColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: _ClickableLink(
+                        text: '《隐私政策》',
+                        accentColor: accentColor,
+                        onTap: loading ? () {} : showPrivacyPolicy,
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -986,28 +1113,22 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                   children: [
                     const TextSpan(text: '我已阅读并同意'),
                     WidgetSpan(
-                      child: InkWell(
-                        onTap: loading ? null : showEula,
-                        child: Text(
-                          '《用户协议》',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: _ClickableLink(
+                        text: '《用户协议》',
+                        accentColor: theme.colorScheme.primary,
+                        onTap: loading ? () {} : showEula,
                       ),
                     ),
                     const TextSpan(text: '和'),
                     WidgetSpan(
-                      child: InkWell(
-                        onTap: loading ? null : showPrivacyPolicy,
-                        child: Text(
-                          '《隐私政策》',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: _ClickableLink(
+                        text: '《隐私政策》',
+                        accentColor: theme.colorScheme.primary,
+                        onTap: loading ? () {} : showPrivacyPolicy,
                       ),
                     ),
                   ],
@@ -1603,6 +1724,64 @@ class _GradientButton extends StatelessWidget {
                       ),
                     ],
                   ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Clickable link with hover effect
+class _ClickableLink extends StatefulWidget {
+  final String text;
+  final Color accentColor;
+  final VoidCallback onTap;
+  final double fontSize;
+
+  const _ClickableLink({
+    required this.text,
+    required this.accentColor,
+    required this.onTap,
+    this.fontSize = 14,
+  });
+
+  @override
+  State<_ClickableLink> createState() => _ClickableLinkState();
+}
+
+class _ClickableLinkState extends State<_ClickableLink> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: _isHovered
+                    ? widget.accentColor
+                    : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+          ),
+          child: Text(
+            widget.text,
+            style: TextStyle(
+              fontSize: widget.fontSize,
+              color: _isHovered
+                  ? widget.accentColor.withOpacity(0.8)
+                  : widget.accentColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
