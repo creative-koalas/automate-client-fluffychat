@@ -132,7 +132,7 @@ class PsygoApiClient {
     return authResponse;
   }
 
-  /// 验证手机号（新登录流程第一步）
+  /// 验证手机号 - 一键登录（新登录流程第一步）
   /// 返回是否新用户 + pending_token
   Future<VerifyPhoneResponse> verifyPhone(String fusionToken) async {
     final res = await _dio.post<Map<String, dynamic>>(
@@ -144,6 +144,34 @@ class PsygoApiClient {
     if (res.statusCode != 200 || respCode != 0) {
       throw AutomateBackendException(
         data['msg']?.toString() ?? 'Phone verification failed',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return VerifyPhoneResponse(
+      phone: respData['phone'] as String? ?? '',
+      isNewUser: respData['is_new_user'] as bool? ?? false,
+      pendingToken: respData['pending_token'] as String? ?? '',
+    );
+  }
+
+  /// 验证手机号 - 验证码登录（新登录流程第一步）
+  /// 返回是否新用户 + pending_token
+  Future<VerifyPhoneResponse> verifyPhoneCode(String phone, String code) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/auth/verify-phone-code',
+      data: {'phone': phone, 'code': code},
+    );
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Verification code failed',
         statusCode: res.statusCode,
       );
     }

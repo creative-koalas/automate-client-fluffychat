@@ -5,15 +5,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/widgets/layouts/login_scaffold.dart';
-import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/backend/backend.dart';
-import 'package:psygo/core/config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/login_signup/login_signup.dart' show PolicyBottomSheet;
-import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 
 class PhoneLoginPage extends StatefulWidget {
   const PhoneLoginPage({super.key});
@@ -22,9 +19,11 @@ class PhoneLoginPage extends StatefulWidget {
   PhoneLoginController createState() => PhoneLoginController();
 }
 
-class PhoneLoginController extends State<PhoneLoginPage> {
+class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController codeController = TextEditingController();
+
+  @override
   PsygoApiClient get backend => context.read<PsygoApiClient>();
 
   String? phoneError;
@@ -32,6 +31,17 @@ class PhoneLoginController extends State<PhoneLoginPage> {
   bool loading = false;
   bool agreedToEula = false;
   bool codeSent = false;
+
+  // LoginFlowMixin 实现
+  @override
+  void setLoginError(String? error) {
+    setState(() => codeError = error);
+  }
+
+  @override
+  void setLoading(bool value) {
+    setState(() => loading = value);
+  }
 
   void toggleEulaAgreement() {
     setState(() => agreedToEula = !agreedToEula);
@@ -78,6 +88,9 @@ class PhoneLoginController extends State<PhoneLoginPage> {
     }
   }
 
+  /// 验证码登录（两步流程）
+  /// 第一步：verifyPhoneCode → 返回 isNewUser + pendingToken
+  /// 第二步：handlePostVerify → 邀请码弹窗（新用户）+ completeLogin + Matrix 登录
   void verifyAndLogin() async {
     if (!await _ensureEulaAccepted()) {
       return;
@@ -100,75 +113,23 @@ class PhoneLoginController extends State<PhoneLoginPage> {
     });
 
     try {
-      final authResponse = await backend.loginOrSignup(
+      debugPrint('=== 第一步：验证手机号 + 验证码 ===');
+      final verifyResponse = await backend.verifyPhoneCode(
         phoneController.text,
         codeController.text,
       );
+      debugPrint('验证结果: phone=${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
 
       if (!mounted) return;
 
-      if (authResponse.onboardingCompleted) {
-        // 已完成 onboarding，需要先登录 Matrix 再跳转
-        await _loginMatrixAndRedirect();
-      } else {
-        // 需要先完成 onboarding，直接跳转
-        setState(() => loading = false);
-        context.go('/onboarding-chatbot');
-      }
+      // 使用 mixin 的公共逻辑处理后续流程
+      await handlePostVerify(verifyResponse: verifyResponse);
     } catch (e) {
+      debugPrint('验证码登录错误: $e');
       setState(() {
-        // 提取干净的错误消息，去掉 AutomateBackendException 前缀
         codeError = (e is AutomateBackendException) ? e.message : e.toString();
         loading = false;
       });
-    }
-  }
-
-  /// 登录 Matrix 并跳转到主页
-  Future<void> _loginMatrixAndRedirect() async {
-    final matrixAccessToken = backend.auth.matrixAccessToken;
-    final matrixUserId = backend.auth.matrixUserId;
-
-    if (matrixAccessToken == null || matrixUserId == null) {
-      debugPrint('Matrix access token 缺失，无法登录 Matrix');
-      if (mounted) {
-        setState(() {
-          codeError = 'Matrix 凭证缺失，请重新登录';
-          loading = false;
-        });
-      }
-      return;
-    }
-
-    try {
-      final matrix = Matrix.of(context);
-      final client = await matrix.getLoginClient();
-
-      // Set homeserver before login
-      final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
-      debugPrint('设置 homeserver: $homeserverUrl');
-      await client.checkHomeserver(homeserverUrl);
-
-      debugPrint('尝试 Matrix 登录: matrixUserId=$matrixUserId');
-
-      // 使用后端返回的 access_token 直接初始化，无需密码登录
-      await client.init(
-        newToken: matrixAccessToken,
-        newUserID: matrixUserId,
-        newHomeserver: homeserverUrl,
-        newDeviceName: PlatformInfos.clientName,
-      );
-      debugPrint('Matrix 登录成功');
-
-      // Matrix login success -> auto redirect to /rooms by MatrixState
-    } catch (e) {
-      debugPrint('Matrix 登录失败: $e');
-      if (mounted) {
-        setState(() {
-          codeError = '登录失败: $e';
-          loading = false;
-        });
-      }
     }
   }
 

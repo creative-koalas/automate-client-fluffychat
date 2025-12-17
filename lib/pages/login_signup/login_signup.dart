@@ -4,14 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/services/one_click_login.dart';
-import 'package:psygo/core/config.dart';
-import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/utils/permission_service.dart';
+import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 import 'login_signup_view.dart';
 
 class LoginSignup extends StatefulWidget {
@@ -21,13 +17,25 @@ class LoginSignup extends StatefulWidget {
   LoginSignupController createState() => LoginSignupController();
 }
 
-class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserver {
+class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserver, LoginFlowMixin {
+  @override
   PsygoApiClient get backend => context.read<PsygoApiClient>();
 
   String? phoneError;
   bool loading = false;
   bool agreedToEula = false;
   bool _isInAuthFlow = false; // 是否正在进行授权流程
+
+  // LoginFlowMixin 实现
+  @override
+  void setLoginError(String? error) {
+    setState(() => phoneError = error);
+  }
+
+  @override
+  void setLoading(bool value) {
+    setState(() => loading = value);
+  }
 
   @override
   void initState() {
@@ -99,47 +107,23 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
 
       if (!mounted) return;
 
-      // 新用户需要输入邀请码
-      String? invitationCode;
+      // 新用户需要先关闭授权页再弹邀请码框
       if (verifyResponse.isNewUser) {
-        // 先关闭阿里云授权页，再弹邀请码框
         await OneClickLoginService.quitLoginPage();
-
-        invitationCode = await _showInvitationCodeDialog(verifyResponse.phone);
-        if (invitationCode == null) {
-          // 用户取消了
-          setState(() {
-            _isInAuthFlow = false;
-            loading = false;
-          });
-          return;
-        }
       }
 
-      debugPrint('=== 第二步：完成登录 ===');
-      final authResponse = await backend.completeLogin(
-        verifyResponse.pendingToken,
-        invitationCode: invitationCode,
+      // 使用 mixin 的公共逻辑处理后续流程
+      final success = await handlePostVerify(
+        verifyResponse: verifyResponse,
+        onCancel: () {
+          _isInAuthFlow = false;
+        },
       );
-      debugPrint('后端响应: onboardingCompleted=${authResponse.onboardingCompleted}');
 
-      if (!mounted) return;
-
-      // Redirect based on onboarding status
-      if (authResponse.onboardingCompleted) {
-        // 已完成 onboarding，需要先登录 Matrix
-        debugPrint('=== 已完成 onboarding，尝试登录 Matrix ===');
-        await _loginMatrixAndRedirect();
-        // 所有操作完成后关闭授权页（老用户流程，授权页可能还在）
-        _isInAuthFlow = false;
+      // 关闭授权页
+      _isInAuthFlow = false;
+      if (success) {
         await OneClickLoginService.quitLoginPage();
-      } else {
-        // 需要先完成 onboarding
-        // 关闭授权页后再跳转（老用户流程，授权页可能还在）
-        _isInAuthFlow = false;
-        await OneClickLoginService.quitLoginPage();
-        setState(() => loading = false);
-        context.go('/onboarding-chatbot');
       }
     } on SwitchLoginMethodException {
       // 用户点击了"其他方式登录"按钮（但按钮已隐藏，理论上不会触发）
@@ -161,73 +145,6 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
         loading = false;
       });
     }
-  }
-
-  /// 显示邀请码输入对话框
-  /// 返回邀请码，用户取消则返回 null
-  Future<String?> _showInvitationCodeDialog(String maskedPhone) async {
-    final controller = TextEditingController();
-    String? errorText;
-
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('新用户注册'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '手机号：$maskedPhone',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('请输入邀请码完成注册'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: '邀请码',
-                  hintText: '请输入邀请码',
-                  prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  errorText: errorText,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                textCapitalization: TextCapitalization.characters,
-                onChanged: (_) {
-                  if (errorText != null) {
-                    setDialogState(() => errorText = null);
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(null),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final code = controller.text.trim();
-                if (code.isEmpty) {
-                  setDialogState(() => errorText = '请输入邀请码');
-                  return;
-                }
-                Navigator.of(context).pop(code);
-              },
-              child: const Text('确认'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<bool> _ensureEulaAccepted() async {
@@ -257,61 +174,6 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
     }
 
     return false;
-  }
-
-  /// 登录 Matrix 并跳转到主页
-  Future<void> _loginMatrixAndRedirect() async {
-    final matrixAccessToken = backend.auth.matrixAccessToken;
-    final matrixUserId = backend.auth.matrixUserId;
-
-    if (matrixAccessToken == null || matrixUserId == null) {
-      debugPrint('Matrix access token 缺失，无法登录 Matrix');
-      if (mounted) {
-        setState(() {
-          phoneError = 'Matrix 凭证缺失，请重新登录';
-          loading = false;
-        });
-      }
-      return;
-    }
-
-    try {
-      final matrix = Matrix.of(context);
-      final client = await matrix.getLoginClient();
-
-      // Set homeserver before login
-      final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
-      debugPrint('设置 homeserver: $homeserverUrl');
-      await client.checkHomeserver(homeserverUrl);
-
-      debugPrint('尝试 Matrix 登录: matrixUserId=$matrixUserId');
-
-      // 使用后端返回的 access_token 直接初始化，无需密码登录
-      await client.init(
-        newToken: matrixAccessToken,
-        newUserID: matrixUserId,
-        newHomeserver: homeserverUrl,
-        newDeviceName: PlatformInfos.clientName,
-      );
-      debugPrint('Matrix 登录成功');
-
-      // 登录成功后异步请求推送权限（不阻塞跳转）
-      if (PlatformInfos.isMobile) {
-        // 延迟一下，等跳转完成后再请求权限
-        Future.delayed(const Duration(seconds: 1), () {
-          PermissionService.instance.requestPushPermissions();
-        });
-      }
-      // Matrix login success -> auto redirect to /rooms by MatrixState
-    } catch (e) {
-      debugPrint('Matrix 登录失败 (未知错误): $e');
-      if (mounted) {
-        setState(() {
-          phoneError = '登录失败: $e';
-          loading = false;
-        });
-      }
-    }
   }
 
   void showEula() async {
