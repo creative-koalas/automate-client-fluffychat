@@ -161,6 +161,11 @@ abstract class ClientManager {
       const InitializationSettings(
         android: AndroidInitializationSettings('notifications_icon'),
         iOS: DarwinInitializationSettings(),
+        windows: WindowsInitializationSettings(
+        appName: 'Psygo',
+        appUserModelId: 'com.psygo.app',
+        guid:'8af2f2bb-4f08-4ac1-824e-977080f91d42',
+      ),
       ),
     );
 
