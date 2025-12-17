@@ -57,17 +57,12 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // 重置预取号状态
         isPreLoginSuccess = false
 
-        // 开启日志
-        TXCommonHandler.sharedInstance().getReporter().setLoggerEnable(true)
+        // 开启日志（SDK 2.14.12 已移除此方法）
+        // TXCommonHandler.sharedInstance().getReporter().setLoggerEnable(true)
 
         TXCommonHandler.sharedInstance().setAuthSDKInfo(secretKey) { [weak self] resultDic in
-            guard let resultDic = resultDic else {
-                result([
-                    "code": "600010",
-                    "msg": "SDK初始化失败：返回结果为空"
-                ])
-                return
-            }
+            // resultDic 在新版 SDK 中不再是 Optional 类型
+            let resultDic = resultDic as! [AnyHashable: Any]
 
             let code = resultDic["resultCode"] as? String ?? "600010"
             let msg = resultDic["msg"] as? String ?? "未知错误"
@@ -94,10 +89,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         let timeoutSeconds = TimeInterval(timeout) / 1000.0
 
         TXCommonHandler.sharedInstance().accelerateLoginPage(withTimeout: timeoutSeconds) { [weak self] resultDic in
-            guard let resultDic = resultDic else {
-                result(FlutterError(code: "PRE_LOGIN_FAILED", message: "预取号失败：返回结果为空", details: nil))
-                return
-            }
+            // resultDic 在新版 SDK 中不再是 Optional 类型
+            let resultDic = resultDic as! [AnyHashable: Any]
 
             let code = resultDic["resultCode"] as? String ?? "600010"
             let msg = resultDic["msg"] as? String ?? "未知错误"
@@ -160,10 +153,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         let model = buildAuthUIModel()
 
         TXCommonHandler.sharedInstance().getLoginToken(withTimeout: timeoutSeconds, controller: viewController, model: model) { [weak self] resultDic in
-            guard let resultDic = resultDic else {
-                result(FlutterError(code: "LOGIN_FAILED", message: "登录失败：返回结果为空", details: nil))
-                return
-            }
+            // resultDic 在新版 SDK 中不再是 Optional 类型
+            let resultDic = resultDic as! [AnyHashable: Any]
 
             let code = resultDic["resultCode"] as? String ?? "600010"
             let msg = resultDic["msg"] as? String ?? "未知错误"
@@ -216,6 +207,27 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
                     self?.handleProtocolClick(url: privacyUrl)
                 }
 
+            // 二次授权弹窗相关
+            case "700006": // PNSCodeLoginClickPrivacyAlertView
+                // 弹出二次授权弹窗，继续等待用户操作
+                print("OneClickLogin iOS: Privacy alert view shown, waiting for user action...")
+                // 不能调用 result，继续等待
+
+            case "700007": // PNSCodeLoginPrivacyAlertViewClose
+                // 二次授权弹窗关闭（用户点击继续后自动关闭，不是取消操作）
+                print("OneClickLogin iOS: Privacy alert closed, waiting for token...")
+                // 不能调用 result，弹窗在用户点击继续后会自动关闭，继续等待 token
+
+            case "700008": // PNSCodeLoginPrivacyAlertViewClickContinue
+                // 用户在二次授权弹窗点击"继续"，继续等待 token
+                print("OneClickLogin iOS: User clicked continue in privacy alert, waiting for token...")
+                // 不能调用 result，继续等待 token
+
+            case "700009": // PNSCodeLoginPrivacyAlertViewPrivacyContentClick
+                // 用户点击二次授权弹窗中的隐私协议
+                print("OneClickLogin iOS: User clicked privacy content in alert")
+                // 不能调用 result，继续等待
+
             default:
                 // 其他错误
                 result(FlutterError(code: code, message: msg, details: nil))
@@ -235,24 +247,36 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
     private func buildAuthUIModel() -> TXCustomModel {
         let model = TXCustomModel()
 
-        // 状态栏
+        // ========== 状态栏 ==========
         model.prefersStatusBarHidden = false
-        model.preferredStatusBarStyle = .darkContent
+        if #available(iOS 13.0, *) {
+            model.preferredStatusBarStyle = .darkContent  // 黑色文字（浅色状态栏）
+        } else {
+            model.preferredStatusBarStyle = .default
+        }
 
-        // 背景
+        // ========== 页面背景 ==========
         model.backgroundColor = .white
 
-        // 导航栏 - 隐藏
+        // ========== 导航栏（隐藏） ==========
         model.navIsHidden = true
 
-        // Logo
+        // 获取状态栏高度，用于适配安全区域
+        let statusBarHeight: CGFloat
+        if #available(iOS 13.0, *) {
+            statusBarHeight = UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
+        } else {
+            statusBarHeight = UIApplication.shared.statusBarFrame.height
+        }
+
+        // ========== Logo ==========
         model.logoIsHidden = false
         if let logoImage = UIImage(named: "auth_logo") {
             model.logoImage = logoImage
         }
         model.logoFrameBlock = { screenSize, superViewSize, frame in
-            let logoSize: CGFloat = 90
-            let topOffset: CGFloat = 100
+            let logoSize: CGFloat = 90  // 与 Android 一致
+            let topOffset: CGFloat = 100 + statusBarHeight  // 与 Android 一致
             return CGRect(
                 x: (superViewSize.width - logoSize) / 2,
                 y: topOffset,
@@ -261,37 +285,39 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
             )
         }
 
-        // Slogan
+        // ========== Slogan ==========
         model.sloganIsHidden = false
         model.sloganText = NSAttributedString(
             string: "Psygo",
             attributes: [
-                .foregroundColor: UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0),
-                .font: UIFont.systemFont(ofSize: 20, weight: .medium)
+                .foregroundColor: UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0),  // #1A1A1A
+                .font: UIFont.systemFont(ofSize: 20, weight: .medium)  // 与 Android 一致
             ]
         )
         model.sloganFrameBlock = { screenSize, superViewSize, frame in
             return CGRect(
                 x: 0,
-                y: 210,
+                y: 210 + statusBarHeight,  // 与 Android 一致
                 width: superViewSize.width,
                 height: 30
             )
         }
 
-        // 手机号
-        model.numberColor = UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0)
+        // ========== 手机号（SDK 默认居中显示）==========
+        model.numberColor = UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0)  // #1A1A1A
         model.numberFont = UIFont.systemFont(ofSize: 28, weight: .medium)
+        // 注意：numberFrameBlock 只有 x、y 生效，SDK会自动计算宽高
+        // 不设置 x 则默认居中，这里只设置 y 值
         model.numberFrameBlock = { screenSize, superViewSize, frame in
             return CGRect(
-                x: 0,
-                y: 260,
-                width: superViewSize.width,
-                height: 40
+                x: frame.origin.x,  // 使用SDK默认的x（居中）
+                y: 260 + statusBarHeight,  // 与 Android 一致
+                width: frame.size.width,  // 使用SDK默认的宽度
+                height: frame.size.height  // 使用SDK默认的高度
             )
         }
 
-        // 登录按钮
+        // ========== 登录按钮 ==========
         model.loginBtnText = NSAttributedString(
             string: "本机号码一键登录",
             attributes: [
@@ -300,29 +326,41 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
             ]
         )
 
-        // 登录按钮背景图片
-        let btnNormalImage = createRoundedRectImage(color: UIColor(red: 0.0, green: 0.478, blue: 1.0, alpha: 1.0), cornerRadius: 25)
-        let btnDisabledImage = createRoundedRectImage(color: UIColor(red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0), cornerRadius: 25)
-        let btnHighlightedImage = createRoundedRectImage(color: UIColor(red: 0.0, green: 0.4, blue: 0.9, alpha: 1.0), cornerRadius: 25)
+        // 登录按钮背景（渐变蓝色按钮，和 Android 一致）
+        // 注意：由于启用了二次确认弹窗，按钮在所有状态下都应该保持蓝色可点击
+        let btnNormalImage = createGradientButtonImage(
+            startColor: UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0),  // #007AFF
+            endColor: UIColor(red: 0x00/255.0, green: 0x56/255.0, blue: 0xCC/255.0, alpha: 1.0),    // #0056CC
+            cornerRadius: 24  // 与 Android 一致
+        )
+        // 禁用状态也使用蓝色（因为启用了二次确认弹窗，按钮始终可点击）
+        let btnDisabledImage = btnNormalImage
+        // 高亮状态使用稍深的蓝色
+        let btnHighlightedImage = createGradientButtonImage(
+            startColor: UIColor(red: 0x00/255.0, green: 0x66/255.0, blue: 0xE6/255.0, alpha: 1.0),  // #0066E6
+            endColor: UIColor(red: 0x00/255.0, green: 0x44/255.0, blue: 0xB3/255.0, alpha: 1.0),    // #0044B3
+            cornerRadius: 24  // 与 Android 一致
+        )
         model.loginBtnBgImgs = [btnNormalImage, btnDisabledImage, btnHighlightedImage]
 
         model.loginBtnFrameBlock = { screenSize, superViewSize, frame in
-            let btnWidth = superViewSize.width - 64
+            let horizontalMargin: CGFloat = 32  // 左右边距
+            let btnWidth = superViewSize.width - horizontalMargin * 2
             let btnHeight: CGFloat = 50
             return CGRect(
-                x: 32,
-                y: 340,
+                x: horizontalMargin,
+                y: 340 + statusBarHeight,  // 与 Android 一致
                 width: btnWidth,
                 height: btnHeight
             )
         }
 
-        // 隐藏"其他方式登录"按钮
+        // ========== 其他登录方式（隐藏） ==========
         model.changeBtnIsHidden = true
 
-        // 协议 Checkbox
+        // ========== 隐私协议 ==========
         model.checkBoxIsHidden = false
-        model.checkBoxIsChecked = false
+        model.checkBoxIsChecked = false  // 默认未勾选
         model.checkBoxWH = 20
         if let uncheckedImage = UIImage(named: "auth_checkbox_unchecked"),
            let checkedImage = UIImage(named: "auth_checkbox_checked") {
@@ -336,8 +374,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.privacyTwo = ["《隐私政策》", "app-privacy://privacy_policy"]
         model.privacyConectTexts = ["和", "、", "、"]
         model.privacyColors = [
-            UIColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1.0),
-            UIColor(red: 0.0, green: 0.478, blue: 1.0, alpha: 1.0)
+            UIColor(red: 0x99/255.0, green: 0x99/255.0, blue: 0x99/255.0, alpha: 1.0),  // #999999
+            UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0)   // #007AFF
         ]
         model.privacyFont = UIFont.systemFont(ofSize: 12)
         model.privacyAlignment = .center
@@ -346,39 +384,56 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.expandAuthPageCheckedScope = true
 
         model.privacyFrameBlock = { screenSize, superViewSize, frame in
+            let horizontalMargin: CGFloat = 20
+            let bottomMargin: CGFloat = 80
+            let privacyHeight: CGFloat = 50
             return CGRect(
-                x: 20,
-                y: superViewSize.height - 80,
-                width: superViewSize.width - 40,
-                height: 50
+                x: horizontalMargin,
+                y: superViewSize.height - bottomMargin,
+                width: superViewSize.width - horizontalMargin * 2,
+                height: privacyHeight
             )
         }
 
-        // 二次确认弹窗
-        model.privacyAlertIsNeedShow = true
-        model.privacyAlertIsNeedAutoLogin = true
+        // ========== 二次确认弹窗 ==========
+        model.privacyAlertIsNeedShow = true  // 启用二次确认弹窗
+        model.privacyAlertIsNeedAutoLogin = true  // 点击同意后自动登录
+
+        // 弹窗标题
         model.privacyAlertTitleContent = "温馨提示"
         model.privacyAlertTitleFont = UIFont.systemFont(ofSize: 17, weight: .medium)
-        model.privacyAlertTitleColor = UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0)
+        model.privacyAlertTitleColor = UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0)  // #1A1A1A
         model.privacyAlertTitleAlignment = .center
+
+        // 弹窗内容（只显示协议链接，不要前后缀文案，保持和 Android 一致）
+        model.privacyAlertPreText = ""
+        model.privacyAlertSufText = ""
         model.privacyAlertContentFont = UIFont.systemFont(ofSize: 14)
+        model.privacyAlertContentAlignment = .center
         model.privacyAlertContentColors = [
-            UIColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0),
-            UIColor(red: 0.0, green: 0.478, blue: 1.0, alpha: 1.0)
+            UIColor(red: 0x66/255.0, green: 0x66/255.0, blue: 0x66/255.0, alpha: 1.0),  // #666666
+            UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0)   // #007AFF
         ]
+
+        // 弹窗按钮
         model.privacyAlertBtnContent = "同意并登录"
         model.privacyAlertButtonFont = UIFont.systemFont(ofSize: 15, weight: .medium)
         model.privacyAlertButtonTextColors = [UIColor.white, UIColor.white]
         model.privacyAlertBtnBackgroundImages = [btnNormalImage, btnHighlightedImage]
-        model.privacyAlertCloseButtonIsNeedShow = true
+        model.privacyAlertCloseButtonIsNeedShow = true  // 显示关闭按钮
+
+        // 弹窗背景遮罩
         model.privacyAlertMaskIsNeedShow = true
         model.privacyAlertMaskAlpha = 0.3
-        model.privacyAlertCornerRadiusArray = [NSNumber(value: 16), NSNumber(value: 16), NSNumber(value: 16), NSNumber(value: 16)]
-        model.privacyAlertContentAlignment = .center
+        model.privacyAlertCornerRadiusArray = [
+            NSNumber(value: 16), NSNumber(value: 16),
+            NSNumber(value: 16), NSNumber(value: 16)
+        ]
 
+        // 弹窗尺寸和位置（自适应布局）
         model.privacyAlertFrameBlock = { screenSize, superViewSize, frame in
-            let alertWidth: CGFloat = 280
-            let alertHeight: CGFloat = 200
+            let alertWidth = screenSize.width - 80  // 左右各留40边距
+            let alertHeight: CGFloat = 220
             return CGRect(
                 x: (screenSize.width - alertWidth) / 2,
                 y: (screenSize.height - alertHeight) / 2,
@@ -387,17 +442,61 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
             )
         }
 
-        model.privacyAlertButtonFrameBlock = { screenSize, superViewSize, frame in
+        // 弹窗标题位置（自适应）
+        model.privacyAlertTitleFrameBlock = { screenSize, superViewSize, frame in
+            let margin: CGFloat = 20
             return CGRect(
-                x: 20,
-                y: superViewSize.height - 62,
-                width: superViewSize.width - 40,
-                height: 42
+                x: margin,
+                y: margin,
+                width: superViewSize.width - margin * 2,
+                height: 25
             )
         }
 
-        // 协议详情页
-        model.privacyVCIsCustomized = true  // 使用自定义处理协议链接点击
+        // 弹窗内容区域（自适应）
+        model.privacyAlertPrivacyContentFrameBlock = { screenSize, superViewSize, frame in
+            let margin: CGFloat = 20
+            let titleHeight: CGFloat = 25
+            let titleMargin: CGFloat = 20
+            let contentTop = titleMargin + titleHeight + 10  // 标题下方留10pt间距
+            return CGRect(
+                x: margin,
+                y: contentTop,
+                width: superViewSize.width - margin * 2,
+                height: 100
+            )
+        }
+
+        // 弹窗按钮（自适应）
+        model.privacyAlertButtonFrameBlock = { screenSize, superViewSize, frame in
+            let margin: CGFloat = 20
+            let btnHeight: CGFloat = 42
+            return CGRect(
+                x: margin,
+                y: superViewSize.height - btnHeight - margin,
+                width: superViewSize.width - margin * 2,
+                height: btnHeight
+            )
+        }
+
+        // 关闭按钮位置（自适应，距右侧15，距顶部0）
+        model.privacyAlertCloseFrameBlock = { screenSize, superViewSize, frame in
+            let btnSize: CGFloat = 44
+            let rightMargin: CGFloat = 15
+            return CGRect(
+                x: superViewSize.width - btnSize - rightMargin,
+                y: 0,
+                width: btnSize,
+                height: btnSize
+            )
+        }
+
+        // ========== 登录loading动画 ==========
+        // 自动隐藏登录loading，默认为YES
+        model.autoHideLoginLoading = true
+
+        // ========== 协议详情页（使用自定义处理） ==========
+        model.privacyVCIsCustomized = true
         model.privacyNavColor = .white
         model.privacyNavTitleFont = UIFont.systemFont(ofSize: 18, weight: .medium)
         model.privacyNavTitleColor = .black
@@ -406,6 +505,49 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
     }
 
     // MARK: - Helper Methods
+
+    private func createGradientButtonImage(startColor: UIColor, endColor: UIColor, cornerRadius: CGFloat) -> UIImage {
+        // 创建一个足够大的画布来绘制圆角矩形
+        let size = CGSize(width: cornerRadius * 2 + 10, height: cornerRadius * 2)
+        UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
+
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return UIImage()
+        }
+
+        // 创建圆角矩形路径
+        let rect = CGRect(origin: .zero, size: size)
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
+        path.addClip()
+
+        // 创建水平渐变（从左到右，angle=0）
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let colors = [startColor.cgColor, endColor.cgColor] as CFArray
+        let locations: [CGFloat] = [0.0, 1.0]
+
+        guard let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: locations) else {
+            return UIImage()
+        }
+
+        // 绘制水平渐变
+        let startPoint = CGPoint(x: 0, y: rect.midY)
+        let endPoint = CGPoint(x: rect.maxX, y: rect.midY)
+        context.drawLinearGradient(gradient, start: startPoint, end: endPoint, options: [])
+
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        // 设置可拉伸区域，使图片可以缩放到任意尺寸
+        return image?.resizableImage(
+            withCapInsets: UIEdgeInsets(
+                top: cornerRadius,
+                left: cornerRadius,
+                bottom: cornerRadius,
+                right: cornerRadius
+            ),
+            resizingMode: .stretch
+        ) ?? UIImage()
+    }
 
     private func createRoundedRectImage(color: UIColor, cornerRadius: CGFloat) -> UIImage {
         let size = CGSize(width: cornerRadius * 2 + 10, height: cornerRadius * 2)

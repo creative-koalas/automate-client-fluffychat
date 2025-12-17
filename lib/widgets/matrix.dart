@@ -70,11 +70,35 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
 
   BackgroundPush? backgroundPush;
 
-  Client get client {
+  /// Returns the currently active Matrix client.
+  ///
+  /// Returns null if no clients are available (e.g., during first-time login
+  /// before the client is fully initialized and added to the list).
+  Client? get clientOrNull {
+    debugPrint('[Matrix] clientOrNull called, clients.length=${widget.clients.length}, hashCode=${widget.clients.hashCode}');
+    if (widget.clients.isEmpty) {
+      debugPrint('[Matrix] clientOrNull: clients is empty, returning null');
+      return null;
+    }
     if (_activeClient < 0 || _activeClient >= widget.clients.length) {
       return widget.clients.first;
     }
     return widget.clients[_activeClient];
+  }
+
+  /// Returns the currently active Matrix client.
+  ///
+  /// Throws [StateError] if no clients are available. Prefer using [clientOrNull]
+  /// in contexts where the client might not be initialized yet.
+  Client get client {
+    final c = clientOrNull;
+    if (c == null) {
+      throw StateError(
+        'No Matrix client available. This usually happens during first-time login '
+        'before the client is fully initialized. Use clientOrNull for null-safe access.',
+      );
+    }
+    return c;
   }
 
   VoipPlugin? voipPlugin;
@@ -112,7 +136,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   final ValueNotifier<String?> voiceMessageEventId = ValueNotifier(null);
 
   Future<Client> getLoginClient() async {
+    debugPrint('[Matrix] getLoginClient called, clients.length=${widget.clients.length}');
     if (widget.clients.isNotEmpty && !client.isLogged()) {
+      debugPrint('[Matrix] Returning existing client (not logged in)');
       return client;
     }
     final candidate =
@@ -125,8 +151,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
               .where((l) => l == LoginState.loggedIn)
               .first
               .then((_) {
+            debugPrint('[Matrix] onLoginStateChanged: loggedIn, adding client to list');
             if (!widget.clients.contains(_loginClientCandidate)) {
               widget.clients.add(_loginClientCandidate!);
+              debugPrint('[Matrix] Client added via onLoginStateChanged, clients.length=${widget.clients.length}');
             }
             ClientManager.addClientNameToStore(
               _loginClientCandidate!.clientName,
@@ -136,7 +164,12 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
             _loginClientCandidate = null;
             PsygoApp.router.go('/rooms');
           });
-    if (widget.clients.isEmpty) widget.clients.add(candidate);
+    debugPrint('[Matrix] Before adding candidate: clients.isEmpty=${widget.clients.isEmpty}');
+    if (widget.clients.isEmpty) {
+      widget.clients.add(candidate);
+      debugPrint('[Matrix] Candidate added to clients list, clients.length=${widget.clients.length}');
+    }
+    debugPrint('[Matrix] getLoginClient returning, clients.length=${widget.clients.length}');
     return candidate;
   }
 
@@ -250,8 +283,12 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           PsygoApp.router.go('/rooms');
         }
       } else {
-        PsygoApp.router
-            .go(state == LoginState.loggedIn ? '/rooms' : '/login-signup');
+        // Mobile: Don't redirect to /login-signup, let AuthGate handle
+        // Web: Redirect to /login-signup for manual login
+        final destination = state == LoginState.loggedIn
+            ? '/rooms'
+            : (kIsWeb ? '/login-signup' : '/');
+        PsygoApp.router.go(destination);
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
@@ -345,8 +382,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       if (success) {
         Logs().i('[Matrix] Aliyun Push initialized successfully');
 
-        // 如果用户已登录
-        if (client.isLogged() && client.userID != null) {
+        // 如果用户已登录（确保客户端列表不为空）
+        if (widget.clients.isNotEmpty && client.isLogged() && client.userID != null) {
           // 绑定账号用于精准推送
           await AliyunPushService.instance.bindAccount(client.userID!);
 

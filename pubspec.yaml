@@ -118,6 +118,9 @@ flutter_launcher_icons:
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/logo.png"
 
+tobias:
+  url_scheme: psygo
+
 flutter:
   generate: true
   uses-material-design: true

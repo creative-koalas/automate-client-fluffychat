@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 
@@ -26,21 +27,27 @@ abstract class ClientManager {
     bool initialize = true,
     required SharedPreferences store,
   }) async {
+    developer.log('[ClientManager] getClients called', name: 'ClientManager');
     final clientNames = <String>{};
     try {
       final clientNamesList = store.getStringList(clientNamespace) ?? [];
       clientNames.addAll(clientNamesList);
+      developer.log('[ClientManager] Found ${clientNames.length} client names', name: 'ClientManager');
     } catch (e, s) {
       Logs().w('Client names in store are corrupted', e, s);
       await store.remove(clientNamespace);
     }
     if (clientNames.isEmpty) {
+      developer.log('[ClientManager] No client names, adding default', name: 'ClientManager');
       clientNames.add(PlatformInfos.clientName);
       await store.setStringList(clientNamespace, clientNames.toList());
     }
+    developer.log('[ClientManager] Creating ${clientNames.length} clients...', name: 'ClientManager');
     final clients =
         await Future.wait(clientNames.map((name) => createClient(name, store)));
+    developer.log('[ClientManager] Clients created', name: 'ClientManager');
     if (initialize) {
+      developer.log('[ClientManager] Initializing clients...', name: 'ClientManager');
       await Future.wait(
         clients.map(
           (client) => client.initWithRestore(
@@ -56,8 +63,10 @@ abstract class ClientManager {
           ),
         ),
       );
+      developer.log('[ClientManager] Clients initialized', name: 'ClientManager');
     }
     if (clients.length > 1 && clients.any((c) => !c.isLogged())) {
+      developer.log('[ClientManager] Removing logged out clients...', name: 'ClientManager');
       final loggedOutClients = clients.where((c) => !c.isLogged()).toList();
       for (final client in loggedOutClients) {
         Logs().w(
@@ -68,6 +77,7 @@ abstract class ClientManager {
       }
       await store.setStringList(clientNamespace, clientNames.toList());
     }
+    developer.log('[ClientManager] getClients complete, returning ${clients.length} clients', name: 'ClientManager');
     return clients;
   }
 
@@ -100,8 +110,13 @@ abstract class ClientManager {
     String clientName,
     SharedPreferences store,
   ) async {
+    developer.log('[ClientManager] createClient: $clientName', name: 'ClientManager');
     final shareKeysWith = AppSettings.shareKeysWith.value;
     final enableSoftLogout = AppSettings.enableSoftLogout.value;
+
+    developer.log('[ClientManager] Building database for: $clientName', name: 'ClientManager');
+    final database = await flutterMatrixSdkDatabaseBuilder(clientName);
+    developer.log('[ClientManager] Database built for: $clientName', name: 'ClientManager');
 
     return Client(
       clientName,
@@ -115,8 +130,8 @@ abstract class ClientManager {
         // To make room emotes work
         'im.ponies.room_emotes',
       },
-      logLevel: Level.verbose,
-      database: await flutterMatrixSdkDatabaseBuilder(clientName),
+      logLevel: kReleaseMode ? Level.warning : Level.verbose,
+      database: database,
       supportedLoginTypes: {
         AuthenticationTypes.password,
         AuthenticationTypes.sso,
