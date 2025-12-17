@@ -1,7 +1,10 @@
+import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:isolate';
 import 'dart:ui';
-import 'package:flutter/material.dart';
+
 import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
@@ -30,6 +33,25 @@ void main() async {
   // To make sure that the parts of flutter needed are started up already, we need to ensure that the
   // widget bindings are initialized already.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // DEBUG: PC 端每次启动清除登录状态（方便开发调试）
+  if (PlatformInfos.isDesktop) {
+    debugPrint('[DEBUG] Desktop: Clearing all login state...');
+    await const FlutterSecureStorage().deleteAll();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    debugPrint('[DEBUG] Desktop: Login state cleared!');
+  }
+
+  // iOS: Avoid "black screen" on cold start by rendering a first frame ASAP.
+  // Client restore / database open can be slow or hang on some iOS setups after
+  // the user kills the app; doing this work before `runApp` leaves the screen
+  // blank. We bootstrap inside a widget and start heavy init after the first
+  // frame.
+  if (PlatformInfos.isIOS) {
+    runApp(const _IosStartupApp());
+    return;
+  }
 
   final store = await AppSettings.init();
   Logs().i('Welcome to ${AppSettings.applicationName.value} <3');
@@ -69,14 +91,229 @@ void main() async {
   await startGui(clients, store);
 }
 
+class _IosStartupApp extends StatefulWidget {
+  const _IosStartupApp();
+
+  @override
+  State<_IosStartupApp> createState() => _IosStartupAppState();
+}
+
+class _IosStartupAppState extends State<_IosStartupApp> {
+  Future<_IosStartupData>? _initFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _initFuture = _init();
+      });
+    });
+  }
+
+  Future<_IosStartupData> _init() async {
+    developer.log('[iOS Startup] Starting initialization...', name: 'Startup');
+
+    developer.log('[iOS Startup] Initializing AppSettings...', name: 'Startup');
+    final store = await AppSettings.init();
+    Logs().i('Welcome to ${AppSettings.applicationName.value} <3');
+    developer.log('[iOS Startup] AppSettings initialized', name: 'Startup');
+
+    developer.log('[iOS Startup] Initializing vodozemac...', name: 'Startup');
+    await vod.init(wasmPath: './assets/assets/vodozemac/');
+    Logs().nativeColors = false;
+    developer.log('[iOS Startup] Vodozemac initialized', name: 'Startup');
+
+    developer.log('[iOS Startup] Getting Matrix clients (timeout: 45s)...', name: 'Startup');
+    final clients = await ClientManager.getClients(store: store)
+        .timeout(const Duration(seconds: 45));
+    developer.log('[iOS Startup] Got ${clients.length} Matrix clients', name: 'Startup');
+
+    String? pin;
+    try {
+      developer.log('[iOS Startup] Reading PIN from keychain...', name: 'Startup');
+      pin = await const FlutterSecureStorage().read(
+        key: 'chat.fluffy.app_lock',
+      );
+      developer.log('[iOS Startup] PIN read complete (${pin != null ? "found" : "not found"})', name: 'Startup');
+    } catch (e, s) {
+      developer.log('[iOS Startup] PIN read ERROR: $e', name: 'Startup', error: e);
+      Logs().d('Unable to read PIN from Secure storage', e, s);
+    }
+
+    developer.log('[iOS Startup] Preloading first client data...', name: 'Startup');
+    final firstClient = clients.firstOrNull;
+    if (firstClient != null) {
+      final roomsLoading = firstClient.roomsLoading;
+      if (roomsLoading != null) {
+        unawaited(
+          roomsLoading.catchError(
+            (e, s) {
+              Logs().w('roomsLoading failed', e, s);
+            },
+          ),
+        );
+      }
+      final accountDataLoading = firstClient.accountDataLoading;
+      if (accountDataLoading != null) {
+        unawaited(
+          accountDataLoading.catchError(
+            (e, s) {
+              Logs().w('accountDataLoading failed', e, s);
+            },
+          ),
+        );
+      }
+    }
+
+    developer.log('[iOS Startup] Initialization complete!', name: 'Startup');
+    return _IosStartupData(store: store, clients: clients, pincode: pin);
+  }
+
+  void _retry() {
+    setState(() {
+      _initFuture = _init();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final future = _initFuture;
+    if (future == null) {
+      return const MaterialApp(
+        home: _StartupLoadingScreen(
+          message: '正在启动…',
+        ),
+        debugShowCheckedModeBanner: false,
+      );
+    }
+
+    return FutureBuilder<_IosStartupData>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const MaterialApp(
+            home: _StartupLoadingScreen(
+              message: '正在初始化数据…',
+            ),
+            debugShowCheckedModeBanner: false,
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          final errorText = snapshot.error?.toString() ?? 'Unknown error';
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: _StartupErrorScreen(
+              errorText: errorText,
+              onRetry: _retry,
+            ),
+          );
+        }
+
+        final data = snapshot.data!;
+        return PsygoApp(
+          clients: data.clients,
+          pincode: data.pincode,
+          store: data.store,
+        );
+      },
+    );
+  }
+}
+
+class _IosStartupData {
+  final List<Client> clients;
+  final String? pincode;
+  final SharedPreferences store;
+
+  const _IosStartupData({
+    required this.clients,
+    required this.store,
+    required this.pincode,
+  });
+}
+
+class _StartupLoadingScreen extends StatelessWidget {
+  final String message;
+
+  const _StartupLoadingScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(height: 16),
+            Text(message),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StartupErrorScreen extends StatelessWidget {
+  final String errorText;
+  final VoidCallback onRetry;
+
+  const _StartupErrorScreen({
+    required this.errorText,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48),
+              const SizedBox(height: 12),
+              const Text(
+                '启动失败',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                errorText,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: onRetry,
+                child: const Text('重试'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Fetch the pincode for the applock and start the flutter engine.
 Future<void> startGui(List<Client> clients, SharedPreferences store) async {
   // Fetch the pin for the applock if existing for mobile applications.
   String? pin;
   if (PlatformInfos.isMobile) {
     try {
-      pin =
-          await const FlutterSecureStorage().read(key: 'chat.fluffy.app_lock');
+      pin = await const FlutterSecureStorage().read(
+        key: 'chat.fluffy.app_lock',
+      );
     } catch (e, s) {
       Logs().d('Unable to read PIN from Secure storage', e, s);
     }

@@ -109,6 +109,15 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
 
       // 新用户需要先关闭授权页再弹邀请码框
       if (verifyResponse.isNewUser) {
+        // CRITICAL iOS FIX: Set _isInAuthFlow = false BEFORE closing auth page
+        // When we close the auth page, iOS will trigger AppLifecycleState.resumed
+        // If _isInAuthFlow is still true, didChangeAppLifecycleState will close the page again
+        setState(() {
+          _isInAuthFlow = false;
+          loading = false;
+        });
+
+        // Now safe to close Aliyun auth page
         await OneClickLoginService.quitLoginPage();
       }
 
@@ -120,7 +129,7 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
         },
       );
 
-      // 关闭授权页
+      // 关闭授权页（老用户流程，授权页可能还在）
       _isInAuthFlow = false;
       if (success) {
         await OneClickLoginService.quitLoginPage();

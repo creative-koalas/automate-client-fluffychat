@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:ui';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -63,6 +64,7 @@ extension InitWithRestoreExtension on Client {
   }
 
   Future<void> initWithRestore({void Function()? onMigration}) async {
+    developer.log('[InitWithRestore] Starting for client: $clientName', name: 'InitWithRestore');
     final storageKey =
         '${AppSettings.applicationName.value}_session_backup_$clientName';
     final storage = PlatformInfos.isMobile || PlatformInfos.isLinux
@@ -70,6 +72,7 @@ extension InitWithRestoreExtension on Client {
         : null;
 
     try {
+      developer.log('[InitWithRestore] Calling client.init()...', name: 'InitWithRestore');
       await init(
         onInitStateChanged: (state) {
           if (state == InitState.migratingDatabase) onMigration?.call();

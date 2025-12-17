@@ -378,20 +378,39 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         await PermissionService.instance.requestPushPermissions();
       }
 
-      // 先退到后台，这样用户看不到自动跳转到 /rooms
-      debugPrint('[Onboarding] 先退到后台...');
-      await AppControlService.moveToBackground();
+      // 平台差异处理：
+      // Android: 先退到后台，再登录 Matrix（用户在桌面，不会看到跳转）
+      // iOS: 直接登录 Matrix 并跳转到主页（iOS 无法安全地退到后台）
+      if (PlatformInfos.isAndroid) {
+        debugPrint('[Onboarding] Android: 先退到后台...');
+        await AppControlService.moveToBackground();
 
-      // 然后再登录 Matrix（在后台完成）
-      // MatrixState 会触发导航到 /rooms，但用户已经在桌面了
-      await client.init(
-        newToken: matrixAccessToken,
-        newUserID: matrixUserId,
-        newHomeserver: homeserverUrl,
-        newDeviceName: PlatformInfos.clientName,
-        newDeviceID: matrixDeviceId,
-      );
-      debugPrint('[Onboarding] Matrix 登录成功（后台完成）');
+        // 在后台完成 Matrix 登录
+        await client.init(
+          newToken: matrixAccessToken,
+          newUserID: matrixUserId,
+          newHomeserver: homeserverUrl,
+          newDeviceName: PlatformInfos.clientName,
+          newDeviceID: matrixDeviceId,
+        );
+        debugPrint('[Onboarding] Android: Matrix 登录成功（后台完成）');
+      } else {
+        // iOS: 直接登录 Matrix 并跳转到主页
+        debugPrint('[Onboarding] iOS: 登录 Matrix 并跳转到主页...');
+        await client.init(
+          newToken: matrixAccessToken,
+          newUserID: matrixUserId,
+          newHomeserver: homeserverUrl,
+          newDeviceName: PlatformInfos.clientName,
+          newDeviceID: matrixDeviceId,
+        );
+        debugPrint('[Onboarding] iOS: Matrix 登录成功');
+
+        // 跳转到主页
+        if (mounted) {
+          context.go('/rooms');
+        }
+      }
     } catch (e) {
       debugPrint('[Onboarding] Matrix 登录失败: $e');
       _showLoginErrorAndRedirect('登录失败: $e');
@@ -409,10 +428,12 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       ),
     );
 
-    // 延迟后重定向到登录页
+    // 延迟后重定向
+    // Mobile: Go to root, let AuthGate handle re-login
+    // Web: Go to /login-signup for manual login
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        context.go('/login-signup');
+        context.go(kIsWeb ? '/login-signup' : '/');
       }
     });
   }

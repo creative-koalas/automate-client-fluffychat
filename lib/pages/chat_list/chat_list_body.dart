@@ -26,7 +26,15 @@ class ChatListViewBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final client = Matrix.of(context).client;
+    final client = Matrix.of(context).clientOrNull;
+
+    // Show loading state if no client is available yet
+    // This can happen during first-time login before the client is initialized
+    if (client == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
     final publicRooms = controller.roomSearchResult?.chunk.toList();
     final userSearchResult = controller.userSearchResult;
     const dummyChatCount = 4;
