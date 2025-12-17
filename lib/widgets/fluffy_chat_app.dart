@@ -714,6 +714,65 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Widget _buildLoadingScreen(String message) {
+    // PC端使用新的主题风格
+    if (PlatformInfos.isDesktop) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      const Color(0xFF0A1628),
+                      const Color(0xFF0D2233),
+                      const Color(0xFF0F3D3E),
+                    ]
+                  : [
+                      const Color(0xFFF0F4F8),
+                      const Color(0xFFE8EFF5),
+                      const Color(0xFFE0F2F1),
+                    ],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: accentColor.withOpacity(0.3),
+                    blurRadius: 40,
+                    spreadRadius: 5,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'assets/logo.png',
+                  width: 100,
+                  height: 100,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 非PC端保持原样
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
@@ -744,6 +803,186 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     final isMatrixError = _errorMessage?.contains('Matrix') ?? false;
     final isNetworkError = _errorMessage?.contains('网络') ?? false;
 
+    // PC端使用新的主题风格
+    if (PlatformInfos.isDesktop) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
+      final subtitleColor = isDark ? Colors.white.withOpacity(0.7) : const Color(0xFF666666);
+      final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+      const errorColor = Color(0xFFFF6B6B);
+
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      const Color(0xFF0A1628),
+                      const Color(0xFF0D2233),
+                      const Color(0xFF0F3D3E),
+                    ]
+                  : [
+                      const Color(0xFFF0F4F8),
+                      const Color(0xFFE8EFF5),
+                      const Color(0xFFE0F2F1),
+                    ],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              margin: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.08),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Error icon
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: errorColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: errorColor,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Title
+                  Text(
+                    '登录失败',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Error message
+                  Text(
+                    _errorMessage ?? '未知错误',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: subtitleColor,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  // Buttons
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      // Retry button
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: isDark
+                                ? [
+                                    const Color(0xFF00B386),
+                                    const Color(0xFF00D4A1),
+                                  ]
+                                : [
+                                    accentColor.withOpacity(0.9),
+                                    accentColor,
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentColor.withOpacity(0.3),
+                              blurRadius: 15,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _state = _AuthState.checking;
+                                _hasTriedAuth = false;
+                                _hasRetriedMatrixLogin = false;
+                                _resumeRetryCount = 0;
+                              });
+                              _checkAuthStateSafe();
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              child: const Text(
+                                '重试',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (isMatrixError)
+                        TextButton(
+                          onPressed: () async {
+                            final auth = context.read<PsygoAuthState>();
+                            await auth.markLoggedOut();
+                            setState(() {
+                              _state = _AuthState.checking;
+                              _hasTriedAuth = false;
+                              _hasRetriedMatrixLogin = false;
+                              _resumeRetryCount = 0;
+                            });
+                            _checkAuthStateSafe();
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: accentColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          ),
+                          child: const Text('重新登录'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 非PC端保持原样
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(

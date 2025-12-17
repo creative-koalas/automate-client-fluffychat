@@ -84,9 +84,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       _startCountdown();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已发送验证码！')),
-        );
+        _showSuccessToast('验证码已发送，请注意查收');
       }
     } catch (e) {
       setState(() {
@@ -94,6 +92,58 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         loading = false;
       });
     }
+  }
+
+  // 显示成功提示（与主题风格一致）
+  void _showSuccessToast(String message) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: isDark
+            ? const Color(0xFF00B386)
+            : accentColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        elevation: 8,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   // 启动倒计时
@@ -729,10 +779,16 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           errorText: phoneError,
           readOnly: loading || codeSent,
           keyboardType: TextInputType.phone,
+          textInputAction: codeSent ? TextInputAction.next : TextInputAction.done,
           isDark: isDark,
           accentColor: accentColor,
           onChanged: (value) {
             setState(() => phoneError = null);
+          },
+          onSubmitted: (_) {
+            if (!codeSent && !loading && countdown == 0) {
+              requestVerificationCode();
+            }
           },
         ),
         SizedBox(height: spacingBetween),
@@ -746,10 +802,16 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             errorText: codeError,
             readOnly: loading,
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
             isDark: isDark,
             accentColor: accentColor,
             onChanged: (value) {
               setState(() => codeError = null);
+            },
+            onSubmitted: (_) {
+              if (!loading) {
+                verifyAndLogin();
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -1513,6 +1575,8 @@ class _GlowingTextField extends StatefulWidget {
   final bool isDark;
   final Color accentColor;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction? textInputAction;
 
   const _GlowingTextField({
     required this.controller,
@@ -1524,6 +1588,8 @@ class _GlowingTextField extends StatefulWidget {
     required this.isDark,
     required this.accentColor,
     this.onChanged,
+    this.onSubmitted,
+    this.textInputAction,
   });
 
   @override
@@ -1596,7 +1662,9 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
             focusNode: _focusNode,
             readOnly: widget.readOnly,
             keyboardType: widget.keyboardType,
+            textInputAction: widget.textInputAction,
             onChanged: widget.onChanged,
+            onSubmitted: widget.onSubmitted,
             style: TextStyle(
               color: textColor,
               fontSize: 15,
