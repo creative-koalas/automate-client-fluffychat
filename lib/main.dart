@@ -34,6 +34,15 @@ void main() async {
   // widget bindings are initialized already.
   WidgetsFlutterBinding.ensureInitialized();
 
+  // DEBUG: PC 端每次启动清除登录状态（方便开发调试）
+  if (PlatformInfos.isDesktop) {
+    debugPrint('[DEBUG] Desktop: Clearing all login state...');
+    await const FlutterSecureStorage().deleteAll();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    debugPrint('[DEBUG] Desktop: Login state cleared!');
+  }
+
   // iOS: Avoid "black screen" on cold start by rendering a first frame ASAP.
   // Client restore / database open can be slow or hang on some iOS setups after
   // the user kills the app; doing this work before `runApp` leaves the screen
