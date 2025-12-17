@@ -128,11 +128,13 @@ class ChatListController extends State<ChatList>
     }
   }
 
-  List<Room> get filteredRooms => Matrix.of(context)
-      .client
-      .rooms
-      .where(getRoomFilterByActiveFilter(activeFilter))
-      .toList();
+  List<Room> get filteredRooms {
+    final client = Matrix.of(context).clientOrNull;
+    if (client == null) return [];
+    return client.rooms
+        .where(getRoomFilterByActiveFilter(activeFilter))
+        .toList();
+  }
 
   bool isSearchMode = false;
   Future<QueryPublicRoomsResponse>? publicRoomsResponse;
@@ -152,7 +154,7 @@ class ChatListController extends State<ChatList>
       okLabel: L10n.of(context).ok,
       cancelLabel: L10n.of(context).cancel,
       prefixText: 'https://',
-      hintText: Matrix.of(context).client.homeserver?.host,
+      hintText: Matrix.of(context).clientOrNull?.homeserver?.host,
       initialText: searchServer,
       keyboardType: TextInputType.url,
       autocorrect: false,
@@ -173,7 +175,8 @@ class ChatListController extends State<ChatList>
   final FocusNode searchFocusNode = FocusNode();
 
   void _search() async {
-    final client = Matrix.of(context).client;
+    final client = Matrix.of(context).clientOrNull;
+    if (client == null) return;
     if (!isSearching) {
       setState(() {
         isSearching = true;
@@ -598,7 +601,8 @@ class ChatListController extends State<ChatList>
   }
 
   void setStatus() async {
-    final client = Matrix.of(context).client;
+    final client = Matrix.of(context).clientOrNull;
+    if (client == null) return;
     final currentPresence = await client.fetchCurrentPresence(client.userID!);
     final input = await showTextInputDialog(
       useRootNavigator: false,
@@ -628,7 +632,18 @@ class ChatListController extends State<ChatList>
   bool waitForFirstSync = false;
 
   Future<void> _waitForFirstSync() async {
-    final client = Matrix.of(context).client;
+    final client = Matrix.of(context).clientOrNull;
+
+    // If no client is available yet (first-time login), wait and retry
+    if (client == null) {
+      debugPrint('[ChatList] No client available yet, will retry...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        _waitForFirstSync();
+      }
+      return;
+    }
+
     await client.roomsLoading;
     await client.accountDataLoading;
     await client.userDeviceKeysLoading;

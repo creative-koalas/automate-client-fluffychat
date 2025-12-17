@@ -500,6 +500,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         );
         debugPrint('[AuthGate] Matrix login success, deviceID=${client.deviceID}');
 
+        // CRITICAL: Ensure client is in the clients list after successful login
+        // client.init(newToken:...) may not trigger onLoginStateChanged event,
+        // so we need to explicitly add the client to the list here
+        if (!widget.clients.contains(client)) {
+          widget.clients.add(client);
+          debugPrint('[AuthGate] Client added to clients list, length=${widget.clients.length}');
+        } else {
+          debugPrint('[AuthGate] Client already in clients list, length=${widget.clients.length}');
+        }
+
         setState(() => _state = _AuthState.authenticated);
 
         // Navigate to main page after successful login
@@ -522,6 +532,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // Client is already logged in, just proceed
       debugPrint('[AuthGate] Client already logged in with deviceID=${client.deviceID}');
+
+      // Ensure client is in the clients list
+      if (!widget.clients.contains(client)) {
+        widget.clients.add(client);
+        debugPrint('[AuthGate] Client added to clients list (already logged in), length=${widget.clients.length}');
+      }
+
       setState(() => _state = _AuthState.authenticated);
 
       // Navigate to main page if not already there

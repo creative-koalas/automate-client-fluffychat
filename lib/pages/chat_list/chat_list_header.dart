@@ -22,7 +22,44 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final client = Matrix.of(context).client;
+    final client = Matrix.of(context).clientOrNull;
+
+    // Show placeholder if no client is available yet
+    if (client == null) {
+      return SliverAppBar(
+        floating: true,
+        toolbarHeight: 72,
+        pinned: FluffyThemes.isColumnMode(context),
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        automaticallyImplyLeading: false,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '正在初始化...',
+                style: TextStyle(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.normal,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return SliverAppBar(
       floating: true,
