@@ -1,8 +1,10 @@
 /// Phone number + verification code login page.
-/// Desktop: Two-column layout (brand + form)
+/// Desktop: Centered single column with glassmorphic card
 /// Mobile: Single column with LoginScaffold
 library;
 
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +33,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   bool loading = false;
   bool agreedToEula = false;
   bool codeSent = false;
+  int countdown = 0; // 倒计时秒数
+  Timer? _countdownTimer;
 
   // LoginFlowMixin 实现
   @override
@@ -73,7 +77,11 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       setState(() {
         codeSent = true;
         loading = false;
+        countdown = 60; // 启动60秒倒计时
       });
+
+      // 启动倒计时
+      _startCountdown();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -86,6 +94,20 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         loading = false;
       });
     }
+  }
+
+  // 启动倒计时
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (countdown > 0) {
+        setState(() {
+          countdown--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   /// 验证码登录（两步流程）
@@ -241,6 +263,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     phoneController.dispose();
     codeController.dispose();
     super.dispose();
@@ -248,153 +271,511 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = FluffyThemes.isColumnMode(context);
-
-    if (isDesktop) {
-      return _buildDesktopLayout(context);
-    } else {
-      return _buildMobileLayout(context);
-    }
+    // 统一使用新的响应式设计，自动适配所有屏幕尺寸
+    return _buildDesktopLayout(context);
   }
 
-  /// Desktop: Two-column layout with brand on left, form on right
+  /// Desktop: Centered single-column layout with dark gradient background and glassmorphism
   Widget _buildDesktopLayout(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      body: Row(
-        children: [
-          // Left: Brand panel
-          Expanded(
-            flex: 5,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primaryContainer,
-                    theme.colorScheme.primary.withOpacity(0.8),
-                  ],
-                ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Theme detection
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+
+          // Responsive sizing based on available width
+          final screenWidth = constraints.maxWidth;
+          final screenHeight = constraints.maxHeight;
+
+          // Responsive breakpoints
+          // 超小屏: < 400px (小手机竖屏)
+          // 小屏幕: 400-600px (普通手机竖屏)
+          // 中等屏幕: 600-900px (平板竖屏/小窗口)
+          // 大屏幕: > 900px (平板横屏/桌面)
+          final isExtraSmallScreen = screenWidth < 400;
+          final isSmallScreen = screenWidth >= 400 && screenWidth < 600;
+          final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
+          final isLargeScreen = screenWidth >= 900;
+
+          // Logo 尺寸响应式
+          final logoSize = isExtraSmallScreen ? 80.0
+              : (isSmallScreen ? 90.0
+              : (isMediumScreen ? 105.0 : 120.0));
+          final logoImageHeight = isExtraSmallScreen ? 45.0
+              : (isSmallScreen ? 50.0
+              : (isMediumScreen ? 57.0 : 65.0));
+
+          // 标题字体响应式
+          final titleFontSize = isExtraSmallScreen ? 28.0
+              : (isSmallScreen ? 32.0
+              : (isMediumScreen ? 36.0 : 40.0));
+          final subtitleFontSize = isExtraSmallScreen ? 10.0
+              : (isSmallScreen ? 11.0 : 12.0);
+
+          // 卡片宽度响应式
+          final cardMaxWidth = (isExtraSmallScreen || isSmallScreen)
+              ? screenWidth * 0.92
+              : (isMediumScreen ? 420.0 : 480.0);
+
+          // 间距响应式
+          final cardSpacingTop = isExtraSmallScreen ? 24.0
+              : (isSmallScreen ? 30.0
+              : (isMediumScreen ? 40.0 : 50.0));
+          final verticalPadding = screenHeight < 700 ? 16.0 : 40.0;
+          final horizontalPadding = (isExtraSmallScreen || isSmallScreen) ? 12.0 : 24.0;
+
+          // Theme-based colors
+          final bgColors = isDark
+              ? [
+                  const Color(0xFF0A1628), // Deep blue
+                  const Color(0xFF0D2233), // Mid blue
+                  const Color(0xFF0F3D3E), // Teal
+                ]
+              : [
+                  const Color(0xFFF0F4F8), // Light blue-gray
+                  const Color(0xFFE8EFF5), // Lighter blue
+                  const Color(0xFFE0F2F1), // Light cyan
+                ];
+
+          final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
+          final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: bgColors,
               ),
-              child: Stack(
-                children: [
-                  // Background pattern
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _GridPatternPainter(
-                        color: theme.colorScheme.onPrimary.withOpacity(0.05),
-                      ),
+            ),
+            child: Stack(
+              children: [
+                // Background glowing orbs with pulsing animation
+                _buildGlowingOrbs(isDark),
+
+                // Main content - centered and scrollable
+                Center(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                      vertical: verticalPadding,
                     ),
-                  ),
-                  // Content
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(48.0),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: cardMaxWidth + 40,
+                        minHeight: screenHeight - (verticalPadding * 2),
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Logo
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Image.asset(
-                              'assets/logo_transparent.png',
-                              height: 80,
-                            ),
+                          // Logo with floating animation
+                          _AnimatedFloatingLogo(
+                            size: logoSize,
+                            imageHeight: logoImageHeight,
+                            isDark: isDark,
                           ),
-                          const SizedBox(height: 32),
+                          SizedBox(height: (isExtraSmallScreen || isSmallScreen) ? 16 : 24),
+
                           // Brand name
                           Text(
                             'Psygo',
-                            style: theme.textTheme.displaySmall?.copyWith(
-                              color: theme.colorScheme.onPrimary,
+                            style: TextStyle(
+                              fontSize: titleFontSize,
                               fontWeight: FontWeight.bold,
+                              color: textColor,
+                              letterSpacing: -1,
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          // Tagline
-                          Text(
-                            'AI 驱动的智能自动化平台',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: theme.colorScheme.onPrimary.withOpacity(0.9),
+                          const SizedBox(height: 12),
+
+                          // Subtitle with sparkle icon
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '✦',
+                                style: TextStyle(
+                                  fontSize: subtitleFontSize - 2,
+                                  color: accentColor,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'AI 驱动的智能自动化平台',
+                                style: TextStyle(
+                                  fontSize: subtitleFontSize,
+                                  color: accentColor,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: cardSpacingTop),
+
+                          // Glassmorphic login card
+                          ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: cardMaxWidth),
+                            child: _buildGlassmorphicCard(
+                              context,
+                              isExtraSmallScreen || isSmallScreen,
+                              isDark,
+                              textColor,
+                              accentColor,
                             ),
-                          ),
-                          const SizedBox(height: 48),
-                          // Features
-                          _buildFeatureItem(
-                            context,
-                            Icons.smart_toy_outlined,
-                            '智能 Agent',
-                            '创建专属 AI 助手，自动执行任务',
-                          ),
-                          const SizedBox(height: 16),
-                          _buildFeatureItem(
-                            context,
-                            Icons.integration_instructions_outlined,
-                            '多平台集成',
-                            '连接飞书、Telegram、浏览器等',
-                          ),
-                          const SizedBox(height: 16),
-                          _buildFeatureItem(
-                            context,
-                            Icons.security_outlined,
-                            '安全可靠',
-                            '端到端加密，数据安全有保障',
                           ),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Build animated glowing orbs for background
+  Widget _buildGlowingOrbs(bool isDark) {
+    // Theme-based glow colors
+    final glowColor1 = isDark ? const Color(0xFF00D4FF) : const Color(0xFF4FC3F7);
+    final glowColor2 = isDark ? const Color(0xFF00FF9F) : const Color(0xFF81C784);
+    final glowColor3 = isDark ? const Color(0xFF0099FF) : const Color(0xFF64B5F6);
+
+    return Stack(
+      children: [
+        // Top-left glow
+        Positioned(
+          top: -200,
+          left: -200,
+          child: _PulsingGlow(
+            size: 500,
+            color: glowColor1,
+            delay: Duration.zero,
+            isDark: isDark,
+          ),
+        ),
+        // Bottom-right glow
+        Positioned(
+          bottom: -200,
+          right: -200,
+          child: _PulsingGlow(
+            size: 500,
+            color: glowColor2,
+            delay: const Duration(seconds: 2),
+            isDark: isDark,
+          ),
+        ),
+        // Center glow
+        Positioned.fill(
+          child: Center(
+            child: _PulsingGlow(
+              size: 500,
+              color: glowColor3,
+              delay: const Duration(seconds: 1),
+              isDark: isDark,
             ),
           ),
+        ),
+      ],
+    );
+  }
 
-          // Right: Login form
-          Expanded(
-            flex: 4,
-            child: Container(
-              color: theme.colorScheme.surface,
-              child: Stack(
-                children: [
-                  // Back button
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.pop(),
-                      tooltip: '返回',
-                    ),
-                  ),
-                  // Form
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(48),
-                        child: _buildLoginForm(context),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  /// Glassmorphic card container
+  Widget _buildGlassmorphicCard(
+    BuildContext context,
+    bool isSmallScreen,
+    bool isDark,
+    Color textColor,
+    Color accentColor,
+  ) {
+    final horizontalPadding = isSmallScreen ? 24.0 : 35.0;
+    final verticalPadding = isSmallScreen ? 30.0 : 40.0;
+
+    // Theme-based card colors
+    final cardBgColor = isDark
+        ? Colors.white.withOpacity(0.05)
+        : Colors.white.withOpacity(0.4);
+    final borderColor = isDark
+        ? Colors.white.withOpacity(0.1)
+        : Colors.white.withOpacity(0.5);
+    final shadowColor = isDark
+        ? Colors.black.withOpacity(0.3)
+        : Colors.black.withOpacity(0.1);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: borderColor,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: 32,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            child: _buildGlassmorphicLoginForm(
+              context,
+              isSmallScreen,
+              isDark,
+              textColor,
+              accentColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Login form content inside glassmorphic card
+  Widget _buildGlassmorphicLoginForm(
+    BuildContext context,
+    bool isSmallScreen,
+    bool isDark,
+    Color textColor,
+    Color accentColor,
+  ) {
+    final titleFontSize = isSmallScreen ? 24.0 : 28.0;
+    final subtitleFontSize = isSmallScreen ? 13.0 : 14.0;
+    final spacingTop = isSmallScreen ? 28.0 : 35.0;
+    final spacingBetween = isSmallScreen ? 20.0 : 25.0;
+
+    final subtitleColor = isDark
+        ? Colors.white.withOpacity(0.6)
+        : const Color(0xFF5A6A7A);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Title
+        Text(
+          '登录 / 注册',
+          style: TextStyle(
+            fontSize: titleFontSize,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Subtitle
+        Text(
+          '请验证您的手机号以继续',
+          style: TextStyle(
+            fontSize: subtitleFontSize,
+            color: subtitleColor,
+          ),
+        ),
+        SizedBox(height: spacingTop),
+
+        // Phone input with glow on focus
+        _GlowingTextField(
+          controller: phoneController,
+          hintText: '请输入手机号',
+          prefixIcon: Icons.phone_outlined,
+          errorText: phoneError,
+          readOnly: loading || codeSent,
+          keyboardType: TextInputType.phone,
+          isDark: isDark,
+          accentColor: accentColor,
+          onChanged: (value) {
+            setState(() => phoneError = null);
+          },
+        ),
+        SizedBox(height: spacingBetween),
+
+        // Verification code input (shown after code is sent)
+        if (codeSent) ...[
+          _GlowingTextField(
+            controller: codeController,
+            hintText: '请输入验证码',
+            prefixIcon: Icons.lock_outline,
+            errorText: codeError,
+            readOnly: loading,
+            keyboardType: TextInputType.number,
+            isDark: isDark,
+            accentColor: accentColor,
+            onChanged: (value) {
+              setState(() => codeError = null);
+            },
+          ),
+          const SizedBox(height: 12),
+          // Resend button
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: countdown > 0 ? null : requestVerificationCode,
+              child: Text(
+                countdown > 0 ? '${countdown}秒后重新发送' : '重新发送验证码',
+                style: TextStyle(
+                  color: countdown > 0
+                      ? (isDark ? Colors.white.withOpacity(0.4) : const Color(0xFF9E9E9E))
+                      : accentColor,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: spacingBetween),
+        ],
+
+        // Agreement checkbox
+        Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: Checkbox(
+                value: agreedToEula,
+                onChanged: (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
+                fillColor: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return accentColor;
+                  }
+                  return Colors.transparent;
+                }),
+                side: BorderSide(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.3),
+                  width: 2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: subtitleColor,
+                  ),
+                  children: [
+                    const TextSpan(text: '我已阅读并同意 '),
+                    WidgetSpan(
+                      child: GestureDetector(
+                        onTap: loading ? null : showEula,
+                        child: Text(
+                          '《用户协议》',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: accentColor,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const TextSpan(text: ' 和 '),
+                    WidgetSpan(
+                      child: GestureDetector(
+                        onTap: loading ? null : showPrivacyPolicy,
+                        child: Text(
+                          '《隐私政策》',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: accentColor,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: spacingBetween),
+
+        // Get verification code or Login button
+        if (!codeSent)
+          _GradientButton(
+            onPressed: (loading || countdown > 0) ? null : requestVerificationCode,
+            loading: loading,
+            text: countdown > 0 ? '${countdown}秒后重试' : '获取验证码',
+            isDark: isDark,
+            accentColor: accentColor,
+          )
+        else
+          _GradientButton(
+            onPressed: loading ? null : verifyAndLogin,
+            loading: loading,
+            text: '登录 / 注册',
+            isDark: isDark,
+            accentColor: accentColor,
+          ),
+
+        SizedBox(height: isSmallScreen ? 24 : 30),
+
+        // Security notice
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      (isDark ? Colors.white : Colors.black).withOpacity(0.2),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                '安全加密 · 隐私保护',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark
+                      ? Colors.white.withOpacity(0.4)
+                      : const Color(0xFF9E9E9E),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      (isDark ? Colors.white : Colors.black).withOpacity(0.2),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -818,6 +1199,420 @@ Psygo（以下简称"我们"）非常重视用户的隐私保护。本隐私政�
 如果您对本隐私政策有任何疑问，请通过以下方式联系我们：
 - 邮箱：support@creativekoalas.com
 ''';
+
+// ============================================================================
+// Custom Components for Glassmorphic Design
+// ============================================================================
+
+/// Pulsing glow orb for background animation
+class _PulsingGlow extends StatefulWidget {
+  final double size;
+  final Color color;
+  final Duration delay;
+  final bool isDark;
+
+  const _PulsingGlow({
+    required this.size,
+    required this.color,
+    required this.delay,
+    required this.isDark,
+  });
+
+  @override
+  State<_PulsingGlow> createState() => _PulsingGlowState();
+}
+
+class _PulsingGlowState extends State<_PulsingGlow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 4),
+      vsync: this,
+    );
+
+    // Light mode uses softer opacity
+    final minOpacity = widget.isDark ? 0.2 : 0.15;
+    final maxOpacity = widget.isDark ? 0.4 : 0.25;
+
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: minOpacity, end: maxOpacity),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: maxOpacity, end: minOpacity),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.1),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.1, end: 1.0),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    Future.delayed(widget.delay, () {
+      if (mounted) {
+        _controller.repeat();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  widget.color.withOpacity(_opacityAnimation.value),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.7],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Floating logo with animation
+class _AnimatedFloatingLogo extends StatefulWidget {
+  final double size;
+  final double imageHeight;
+  final bool isDark;
+
+  const _AnimatedFloatingLogo({
+    this.size = 120.0,
+    this.imageHeight = 65.0,
+    this.isDark = true,
+  });
+
+  @override
+  State<_AnimatedFloatingLogo> createState() => _AnimatedFloatingLogoState();
+}
+
+class _AnimatedFloatingLogoState extends State<_AnimatedFloatingLogo>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _floatAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _floatAnimation = Tween<double>(begin: 0, end: -10).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = widget.size * 0.2; // 20% of size
+    final shadowColor = widget.isDark
+        ? const Color(0xFF00FF9F)
+        : const Color(0xFF81C784);
+
+    return AnimatedBuilder(
+      animation: _floatAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, _floatAnimation.value),
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(borderRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor.withOpacity(widget.isDark ? 0.4 : 0.3),
+                  blurRadius: 60,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/logo_transparent.png',
+                height: widget.imageHeight,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Glowing text field with focus animation
+class _GlowingTextField extends StatefulWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final IconData prefixIcon;
+  final String? errorText;
+  final bool readOnly;
+  final TextInputType keyboardType;
+  final bool isDark;
+  final Color accentColor;
+  final ValueChanged<String>? onChanged;
+
+  const _GlowingTextField({
+    required this.controller,
+    required this.hintText,
+    required this.prefixIcon,
+    this.errorText,
+    required this.readOnly,
+    required this.keyboardType,
+    required this.isDark,
+    required this.accentColor,
+    this.onChanged,
+  });
+
+  @override
+  State<_GlowingTextField> createState() => _GlowingTextFieldState();
+}
+
+class _GlowingTextFieldState extends State<_GlowingTextField> {
+  bool _isFocused = false;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Theme-based colors
+    final textColor = widget.isDark ? Colors.white : const Color(0xFF1A2332);
+    final hintColor = widget.isDark
+        ? Colors.white.withOpacity(0.4)
+        : const Color(0xFF9E9E9E);
+    final iconColor = widget.isDark
+        ? Colors.white.withOpacity(0.5)
+        : const Color(0xFF757575);
+    final fillColor = widget.isDark
+        ? Colors.white.withOpacity(0.08)
+        : Colors.black.withOpacity(0.03);
+    final borderColor = widget.isDark
+        ? Colors.white.withOpacity(0.1)
+        : Colors.black.withOpacity(0.15);
+    final focusBorderColor = widget.isDark
+        ? const Color(0xFF00D4FF)
+        : widget.accentColor;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _isFocused ? focusBorderColor : borderColor,
+              width: _isFocused ? 2 : 1,
+            ),
+            boxShadow: _isFocused
+                ? [
+                    BoxShadow(
+                      color: widget.accentColor.withOpacity(0.3),
+                      blurRadius: 30,
+                      spreadRadius: 0,
+                    ),
+                  ]
+                : null,
+          ),
+          child: TextField(
+            controller: widget.controller,
+            focusNode: _focusNode,
+            readOnly: widget.readOnly,
+            keyboardType: widget.keyboardType,
+            onChanged: widget.onChanged,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              hintStyle: TextStyle(
+                color: hintColor,
+              ),
+              prefixIcon: Icon(
+                widget.prefixIcon,
+                color: iconColor,
+                size: 20,
+              ),
+              filled: true,
+              fillColor: fillColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
+        if (widget.errorText != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            widget.errorText!,
+            style: const TextStyle(
+              color: Color(0xFFFF6B6B),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Gradient button with loading state
+class _GradientButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final bool loading;
+  final String text;
+  final bool isDark;
+  final Color accentColor;
+
+  const _GradientButton({
+    required this.onPressed,
+    required this.loading,
+    required this.text,
+    this.isDark = true,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Theme-based gradient colors
+    final gradientColors = isDark
+        ? [
+            const Color(0xFF00B386),
+            const Color(0xFF00D4A1),
+          ]
+        : [
+            accentColor.withOpacity(0.9),
+            accentColor,
+          ];
+
+    final shadowColor = isDark
+        ? const Color(0xFF00D3A1).withOpacity(0.3)
+        : accentColor.withOpacity(0.25);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: loading ? null : onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            alignment: Alignment.center,
+            child: loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        text,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Extensions
+// ============================================================================
 
 extension on String {
   static final RegExp _phoneRegex =

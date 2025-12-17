@@ -81,23 +81,15 @@ abstract class AppRoutes {
         const EmptyPage(),
       ),
     ),
+    // 直接使用手机号登录页面作为登录入口
     GoRoute(
       path: '/login-signup',
       pageBuilder: (context, state) => defaultPageBuilder(
         context,
         state,
-        const LoginSignup(),
-      ),
-      redirect: loggedInRedirect,
-    ),
-    // 短信验证码登录（桌面端/Web 端备用登录方式）
-    GoRoute(
-      path: '/login/phone',
-      pageBuilder: (context, state) => defaultPageBuilder(
-        context,
-        state,
         const PhoneLoginPage(),
       ),
+      redirect: loggedInRedirect,
     ),
     GoRoute(
       path: '/onboarding-chatbot',
