@@ -428,10 +428,12 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
       ),
     );
 
-    // 延迟后重定向到登录页
+    // 延迟后重定向
+    // Mobile: Go to root, let AuthGate handle re-login
+    // Web: Go to /login-signup for manual login
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        context.go('/login-signup');
+        context.go(kIsWeb ? '/login-signup' : '/');
       }
     });
   }

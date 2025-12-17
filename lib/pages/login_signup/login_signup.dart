@@ -102,18 +102,25 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
       // 新用户需要输入邀请码
       String? invitationCode;
       if (verifyResponse.isNewUser) {
-        // 先关闭阿里云授权页，再弹邀请码框
+        // CRITICAL: Set _isInAuthFlow = false BEFORE closing auth page
+        // When we close the auth page, iOS will trigger AppLifecycleState.resumed
+        // If _isInAuthFlow is still true, it will close the page again
+        setState(() {
+          _isInAuthFlow = false;
+          loading = false;
+        });
+
+        // Now safe to close Aliyun auth page
         await OneClickLoginService.quitLoginPage();
 
         invitationCode = await _showInvitationCodeDialog(verifyResponse.phone);
         if (invitationCode == null) {
           // 用户取消了
-          setState(() {
-            _isInAuthFlow = false;
-            loading = false;
-          });
           return;
         }
+
+        // Resume loading state for login
+        setState(() => loading = true);
       }
 
       debugPrint('=== 第二步：完成登录 ===');

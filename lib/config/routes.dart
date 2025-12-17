@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
@@ -53,10 +54,14 @@ abstract class AppRoutes {
   static FutureOr<String?> loggedOutRedirect(
     BuildContext context,
     GoRouterState state,
-  ) =>
-      Matrix.of(context).widget.clients.any((client) => client.isLogged())
-          ? null
-          : '/login-signup';  // 重定向到新版登录页
+  ) {
+    final isLoggedIn = Matrix.of(context).widget.clients.any((client) => client.isLogged());
+    if (isLoggedIn) return null;
+
+    // Mobile: Let AuthGate handle login, don't redirect
+    // Web: Redirect to /login-signup for manual login
+    return kIsWeb ? '/login-signup' : null;
+  }
 
   AppRoutes();
 
@@ -111,8 +116,8 @@ abstract class AppRoutes {
         if (Matrix.of(context).widget.clients.any((client) => client.isLogged())) {
           return '/rooms';
         }
-        // 未登录，强制跳转到新版登录页
-        return '/login-signup';
+        // 未登录: Web 跳转到 /login-signup, Mobile 跳转到根路径让 AuthGate 处理
+        return kIsWeb ? '/login-signup' : '/';
       },
       pageBuilder: (context, state) => defaultPageBuilder(
         context,
@@ -127,7 +132,8 @@ abstract class AppRoutes {
             if (Matrix.of(context).widget.clients.any((client) => client.isLogged())) {
               return '/rooms';
             }
-            return '/login-signup';
+            // Web 跳转到 /login-signup, Mobile 跳转到根路径让 AuthGate 处理
+            return kIsWeb ? '/login-signup' : '/';
           },
           pageBuilder: (context, state) => defaultPageBuilder(
             context,
