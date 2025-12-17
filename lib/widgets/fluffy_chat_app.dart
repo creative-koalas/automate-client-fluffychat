@@ -409,7 +409,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // If we still have retry attempts, stay in checking state (don't show error)
       // Will be automatically retried when app resumes
       if (_resumeRetryCount < _maxResumeRetries) {
-        debugPrint('[AuthGate] Login error but retries available ($resumeRetryCount/$_maxResumeRetries), staying in checking state');
+        debugPrint('[AuthGate] Login error but retries available ($_resumeRetryCount/$_maxResumeRetries), staying in checking state');
         // Keep state as checking, will be retried
         return;
       }
@@ -900,6 +900,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       );
 
       debugPrint('[AuthGate] Registration success, onboardingCompleted=${authResponse.onboardingCompleted}');
+
+      if (!mounted) return;
+
+      // CRITICAL: Reload auth state to ensure isLoggedIn is updated
+      // This prevents build() from thinking we're logged out and triggering re-auth
+      final auth = context.read<PsygoAuthState>();
+      await auth.load();
+      debugPrint('[AuthGate] Auth state reloaded after registration');
 
       if (!mounted) return;
 
