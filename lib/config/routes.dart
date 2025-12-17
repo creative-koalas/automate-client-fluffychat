@@ -18,7 +18,7 @@ import 'package:psygo/pages/device_settings/device_settings.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
 import 'package:psygo/pages/login_signup/login_signup.dart';
-// import 'package:psygo/pages/login_signup/phone_login_page.dart'; // 暂时只支持一键登录
+import 'package:psygo/pages/login_signup/phone_login_page.dart';
 import 'package:psygo/pages/onboarding_chatbot/onboarding_chatbot.dart';
 import 'package:psygo/pages/team/team_page.dart';
 import 'package:psygo/pages/main_screen/main_screen.dart';
@@ -90,15 +90,15 @@ abstract class AppRoutes {
       ),
       redirect: loggedInRedirect,
     ),
-    // 暂时只支持一键登录，手机号验证码登录入口关闭
-    // GoRoute(
-    //   path: '/login/phone',
-    //   pageBuilder: (context, state) => defaultPageBuilder(
-    //     context,
-    //     state,
-    //     const PhoneLoginPage(),
-    //   ),
-    // ),
+    // 短信验证码登录（桌面端/Web 端备用登录方式）
+    GoRoute(
+      path: '/login/phone',
+      pageBuilder: (context, state) => defaultPageBuilder(
+        context,
+        state,
+        const PhoneLoginPage(),
+      ),
+    ),
     GoRoute(
       path: '/onboarding-chatbot',
       pageBuilder: (context, state) => defaultPageBuilder(

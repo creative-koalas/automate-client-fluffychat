@@ -301,13 +301,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 3. No valid token -> need to authenticate
     debugPrint('[AuthGate] No valid token, need authentication');
 
-    // On web, redirect to login page (one-click login not supported)
-    if (kIsWeb) {
+    // On web or desktop, redirect to login page (one-click login SDK not supported)
+    // One-click login SDK only works on mobile (Android/iOS)
+    if (kIsWeb || PlatformInfos.isDesktop) {
       _redirectToLoginPage();
       return;
     }
 
-    // On mobile, directly trigger one-click login
+    // On mobile only, directly trigger one-click login
     if (!_hasTriedAuth) {
       _hasTriedAuth = true;
       await _performDirectLogin();
@@ -373,15 +374,23 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       debugPrint('[AuthGate] Backend completeLogin success, onboardingCompleted=${authResponse.onboardingCompleted}');
 
+      if (!mounted) return;
+
       // Handle based on onboarding status
       if (authResponse.onboardingCompleted) {
         // Already completed onboarding, login to Matrix
-        await _loginMatrixAndProceed();
-        // 所有操作完成后关闭授权页
+        // CRITICAL iOS FIX: Change state BEFORE closing auth page to prevent auto-retry
+        // When we close auth page, iOS triggers AppLifecycleState.resumed
+        // If state is still _checking, didChangeAppLifecycleState will trigger auto-retry
+        setState(() => _state = _AuthState.authenticating);
+
         await OneClickLoginService.quitLoginPage();
+        await _loginMatrixAndProceed();
       } else {
         // Need to complete onboarding first
-        // 关闭授权页后再跳转 onboarding
+        // CRITICAL iOS FIX: Change state BEFORE closing auth page
+        setState(() => _state = _AuthState.authenticating);
+
         await OneClickLoginService.quitLoginPage();
         // Important: Navigate BEFORE setting authenticated state to avoid
         // GoRouter's redirect to /login-signup (which checks Matrix client)
@@ -496,7 +505,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // Navigate to main page after successful login
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            final router = GoRouter.of(context);
+            final router = PsygoApp.router;
             if (router.routerDelegate.currentConfiguration.fullPath != '/rooms') {
               router.go('/rooms');
             }
@@ -518,7 +527,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // Navigate to main page if not already there
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          final router = GoRouter.of(context);
+          final router = PsygoApp.router;
           if (router.routerDelegate.currentConfiguration.fullPath != '/rooms') {
             router.go('/rooms');
           }

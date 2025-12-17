@@ -171,7 +171,10 @@ class UserDialog extends StatelessWidget {
               final router = GoRouter.of(context);
               final roomIdResult = await showFutureLoadingDialog(
                 context: context,
-                future: () => client.startDirectChat(profile.userId),
+                future: () => client.startDirectChat(
+                  profile.userId,
+                  enableEncryption: false,
+                ),
               );
               final roomId = roomIdResult.result;
               if (roomId == null) return;

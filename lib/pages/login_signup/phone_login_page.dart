@@ -1,4 +1,6 @@
 /// Phone number + verification code login page.
+/// Desktop: Two-column layout (brand + form)
+/// Mobile: Single column with LoginScaffold
 library;
 
 import 'package:flutter/material.dart';
@@ -6,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/widgets/layouts/login_scaffold.dart';
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/login_signup/login_signup.dart' show PolicyBottomSheet;
+import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 
 class PhoneLoginPage extends StatefulWidget {
   const PhoneLoginPage({super.key});
@@ -15,9 +19,11 @@ class PhoneLoginPage extends StatefulWidget {
   PhoneLoginController createState() => PhoneLoginController();
 }
 
-class PhoneLoginController extends State<PhoneLoginPage> {
+class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController codeController = TextEditingController();
+
+  @override
   PsygoApiClient get backend => context.read<PsygoApiClient>();
 
   String? phoneError;
@@ -25,6 +31,17 @@ class PhoneLoginController extends State<PhoneLoginPage> {
   bool loading = false;
   bool agreedToEula = false;
   bool codeSent = false;
+
+  // LoginFlowMixin 实现
+  @override
+  void setLoginError(String? error) {
+    setState(() => codeError = error);
+  }
+
+  @override
+  void setLoading(bool value) {
+    setState(() => loading = value);
+  }
 
   void toggleEulaAgreement() {
     setState(() => agreedToEula = !agreedToEula);
@@ -71,6 +88,9 @@ class PhoneLoginController extends State<PhoneLoginPage> {
     }
   }
 
+  /// 验证码登录（两步流程）
+  /// 第一步：verifyPhoneCode → 返回 isNewUser + pendingToken
+  /// 第二步：handlePostVerify → 邀请码弹窗（新用户）+ completeLogin + Matrix 登录
   void verifyAndLogin() async {
     if (!await _ensureEulaAccepted()) {
       return;
@@ -93,26 +113,21 @@ class PhoneLoginController extends State<PhoneLoginPage> {
     });
 
     try {
-      final authResponse = await backend.loginOrSignup(
+      debugPrint('=== 第一步：验证手机号 + 验证码 ===');
+      final verifyResponse = await backend.verifyPhoneCode(
         phoneController.text,
         codeController.text,
       );
+      debugPrint('验证结果: phone=${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
 
-      if (mounted) {
-        setState(() => loading = false);
+      if (!mounted) return;
 
-        // Redirect based on onboarding status
-        if (authResponse.onboardingCompleted) {
-          // Already completed onboarding, go to main page
-          context.go('/rooms');
-        } else {
-          // Need to complete onboarding chatbot first
-          context.go('/onboarding-chatbot');
-        }
-      }
+      // 使用 mixin 的公共逻辑处理后续流程
+      await handlePostVerify(verifyResponse: verifyResponse);
     } catch (e) {
+      debugPrint('验证码登录错误: $e');
       setState(() {
-        codeError = e.toString();
+        codeError = (e is AutomateBackendException) ? e.message : e.toString();
         loading = false;
       });
     }
@@ -149,15 +164,15 @@ class PhoneLoginController extends State<PhoneLoginPage> {
                 style: Theme.of(context).textTheme.bodyMedium,
                 children: [
                   TextSpan(
-                    text: '“用户协议”',
+                    text: '"用户协议"',
                     style: TextStyle(color: Theme.of(context).colorScheme.primary),
                   ),
                   const TextSpan(text: '和'),
                   TextSpan(
-                    text: '“隐私政策”',
+                    text: '"隐私政策"',
                     style: TextStyle(color: Theme.of(context).colorScheme.primary),
                   ),
-                  const TextSpan(text: '各条款。点击“同意并继续”代表您已阅读并同意全部内容。'),
+                  const TextSpan(text: '各条款。点击"同意并继续"代表您已阅读并同意全部内容。'),
                 ],
               ),
               textAlign: TextAlign.center,
@@ -233,14 +248,207 @@ class PhoneLoginController extends State<PhoneLoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    if (isDesktop) {
+      return _buildDesktopLayout(context);
+    } else {
+      return _buildMobileLayout(context);
+    }
+  }
+
+  /// Desktop: Two-column layout with brand on left, form on right
+  Widget _buildDesktopLayout(BuildContext context) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+
+    return Scaffold(
+      body: Row(
+        children: [
+          // Left: Brand panel
+          Expanded(
+            flex: 5,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primary.withOpacity(0.8),
+                  ],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Background pattern
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _GridPatternPainter(
+                        color: theme.colorScheme.onPrimary.withOpacity(0.05),
+                      ),
+                    ),
+                  ),
+                  // Content
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(48.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Image.asset(
+                              'assets/logo_transparent.png',
+                              height: 80,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          // Brand name
+                          Text(
+                            'Psygo',
+                            style: theme.textTheme.displaySmall?.copyWith(
+                              color: theme.colorScheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Tagline
+                          Text(
+                            'AI 驱动的智能自动化平台',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: theme.colorScheme.onPrimary.withOpacity(0.9),
+                            ),
+                          ),
+                          const SizedBox(height: 48),
+                          // Features
+                          _buildFeatureItem(
+                            context,
+                            Icons.smart_toy_outlined,
+                            '智能 Agent',
+                            '创建专属 AI 助手，自动执行任务',
+                          ),
+                          const SizedBox(height: 16),
+                          _buildFeatureItem(
+                            context,
+                            Icons.integration_instructions_outlined,
+                            '多平台集成',
+                            '连接飞书、Telegram、浏览器等',
+                          ),
+                          const SizedBox(height: 16),
+                          _buildFeatureItem(
+                            context,
+                            Icons.security_outlined,
+                            '安全可靠',
+                            '端到端加密，数据安全有保障',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Right: Login form
+          Expanded(
+            flex: 4,
+            child: Container(
+              color: theme.colorScheme.surface,
+              child: Stack(
+                children: [
+                  // Back button
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.pop(),
+                      tooltip: '返回',
+                    ),
+                  ),
+                  // Form
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(48),
+                        child: _buildLoginForm(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(BuildContext context, IconData icon, String title, String subtitle) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.onPrimary.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: theme.colorScheme.onPrimary,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onPrimary.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Mobile: Original LoginScaffold layout
+  Widget _buildMobileLayout(BuildContext context) {
+    final theme = Theme.of(context);
 
     return LoginScaffold(
       appBar: null,
+      enforceMobileMode: true,
       body: Stack(
         children: [
-          // 1. Back Button (Fixed at top-left)
           Positioned(
             top: 12,
             left: 12,
@@ -254,242 +462,250 @@ class PhoneLoginController extends State<PhoneLoginPage> {
               ),
             ),
           ),
-
-          // 2. Main Content
           Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    const SizedBox(height: 20),
-                    
-                    // Hero Icon
-                    Icon(
-                      Icons.lock_person_outlined,
-                      size: 80,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Title Section
-                    Text(
-                      '手机号登录',
-                      textAlign: TextAlign.center,
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '欢迎回来！请验证您的手机号以继续。',
-                      textAlign: TextAlign.center,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-
-                    // Phone Number Input
-                    TextField(
-                      readOnly: loading,
-                      autocorrect: false,
-                      autofocus: true,
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      style: textTheme.bodyLarge,
-                      autofillHints: loading ? null : [AutofillHints.telephoneNumber],
-                      decoration: InputDecoration(
-                        labelText: '手机号',
-                        hintText: '请输入手机号',
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        filled: true,
-                        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                        ),
-                        errorText: phoneError,
-                        suffixIcon: codeSent
-                            ? Icon(
-                                Icons.check_circle,
-                                color: theme.colorScheme.primary,
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Verification Code Input
-                    if (codeSent) ...[
-                      TextField(
-                        readOnly: loading,
-                        autocorrect: false,
-                        autofocus: true,
-                        controller: codeController,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        style: textTheme.bodyLarge,
-                        autofillHints: loading ? null : [AutofillHints.oneTimeCode],
-                        onSubmitted: (_) => verifyAndLogin(),
-                        decoration: InputDecoration(
-                          labelText: '验证码',
-                          hintText: '请输入验证码',
-                          prefixIcon: const Icon(Icons.security_outlined),
-                          filled: true,
-                          fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                          ),
-                          errorText: codeError,
-                        ),
-                      ),
-                      
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: loading ? null : requestVerificationCode,
-                          child: const Text('重新发送验证码'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-
-                    // EULA Agreement Checkbox
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Checkbox(
-                            value: agreedToEula,
-                            onChanged: loading
-                                ? null
-                                : (_) => toggleEulaAgreement(),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          Flexible(
-                            child: Text.rich(
-                              TextSpan(
-                                style: textTheme.bodyMedium,
-                                children: [
-                                  const TextSpan(text: '我已阅读并同意'),
-                                  WidgetSpan(
-                                    child: InkWell(
-                                      onTap: loading ? null : showEula,
-                                      child: Text(
-                                        '《用户协议》',
-                                        style: textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const TextSpan(text: '和'),
-                                  WidgetSpan(
-                                    child: InkWell(
-                                      onTap: loading ? null : showPrivacyPolicy,
-                                      child: Text(
-                                        '《隐私政策》',
-                                        style: textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Request Code Button (shown only if code not sent yet)
-                    if (!codeSent)
-                      FilledButton.tonal(
-                        onPressed: loading ? null : requestVerificationCode,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: loading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('获取验证码', style: TextStyle(fontSize: 16)),
-                      ),
-
-                    // Submit Button
-                    if (codeSent)
-                      FilledButton(
-                        onPressed: loading ? null : verifyAndLogin,
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(56),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 2,
-                          shadowColor: theme.colorScheme.primary.withValues(alpha: 0.4),
-                        ),
-                        child: loading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                '登录 / 注册',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                      ),
-                    
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: _buildLoginForm(context),
             ),
           ),
         ],
       ),
     );
   }
+
+  /// Shared login form widget
+  Widget _buildLoginForm(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (!isDesktop) ...[
+          Icon(
+            Icons.lock_person_outlined,
+            size: 80,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // Title
+        Text(
+          '手机号登录',
+          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
+          style: textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '欢迎回来！请验证您的手机号以继续。',
+          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
+          style: textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 40),
+
+        // Phone Input
+        TextField(
+          readOnly: loading,
+          autocorrect: false,
+          autofocus: true,
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          style: textTheme.bodyLarge,
+          autofillHints: loading ? null : [AutofillHints.telephoneNumber],
+          decoration: InputDecoration(
+            labelText: '手机号',
+            hintText: '请输入手机号',
+            prefixIcon: const Icon(Icons.phone_outlined),
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+            ),
+            errorText: phoneError,
+            suffixIcon: codeSent
+                ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
+                : null,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Code Input
+        if (codeSent) ...[
+          TextField(
+            readOnly: loading,
+            autocorrect: false,
+            autofocus: true,
+            controller: codeController,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            style: textTheme.bodyLarge,
+            autofillHints: loading ? null : [AutofillHints.oneTimeCode],
+            onSubmitted: (_) => verifyAndLogin(),
+            decoration: InputDecoration(
+              labelText: '验证码',
+              hintText: '请输入验证码',
+              prefixIcon: const Icon(Icons.security_outlined),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+              ),
+              errorText: codeError,
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: loading ? null : requestVerificationCode,
+              child: const Text('重新发送验证码'),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        // EULA
+        Row(
+          children: [
+            Checkbox(
+              value: agreedToEula,
+              onChanged: loading ? null : (_) => toggleEulaAgreement(),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            Flexible(
+              child: Text.rich(
+                TextSpan(
+                  style: textTheme.bodyMedium,
+                  children: [
+                    const TextSpan(text: '我已阅读并同意'),
+                    WidgetSpan(
+                      child: InkWell(
+                        onTap: loading ? null : showEula,
+                        child: Text(
+                          '《用户协议》',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const TextSpan(text: '和'),
+                    WidgetSpan(
+                      child: InkWell(
+                        onTap: loading ? null : showPrivacyPolicy,
+                        child: Text(
+                          '《隐私政策》',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // Buttons
+        if (!codeSent)
+          FilledButton(
+            onPressed: loading ? null : requestVerificationCode,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('获取验证码', style: TextStyle(fontSize: 16)),
+          ),
+
+        if (codeSent)
+          FilledButton(
+            onPressed: loading ? null : verifyAndLogin,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: loading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text(
+                    '登录 / 注册',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Grid pattern painter for background decoration
+class _GridPatternPainter extends CustomPainter {
+  final Color color;
+
+  _GridPatternPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    const spacing = 40.0;
+
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 const String _eulaText = '''
@@ -541,7 +757,7 @@ const String _privacyPolicyText = '''
 
 **生效日期：2023年10月1日**
 
-Automate（以下简称"我们"）非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。
+Psygo（以下简称"我们"）非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。
 
 ## 1. 信息收集
 
