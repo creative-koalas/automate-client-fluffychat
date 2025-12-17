@@ -178,7 +178,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // iOS CRITICAL FIX: Always close Aliyun auth page when resuming from background
       // This prevents black screen caused by lingering auth page overlay
-      OneClickLoginService.quitLoginPage();
+      if (PlatformInfos.isMobile) {
+        OneClickLoginService.quitLoginPage();
+      }
 
       // iOS FIX: Handle permission approval during auth check
       // When user slowly approves network permissions, SDK initialization may timeout
@@ -245,8 +247,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Retrying after stale credentials, directly triggering one-click login...');
       _needsRetryAfterStaleCredentials = false;
 
-      // On mobile, directly trigger one-click login
-      if (!kIsWeb && !_hasTriedAuth) {
+      // On mobile only, directly trigger one-click login
+      if (PlatformInfos.isMobile && !_hasTriedAuth) {
         _hasTriedAuth = true;
         await _performDirectLogin();
       } else {
@@ -609,14 +611,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
 
   void _redirectToLoginPage() {
-    // Mobile: Stay in AuthGate, don't redirect to /login-signup
+    // Mobile only: Stay in AuthGate, don't redirect to /login-signup
     // AuthGate will handle one-click login automatically
-    if (!kIsWeb) {
+    if (PlatformInfos.isMobile) {
       setState(() => _state = _AuthState.error);
       return;
     }
 
-    // Web only: redirect to /login-signup for manual login options
+    // Web and Desktop: redirect to /login-signup for manual login options
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navKey = PsygoApp.router.routerDelegate.navigatorKey;
