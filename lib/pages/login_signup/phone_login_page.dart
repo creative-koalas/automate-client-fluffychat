@@ -13,6 +13,8 @@ import 'package:psygo/backend/backend.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/login_signup/login_signup.dart' show PolicyBottomSheet;
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/window_service.dart';
 
 class PhoneLoginPage extends StatefulWidget {
   const PhoneLoginPage({super.key});
@@ -481,13 +483,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
           final isLargeScreen = screenWidth >= 900;
 
-          // Logo 尺寸响应式
-          final logoSize = isExtraSmallScreen ? 80.0
-              : (isSmallScreen ? 90.0
-              : (isMediumScreen ? 105.0 : 120.0));
-          final logoImageHeight = isExtraSmallScreen ? 45.0
-              : (isSmallScreen ? 50.0
-              : (isMediumScreen ? 57.0 : 65.0));
+          // Logo 尺寸响应式 - 更大 Logo
+          final logoSize = isExtraSmallScreen ? 100.0
+              : (isSmallScreen ? 110.0
+              : (isMediumScreen ? 120.0 : 130.0));
+          final logoImageHeight = isExtraSmallScreen ? 55.0
+              : (isSmallScreen ? 60.0
+              : (isMediumScreen ? 65.0 : 70.0));
 
           // 标题字体响应式
           final titleFontSize = isExtraSmallScreen ? 28.0
@@ -501,12 +503,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               ? screenWidth * 0.92
               : (isMediumScreen ? 420.0 : 480.0);
 
-          // 间距响应式
-          final cardSpacingTop = isExtraSmallScreen ? 24.0
-              : (isSmallScreen ? 30.0
-              : (isMediumScreen ? 40.0 : 50.0));
-          final verticalPadding = screenHeight < 700 ? 16.0 : 40.0;
-          final horizontalPadding = (isExtraSmallScreen || isSmallScreen) ? 12.0 : 24.0;
+          // 间距响应式 - Logo与卡片间距
+          final cardSpacingTop = isExtraSmallScreen ? 28.0
+              : (isSmallScreen ? 32.0
+              : (isMediumScreen ? 40.0 : 48.0));
+          final verticalPadding = screenHeight < 700 ? 12.0 : 24.0;
+          final horizontalPadding = (isExtraSmallScreen || isSmallScreen) ? 12.0 : 20.0;
 
           // Theme-based colors
           final bgColors = isDark
@@ -524,7 +526,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
           final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
-          return Container(
+          // PC端使用圆角无边框窗口
+          Widget content = Container(
             width: double.infinity,
             height: double.infinity,
             decoration: BoxDecoration(
@@ -533,92 +536,87 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                 end: Alignment.bottomRight,
                 colors: bgColors,
               ),
+              // PC端添加圆角
+              borderRadius: PlatformInfos.isDesktop
+                  ? BorderRadius.circular(20)
+                  : null,
             ),
             child: Stack(
               children: [
                 // Background glowing orbs with pulsing animation
                 _buildGlowingOrbs(isDark),
 
-                // Main content - centered and scrollable
+                // PC端：顶部拖拽区域
+                if (PlatformInfos.isDesktop)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 40,
+                    child: WindowDragArea(
+                      child: Container(color: Colors.transparent),
+                    ),
+                  ),
+
+                // PC端：窗口控制按钮（最小化、关闭）
+                if (PlatformInfos.isDesktop)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: WindowControlButtons(
+                      iconColor: isDark
+                          ? Colors.white.withOpacity(0.6)
+                          : Colors.black.withOpacity(0.4),
+                    ),
+                  ),
+
+                // Main content - centered without scrolling
                 Center(
-                  child: SingleChildScrollView(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: horizontalPadding,
                       vertical: verticalPadding,
                     ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: cardMaxWidth + 40,
-                        minHeight: screenHeight - (verticalPadding * 2),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Logo with floating animation
-                          _AnimatedFloatingLogo(
-                            size: logoSize,
-                            imageHeight: logoImageHeight,
-                            isDark: isDark,
-                          ),
-                          SizedBox(height: (isExtraSmallScreen || isSmallScreen) ? 16 : 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Logo with floating animation
+                        _AnimatedFloatingLogo(
+                          size: logoSize,
+                          imageHeight: logoImageHeight,
+                          isDark: isDark,
+                        ),
+                        SizedBox(height: cardSpacingTop),
 
-                          // Brand name
-                          Text(
-                            'Psygo',
-                            style: TextStyle(
-                              fontSize: titleFontSize,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                              letterSpacing: -1,
-                            ),
+                        // Glassmorphic login card
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: cardMaxWidth),
+                          child: _buildGlassmorphicCard(
+                            context,
+                            isExtraSmallScreen || isSmallScreen,
+                            isDark,
+                            textColor,
+                            accentColor,
                           ),
-                          const SizedBox(height: 12),
-
-                          // Subtitle with sparkle icon
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '✦',
-                                style: TextStyle(
-                                  fontSize: subtitleFontSize - 2,
-                                  color: accentColor,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'AI 驱动的智能自动化平台',
-                                style: TextStyle(
-                                  fontSize: subtitleFontSize,
-                                  color: accentColor,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(height: cardSpacingTop),
-
-                          // Glassmorphic login card
-                          ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: cardMaxWidth),
-                            child: _buildGlassmorphicCard(
-                              context,
-                              isExtraSmallScreen || isSmallScreen,
-                              isDark,
-                              textColor,
-                              accentColor,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           );
+
+          // PC端：添加圆角裁剪
+          if (PlatformInfos.isDesktop) {
+            content = ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: content,
+            );
+          }
+
+          return content;
         },
       ),
     );
@@ -678,8 +676,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     Color textColor,
     Color accentColor,
   ) {
-    final horizontalPadding = isSmallScreen ? 24.0 : 35.0;
-    final verticalPadding = isSmallScreen ? 30.0 : 40.0;
+    final horizontalPadding = isSmallScreen ? 16.0 : 22.0;
+    final verticalPadding = isSmallScreen ? 18.0 : 24.0;
 
     // Theme-based card colors
     final cardBgColor = isDark
@@ -738,10 +736,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     Color textColor,
     Color accentColor,
   ) {
-    final titleFontSize = isSmallScreen ? 24.0 : 28.0;
-    final subtitleFontSize = isSmallScreen ? 13.0 : 14.0;
-    final spacingTop = isSmallScreen ? 28.0 : 35.0;
-    final spacingBetween = isSmallScreen ? 20.0 : 25.0;
+    final titleFontSize = isSmallScreen ? 20.0 : 22.0;
+    final subtitleFontSize = isSmallScreen ? 11.0 : 12.0;
+    final spacingTop = isSmallScreen ? 14.0 : 16.0;
+    final spacingBetween = isSmallScreen ? 10.0 : 12.0;
 
     final subtitleColor = isDark
         ? Colors.white.withOpacity(0.6)
@@ -757,16 +755,6 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             fontSize: titleFontSize,
             fontWeight: FontWeight.w600,
             color: textColor,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Subtitle
-        Text(
-          '请验证您的手机号以继续',
-          style: TextStyle(
-            fontSize: subtitleFontSize,
-            color: subtitleColor,
           ),
         ),
         SizedBox(height: spacingTop),
@@ -838,8 +826,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         Row(
           children: [
             SizedBox(
-              width: 18,
-              height: 18,
+              width: 14,
+              height: 14,
               child: Checkbox(
                 value: agreedToEula,
                 onChanged: (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
@@ -865,7 +853,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               child: Text.rich(
                 TextSpan(
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 11,
                     color: subtitleColor,
                   ),
                   children: [
@@ -877,7 +865,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                         text: '《用户协议》',
                         accentColor: accentColor,
                         onTap: loading ? () {} : showEula,
-                        fontSize: 13,
+                        fontSize: 11,
                       ),
                     ),
                     const TextSpan(text: ' 和 '),
@@ -888,7 +876,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                         text: '《隐私政策》',
                         accentColor: accentColor,
                         onTap: loading ? () {} : showPrivacyPolicy,
-                        fontSize: 13,
+                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -916,54 +904,6 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             isDark: isDark,
             accentColor: accentColor,
           ),
-
-        SizedBox(height: isSmallScreen ? 24 : 30),
-
-        // Security notice
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      (isDark ? Colors.white : Colors.black).withOpacity(0.2),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                '安全加密 · 隐私保护',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark
-                      ? Colors.white.withOpacity(0.4)
-                      : const Color(0xFF9E9E9E),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      (isDark ? Colors.white : Colors.black).withOpacity(0.2),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -1527,36 +1467,15 @@ class _AnimatedFloatingLogoState extends State<_AnimatedFloatingLogo>
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = widget.size * 0.2; // 20% of size
-    final shadowColor = widget.isDark
-        ? const Color(0xFF00FF9F)
-        : const Color(0xFF81C784);
-
     return AnimatedBuilder(
       animation: _floatAnimation,
       builder: (context, child) {
         return Transform.translate(
           offset: Offset(0, _floatAnimation.value),
-          child: Container(
+          child: Image.asset(
+            widget.isDark ? 'assets/logo_dark.png' : 'assets/logo_transparent.png',
             width: widget.size,
             height: widget.size,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(borderRadius),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor.withOpacity(widget.isDark ? 0.4 : 0.3),
-                  blurRadius: 60,
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Image.asset(
-                'assets/logo_transparent.png',
-                height: widget.imageHeight,
-              ),
-            ),
           ),
         );
       },
@@ -1667,7 +1586,7 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
             onSubmitted: widget.onSubmitted,
             style: TextStyle(
               color: textColor,
-              fontSize: 15,
+              fontSize: 14,
             ),
             decoration: InputDecoration(
               hintText: widget.hintText,
@@ -1677,7 +1596,7 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
               prefixIcon: Icon(
                 widget.prefixIcon,
                 color: iconColor,
-                size: 20,
+                size: 18,
               ),
               filled: true,
               fillColor: fillColor,
@@ -1686,8 +1605,8 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
+                horizontal: 12,
+                vertical: 12,
               ),
             ),
           ),
@@ -1762,12 +1681,12 @@ class _GradientButton extends StatelessWidget {
           onTap: loading ? null : onPressed,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             alignment: Alignment.center,
             child: loading
                 ? const SizedBox(
-                    height: 20,
-                    width: 20,
+                    height: 16,
+                    width: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
@@ -1780,15 +1699,15 @@ class _GradientButton extends StatelessWidget {
                         text,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       const Icon(
                         Icons.arrow_forward,
                         color: Colors.white,
-                        size: 18,
+                        size: 14,
                       ),
                     ],
                   ),

@@ -15,6 +15,7 @@ import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/permission_service.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/theme_builder.dart';
 import '../utils/custom_scroll_behaviour.dart';
@@ -268,6 +269,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       if (isMatrixLoggedIn) {
         // Both automate and Matrix are logged in, proceed to app
         debugPrint('[AuthGate] Matrix also logged in, proceeding to app');
+        // PC端：切换到主窗口模式
+        if (PlatformInfos.isDesktop) {
+          await WindowService.switchToMainWindow();
+        }
         setState(() => _state = _AuthState.authenticated);
         return;
       }
@@ -294,6 +299,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final success = await api.refreshAccessToken();
       if (success) {
         debugPrint('[AuthGate] Token refreshed successfully');
+        // PC端：切换到主窗口模式
+        if (PlatformInfos.isDesktop) {
+          await WindowService.switchToMainWindow();
+        }
         setState(() => _state = _AuthState.authenticated);
         return;
       }
@@ -512,6 +521,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           debugPrint('[AuthGate] Client already in clients list, length=${widget.clients.length}');
         }
 
+        // PC端：切换到主窗口模式
+        if (PlatformInfos.isDesktop) {
+          await WindowService.switchToMainWindow();
+        }
+
         setState(() => _state = _AuthState.authenticated);
 
         // Navigate to main page after successful login
@@ -539,6 +553,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       if (!widget.clients.contains(client)) {
         widget.clients.add(client);
         debugPrint('[AuthGate] Client added to clients list (already logged in), length=${widget.clients.length}');
+      }
+
+      // PC端：切换到主窗口模式
+      if (PlatformInfos.isDesktop) {
+        await WindowService.switchToMainWindow();
       }
 
       setState(() => _state = _AuthState.authenticated);

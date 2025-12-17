@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
@@ -41,6 +42,24 @@ void main() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     debugPrint('[DEBUG] Desktop: Login state cleared!');
+
+    // 初始化窗口管理器 - 登录页面使用小窗口无边框样式
+    await windowManager.ensureInitialized();
+    const loginWindowSize = Size(420, 580);
+    const windowOptions = WindowOptions(
+      size: loginWindowSize,
+      minimumSize: loginWindowSize,
+      maximumSize: loginWindowSize,
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+      windowButtonVisibility: false,
+    );
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
   }
 
   // iOS: Avoid "black screen" on cold start by rendering a first frame ASAP.

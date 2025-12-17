@@ -9,6 +9,7 @@ import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/permission_service.dart';
+import 'package:psygo/utils/window_service.dart';
 
 /// 登录流程公共逻辑
 /// 使用方式：class MyController extends State<MyWidget> with LoginFlowMixin
@@ -75,6 +76,10 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       return await loginMatrixAndRedirect();
     } else {
       // 需要先完成 onboarding
+      // PC端：切换到主窗口模式
+      if (PlatformInfos.isDesktop) {
+        await WindowService.switchToMainWindow();
+      }
       setLoading(false);
       context.go('/onboarding-chatbot');
       return true;
@@ -114,6 +119,11 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         newDeviceName: PlatformInfos.clientName,
       );
       debugPrint('Matrix 登录成功');
+
+      // PC端：切换到主窗口模式
+      if (PlatformInfos.isDesktop) {
+        await WindowService.switchToMainWindow();
+      }
 
       // 登录成功后异步请求推送权限（不阻塞跳转）
       if (PlatformInfos.isMobile) {
