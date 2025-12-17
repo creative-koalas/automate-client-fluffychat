@@ -88,3 +88,4 @@ env.local.json
 # Build scripts
 ios_build.sh
 android_build.sh
+build-linux.sh
