@@ -130,6 +130,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _hasRetriedMatrixLogin = false;  // Track if we already retried Matrix login
   int _resumeRetryCount = 0;  // Track resume retry attempts to avoid infinite loops
   static const int _maxResumeRetries = 3;  // Max retries on resume
+  bool _isInitialStartup = true;  // Track if this is the first startup
 
   // Pending new user registration data
   String? _pendingToken;
@@ -190,7 +191,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         setState(() {
           _hasTriedAuth = false;
           _hasRetriedMatrixLogin = false;
-          _state = _AuthState.checking;
+          _state = _AuthState.checking;  // Keep in checking state, don't flash error UI
         });
 
         // Wait a bit for network to be fully ready
@@ -211,6 +212,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Unhandled error in auth check: $e');
       debugPrint('$s');
       if (!mounted) return;
+
+      // If we still have retry attempts, stay in checking state (don't show error)
+      // User will see loading screen instead of error flash
+      if (_resumeRetryCount < _maxResumeRetries) {
+        debugPrint('[AuthGate] Error occurred but retries available, staying in checking state');
+        // Keep state as checking, will be retried on next resume
+        return;
+      }
+
+      // No more retries, show error
       setState(() {
         _state = _AuthState.error;
         _errorMessage = '登录状态检查失败，请重试';
@@ -336,19 +347,19 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // Step 2: New user needs invitation code
       if (verifyResponse.isNewUser) {
         debugPrint('[AuthGate] Backend says isNewUser=true, showing invitation code screen');
-        // Close Aliyun auth page
-        await OneClickLoginService.quitLoginPage();
 
-        if (!mounted) return;
-
-        // Save pending data and switch to invitation code state
+        // CRITICAL: Change state BEFORE closing auth page to prevent auto-retry
+        // When we close the auth page, iOS will trigger AppLifecycleState.resumed
+        // If state is still _AuthState.checking, auto-retry will trigger
         _pendingToken = verifyResponse.pendingToken;
         _pendingPhone = verifyResponse.phone;
 
-        debugPrint('[AuthGate] New user detected, showing invitation code screen');
-
-        // Change state to show invitation code input screen
         setState(() => _state = _AuthState.waitingInvitationCode);
+
+        // Now safe to close Aliyun auth page
+        await OneClickLoginService.quitLoginPage();
+
+        debugPrint('[AuthGate] New user detected, showing invitation code screen');
         return;
       }
 
@@ -395,6 +406,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
 
+      // If we still have retry attempts, stay in checking state (don't show error)
+      // Will be automatically retried when app resumes
+      if (_resumeRetryCount < _maxResumeRetries) {
+        debugPrint('[AuthGate] Login error but retries available ($resumeRetryCount/$_maxResumeRetries), staying in checking state');
+        // Keep state as checking, will be retried
+        return;
+      }
+
+      // No more retries, show error
       setState(() {
         _state = _AuthState.error;
         _errorMessage = _parseErrorMessage(errorStr);
@@ -563,6 +583,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
 
   void _redirectToLoginPage() {
+    // Mobile: Stay in AuthGate, don't redirect to /login-signup
+    // AuthGate will handle one-click login automatically
+    if (!kIsWeb) {
+      setState(() => _state = _AuthState.error);
+      return;
+    }
+
+    // Web only: redirect to /login-signup for manual login options
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navKey = PsygoApp.router.routerDelegate.navigatorKey;
