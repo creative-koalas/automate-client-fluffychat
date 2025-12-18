@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 
 import '../../models/plugin.dart';
@@ -167,14 +168,44 @@ class _TrainingTabState extends State<TrainingTab>
       );
     }
 
-    // 插件列表
+    // 插件列表 - PC端使用两列网格布局，移动端使用列表布局
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    if (isDesktop) {
+      // PC端：两列网格布局
+      return GridView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 32,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 5,
+        ),
+        itemCount: _plugins.length,
+        itemBuilder: (context, index) {
+          final plugin = _plugins[index];
+          return PluginCard(
+            plugin: plugin,
+            onTap: () => _onPluginTap(plugin),
+          );
+        },
+      );
+    }
+
+    // 移动端：列表布局
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(
         left: 16,
         right: 16,
         top: 16,
-        bottom: 96, // 为底部导航栏留出空间
+        bottom: 96,
       ),
       itemCount: _plugins.length,
       itemBuilder: (context, index) {

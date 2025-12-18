@@ -132,6 +132,7 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
                         ),
                       ),
                     ),
+              // PC端头像功能已移至左侧边栏，这里不再显示
               suffixIcon: controller.isSearchMode && globalSearch
                   ? controller.isSearching
                       ? const Padding(
@@ -146,11 +147,10 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
                             ),
                           ),
                         )
-                      : null  // 隐藏服务器选择按钮
-                  : SizedBox(
-                      width: 0,
-                      child: ClientChooserButton(controller),
-                    ),
+                      : null
+                  : FluffyThemes.isColumnMode(context)
+                      ? null  // PC端不显示头像
+                      : ClientChooserButton(controller),  // 移动端保留头像
             ),
           );
         },

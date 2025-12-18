@@ -32,6 +32,7 @@ import 'package:psygo/pages/settings_style/settings_style.dart';
 import 'package:psygo/widgets/config_viewer.dart';
 import 'package:psygo/widgets/layouts/empty_page.dart';
 import 'package:psygo/widgets/layouts/two_column_layout.dart';
+import 'package:psygo/widgets/layouts/desktop_layout.dart';
 import 'package:psygo/widgets/log_view.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/share_scaffold_dialog.dart';
@@ -155,21 +156,27 @@ abstract class AppRoutes {
       // Never use a transition on the shell route. Changing the PageBuilder
       // here based on a MediaQuery causes the child to briefly be rendered
       // twice with the same GlobalKey, blowing up the rendering.
-      pageBuilder: (context, state, child) => noTransitionPageBuilder(
-        context,
-        state,
-        FluffyThemes.isColumnMode(context) &&
-                state.fullPath?.startsWith('/rooms/settings') == false
-            ? TwoColumnLayout(
-                mainView: ChatList(
+      pageBuilder: (context, state, child) {
+        final path = state.fullPath ?? '';
+        // 这些路径不使用 DesktopLayout，使用原始 child
+        final excludedPaths = [
+          '/rooms/settings',
+          '/rooms/newgroup',
+          '/rooms/newprivatechat',
+        ];
+        final shouldUseDesktopLayout = FluffyThemes.isColumnMode(context) &&
+            !excludedPaths.any((p) => path.startsWith(p));
+
+        return noTransitionPageBuilder(
+          context,
+          state,
+          shouldUseDesktopLayout
+              ? DesktopLayout(
                   activeChat: state.pathParameters['roomid'],
-                  displayNavigationRail:
-                      state.path?.startsWith('/rooms/settings') != true,
-                ),
-                sideView: child,
-              )
-            : child,
-      ),
+                )
+              : child,
+        );
+      },
       routes: [
         GoRoute(
           path: '/rooms',
@@ -191,7 +198,7 @@ abstract class AppRoutes {
                 context,
                 state,
                 FluffyThemes.isColumnMode(context)
-                    ? const TeamPage()
+                    ? const EmptyPage()
                     : const MainScreen(initialPage: 1),
               ),
               redirect: loggedOutRedirect,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:go_router/go_router.dart';
@@ -495,7 +496,47 @@ class EmployeesTabState extends State<EmployeesTab>
       );
     }
 
-    // 员工列表
+    // 员工列表 - PC端使用两列网格布局，移动端使用列表布局
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    if (isDesktop) {
+      // PC端：两列网格布局
+      return GridView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 32,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 5, // 卡片宽高比
+        ),
+        itemCount: _employees.length + (_isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _employees.length) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final employee = _employees[index];
+          return GestureDetector(
+            onLongPressStart: (details) {
+              _onEmployeeLongPress(employee, details.globalPosition);
+            },
+            child: EmployeeCard(
+              employee: employee,
+              onTap: () => _onEmployeeTap(employee),
+            ),
+          );
+        },
+      );
+    }
+
+    // 移动端：列表布局
     return ListView.builder(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
@@ -503,7 +544,7 @@ class EmployeesTabState extends State<EmployeesTab>
         left: 16,
         right: 16,
         top: 16,
-        bottom: 96, // 为底部导航栏留出空间
+        bottom: 96,
       ),
       itemCount: _employees.length + (_isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {

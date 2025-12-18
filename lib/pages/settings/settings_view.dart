@@ -31,16 +31,15 @@ class SettingsView extends StatelessWidget {
       children: [
         Expanded(
           child: Scaffold(
-            appBar: FluffyThemes.isColumnMode(context)
-                ? null
-                : AppBar(
-                    title: Text(L10n.of(context).settings),
-                    leading: Center(
-                      child: BackButton(
-                        onPressed: () => context.go('/rooms'),
-                      ),
-                    ),
-                  ),
+            appBar: AppBar(
+              title: Text(L10n.of(context).settings),
+              leading: Center(
+                child: BackButton(
+                  onPressed: () => context.go('/rooms'),
+                ),
+              ),
+              automaticallyImplyLeading: false,
+            ),
             body: ListTileTheme(
               iconColor: theme.colorScheme.onSurface,
               child: ListView(
