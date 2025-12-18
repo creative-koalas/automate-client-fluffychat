@@ -13,13 +13,17 @@ class WindowService {
   /// 切换到主窗口模式（登录成功后调用）
   static Future<void> switchToMainWindow() async {
     if (!PlatformInfos.isDesktop) return;
+    debugPrint('[WindowService] switchToMainWindow called');
 
+    // 先解除大小限制，再设置新的大小
+    await windowManager.setResizable(true);
     await windowManager.setMinimumSize(mainWindowMinSize);
-    await windowManager.setMaximumSize(const Size(double.infinity, double.infinity));
+    // 使用足够大的值代替 infinity（Windows 不支持 infinity）
+    await windowManager.setMaximumSize(const Size(9999, 9999));
     await windowManager.setSize(mainWindowSize);
     await windowManager.center();
     await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-    await windowManager.setResizable(true);
+    debugPrint('[WindowService] switchToMainWindow completed');
   }
 
   /// 切换到登录窗口模式
@@ -40,6 +44,41 @@ class WindowService {
     await windowManager.minimize();
   }
 
+  /// 最大化窗口
+  static Future<void> maximize() async {
+    if (!PlatformInfos.isDesktop) return;
+    await windowManager.maximize();
+  }
+
+  /// 还原窗口（取消最大化）
+  static Future<void> unmaximize() async {
+    if (!PlatformInfos.isDesktop) return;
+    await windowManager.unmaximize();
+  }
+
+  /// 切换最大化状态
+  static Future<void> toggleMaximize() async {
+    if (!PlatformInfos.isDesktop) return;
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    } else {
+      await windowManager.maximize();
+    }
+  }
+
+  /// 检查窗口是否最大化
+  static Future<bool> isMaximized() async {
+    if (!PlatformInfos.isDesktop) return false;
+    return await windowManager.isMaximized();
+  }
+
+  /// 设置自定义窗口大小
+  static Future<void> setCustomSize(Size size) async {
+    if (!PlatformInfos.isDesktop) return;
+    await windowManager.setSize(size);
+    await windowManager.center();
+  }
+
   /// 关闭窗口
   static Future<void> close() async {
     if (!PlatformInfos.isDesktop) return;
@@ -47,18 +86,57 @@ class WindowService {
   }
 }
 
-/// 自定义窗口控制按钮组件（关闭、最小化）
-class WindowControlButtons extends StatelessWidget {
+/// 自定义窗口控制按钮组件（最小化、最大化、关闭）
+class WindowControlButtons extends StatefulWidget {
   final bool showMinimize;
+  final bool showMaximize;
   final Color? iconColor;
   final Color? hoverColor;
 
   const WindowControlButtons({
     super.key,
     this.showMinimize = true,
+    this.showMaximize = true,
     this.iconColor,
     this.hoverColor,
   });
+
+  @override
+  State<WindowControlButtons> createState() => _WindowControlButtonsState();
+}
+
+class _WindowControlButtonsState extends State<WindowControlButtons> with WindowListener {
+  bool _isMaximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initMaximizedState();
+    windowManager.addListener(this);
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _initMaximizedState() async {
+    final isMaximized = await WindowService.isMaximized();
+    if (mounted) {
+      setState(() => _isMaximized = isMaximized);
+    }
+  }
+
+  @override
+  void onWindowMaximize() {
+    setState(() => _isMaximized = true);
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    setState(() => _isMaximized = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,16 +149,23 @@ class WindowControlButtons extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (showMinimize)
+        if (widget.showMinimize)
           _WindowButton(
             icon: Icons.remove,
-            iconColor: iconColor ?? defaultIconColor,
-            hoverColor: hoverColor ?? defaultHoverColor,
+            iconColor: widget.iconColor ?? defaultIconColor,
+            hoverColor: widget.hoverColor ?? defaultHoverColor,
             onPressed: WindowService.minimize,
+          ),
+        if (widget.showMaximize)
+          _WindowButton(
+            icon: _isMaximized ? Icons.filter_none : Icons.crop_square,
+            iconColor: widget.iconColor ?? defaultIconColor,
+            hoverColor: widget.hoverColor ?? defaultHoverColor,
+            onPressed: WindowService.toggleMaximize,
           ),
         _WindowButton(
           icon: Icons.close,
-          iconColor: iconColor ?? defaultIconColor,
+          iconColor: widget.iconColor ?? defaultIconColor,
           hoverColor: const Color(0xFFE81123),
           hoverIconColor: Colors.white,
           onPressed: WindowService.close,

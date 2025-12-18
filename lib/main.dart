@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:psygo/config/app_config.dart';
@@ -35,31 +37,58 @@ void main() async {
   // widget bindings are initialized already.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // DEBUG: PC 端每次启动清除登录状态（方便开发调试）
+  // PC 端窗口初始化
   if (PlatformInfos.isDesktop) {
-//     debugPrint('[DEBUG] Desktop: Clearing all login state...');
-//     await const FlutterSecureStorage().deleteAll();
-//     final prefs = await SharedPreferences.getInstance();
-//     await prefs.clear();
-//     debugPrint('[DEBUG] Desktop: Login state cleared!');
+    // [DEBUG] 清除登录状态代码 - 已注释
+    // debugPrint('[DEBUG] Desktop: Clearing all login state...');
+    // await const FlutterSecureStorage().deleteAll();
+    // final prefs = await SharedPreferences.getInstance();
+    // await prefs.clear();
+    // // 清除 Matrix 数据库
+    // final appSupportDir = await getApplicationSupportDirectory();
+    // final dbFiles = appSupportDir.listSync().where((f) => f.path.endsWith('.sqlite'));
+    // for (final dbFile in dbFiles) {
+    //   debugPrint('[DEBUG] Deleting Matrix database: ${dbFile.path}');
+    //   await File(dbFile.path).delete();
+    // }
+    // debugPrint('[DEBUG] Desktop: Login state cleared!');
 
     // 初始化窗口管理器 - 登录页面使用小窗口无边框样式
     await windowManager.ensureInitialized();
-    const loginWindowSize = Size(420, 580);
-    const windowOptions = WindowOptions(
-      size: loginWindowSize,
-      minimumSize: loginWindowSize,
-      maximumSize: loginWindowSize,
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-      windowButtonVisibility: false,
-    );
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
+
+    // 检查是否已登录：通过 SharedPreferences 检查 Matrix 客户端列表
+    final prefs = await SharedPreferences.getInstance();
+    final clientNames = prefs.getStringList('com.psygo.store.clients') ?? [];
+    final isLoggedIn = clientNames.isNotEmpty;
+    debugPrint('[Window] isLoggedIn: $isLoggedIn, clientNames: $clientNames');
+
+    if (isLoggedIn) {
+      // 已登录：使用主窗口大小
+      const mainWindowSize = Size(1280, 720);
+      const mainWindowMinSize = Size(800, 600);
+      await windowManager.waitUntilReadyToShow(null, () async {
+        await windowManager.setSize(mainWindowSize);
+        await windowManager.setMinimumSize(mainWindowMinSize);
+        await windowManager.center();
+        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+        await windowManager.setResizable(true);
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    } else {
+      // 未登录：使用登录窗口大小
+      const loginWindowSize = Size(420, 580);
+      await windowManager.waitUntilReadyToShow(null, () async {
+        await windowManager.setSize(loginWindowSize);
+        await windowManager.setMinimumSize(loginWindowSize);
+        await windowManager.setMaximumSize(loginWindowSize);
+        await windowManager.center();
+        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+        await windowManager.setResizable(false);
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    }
   }
 
   // iOS: Avoid "black screen" on cold start by rendering a first frame ASAP.
