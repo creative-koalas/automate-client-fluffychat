@@ -688,7 +688,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   /// Navigate to onboarding page for new users.
   /// Sets authenticated state and navigates to onboarding.
-  void _navigateToOnboardingThenAuthenticate() {
+  void _navigateToOnboardingThenAuthenticate() async {
+    // PC端：切换到主窗口模式
+    if (PlatformInfos.isDesktop) {
+      await WindowService.switchToMainWindow();
+    }
     setState(() => _state = _AuthState.authenticated);
     _navigateToOnboarding();
   }
