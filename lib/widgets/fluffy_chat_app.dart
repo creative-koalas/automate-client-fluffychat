@@ -737,7 +737,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (PlatformInfos.isDesktop) {
       final theme = Theme.of(context);
       final isDark = theme.brightness == Brightness.dark;
-      final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
       return Scaffold(
         body: Container(
@@ -759,32 +758,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
             ),
           ),
           child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: accentColor.withOpacity(0.3),
-                    blurRadius: 40,
-                    spreadRadius: 5,
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  'assets/logo.png',
-                  width: 100,
-                  height: 100,
-                ),
-              ),
+            child: Image.asset(
+              isDark ? 'assets/logo_dark.png' : 'assets/logo_transparent.png',
+              width: 100,
+              height: 100,
             ),
           ),
         ),

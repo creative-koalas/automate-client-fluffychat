@@ -538,7 +538,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               ),
               // PC端添加圆角
               borderRadius: PlatformInfos.isDesktop
-                  ? BorderRadius.circular(20)
+                  ? BorderRadius.circular(6)
                   : null,
             ),
             child: Stack(
@@ -611,7 +611,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           // PC端：添加圆角裁剪
           if (PlatformInfos.isDesktop) {
             content = ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(6),
               child: content,
             );
           }

@@ -37,11 +37,11 @@ void main() async {
 
   // DEBUG: PC 端每次启动清除登录状态（方便开发调试）
   if (PlatformInfos.isDesktop) {
-    debugPrint('[DEBUG] Desktop: Clearing all login state...');
-    await const FlutterSecureStorage().deleteAll();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    debugPrint('[DEBUG] Desktop: Login state cleared!');
+//     debugPrint('[DEBUG] Desktop: Clearing all login state...');
+//     await const FlutterSecureStorage().deleteAll();
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.clear();
+//     debugPrint('[DEBUG] Desktop: Login state cleared!');
 
     // 初始化窗口管理器 - 登录页面使用小窗口无边框样式
     await windowManager.ensureInitialized();
