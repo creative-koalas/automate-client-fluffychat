@@ -53,8 +53,8 @@ enum AppSettings<T> {
   ),
   // AppConfig-mirrored settings
   applicationName<String>('com.psygo.application_name', 'Psygo'),
-  // homeserver 指向本地 K8s Synapse（从环境变量 K8S_NODE_IP 读取）
-  defaultHomeserver<String>('com.psygo.default_homeserver', PsygoConfig.matrixHomeserver),
+  // homeserver 指向本地 K8s Synapse（运行时从 PsygoConfig 读取）
+  defaultHomeserver<String>('com.psygo.default_homeserver', ''),
   // colorSchemeSeed stored as ARGB int
   colorSchemeSeedInt<int>(
     'com.psygo.color_scheme_seed',

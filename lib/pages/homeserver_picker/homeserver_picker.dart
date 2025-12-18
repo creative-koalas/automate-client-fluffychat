@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker_view.dart';
 import 'package:psygo/utils/file_selector.dart';
@@ -32,7 +33,9 @@ class HomeserverPickerController extends State<HomeserverPicker> {
   bool isLoading = false;
 
   final TextEditingController homeserverController = TextEditingController(
-    text: AppSettings.defaultHomeserver.value,
+    text: AppSettings.defaultHomeserver.value.isNotEmpty
+        ? AppSettings.defaultHomeserver.value
+        : PsygoConfig.matrixHomeserver,
   );
 
   String? error;
