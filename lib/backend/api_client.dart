@@ -27,12 +27,9 @@ class PsygoApiClient {
   final Dio _dio;
   final http.Client _http;
 
-  // K8s NodePort: 30300
-  // 构建时通过 --dart-define=ONBOARDING_CHATBOT_URL=http://your-server:30300 指定
-  // 或者通过 K8S_NODE_IP 自动构建
-  static const String _chatbotBase =
-      String.fromEnvironment('ONBOARDING_CHATBOT_URL',
-        defaultValue: 'http://${PsygoConfig.k8sNodeIp}:30300');
+  // Chatbot Backend URL（根据 K8S_NAMESPACE 动态计算端口）
+  // dev=30300, test=31300, prod=32300
+  static String get _chatbotBase => PsygoConfig.chatbotBaseUrl;
 
   /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
   Future<FusionAuthTokenResponse> getFusionAuthToken() async {
