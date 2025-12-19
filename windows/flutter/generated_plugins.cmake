@@ -17,6 +17,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   screen_retriever_windows
   share_plus
   sqlcipher_flutter_libs
+  tray_manager
   url_launcher_windows
   webcrypto
   window_manager

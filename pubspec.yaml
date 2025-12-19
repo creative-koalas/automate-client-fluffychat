@@ -90,6 +90,7 @@ dependencies:
   wakelock_plus: ^1.3.3
   webrtc_interface: ^1.3.0
   window_manager: ^0.5.1
+  tray_manager: ^0.2.3  # 系统托盘支持
 
 dev_dependencies:
   flutter_lints: ^3.0.0

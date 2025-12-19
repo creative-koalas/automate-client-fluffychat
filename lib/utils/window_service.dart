@@ -1,15 +1,134 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
-/// 窗口管理服务 - 用于 PC 端窗口样式切换
-class WindowService {
+/// 窗口管理服务 - 用于 PC 端窗口样式切换和系统托盘
+class WindowService with TrayListener {
   WindowService._();
+
+  static final WindowService _instance = WindowService._();
+  static WindowService get instance => _instance;
+
+  static bool _trayInitialized = false;
 
   static const Size loginWindowSize = Size(420, 580);
   static const Size mainWindowSize = Size(1280, 720);
   // 最小宽度必须大于 PC 模式阈值 (columnWidth * 2 + navRailWidth = 840)
   static const Size mainWindowMinSize = Size(960, 600);
+
+  /// 初始化系统托盘
+  static Future<void> initSystemTray() async {
+    if (!PlatformInfos.isDesktop || _trayInitialized) return;
+
+    try {
+      // 设置托盘图标
+      String iconPath;
+      if (Platform.isWindows) {
+        iconPath = 'assets/logo.ico';
+      } else {
+        iconPath = 'assets/logo.png';
+      }
+
+      await trayManager.setIcon(iconPath);
+
+      // Linux 的 tray_manager 插件没有实现 setToolTip，只在 Windows/macOS 上调用
+      if (!Platform.isLinux) {
+        await trayManager.setToolTip('Psygo');
+      }
+
+      // 设置托盘菜单
+      await trayManager.setContextMenu(
+        Menu(
+          items: [
+            MenuItem(
+              key: 'show',
+              label: '显示窗口',
+            ),
+            MenuItem.separator(),
+            MenuItem(
+              key: 'exit',
+              label: '退出',
+            ),
+          ],
+        ),
+      );
+
+      // 添加托盘事件监听
+      trayManager.addListener(_instance);
+      _trayInitialized = true;
+      debugPrint('[WindowService] System tray initialized');
+    } catch (e) {
+      debugPrint('[WindowService] Failed to init system tray: $e');
+    }
+  }
+
+  /// 销毁系统托盘
+  static Future<void> destroySystemTray() async {
+    if (!PlatformInfos.isDesktop || !_trayInitialized) return;
+
+    trayManager.removeListener(_instance);
+    await trayManager.destroy();
+    _trayInitialized = false;
+  }
+
+  // TrayListener 回调
+  @override
+  void onTrayIconMouseDown() {
+    debugPrint('[WindowService] onTrayIconMouseDown');
+    // 点击托盘图标显示窗口（仅 Windows 有效，Linux AppIndicator 不支持）
+    showWindow();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    debugPrint('[WindowService] onTrayIconRightMouseDown');
+    // 右键显示菜单（仅 Windows 需要，Linux AppIndicator 自动显示菜单）
+    trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    debugPrint('[WindowService] onTrayMenuItemClick: ${menuItem.key}');
+    switch (menuItem.key) {
+      case 'show':
+        showWindow();
+        break;
+      case 'exit':
+        exitApp();
+        break;
+    }
+  }
+
+  /// 显示窗口
+  static Future<void> showWindow() async {
+    if (!PlatformInfos.isDesktop) return;
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  /// 隐藏窗口到托盘
+  static Future<void> hideToTray() async {
+    if (!PlatformInfos.isDesktop) return;
+    await windowManager.hide();
+  }
+
+  /// 完全退出应用
+  static Future<void> exitApp() async {
+    if (!PlatformInfos.isDesktop) return;
+    await destroySystemTray();
+    await windowManager.setPreventClose(false);
+    await windowManager.destroy();
+  }
+
+  /// 设置关闭时隐藏到托盘（拦截系统关闭事件）
+  static Future<void> setCloseToTray() async {
+    if (!PlatformInfos.isDesktop) return;
+    await windowManager.setPreventClose(true);
+    windowManager.addListener(_CloseInterceptor());
+  }
 
   /// 切换到主窗口模式（登录成功后调用）
   static Future<void> switchToMainWindow() async {
@@ -24,6 +143,10 @@ class WindowService {
     await windowManager.setSize(mainWindowSize);
     await windowManager.center();
     await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+
+    // 初始化系统托盘
+    await initSystemTray();
+
     debugPrint('[WindowService] switchToMainWindow completed');
   }
 
@@ -169,7 +292,7 @@ class _WindowControlButtonsState extends State<WindowControlButtons> with Window
           iconColor: widget.iconColor ?? defaultIconColor,
           hoverColor: const Color(0xFFE81123),
           hoverIconColor: Colors.white,
-          onPressed: WindowService.close,
+          onPressed: WindowService.hideToTray,  // 点击关闭时隐藏到托盘
         ),
       ],
     );
@@ -240,5 +363,14 @@ class WindowDragArea extends StatelessWidget {
       onPanStart: (_) => windowManager.startDragging(),
       child: child,
     );
+  }
+}
+
+/// 关闭事件拦截器 - 将关闭改为隐藏到托盘
+class _CloseInterceptor with WindowListener {
+  @override
+  void onWindowClose() async {
+    // 拦截关闭事件，改为隐藏到托盘
+    await WindowService.hideToTray();
   }
 }

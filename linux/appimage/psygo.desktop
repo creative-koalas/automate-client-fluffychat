@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Psygo
+Comment=Your AI-powered automation assistant
+Exec=psygo
+Icon=psygo
+Categories=Network;InstantMessaging;Chat;
+Terminal=false
+StartupWMClass=psygo

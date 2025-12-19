@@ -16,6 +16,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'config/setting_keys.dart';
 import 'widgets/fluffy_chat_app.dart';
 
@@ -61,6 +62,9 @@ void main() async {
     final clientNames = prefs.getStringList('com.psygo.store.clients') ?? [];
     final isLoggedIn = clientNames.isNotEmpty;
     debugPrint('[Window] isLoggedIn: $isLoggedIn, clientNames: $clientNames');
+
+    // 设置关闭时隐藏到托盘（拦截系统关闭按钮）
+    await WindowService.setCloseToTray();
 
     if (isLoggedIn) {
       // 已登录：使用主窗口大小
