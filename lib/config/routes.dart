@@ -164,8 +164,11 @@ abstract class AppRoutes {
           '/rooms/newgroup',
           '/rooms/newprivatechat',
         ];
+        // 聊天详情和搜索页面的子路由也需要排除
+        final excludedSuffixes = ['/details', '/search', '/invite', '/encryption'];
         final shouldUseDesktopLayout = FluffyThemes.isColumnMode(context) &&
-            !excludedPaths.any((p) => path.startsWith(p));
+            !excludedPaths.any((p) => path.startsWith(p)) &&
+            !excludedSuffixes.any((s) => path.endsWith(s));
 
         return noTransitionPageBuilder(
           context,
