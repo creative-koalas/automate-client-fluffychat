@@ -125,7 +125,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (!mounted) return;
     setState(() => isLoading = true);
 
-    const greeting = '你好！👋 欢迎来到 Psygo 人才中心。\n\n我是前台接待。我们这里有各类数字工作者——程序员、研究员、数据分析师、运营专员等等，随时待命。\n\n您有什么事情想交给别人去做？不管是一个想法、一个项目、还是一件麻烦事，都可以跟我说说。\n\n我来帮您找到合适的人选，组建团队，把事情办妥。';
+    const greeting = '您好，我是您的Psygo使用助手。\n\nPsygo是新一代实验型AI生命体，目前主要面向软件开发场景。**这个App只是与Psygo的聊天工具，类似微信；建议您通过gitee等人类常规协作平台让Psygo交付工作。**\n\nPsygo可以独立完成复杂工作。**您只需告诉他做什么，然后可以关掉App，等Psygo的消息。**\n\n我将帮您完成第一个Psygo的招募和任务下发。请问您需要Psygo做什么？';
 
     _addMessage(
       ChatMessage(

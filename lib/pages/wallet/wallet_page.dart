@@ -21,14 +21,14 @@ class WalletPage extends StatefulWidget {
 }
 
 class _WalletPageState extends State<WalletPage> {
-  // 预设金额选项
-  final List<int> _presetAmounts = [10, 50, 100, 200, 500];
+  // 预设金额选项（0.01 元为测试用，后续移除）
+  final List<double> _presetAmounts = [0.01, 10, 50, 100, 200];
 
   // 选中的预设金额索引
   int _selectedPresetIndex = 1; // 默认选中 50
 
-  // 自定义金额
-  int _customAmount = 50;
+  // 自定义金额（元）
+  double _customAmount = 10;
 
   // 用户余额（分）- 从后端获取
   int _balanceCredits = 0;
@@ -90,9 +90,9 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   void _onAmountDecrease() {
-    if (_customAmount > 10) {
+    if (_customAmount > 0.01) {
       setState(() {
-        _customAmount -= 10;
+        _customAmount = (_customAmount - 10).clamp(0.01, double.infinity);
         _selectedPresetIndex = -1; // 取消预设选中
       });
     }
@@ -112,7 +112,7 @@ class _WalletPageState extends State<WalletPage> {
     // 跳转到订单页面
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => OrderPage(amount: _customAmount.toDouble()),
+        builder: (context) => OrderPage(amount: _customAmount),
       ),
     );
 
@@ -414,7 +414,7 @@ class _WalletPageState extends State<WalletPage> {
                     ),
                     child: Center(
                       child: Text(
-                        '¥$amount',
+                        amount < 1 ? '¥${amount.toStringAsFixed(2)}' : '¥${amount.toInt()}',
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.grey[700],
                           fontWeight: FontWeight.w500,
@@ -452,7 +452,7 @@ class _WalletPageState extends State<WalletPage> {
                 _buildAmountButton(
                   icon: Icons.remove,
                   onTap: _onAmountDecrease,
-                  enabled: _customAmount > 10,
+                  enabled: _customAmount > 0.01,
                 ),
                 // 金额显示
                 Expanded(
@@ -469,7 +469,7 @@ class _WalletPageState extends State<WalletPage> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _customAmount.toString(),
+                          _customAmount < 1 ? _customAmount.toStringAsFixed(2) : _customAmount.toInt().toString(),
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -494,7 +494,7 @@ class _WalletPageState extends State<WalletPage> {
           // 将获得积分提示
           Center(
             child: Text(
-              '${l10n.walletWillGet} ${_customAmount * 100}${l10n.walletCreditsUnit}',
+              '${l10n.walletWillGet} ${(_customAmount * 100).toInt()}${l10n.walletCreditsUnit}',
               style: TextStyle(
                 fontSize: 13,
                 color: _primaryGreen,
@@ -518,7 +518,7 @@ class _WalletPageState extends State<WalletPage> {
                 elevation: 0,
               ),
               child: Text(
-                '${l10n.walletRechargeNow} ¥$_customAmount',
+                '${l10n.walletRechargeNow} ¥${_customAmount < 1 ? _customAmount.toStringAsFixed(2) : _customAmount.toInt()}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,

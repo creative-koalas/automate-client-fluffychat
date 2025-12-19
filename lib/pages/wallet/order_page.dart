@@ -151,10 +151,10 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
       _updatePaymentState(PaymentState.awaitingAlipay, message: '正在跳转支付宝...');
 
       // 3. 调用支付宝 SDK
-      print('🚀 Calling tobias.pay() with SANDBOX environment (forced)...');
+      print('🚀 Calling tobias.pay() with ONLINE environment...');
       final payResult = await tobias.Tobias().pay(
         orderResponse.orderString,
-        evn: tobias.AliPayEvn.sandbox,  // 强制沙箱，上线时再改
+        evn: tobias.AliPayEvn.online,
       );
 
       // 📋 日志：打印支付结果

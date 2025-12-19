@@ -84,6 +84,7 @@ web/pkg/vodozemac_bindings_dart.js
 # Kotlin build cache
 android/.kotlin/
 env.local.json
+env.test.json
 
 # Build scripts
 ios_build.sh

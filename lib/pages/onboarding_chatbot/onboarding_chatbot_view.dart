@@ -308,17 +308,17 @@ class _GreetingCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // 内容段落
-                ...bodyParagraphs.map((paragraph) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    paragraph,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
-                      height: 1.6,
-                    ),
+                // 内容段落 - 使用 ChatbotMessageRenderer 支持 Markdown
+                ChatbotMessageRenderer(
+                  text: bodyParagraphs.join('\n\n'),
+                  textColor: Colors.black54,
+                  fontSize: 14,
+                  linkStyle: TextStyle(
+                    color: theme.colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                    decorationColor: theme.colorScheme.primary,
                   ),
-                )),
+                ),
               ],
             ],
           ),
