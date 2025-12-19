@@ -524,7 +524,8 @@ class EmployeesTabState extends State<EmployeesTab>
 
           final employee = _employees[index];
           return GestureDetector(
-            onLongPressStart: (details) {
+            // PC端使用右键触发快捷菜单
+            onSecondaryTapDown: (details) {
               _onEmployeeLongPress(employee, details.globalPosition);
             },
             child: EmployeeCard(

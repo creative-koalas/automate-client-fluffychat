@@ -45,6 +45,9 @@ class DesktopLayout extends StatefulWidget {
 }
 
 class _DesktopLayoutState extends State<DesktopLayout> {
+  // 使用静态变量保存当前页面，这样即使 widget 重建也能恢复到用户选择的页面
+  static DesktopPageIndex _savedCurrentPage = DesktopPageIndex.messages;
+
   late DesktopPageIndex _currentPage;
   int _unreadCount = 0;
   bool _isMenuOpen = false;
@@ -55,8 +58,23 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   @override
   void initState() {
     super.initState();
-    _currentPage = widget.initialPage;
+    // 如果有 activeChat，说明是要打开聊天，切换到消息页面
+    // 否则恢复到之前保存的页面
+    _currentPage = widget.activeChat != null
+        ? DesktopPageIndex.messages
+        : _savedCurrentPage;
     _updateUnreadCount();
+  }
+
+  @override
+  void didUpdateWidget(DesktopLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当 activeChat 变化且当前不在消息页面时，自动切换到消息页面
+    if (widget.activeChat != null &&
+        widget.activeChat != oldWidget.activeChat &&
+        _currentPage != DesktopPageIndex.messages) {
+      setState(() => _currentPage = DesktopPageIndex.messages);
+    }
   }
 
   void _updateUnreadCount() {
@@ -82,6 +100,11 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     final newPage = DesktopPageIndex.values[index];
     if (_currentPage != newPage) {
       setState(() => _currentPage = newPage);
+      _savedCurrentPage = newPage; // 保存当前页面状态
+      // 当切换到非消息页面时，清除路由中的 roomId，这样下次点击"开始聊天"时路由会变化
+      if (newPage != DesktopPageIndex.messages && widget.activeChat != null) {
+        context.go('/rooms');
+      }
     }
   }
 
