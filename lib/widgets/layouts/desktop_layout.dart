@@ -47,10 +47,19 @@ class DesktopLayout extends StatefulWidget {
 class _DesktopLayoutState extends State<DesktopLayout> {
   // 使用静态变量保存当前页面，这样即使 widget 重建也能恢复到用户选择的页面
   static DesktopPageIndex _savedCurrentPage = DesktopPageIndex.messages;
+  // 保存消息列表宽度
+  static double _chatListWidth = FluffyThemes.columnWidth;
+
+  // 消息列表最小/最大宽度
+  static const double _minChatListWidth = 280.0;
+  static const double _maxChatListWidth = 500.0;
 
   late DesktopPageIndex _currentPage;
   int _unreadCount = 0;
   bool _isMenuOpen = false;
+  bool _isDraggingDivider = false;
+  double _dragStartX = 0;
+  double _dragStartWidth = 0;
 
   // 员工页面的 Key，用于刷新
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
@@ -317,29 +326,72 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
     switch (_currentPage) {
       case DesktopPageIndex.messages:
-        // 消息页面：聊天列表 + 聊天详情（双栏布局）
-        return Row(
-          children: [
-            // 聊天列表
-            SizedBox(
-              width: FluffyThemes.columnWidth,
-              child: ChatList(
-                activeChat: widget.activeChat,
-                displayNavigationRail: false,
+        // 消息页面：聊天列表 + 聊天详情（双栏布局，可调整大小）
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return MouseRegion(
+              cursor: _isDraggingDivider
+                  ? SystemMouseCursors.resizeColumn
+                  : SystemMouseCursors.basic,
+              child: Listener(
+                onPointerMove: _isDraggingDivider
+                    ? (event) {
+                        // 计算新宽度：鼠标相对于内容区域左边的位置
+                        final newWidth = event.localPosition.dx.clamp(
+                          _minChatListWidth,
+                          _maxChatListWidth,
+                        );
+                        if (newWidth != _chatListWidth) {
+                          setState(() => _chatListWidth = newWidth);
+                        }
+                      }
+                    : null,
+                onPointerUp: _isDraggingDivider
+                    ? (_) => setState(() => _isDraggingDivider = false)
+                    : null,
+                child: Row(
+                  children: [
+                    // 聊天列表（可调整宽度）
+                    SizedBox(
+                      width: _chatListWidth,
+                      child: ChatList(
+                        activeChat: widget.activeChat,
+                        displayNavigationRail: false,
+                      ),
+                    ),
+                    // 可拖拽分隔线
+                    MouseRegion(
+                      cursor: SystemMouseCursors.resizeColumn,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onPanStart: (_) {
+                          setState(() => _isDraggingDivider = true);
+                        },
+                        child: Container(
+                          width: 8,
+                          color: Colors.transparent,
+                          child: Center(
+                            child: Container(
+                              width: _isDraggingDivider ? 3 : 1,
+                              color: _isDraggingDivider
+                                  ? theme.colorScheme.primary
+                                  : theme.dividerColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // 聊天详情
+                    Expanded(
+                      child: widget.activeChat != null
+                          ? ChatPage(roomId: widget.activeChat!)
+                          : const EmptyPage(),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // 分隔线
-            Container(
-              width: 1,
-              color: theme.dividerColor,
-            ),
-            // 聊天详情
-            Expanded(
-              child: widget.activeChat != null
-                  ? ChatPage(roomId: widget.activeChat!)
-                  : const EmptyPage(),
-            ),
-          ],
+            );
+          },
         );
       case DesktopPageIndex.employees:
         // 员工页面：全宽显示

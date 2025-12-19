@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:psygo/utils/color_value.dart';
+import 'package:psygo/utils/platform_infos.dart';
 
 class ThemeBuilder extends StatefulWidget {
   final Widget Function(
@@ -33,9 +34,14 @@ class ThemeController extends State<ThemeBuilder> {
   ThemeMode? _themeMode;
   Color? _primaryColor;
 
-  ThemeMode get themeMode => _themeMode ?? ThemeMode.system;
+  // PC端默认浅色主题，其他平台跟随系统
+  ThemeMode get themeMode =>
+      _themeMode ?? (PlatformInfos.isDesktop ? ThemeMode.light : ThemeMode.system);
 
-  Color? get primaryColor => _primaryColor;
+  // PC端默认绿色主题 (#4CAF50)，其他平台使用系统颜色
+  static const Color _desktopDefaultColor = Color(0xFF4CAF50);
+  Color? get primaryColor =>
+      _primaryColor ?? (PlatformInfos.isDesktop ? _desktopDefaultColor : null);
 
   static ThemeController of(BuildContext context) =>
       Provider.of<ThemeController>(
