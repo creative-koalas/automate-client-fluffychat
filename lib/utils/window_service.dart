@@ -8,7 +8,8 @@ class WindowService {
 
   static const Size loginWindowSize = Size(420, 580);
   static const Size mainWindowSize = Size(1280, 720);
-  static const Size mainWindowMinSize = Size(800, 600);
+  // 最小宽度必须大于 PC 模式阈值 (columnWidth * 2 + navRailWidth = 840)
+  static const Size mainWindowMinSize = Size(960, 600);
 
   /// 切换到主窗口模式（登录成功后调用）
   static Future<void> switchToMainWindow() async {

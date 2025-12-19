@@ -129,6 +129,8 @@ class _EmployeeCardState extends State<EmployeeCard>
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // 名称
                           Text(
@@ -142,17 +144,21 @@ class _EmployeeCardState extends State<EmployeeCard>
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
 
                           // 工作状态
                           Row(
                             children: [
                               _buildWorkStatusDot(theme),
-                              const SizedBox(width: 6),
-                              Text(
-                                _getWorkStatusText(l10n),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                              if (widget.employee.isReady) const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _getWorkStatusText(l10n),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -177,8 +183,8 @@ class _EmployeeCardState extends State<EmployeeCard>
     final isOnboarding = !widget.employee.isReady;
 
     return SizedBox(
-      width: isOnboarding ? 60 : 56,
-      height: isOnboarding ? 60 : 56,
+      width: isOnboarding ? 48 : 44,
+      height: isOnboarding ? 48 : 44,
       child: Stack(
         children: [
           // 入职中状态时头像有圆环动画
@@ -205,8 +211,8 @@ class _EmployeeCardState extends State<EmployeeCard>
             left: isOnboarding ? 2 : 0,
             top: isOnboarding ? 2 : 0,
             child: Container(
-              width: 56,
-              height: 56,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: theme.colorScheme.primaryContainer.withOpacity(0.3),

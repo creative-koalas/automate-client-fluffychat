@@ -65,7 +65,8 @@ void main() async {
     if (isLoggedIn) {
       // 已登录：使用主窗口大小
       const mainWindowSize = Size(1280, 720);
-      const mainWindowMinSize = Size(800, 600);
+      // 最小宽度必须大于 PC 模式阈值 (columnWidth * 2 + navRailWidth = 840)
+      const mainWindowMinSize = Size(960, 600);
       await windowManager.waitUntilReadyToShow(null, () async {
         await windowManager.setSize(mainWindowSize);
         await windowManager.setMinimumSize(mainWindowMinSize);

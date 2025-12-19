@@ -514,7 +514,7 @@ class EmployeesTabState extends State<EmployeesTab>
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 5, // 卡片宽高比
+          childAspectRatio: 4, // 卡片宽高比
         ),
         itemCount: _employees.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {

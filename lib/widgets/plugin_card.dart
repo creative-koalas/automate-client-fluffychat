@@ -35,46 +35,52 @@ class PluginCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              // 图标
-              _buildIcon(theme),
-              const SizedBox(width: 14),
+          padding: const EdgeInsets.all(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Row(
+                children: [
+                  // 图标
+                  _buildIcon(theme),
+                  const SizedBox(width: 12),
 
-              // 信息
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 名称
-                    Text(
-                      plugin.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  // 信息
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 名称
+                        Text(
+                          plugin.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+
+                        // 描述
+                        Text(
+                          plugin.description,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
+                  ),
+                  const SizedBox(width: 8),
 
-                    // 描述
-                    Text(
-                      plugin.description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // 安装统计
-              _buildStats(theme, l10n),
-            ],
+                  // 安装统计
+                  _buildStats(theme, l10n),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -83,8 +89,8 @@ class PluginCard extends StatelessWidget {
 
   Widget _buildIcon(ThemeData theme) {
     return Container(
-      width: 52,
-      height: 52,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: theme.colorScheme.secondaryContainer.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
@@ -113,13 +119,12 @@ class PluginCard extends StatelessWidget {
   }
 
   Widget _buildStats(ThemeData theme, L10n l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         // 安装数量
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: theme.colorScheme.primaryContainer.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
@@ -143,12 +148,11 @@ class PluginCard extends StatelessWidget {
             ],
           ),
         ),
-
         // 需要配置标识
         if (plugin.requiresConfig) ...[
-          const SizedBox(height: 6),
+          const SizedBox(width: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
               color: theme.colorScheme.tertiaryContainer.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
@@ -161,7 +165,7 @@ class PluginCard extends StatelessWidget {
                   size: 12,
                   color: theme.colorScheme.tertiary,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 Text(
                   l10n.requiresConfig,
                   style: theme.textTheme.labelSmall?.copyWith(

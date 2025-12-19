@@ -185,7 +185,7 @@ class _TrainingTabState extends State<TrainingTab>
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 5,
+          childAspectRatio: 4,
         ),
         itemCount: _plugins.length,
         itemBuilder: (context, index) {
