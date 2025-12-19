@@ -558,12 +558,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                     ),
                   ),
 
-                // PC端：窗口控制按钮（最小化、关闭）
+                // PC端：窗口控制按钮（最小化、关闭，不显示最大化）
                 if (PlatformInfos.isDesktop)
                   Positioned(
                     top: 4,
                     right: 4,
                     child: WindowControlButtons(
+                      showMaximize: false,
                       iconColor: isDark
                           ? Colors.white.withOpacity(0.6)
                           : Colors.black.withOpacity(0.4),
