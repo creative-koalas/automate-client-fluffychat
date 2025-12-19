@@ -1,3 +1,6 @@
+import 'dart:ui' show PointerDeviceKind;
+
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
@@ -39,6 +42,7 @@ class ChatListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDesktop = FluffyThemes.isColumnMode(context);
 
     final isMuted = room.pushRuleState != PushRuleState.notify;
     final typingText = room.getLocalizedTypingText(context);
@@ -63,7 +67,7 @@ class ChatListItem extends StatelessWidget {
         : room.getState(EventTypes.RoomMember, lastEvent.senderId) == null;
     final space = this.space;
 
-    return Padding(
+    final chatItem = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: 8,
         vertical: 1,
@@ -78,7 +82,8 @@ class ChatListItem extends StatelessWidget {
             builder: (context, listTileHovered) => ListTile(
               visualDensity: const VisualDensity(vertical: -0.5),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              onLongPress: () => onLongPress?.call(context),
+              // 移动端用长按，PC端用右键（Listener处理）
+              onLongPress: isDesktop ? null : () => onLongPress?.call(context),
               leading: HoverBuilder(
                 builder: (context, hovered) => AnimatedScale(
                   duration: FluffyThemes.animationDuration,
@@ -368,5 +373,20 @@ class ChatListItem extends StatelessWidget {
         ),
       ),
     );
+
+    // PC端使用Listener检测鼠标右键触发快捷菜单
+    if (isDesktop) {
+      return Listener(
+        onPointerDown: (event) {
+          if (event.kind == PointerDeviceKind.mouse &&
+              event.buttons == kSecondaryMouseButton) {
+            onLongPress?.call(context);
+          }
+        },
+        child: chatItem,
+      );
+    }
+
+    return chatItem;
   }
 }
