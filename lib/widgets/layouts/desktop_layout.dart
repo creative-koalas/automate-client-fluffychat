@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
@@ -61,6 +63,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   double _dragStartX = 0;
   double _dragStartWidth = 0;
 
+  // 监听同步事件以更新未读计数
+  StreamSubscription? _syncSubscription;
+
   // 员工页面的 Key，用于刷新
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
 
@@ -72,7 +77,27 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     _currentPage = widget.activeChat != null
         ? DesktopPageIndex.messages
         : _savedCurrentPage;
-    _updateUnreadCount();
+    // 延迟到 context 可用后初始化
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateUnreadCount();
+      _setupSyncListener();
+    });
+  }
+
+  void _setupSyncListener() {
+    if (!mounted) return;
+    try {
+      final client = Matrix.of(context).client;
+      _syncSubscription = client.onSync.stream.listen((_) {
+        _updateUnreadCount();
+      });
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -87,22 +112,20 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   }
 
   void _updateUnreadCount() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      try {
-        final matrix = Matrix.of(context);
-        final client = matrix.client;
-        int count = 0;
-        for (final room in client.rooms) {
-          if (room.isUnreadOrInvited) {
-            count += room.notificationCount;
-          }
+    if (!mounted) return;
+    try {
+      final matrix = Matrix.of(context);
+      final client = matrix.client;
+      int count = 0;
+      for (final room in client.rooms) {
+        if (room.isUnreadOrInvited) {
+          count += room.notificationCount;
         }
-        if (_unreadCount != count) {
-          setState(() => _unreadCount = count);
-        }
-      } catch (_) {}
-    });
+      }
+      if (_unreadCount != count) {
+        setState(() => _unreadCount = count);
+      }
+    } catch (_) {}
   }
 
   void _onPageSelected(int index) {

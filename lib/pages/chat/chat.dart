@@ -419,7 +419,16 @@ class ChatController extends State<ChatPageWithRoom>
             .indexWhere((e) => e.eventId == readMarkerEventId);
       }
 
-      if (readMarkerEventIndex > 1) {
+      // PC 端直接滚动到最新消息，移动端保持原来的行为（滚动到未读标记位置）
+      if (PlatformInfos.isDesktop) {
+        // PC 端：延迟滚动到最新消息，确保 timeline 完全渲染
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted && scrollController.hasClients) {
+            scrollController.jumpTo(0);
+            setReadMarker();
+          }
+        });
+      } else if (readMarkerEventIndex > 1) {
         Logs().v('Scroll up to visible event', readMarkerEventId);
         scrollToEventId(readMarkerEventId, highlightEvent: false);
         return;
