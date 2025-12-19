@@ -181,6 +181,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     final employee = widget.employee;
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -201,6 +204,12 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             ),
           ),
 
+          // 可滚动内容区域
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
           // 头像和基本信息
           Padding(
             padding: const EdgeInsets.all(24),
@@ -344,6 +353,10 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
 
           // 安全区域
           SizedBox(height: MediaQuery.of(context).padding.bottom),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
