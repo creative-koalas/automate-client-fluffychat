@@ -150,7 +150,10 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
                       : null
                   : FluffyThemes.isColumnMode(context)
                       ? null  // PC端不显示头像
-                      : ClientChooserButton(controller),  // 移动端保留头像
+                      : SizedBox(
+                          width: 0,
+                          child: ClientChooserButton(controller),
+                        ),  // 移动端保留头像，使用原有布局
             ),
           );
         },
