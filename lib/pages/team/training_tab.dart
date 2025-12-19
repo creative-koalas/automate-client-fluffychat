@@ -17,10 +17,10 @@ class TrainingTab extends StatefulWidget {
   const TrainingTab({super.key});
 
   @override
-  State<TrainingTab> createState() => _TrainingTabState();
+  State<TrainingTab> createState() => TrainingTabState();
 }
 
-class _TrainingTabState extends State<TrainingTab>
+class TrainingTabState extends State<TrainingTab>
     with AutomaticKeepAliveClientMixin {
   final PluginRepository _repository = PluginRepository();
 
@@ -73,6 +73,9 @@ class _TrainingTabState extends State<TrainingTab>
       }
     }
   }
+
+  /// 公开的刷新方法，供外部调用
+  Future<void> refresh() => _loadPlugins();
 
   Future<void> _onPluginTap(Plugin plugin) async {
     // 打开培训详情 Sheet

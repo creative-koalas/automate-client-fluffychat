@@ -29,10 +29,10 @@ class RecruitTab extends StatefulWidget {
   });
 
   @override
-  State<RecruitTab> createState() => _RecruitTabState();
+  State<RecruitTab> createState() => RecruitTabState();
 }
 
-class _RecruitTabState extends State<RecruitTab>
+class RecruitTabState extends State<RecruitTab>
     with AutomaticKeepAliveClientMixin {
   final AgentTemplateRepository _repository = AgentTemplateRepository();
   final AgentRepository _agentRepository = AgentRepository();
@@ -102,6 +102,9 @@ class _RecruitTabState extends State<RecruitTab>
       }
     }
   }
+
+  /// 公开的刷新方法，供外部调用
+  Future<void> refresh() => _loadTemplates();
 
   Future<void> _onTemplateTap(AgentTemplate template) async {
     final result = await showDialog<UnifiedCreateAgentResponse>(

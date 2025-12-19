@@ -66,8 +66,10 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   // 监听同步事件以更新未读计数
   StreamSubscription? _syncSubscription;
 
-  // 员工页面的 Key，用于刷新
+  // 各页面的 Key，用于刷新
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
+  final GlobalKey<RecruitTabState> _recruitTabKey = GlobalKey();
+  final GlobalKey<TrainingTabState> _trainingTabKey = GlobalKey();
 
   @override
   void initState() {
@@ -137,6 +139,26 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       if (newPage != DesktopPageIndex.messages && widget.activeChat != null) {
         context.go('/rooms');
       }
+    }
+    // 点击按钮时刷新对应页面
+    _refreshCurrentPage(newPage);
+  }
+
+  /// 刷新当前选中的页面
+  void _refreshCurrentPage(DesktopPageIndex page) {
+    switch (page) {
+      case DesktopPageIndex.messages:
+        // 消息页面由 Matrix sync 自动刷新
+        break;
+      case DesktopPageIndex.employees:
+        _employeesTabKey.currentState?.refreshEmployeeList();
+        break;
+      case DesktopPageIndex.recruitment:
+        _recruitTabKey.currentState?.refresh();
+        break;
+      case DesktopPageIndex.training:
+        _trainingTabKey.currentState?.refresh();
+        break;
     }
   }
 
@@ -436,6 +458,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
             automaticallyImplyLeading: false,
           ),
           body: RecruitTab(
+            key: _recruitTabKey,
             onEmployeeHired: _switchToEmployeesAndRefresh,
             onRefreshEmployees: _refreshEmployeeList,
           ),
@@ -447,7 +470,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
             title: const Text('培训市场'),
             automaticallyImplyLeading: false,
           ),
-          body: const TrainingTab(),
+          body: TrainingTab(key: _trainingTabKey),
         );
     }
   }
