@@ -118,8 +118,17 @@ class WindowService with TrayListener {
   /// 完全退出应用
   static Future<void> exitApp() async {
     if (!PlatformInfos.isDesktop) return;
-    await destroySystemTray();
-    await windowManager.setPreventClose(false);
+
+    // 先隐藏窗口，给用户即时反馈
+    await windowManager.hide();
+
+    // 并行执行清理操作
+    await Future.wait([
+      destroySystemTray(),
+      windowManager.setPreventClose(false),
+    ]);
+
+    // 正常关闭窗口
     await windowManager.destroy();
   }
 
