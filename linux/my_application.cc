@@ -53,11 +53,23 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "Automate");
+    gtk_header_bar_set_title(header_bar, "Psygo");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
+
+    // Set headerbar title color to black using CSS
+    GtkCssProvider* css_provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(css_provider,
+        "headerbar .title { color: #000000; }"
+        "headerbar:backdrop .title { color: #000000; }",
+        -1, nullptr);
+    gtk_style_context_add_provider_for_screen(
+        gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(css_provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(css_provider);
   } else {
-    gtk_window_set_title(window, "Automate");
+    gtk_window_set_title(window, "Psygo");
   }
 
   gtk_window_set_default_size(window, 864, 720);
