@@ -171,31 +171,49 @@ class TrainingTabState extends State<TrainingTab>
       );
     }
 
-    // 插件列表 - PC端使用两列网格布局，移动端使用列表布局
+    // 插件列表 - PC端使用响应式网格布局，移动端使用列表布局
     final isDesktop = FluffyThemes.isColumnMode(context);
 
     if (isDesktop) {
-      // PC端：两列网格布局
-      return GridView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: 32,
-        ),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 4,
-        ),
-        itemCount: _plugins.length,
-        itemBuilder: (context, index) {
-          final plugin = _plugins[index];
-          return PluginCard(
-            plugin: plugin,
-            onTap: () => _onPluginTap(plugin),
+      // PC端：响应式网格布局，根据屏幕宽度自动调整列数
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          // 计算最佳列数：每列最小宽度 280，最大宽度 400
+          const minCardWidth = 280.0;
+          final availableWidth = constraints.maxWidth - 32; // 减去左右 padding
+
+          // 计算列数（至少 2 列，最多 5 列）
+          int crossAxisCount = (availableWidth / minCardWidth).floor();
+          crossAxisCount = crossAxisCount.clamp(2, 5);
+
+          // 计算实际卡片宽度
+          final cardWidth = availableWidth / crossAxisCount - 12; // 减去间距
+
+          // 根据卡片宽度调整宽高比（数值越小，卡片越高）
+          final aspectRatio = cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
+
+          return GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: 32,
+            ),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: aspectRatio,
+            ),
+            itemCount: _plugins.length,
+            itemBuilder: (context, index) {
+              final plugin = _plugins[index];
+              return PluginCard(
+                plugin: plugin,
+                onTap: () => _onPluginTap(plugin),
+              );
+            },
           );
         },
       );

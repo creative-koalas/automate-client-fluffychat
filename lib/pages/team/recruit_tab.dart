@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import '../../models/agent_template.dart';
 import '../../repositories/agent_repository.dart';
@@ -196,18 +197,25 @@ class RecruitTabState extends State<RecruitTab>
   }
 
   Widget _buildBody(BuildContext context, ThemeData theme, L10n l10n) {
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
     // 加载状态
     if (_isLoading) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.75,
-        ),
-        itemCount: 6,
-        itemBuilder: (context, index) => const SkeletonGridItem(height: 220),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final crossAxisCount = _calculateCrossAxisCount(constraints.maxWidth, isDesktop);
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.75,
+            ),
+            itemCount: crossAxisCount * 2,
+            itemBuilder: (context, index) => const SkeletonGridItem(height: 220),
+          );
+        },
       );
     }
 
@@ -259,29 +267,48 @@ class RecruitTabState extends State<RecruitTab>
       );
     }
 
-    // 模板列表
-    return GridView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 96, // 为底部导航栏留出空间
-      ),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.72,
-      ),
-      itemCount: _templates.length,
-      itemBuilder: (context, index) {
-        final template = _templates[index];
-        return TemplateCard(
-          template: template,
-          onTap: () => _onTemplateTap(template),
+    // 模板列表 - 响应式网格布局
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = _calculateCrossAxisCount(constraints.maxWidth, isDesktop);
+        // 根据列数调整宽高比
+        final aspectRatio = isDesktop ? (crossAxisCount >= 4 ? 0.68 : 0.72) : 0.72;
+
+        return GridView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: 96, // 为底部导航栏留出空间
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: aspectRatio,
+          ),
+          itemCount: _templates.length,
+          itemBuilder: (context, index) {
+            final template = _templates[index];
+            return TemplateCard(
+              template: template,
+              onTap: () => _onTemplateTap(template),
+            );
+          },
         );
       },
     );
+  }
+
+  /// 计算网格列数
+  int _calculateCrossAxisCount(double width, bool isDesktop) {
+    if (!isDesktop) return 2; // 移动端固定 2 列
+
+    // PC端：根据宽度自适应列数
+    const minCardWidth = 180.0;
+    final availableWidth = width - 32; // 减去左右 padding
+    int crossAxisCount = (availableWidth / minCardWidth).floor();
+    return crossAxisCount.clamp(2, 6); // 2-6 列
   }
 }
