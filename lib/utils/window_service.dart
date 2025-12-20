@@ -119,17 +119,23 @@ class WindowService with TrayListener {
   static Future<void> exitApp() async {
     if (!PlatformInfos.isDesktop) return;
 
-    // 先隐藏窗口，给用户即时反馈
+    // 1. 先隐藏窗口，给用户即时反馈
     await windowManager.hide();
 
-    // 并行执行清理操作
+    // 2. 并行执行清理操作
     await Future.wait([
       destroySystemTray(),
       windowManager.setPreventClose(false),
     ]);
 
-    // 正常关闭窗口
+    // 3. 销毁窗口
     await windowManager.destroy();
+
+    // 4. 给一点时间让异步操作完成
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // 5. 强制退出进程，确保不残留
+    exit(0);
   }
 
   /// 设置关闭时隐藏到托盘（拦截系统关闭事件）

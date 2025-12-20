@@ -12,6 +12,7 @@ import 'package:matrix/matrix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
@@ -40,6 +41,37 @@ void main() async {
 
   // PC 端窗口初始化
   if (PlatformInfos.isDesktop) {
+    // 单实例检查 - 防止多开
+    if (Platform.isWindows) {
+      await WindowsSingleInstance.ensureSingleInstance(
+        [],
+        'com.psygo.app.single_instance',
+        onSecondWindow: (args) {
+          // 用户尝试打开第二个实例时，显示并聚焦现有窗口
+          windowManager.show();
+          windowManager.focus();
+        },
+      );
+    } else if (Platform.isLinux) {
+      // Linux 使用文件锁实现单实例
+      final lockFile = File('/tmp/psygo.lock');
+      if (await lockFile.exists()) {
+        // 检查进程是否还在运行
+        try {
+          final pid = int.tryParse(await lockFile.readAsString());
+          if (pid != null) {
+            final result = await Process.run('kill', ['-0', pid.toString()]);
+            if (result.exitCode == 0) {
+              // 进程仍在运行，退出当前实例
+              exit(0);
+            }
+          }
+        } catch (_) {}
+      }
+      // 写入当前进程 PID
+      await lockFile.writeAsString(pid.toString());
+    }
+
     // [DEBUG] 清除登录状态代码 - 测试时启用
 //     debugPrint('[DEBUG] Desktop: Clearing all login state...');
 //     await const FlutterSecureStorage().deleteAll();
