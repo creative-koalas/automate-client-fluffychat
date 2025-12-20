@@ -1,15 +1,12 @@
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
-
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:psygo/config/app_config.dart';
@@ -40,26 +37,6 @@ void main() async {
 
   // PC 端窗口初始化
   if (PlatformInfos.isDesktop) {
-    // Linux 使用文件锁实现单实例（Windows 在 main.cpp 用 Mutex 实现）
-    if (Platform.isLinux) {
-      final lockFile = File('/tmp/psygo.lock');
-      if (await lockFile.exists()) {
-        // 检查进程是否还在运行
-        try {
-          final pid = int.tryParse(await lockFile.readAsString());
-          if (pid != null) {
-            final result = await Process.run('kill', ['-0', pid.toString()]);
-            if (result.exitCode == 0) {
-              // 进程仍在运行，退出当前实例
-              exit(0);
-            }
-          }
-        } catch (_) {}
-      }
-      // 写入当前进程 PID
-      await lockFile.writeAsString(pid.toString());
-    }
-
     // [DEBUG] 清除登录状态代码 - 测试时启用
 //     debugPrint('[DEBUG] Desktop: Clearing all login state...');
 //     await const FlutterSecureStorage().deleteAll();
