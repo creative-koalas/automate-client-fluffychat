@@ -41,19 +41,20 @@ void main() async {
 
   // PC 端窗口初始化
   if (PlatformInfos.isDesktop) {
-    // 单实例检查 - 防止多开
+    // Windows 单实例检查 - 防止多开（包会自动退出第二个实例）
     if (Platform.isWindows) {
       await WindowsSingleInstance.ensureSingleInstance(
         [],
         'com.psygo.app.single_instance',
         onSecondWindow: (args) {
-          // 用户尝试打开第二个实例时，显示并聚焦现有窗口
           windowManager.show();
           windowManager.focus();
         },
       );
-    } else if (Platform.isLinux) {
-      // Linux 使用文件锁实现单实例
+    }
+
+    // Linux 使用文件锁实现单实例
+    if (Platform.isLinux) {
       final lockFile = File('/tmp/psygo.lock');
       if (await lockFile.exists()) {
         // 检查进程是否还在运行
