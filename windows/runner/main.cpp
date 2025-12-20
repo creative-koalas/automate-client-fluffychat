@@ -7,6 +7,19 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // Single instance check using Mutex
+  HANDLE mutex = CreateMutex(NULL, TRUE, L"com.psygo.app.single_instance");
+  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    // Find existing window and bring to front
+    HWND existingWindow = FindWindow(nullptr, L"Psygo");
+    if (existingWindow) {
+      ShowWindow(existingWindow, SW_RESTORE);
+      SetForegroundWindow(existingWindow);
+    }
+    CloseHandle(mutex);
+    return EXIT_SUCCESS;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
