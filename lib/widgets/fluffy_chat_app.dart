@@ -772,28 +772,17 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       );
     }
 
-    // 非PC端保持原样
+    // 非PC端：只显示 logo，根据主题深浅色切换
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: theme.colorScheme.surface,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/logo.png',
-              width: 100,
-              height: 100,
-            ),
-            const SizedBox(height: 32),
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+        child: Image.asset(
+          isDark ? 'assets/logo_dark.png' : 'assets/logo.png',
+          width: 100,
+          height: 100,
         ),
       ),
     );
@@ -1066,80 +1055,87 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Widget _buildInvitationCodeScreen() {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/logo.png',
-                  width: 100,
-                  height: 100,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                isDark ? 'assets/logo_dark.png' : 'assets/logo.png',
+                width: 100,
+                height: 100,
+              ),
+              const SizedBox(height: 32),
+              Text(
+                '新用户注册',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 32),
-                const Text(
-                  '新用户注册',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '手机号：$_pendingPhone',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '手机号：$_pendingPhone',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                '请输入邀请码完成注册',
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _invitationCodeController,
+                decoration: InputDecoration(
+                  labelText: '邀请码',
+                  hintText: '请输入邀请码',
+                  prefixIcon: const Icon(Icons.vpn_key_outlined),
+                  errorText: _invitationCodeError,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                const SizedBox(height: 32),
-                const Text('请输入邀请码完成注册'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _invitationCodeController,
-                  decoration: InputDecoration(
-                    labelText: '邀请码',
-                    hintText: '请输入邀请码',
-                    prefixIcon: const Icon(Icons.vpn_key_outlined),
-                    errorText: _invitationCodeError,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                textCapitalization: TextCapitalization.characters,
+                enabled: !_submittingInvitation,
+                onChanged: (_) {
+                  if (_invitationCodeError != null) {
+                    setState(() => _invitationCodeError = null);
+                  }
+                },
+                onSubmitted: (_) => _submitInvitationCode(),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _submittingInvitation ? null : _retryOneClickLogin,
+                      child: const Text('取消'),
                     ),
                   ),
-                  textCapitalization: TextCapitalization.characters,
-                  enabled: !_submittingInvitation,
-                  onChanged: (_) {
-                    if (_invitationCodeError != null) {
-                      setState(() => _invitationCodeError = null);
-                    }
-                  },
-                  onSubmitted: (_) => _submitInvitationCode(),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _submittingInvitation ? null : _retryOneClickLogin,
-                        child: const Text('取消'),
-                      ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _submittingInvitation ? null : _submitInvitationCode,
+                      child: _submittingInvitation
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('确认'),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _submittingInvitation ? null : _submitInvitationCode,
-                        child: _submittingInvitation
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('确认'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

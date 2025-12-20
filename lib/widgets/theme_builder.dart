@@ -34,9 +34,8 @@ class ThemeController extends State<ThemeBuilder> {
   ThemeMode? _themeMode;
   Color? _primaryColor;
 
-  // PC端默认浅色主题，其他平台跟随系统
-  ThemeMode get themeMode =>
-      _themeMode ?? (PlatformInfos.isDesktop ? ThemeMode.light : ThemeMode.system);
+  // 所有平台默认跟随系统主题
+  ThemeMode get themeMode => _themeMode ?? ThemeMode.system;
 
   // PC端默认绿色主题 (#4CAF50)，其他平台使用系统颜色
   static const Color _desktopDefaultColor = Color(0xFF4CAF50);

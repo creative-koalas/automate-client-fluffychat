@@ -2,6 +2,7 @@ package com.creativekoalas.psygo
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.Configuration
 import android.util.Log
 import android.view.View
 import androidx.core.view.ViewCompat
@@ -21,6 +22,7 @@ import com.mobile.auth.gatewayauth.ResultCode
 import com.mobile.auth.gatewayauth.model.TokenRet
 import com.mobile.auth.gatewayauth.AuthUIConfig
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.util.TypedValue
 import com.mobile.auth.gatewayauth.ActivityResultListener
 import com.mobile.auth.gatewayauth.CustomInterface
@@ -256,22 +258,36 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             val numFieldOffsetY = 260 + statusBarDp
             val logBtnOffsetY = 340 + statusBarDp
 
-            // 配置授权页 UI - 简洁全屏模式
+            // 检测系统深色模式
+            val isDarkMode = (act.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            Log.d(TAG, "Dark mode detected: $isDarkMode")
+
+            // 根据深色/浅色模式设置颜色
+            val backgroundColor = if (isDarkMode) Color.parseColor("#121212") else Color.WHITE
+            val primaryTextColor = if (isDarkMode) Color.parseColor("#E0E0E0") else Color.parseColor("#1A1A1A")
+            val secondaryTextColor = if (isDarkMode) Color.parseColor("#9E9E9E") else Color.parseColor("#999999")
+            val privacyLinkColor = if (isDarkMode) Color.parseColor("#64B5F6") else Color.parseColor("#007AFF")
+            val alertBgColor = if (isDarkMode) Color.parseColor("#1E1E1E") else Color.WHITE
+            val alertContentColor = if (isDarkMode) Color.parseColor("#BDBDBD") else Color.parseColor("#666666")
+            // 状态栏图标颜色：深色模式用浅色图标，浅色模式用深色图标
+            val isLightStatusBar = !isDarkMode
+
+            // 配置授权页 UI - 简洁全屏模式，适配深色/浅色主题
             helper.setAuthUIConfig(
                 AuthUIConfig.Builder()
                     // ========== 状态栏 ==========
-                    .setStatusBarColor(Color.WHITE)
+                    .setStatusBarColor(backgroundColor)
                     .setStatusBarHidden(false)  // 显式设置状态栏不隐藏
-                    .setLightColor(true)
+                    .setLightColor(isLightStatusBar)
 
                     // ========== 导航栏（简化） ==========
-                    .setNavColor(Color.WHITE)
+                    .setNavColor(backgroundColor)
                     .setNavText("")
                     .setNavReturnHidden(true)
 
                     // ========== Logo ==========
                     .setLogoHidden(false)
-                    .setLogoImgDrawable(act.getDrawable(R.drawable.auth_logo))
+                    .setLogoImgDrawable(act.getDrawable(if (isDarkMode) R.drawable.auth_logo_dark else R.drawable.auth_logo))
                     .setLogoWidth(90)
                     .setLogoHeight(90)
                     .setLogoOffsetY(logoOffsetY)
@@ -279,12 +295,12 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     // ========== Slogan ==========
                     .setSloganHidden(false)
                     .setSloganText("Psygo")
-                    .setSloganTextColor(Color.parseColor("#1A1A1A"))
+                    .setSloganTextColor(primaryTextColor)
                     .setSloganTextSize(20)
                     .setSloganOffsetY(sloganOffsetY)
 
                     // ========== 手机号 ==========
-                    .setNumberColor(Color.parseColor("#1A1A1A"))
+                    .setNumberColor(primaryTextColor)
                     .setNumberSize(28)
                     .setNumFieldOffsetY(numFieldOffsetY)
 
@@ -304,13 +320,13 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setPrivacyState(false)  // 默认未勾选
                     .setCheckboxHidden(false)
                     .setCheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_checked))
-                    .setUncheckedImgDrawable(act.getDrawable(R.drawable.auth_checkbox_unchecked))
+                    .setUncheckedImgDrawable(act.getDrawable(if (isDarkMode) R.drawable.auth_checkbox_unchecked_dark else R.drawable.auth_checkbox_unchecked))
                     .setPrivacyOffsetY_B(80)
                     .setPrivacyTextSize(12)
                     // 协议名称和链接（使用自定义 Scheme 跳转到 App 内页面，避免 SDK WebView 适配问题）
                     .setAppPrivacyOne("《用户协议》", "app-privacy://user_agreement")
                     .setAppPrivacyTwo("《隐私政策》", "app-privacy://privacy_policy")
-                    .setAppPrivacyColor(Color.parseColor("#999999"), Color.parseColor("#007AFF"))
+                    .setAppPrivacyColor(secondaryTextColor, privacyLinkColor)
                     .setPrivacyBefore("登录即同意")
                     .setPrivacyEnd("")
                     .setVendorPrivacyPrefix("《")
@@ -322,10 +338,10 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     // 二次确认弹窗 UI 配置 - 紧凑简洁风格
                     .setPrivacyAlertTitleContent("温馨提示")
                     .setPrivacyAlertTitleTextSize(17)
-                    .setPrivacyAlertTitleColor(Color.parseColor("#1A1A1A"))
+                    .setPrivacyAlertTitleColor(primaryTextColor)
                     .setPrivacyAlertContentTextSize(14)
-                    .setPrivacyAlertContentColor(Color.parseColor("#666666"))
-                    .setPrivacyAlertContentBaseColor(Color.parseColor("#666666"))
+                    .setPrivacyAlertContentColor(alertContentColor)
+                    .setPrivacyAlertContentBaseColor(alertContentColor)
                     .setPrivacyAlertContentHorizontalMargin(16)
                     .setPrivacyAlertContentVerticalMargin(10)
                     .setPrivacyAlertBtnContent("同意并登录")
@@ -334,26 +350,27 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setPrivacyAlertBtnBackgroundImgDrawable(act.getDrawable(R.drawable.auth_login_btn))
                     .setPrivacyAlertCloseBtnShow(true)  // 显示关闭按钮
                     .setPrivacyAlertMaskIsNeedShow(true)  // 显示背景遮罩
-                    .setPrivacyAlertMaskAlpha(0.3f)
+                    .setPrivacyAlertMaskAlpha(if (isDarkMode) 0.5f else 0.3f)
                     .setPrivacyAlertCornerRadiusArray(intArrayOf(16, 16, 16, 16))
                     .setPrivacyAlertAlignment(1)  // 0-居左 1-居中 2-居右
                     .setPrivacyAlertWidth(280)  // 更紧凑的宽度
                     .setPrivacyAlertHeight(200)  // 更紧凑的高度
                     .setPrivacyAlertBtnWidth(240)
                     .setPrivacyAlertBtnHeigth(42)
+                    .setPrivacyAlertBackgroundColor(alertBgColor)
                     // 协议页面（内置 WebView）导航栏配置
-                    .setWebNavColor(Color.WHITE)
-                    .setWebNavTextColor(Color.parseColor("#000000"))
+                    .setWebNavColor(backgroundColor)
+                    .setWebNavTextColor(primaryTextColor)
                     .setWebNavTextSize(18)
-                    .setWebNavReturnImgDrawable(act.getDrawable(R.drawable.auth_close))
+                    .setWebNavReturnImgDrawable(act.getDrawable(if (isDarkMode) R.drawable.auth_close_dark else R.drawable.auth_close))
                     .setWebSupportedJavascript(true)
                     // WebView 状态栏配置（解决黑框问题）
-                    .setWebViewStatusBarColor(Color.WHITE)
-                    // 设置底部虚拟按键背景色为白色
-                    .setBottomNavColor(Color.WHITE)
+                    .setWebViewStatusBarColor(backgroundColor)
+                    // 设置底部虚拟按键背景色
+                    .setBottomNavColor(backgroundColor)
 
                     // ========== 页面背景 ==========
-                    .setPageBackgroundDrawable(act.getDrawable(android.R.color.white))
+                    .setPageBackgroundDrawable(ColorDrawable(backgroundColor))
 
                     .create()
             )
