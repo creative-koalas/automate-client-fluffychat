@@ -125,7 +125,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (!mounted) return;
     setState(() => isLoading = true);
 
-    const greeting = '您好，我是您的Psygo使用助手。\n\nPsygo是新一代实验型AI生命体，目前主要面向软件开发场景。**这个App只是与Psygo的聊天工具，类似微信；建议您通过gitee等人类常规协作平台让Psygo交付工作。**\n\nPsygo可以独立完成复杂工作。**您只需告诉他做什么，然后可以关掉App，等Psygo的消息。**\n\n我将帮您完成第一个Psygo的招募和任务下发。请问您需要Psygo做什么？';
+    const greeting = '您好，我是您的Psygo使用助手。\n\nPsygo是地球上最省心的AI程序员。告诉他做什么，关掉App，等他叫你，然后你将看到一个生产级的、已经部署测试过的产品。\n\n**这个App仅用来与Psygo聊天；建议您让Psygo通过github/gitee等常规协作方式交付工作。**\n\n我将帮您完成第一个Psygo的招募和任务下发。请问您需要Psygo做什么？';
 
     _addMessage(
       ChatMessage(

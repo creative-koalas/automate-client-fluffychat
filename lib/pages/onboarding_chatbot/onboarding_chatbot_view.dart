@@ -12,7 +12,9 @@ class OnboardingChatbotView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    const backgroundColor = Color(0xFFEDEDED);
+    final isDark = theme.brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFEDEDED);
+    final titleColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -22,9 +24,9 @@ class OnboardingChatbotView extends StatelessWidget {
               backgroundColor: backgroundColor,
               elevation: 0,
               centerTitle: true,
-              title: const Text('Psygo',
+              title: Text('Psygo',
                   style: TextStyle(
-                      color: Colors.black,
+                      color: titleColor,
                       fontWeight: FontWeight.w600,
                       fontSize: 17)),
               automaticallyImplyLeading: false,
@@ -66,7 +68,7 @@ class OnboardingChatbotView extends StatelessWidget {
                             height: 32,
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const CircularProgressIndicator(strokeWidth: 2),
@@ -127,9 +129,14 @@ class _MessageBubble extends StatelessWidget {
     }
 
     final isUser = message.isUser;
-    // Brand Colors (Avoid WeChat Green)
-    final bubbleColor = isUser ? theme.colorScheme.primary : Colors.white;
-    final textColor = isUser ? theme.colorScheme.onPrimary : Colors.black;
+    final isDark = theme.brightness == Brightness.dark;
+    // Brand Colors - 适配深浅色主题
+    final bubbleColor = isUser
+        ? theme.colorScheme.primary
+        : (isDark ? const Color(0xFF2A2A2A) : Colors.white);
+    final textColor = isUser
+        ? theme.colorScheme.onPrimary
+        : (isDark ? Colors.white : Colors.black);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -139,15 +146,15 @@ class _MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
-            // AI Avatar (Simple Square)
+            // AI Avatar (Simple Square) - 适配深浅色主题
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                 borderRadius: BorderRadius.circular(4),
-                image: const DecorationImage(
-                  image: AssetImage('assets/logo.png'),
+                image: DecorationImage(
+                  image: AssetImage(isDark ? 'assets/logo_dark.png' : 'assets/logo.png'),
                 ),
               ),
             ),
@@ -212,10 +219,17 @@ class _GreetingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+
     // 解析消息：第一段是标题，其余是内容
     final paragraphs = message.text.split('\n\n');
     final title = paragraphs.isNotEmpty ? paragraphs[0] : '';
     final bodyParagraphs = paragraphs.length > 1 ? paragraphs.sublist(1) : <String>[];
+
+    // 深浅色主题颜色
+    final cardBgColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
+    final titleTextColor = isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black87;
+    final bodyTextColor = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black54;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
@@ -226,8 +240,8 @@ class _GreetingCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white,
-              theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+              cardBgColor,
+              theme.colorScheme.primaryContainer.withValues(alpha: isDark ? 0.15 : 0.3),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
@@ -237,7 +251,7 @@ class _GreetingCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.15 : 0.08),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
@@ -252,16 +266,16 @@ class _GreetingCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo
+                  // Logo - 适配深浅色主题
                   Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF3A3A3A) : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -269,7 +283,10 @@ class _GreetingCard extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset('assets/logo.png', fit: BoxFit.cover),
+                      child: Image.asset(
+                        isDark ? 'assets/logo_dark.png' : 'assets/logo.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -283,7 +300,7 @@ class _GreetingCard extends StatelessWidget {
                           title,
                           style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: titleTextColor,
                             height: 1.4,
                           ),
                         ),
@@ -311,7 +328,7 @@ class _GreetingCard extends StatelessWidget {
                 // 内容段落 - 使用 ChatbotMessageRenderer 支持 Markdown
                 ChatbotMessageRenderer(
                   text: bodyParagraphs.join('\n\n'),
-                  textColor: Colors.black54,
+                  textColor: bodyTextColor,
                   fontSize: 14,
                   linkStyle: TextStyle(
                     color: theme.colorScheme.primary,
@@ -439,9 +456,13 @@ class _InputAreaState extends State<_InputArea> {
 
   @override
   Widget build(BuildContext context) {
-    // WeChat Input Area Style
+    final isDark = widget.theme.brightness == Brightness.dark;
+    final inputBarColor = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF7F7F7);
+    final inputFieldColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
+    final inputTextColor = isDark ? Colors.white : Colors.black;
+
     return Container(
-      color: const Color(0xFFF7F7F7), // Light gray background for input bar
+      color: inputBarColor,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: SafeArea(
         top: false,
@@ -450,7 +471,7 @@ class _InputAreaState extends State<_InputArea> {
           children: [
             // Left Padding for balance
             const SizedBox(width: 4),
-            
+
             // Text Input
             Expanded(
               child: Container(
@@ -459,14 +480,14 @@ class _InputAreaState extends State<_InputArea> {
                   minHeight: 40,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: inputFieldColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: TextField(
                   controller: widget.controller.messageController,
                   maxLines: null,
                   textInputAction: TextInputAction.newline,
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                  style: TextStyle(fontSize: 16, color: inputTextColor),
                   enabled: !widget.controller.isLoading,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -708,8 +729,13 @@ class _SuggestionBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+    final bubbleColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
+    final textColor = isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black87;
+
     return Material(
-      color: Colors.white,
+      color: bubbleColor,
       borderRadius: BorderRadius.circular(18), // Pill shape
       elevation: 0,
       child: InkWell(
@@ -720,13 +746,13 @@ class _SuggestionBubble extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
              borderRadius: BorderRadius.circular(18),
-             border: Border.all(color: Colors.grey[300]!),
+             border: Border.all(color: borderColor),
           ),
           child: Center(
             child: Text(
               text,
               style: textTheme.bodyMedium?.copyWith(
-                color: Colors.black87,
+                color: textColor,
                 fontWeight: FontWeight.w400,
               ),
             ),
