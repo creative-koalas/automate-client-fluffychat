@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
 import 'package:desktop_notifications/desktop_notifications.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:image/image.dart';
 import 'package:matrix/matrix.dart';
 import 'package:universal_html/html.dart' as html;
@@ -15,6 +16,7 @@ import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/push_helper.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/matrix.dart';
 
@@ -22,6 +24,47 @@ extension LocalNotificationsExtension on MatrixState {
   static final html.AudioElement _audioPlayer = html.AudioElement()
     ..src = 'assets/assets/sounds/notification.ogg'
     ..load();
+
+  static FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
+  static bool _isInitialized = false;
+
+  Future<FlutterLocalNotificationsPlugin> _getNotificationsPlugin() async {
+    if (_flutterLocalNotificationsPlugin != null && _isInitialized) {
+      return _flutterLocalNotificationsPlugin!;
+    }
+
+    _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+    InitializationSettings? initSettings;
+    if (Platform.isWindows) {
+      initSettings = const InitializationSettings(
+        windows: WindowsInitializationSettings(
+          appName: 'Psygo',
+          appUserModelId: 'com.psygo.app',
+          guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
+        ),
+      );
+    } else if (Platform.isMacOS) {
+      initSettings = const InitializationSettings(
+        macOS: DarwinInitializationSettings(),
+      );
+    }
+
+    if (initSettings != null) {
+      await _flutterLocalNotificationsPlugin!.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (response) {
+          final roomId = response.payload;
+          if (roomId != null && roomId.isNotEmpty) {
+            PsygoApp.router.go('/rooms/$roomId');
+          }
+        },
+      );
+      _isInitialized = true;
+    }
+
+    return _flutterLocalNotificationsPlugin!;
+  }
 
   void showLocalNotification(Event event) async {
     final roomId = event.room.id;
@@ -122,7 +165,7 @@ extension LocalNotificationsExtension on MatrixState {
         appIcon: 'automate',
         actions: [
           NotificationAction(
-            DesktopNotificationActions.openChat.name,
+            'default',
             L10n.of(context).openChat,
           ),
           NotificationAction(
@@ -132,28 +175,44 @@ extension LocalNotificationsExtension on MatrixState {
         ],
         hints: hints,
       );
-      notification.action.then((actionStr) {
-        var action = DesktopNotificationActions.values
-            .singleWhereOrNull((a) => a.name == actionStr);
-        if (action == null && actionStr == "default") {
-          action = DesktopNotificationActions.openChat;
-        }
-        switch (action!) {
-          case DesktopNotificationActions.seen:
-            event.room.setReadMarker(
-              event.eventId,
-              mRead: event.eventId,
-              public: AppSettings.sendPublicReadReceipts.value,
-            );
-            break;
-          case DesktopNotificationActions.openChat:
-            setActiveClient(event.room.client);
-
-            PsygoApp.router.go('/rooms/${event.room.id}');
-            break;
+      notification.action.then((actionStr) async {
+        if (actionStr == DesktopNotificationActions.seen.name) {
+          event.room.setReadMarker(
+            event.eventId,
+            mRead: event.eventId,
+            public: AppSettings.sendPublicReadReceipts.value,
+          );
+        } else {
+          // 点击通知本身(default)或其他情况都跳转到聊天室
+          await WindowService.showWindow();
+          setActiveClient(event.room.client);
+          PsygoApp.router.go('/rooms/${event.room.id}');
         }
       });
       linuxNotificationIds[roomId] = notification.id;
+    } else if (Platform.isWindows || Platform.isMacOS) {
+      final plugin = await _getNotificationsPlugin();
+
+      NotificationDetails? notificationDetails;
+      if (Platform.isWindows) {
+        notificationDetails = const NotificationDetails(
+          windows: WindowsNotificationDetails(),
+        );
+      } else if (Platform.isMacOS) {
+        notificationDetails = const NotificationDetails(
+          macOS: DarwinNotificationDetails(
+            sound: 'notification.caf',
+          ),
+        );
+      }
+
+      await plugin.show(
+        roomId.hashCode,
+        title,
+        body,
+        notificationDetails,
+        payload: roomId,
+      );
     }
   }
 }
