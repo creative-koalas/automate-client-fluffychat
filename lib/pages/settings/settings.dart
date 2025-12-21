@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -195,6 +197,10 @@ class SettingsController extends State<Settings> {
         await matrix.client.logout();
         // 2. 清除 Automate 认证状态
         await auth.markLoggedOut();
+        // 3. PC端：切换回登录小窗口
+        if (PlatformInfos.isDesktop) {
+          await WindowService.switchToLoginWindow();
+        }
       },
     );
   }
