@@ -141,16 +141,8 @@ class Message extends StatelessWidget {
         ownMessage ? MainAxisAlignment.end : MainAxisAlignment.start;
 
     final displayEvent = event.getDisplayEvent(timeline);
-    const hardCorner = Radius.circular(4);
     const roundedCorner = Radius.circular(AppConfig.borderRadius);
-    final borderRadius = BorderRadius.only(
-      topLeft: !ownMessage && nextEventSameSender ? hardCorner : roundedCorner,
-      topRight: ownMessage && nextEventSameSender ? hardCorner : roundedCorner,
-      bottomLeft:
-          !ownMessage && previousEventSameSender ? hardCorner : roundedCorner,
-      bottomRight:
-          ownMessage && previousEventSameSender ? hardCorner : roundedCorner,
-    );
+    final borderRadius = BorderRadius.all(roundedCorner);
     final noBubble = ({
               MessageTypes.Video,
               MessageTypes.Image,
@@ -222,12 +214,7 @@ class Message extends StatelessWidget {
           constraints: const BoxConstraints(
             maxWidth: FluffyThemes.maxTimelineWidth,
           ),
-          padding: EdgeInsets.only(
-            left: 8.0,
-            right: 8.0,
-            top: nextEventSameSender ? 1.0 : 4.0,
-            bottom: previousEventSameSender ? 1.0 : 4.0,
-          ),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment:
@@ -317,7 +304,7 @@ class Message extends StatelessWidget {
                                         onPressed: () => onSelect(event),
                                       ),
                                     )
-                                  else if (nextEventSameSender || ownMessage)
+                                  else if (ownMessage)
                                     SizedBox(
                                       width: Avatar.defaultSize,
                                       child: Center(
