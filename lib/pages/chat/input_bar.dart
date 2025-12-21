@@ -9,6 +9,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
@@ -394,10 +395,11 @@ class InputBar extends StatelessWidget {
       focusNode: focusNode,
       textEditingController: controller,
       optionsBuilder: getSuggestions,
-      fieldViewBuilder: (context, controller, focusNode, _) => TextField(
-        controller: controller,
-        focusNode: focusNode,
-        readOnly: readOnly,
+      fieldViewBuilder: (context, controller, autocompleteFocusNode, onFieldSubmitted) {
+        final textField = TextField(
+          controller: controller,
+          focusNode: focusNode ?? autocompleteFocusNode,
+          readOnly: readOnly,
         contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, controller),
         contentInsertionConfiguration: ContentInsertionConfiguration(
           onContentInserted: (KeyboardInsertedContent content) {
@@ -436,7 +438,28 @@ class InputBar extends StatelessWidget {
           onChanged!(text);
         },
         textCapitalization: TextCapitalization.sentences,
-      ),
+        );
+
+        // PC 端：按 Enter 发送消息（Shift+Enter 换行）
+        if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
+          return KeyboardListener(
+            focusNode: FocusNode(),
+            onKeyEvent: (event) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.enter &&
+                  !HardwareKeyboard.instance.isShiftPressed) {
+                final text = controller.text.trim();
+                if (text.isNotEmpty) {
+                  onSubmitted?.call(text);
+                }
+              }
+            },
+            child: textField,
+          );
+        }
+
+        return textField;
+      },
       optionsViewBuilder: (c, onSelected, s) {
         final suggestions = s.toList();
         return Material(
