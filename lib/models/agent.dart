@@ -123,11 +123,19 @@ class Agent {
     );
   }
 
-  /// 根据最后活跃时间计算实际工作状态
+  /// 获取实际工作状态
   /// 规则：
-  /// - 0 < 最后活跃时间 < 5分钟：摸鱼中 (idle)
-  /// - 最后活跃时间 > 5分钟：睡觉中 (idle_long)
+  /// - 后端返回 working（有 is_active=1 的任务）→ 直接使用
+  /// - 后端返回非 working 时，根据 lastActiveAt 细分：
+  ///   - 0 < 最后活跃时间 < 5分钟：摸鱼中 (idle)
+  ///   - 最后活跃时间 > 5分钟：睡觉中 (idle_long)
   String get computedWorkStatus {
+    // 后端已计算好 working 状态（有 is_active=1 的任务），直接使用
+    if (workStatus == 'working') {
+      return 'working';
+    }
+
+    // 非 working 状态，根据 lastActiveAt 细分 idle/idle_long
     if (lastActiveAt == null) {
       return 'idle_long'; // 没有活跃记录，默认睡觉中
     }
