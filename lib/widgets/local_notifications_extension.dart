@@ -37,11 +37,13 @@ extension LocalNotificationsExtension on MatrixState {
 
     InitializationSettings? initSettings;
     if (Platform.isWindows) {
-      initSettings = const InitializationSettings(
+      final iconUri = WindowsImage.getAssetUri('assets/logo.png');
+      initSettings = InitializationSettings(
         windows: WindowsInitializationSettings(
           appName: 'Psygo',
           appUserModelId: 'com.psygo.app',
           guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
+          iconPath: iconUri.toFilePath(),
         ),
       );
     } else if (Platform.isMacOS) {
@@ -53,9 +55,10 @@ extension LocalNotificationsExtension on MatrixState {
     if (initSettings != null) {
       await _flutterLocalNotificationsPlugin!.initialize(
         initSettings,
-        onDidReceiveNotificationResponse: (response) {
+        onDidReceiveNotificationResponse: (response) async {
           final roomId = response.payload;
           if (roomId != null && roomId.isNotEmpty) {
+            await WindowService.showWindow();
             PsygoApp.router.go('/rooms/$roomId');
           }
         },
@@ -195,8 +198,16 @@ extension LocalNotificationsExtension on MatrixState {
 
       NotificationDetails? notificationDetails;
       if (Platform.isWindows) {
-        notificationDetails = const NotificationDetails(
-          windows: WindowsNotificationDetails(),
+        notificationDetails = NotificationDetails(
+          windows: WindowsNotificationDetails(
+            images: [
+              WindowsImage(
+                WindowsImage.getAssetUri('assets/logo.png'),
+                altText: 'Psygo',
+                placement: WindowsImagePlacement.appLogoOverride,
+              ),
+            ],
+          ),
         );
       } else if (Platform.isMacOS) {
         notificationDetails = const NotificationDetails(
