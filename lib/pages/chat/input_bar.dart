@@ -442,17 +442,19 @@ class InputBar extends StatelessWidget {
 
         // PC 端：按 Enter 发送消息（Shift+Enter 换行）
         if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
-          return KeyboardListener(
-            focusNode: FocusNode(),
-            onKeyEvent: (event) {
+          return Focus(
+            onKeyEvent: (node, event) {
               if (event is KeyDownEvent &&
-                  event.logicalKey == LogicalKeyboardKey.enter &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
                   !HardwareKeyboard.instance.isShiftPressed) {
                 final text = controller.text.trim();
                 if (text.isNotEmpty) {
                   onSubmitted?.call(text);
                 }
+                return KeyEventResult.handled;
               }
+              return KeyEventResult.ignored;
             },
             child: textField,
           );
