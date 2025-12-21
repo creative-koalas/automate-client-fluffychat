@@ -15,6 +15,7 @@ import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/file_description.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/string_color.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -118,15 +119,6 @@ class Message extends StatelessWidget {
         }.contains(nextEvent!.type) &&
         nextEvent!.senderId == event.senderId &&
         !displayTime;
-
-    final previousEventSameSender = previousEvent != null &&
-        {
-          EventTypes.Message,
-          EventTypes.Sticker,
-          EventTypes.Encrypted,
-        }.contains(previousEvent!.type) &&
-        previousEvent!.senderId == event.senderId &&
-        previousEvent!.originServerTs.sameEnvironment(event.originServerTs);
 
     final textColor =
         ownMessage ? theme.onBubbleColor : theme.colorScheme.onSurface;
@@ -416,13 +408,18 @@ class Message extends StatelessWidget {
                                           padding:
                                               const EdgeInsets.only(left: 8),
                                           child: GestureDetector(
-                                            onLongPress: longPressSelect
+                                            onLongPress: longPressSelect ||
+                                                    PlatformInfos.isDesktop
                                                 ? null
                                                 : () {
                                                     HapticFeedback
                                                         .heavyImpact();
                                                     onSelect(event);
                                                   },
+                                            onSecondaryTap: longPressSelect ||
+                                                    !PlatformInfos.isDesktop
+                                                ? null
+                                                : () => onSelect(event),
                                             child: AnimatedOpacity(
                                               opacity: animateIn
                                                   ? 0

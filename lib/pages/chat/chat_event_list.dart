@@ -51,8 +51,7 @@ class ChatEventList extends StatelessWidget {
     final hasWallpaper =
         controller.room.client.applicationAccountConfig.wallpaperUrl != null;
 
-    return SelectionArea(
-      child: ListView.custom(
+    final listView = ListView.custom(
         padding: EdgeInsets.only(
           top: 16,
           bottom: 8,
@@ -184,7 +183,14 @@ class ChatEventList extends StatelessWidget {
           findChildIndexCallback: (key) =>
               controller.findChildIndexCallback(key, thisEventsKeyMap),
         ),
-      ),
+      );
+
+    return SelectionArea(
+      // PC端禁用右键菜单，只保留文本选择功能
+      contextMenuBuilder: PlatformInfos.isDesktop
+          ? (context, selectableRegionState) => const SizedBox.shrink()
+          : null,
+      child: listView,
     );
   }
 }
