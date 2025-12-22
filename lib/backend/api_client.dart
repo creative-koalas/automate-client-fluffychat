@@ -561,6 +561,38 @@ class PsygoApiClient {
     return UserInfo.fromJson(userData);
   }
 
+  /// 检查应用版本更新
+  /// [currentVersion] 当前客户端版本号
+  /// [platform] 平台：android/ios/windows/linux/macos
+  Future<AppVersionResponse> checkAppVersion({
+    required String currentVersion,
+    required String platform,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/app/version',
+      queryParameters: {
+        'version': currentVersion,
+        'platform': platform,
+      },
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to check app version',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return AppVersionResponse.fromJson(respData);
+  }
+
   Stream<ChatStreamEvent> streamChatResponse(String message) async* {
     final token = auth.chatbotToken;
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');
@@ -921,6 +953,30 @@ class UserInfo {
       phone: json['phone'] as String?,
       type: json['type'] as int? ?? 3,
       creditBalance: json['credit_balance'] as int? ?? 0,
+    );
+  }
+}
+
+/// 版本检查响应
+class AppVersionResponse {
+  final String latestVersion;   // 最新版本号
+  final bool forceUpdate;       // 是否强制更新
+  final String? downloadUrl;    // 下载链接（null 表示已是最新）
+
+  AppVersionResponse({
+    required this.latestVersion,
+    required this.forceUpdate,
+    this.downloadUrl,
+  });
+
+  /// 是否有更新
+  bool get hasUpdate => downloadUrl != null && downloadUrl!.isNotEmpty;
+
+  factory AppVersionResponse.fromJson(Map<String, dynamic> json) {
+    return AppVersionResponse(
+      latestVersion: json['latest_version'] as String? ?? '',
+      forceUpdate: json['force_update'] as bool? ?? false,
+      downloadUrl: json['download_url'] as String?,
     );
   }
 }

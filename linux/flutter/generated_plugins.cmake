@@ -12,6 +12,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_webrtc
   gtk
   handy_window
+  open_file_linux
   record_linux
   screen_retriever_linux
   sqlcipher_flutter_libs

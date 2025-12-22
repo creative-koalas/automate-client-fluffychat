@@ -18,6 +18,7 @@ import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/theme_builder.dart';
+import 'package:psygo/utils/app_update_service.dart';
 import '../utils/custom_scroll_behaviour.dart';
 import 'matrix.dart';
 
@@ -132,6 +133,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   int _resumeRetryCount = 0;  // Track resume retry attempts to avoid infinite loops
   static const int _maxResumeRetries = 3;  // Max retries on resume
   bool _isInitialStartup = true;  // Track if this is the first startup
+  bool _hasCheckedUpdate = false;  // Track if we already checked for updates
+  bool _blockedByForceUpdate = false;  // Track if blocked by force update
 
   // Pending new user registration data
   String? _pendingToken;
@@ -697,6 +700,37 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _navigateToOnboarding();
   }
 
+  /// 检查应用更新
+  Future<void> _checkAppUpdate() async {
+    if (_hasCheckedUpdate) return;
+    _hasCheckedUpdate = true;
+
+    debugPrint('[AuthGate] Checking for app updates...');
+
+    try {
+      final api = context.read<PsygoApiClient>();
+      final updateService = AppUpdateService(api);
+
+      // 延迟一点显示更新弹窗，让用户先看到主界面
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (!mounted) return;
+
+      final canContinue = await updateService.checkAndPrompt(context);
+
+      if (!canContinue) {
+        // 用户被强制更新阻止
+        debugPrint('[AuthGate] User blocked by force update');
+        setState(() {
+          _blockedByForceUpdate = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('[AuthGate] App update check failed: $e');
+      // 检查失败不阻止用户使用
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<PsygoAuthState>();
@@ -732,8 +766,66 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       case _AuthState.needsLogin:
       case _AuthState.authenticated:
+        // 被强制更新阻止时显示提示
+        if (_blockedByForceUpdate) {
+          return _buildForceUpdateBlockedScreen();
+        }
+        // 认证成功后检查更新（只检查一次）
+        if (_state == _AuthState.authenticated && !_hasCheckedUpdate) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _checkAppUpdate();
+          });
+        }
         return widget.child ?? const SizedBox.shrink();
     }
+  }
+
+  /// 强制更新阻止界面
+  Widget _buildForceUpdateBlockedScreen() {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.system_update_rounded,
+                size: 64,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '需要更新',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '当前版本过低，请更新后继续使用',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: () {
+                  // 重新触发更新检查
+                  _hasCheckedUpdate = false;
+                  _blockedByForceUpdate = false;
+                  setState(() {});
+                },
+                child: const Text('重新检查'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLoadingScreen(String message) {

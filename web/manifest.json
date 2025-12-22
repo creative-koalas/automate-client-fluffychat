@@ -1,11 +1,11 @@
 {
-    "name": "Automate",
-    "short_name": "Automate",
+    "name": "Psygo",
+    "short_name": "Psygo",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Your AI-powered automation assistant",
+    "description": "Psygo - AI Employee Management",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
