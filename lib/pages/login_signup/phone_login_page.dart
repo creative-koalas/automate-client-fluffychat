@@ -761,12 +761,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         SizedBox(height: spacingTop),
 
         // Phone input with glow on focus
+        // PC端允许在获取验证码后修改手机号，移动端锁定
         _GlowingTextField(
           controller: phoneController,
           hintText: '请输入手机号',
           prefixIcon: Icons.phone_outlined,
           errorText: phoneError,
-          readOnly: loading || codeSent,
+          readOnly: loading || (codeSent && !PlatformInfos.isDesktop),
           keyboardType: TextInputType.phone,
           textInputAction: codeSent ? TextInputAction.next : TextInputAction.done,
           isDark: isDark,
