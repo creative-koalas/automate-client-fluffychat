@@ -19,10 +19,18 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final client = Matrix.of(context).clientOrNull;
+
+    // 如果客户端已经退出，显示空白或加载状态
+    if (client == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     // 主题切换后，GoRouter 的路由信息可能被缓存，导致高亮状态错误
     // 改用更可靠的方式：只在用户点击后短暂高亮，不依赖路由状态
-    final accountManageUrl = Matrix.of(context)
-        .client
+    final accountManageUrl = client
         .wellKnown
         ?.additionalProperties
         .tryGetMap<String, Object?>('org.matrix.msc2965.authentication')

@@ -11,6 +11,7 @@ import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../../widgets/matrix.dart';
 import '../bootstrap/bootstrap_dialog.dart';
@@ -186,23 +187,25 @@ class SettingsController extends State<Settings> {
       return;
     }
 
-    // 同时退出 Matrix 和 Automate
+    // 在 context 失效前获取需要的引用
     final matrix = Matrix.of(context);
     final auth = context.read<PsygoAuthState>();
+    final client = matrix.client;
 
-    await showFutureLoadingDialog(
-      context: context,
-      future: () async {
-        // 1. 退出 Matrix
-        await matrix.client.logout();
-        // 2. 清除 Automate 认证状态
-        await auth.markLoggedOut();
-        // 3. PC端：切换回登录小窗口
-        if (PlatformInfos.isDesktop) {
-          await WindowService.switchToLoginWindow();
-        }
-      },
-    );
+    try {
+      // 1. 退出 Matrix（使用之前获取的 client 引用）
+      await client.logout();
+      // 2. 清除 Automate 认证状态
+      await auth.markLoggedOut();
+      // 3. PC端：切换回登录小窗口
+      if (PlatformInfos.isDesktop) {
+        await WindowService.switchToLoginWindow();
+      }
+      // 4. 导航到登录页面（使用全局 router，因为此时 widget 可能已卸载）
+      PsygoApp.router.go('/login-signup');
+    } catch (e) {
+      debugPrint('[Settings] Logout error: $e');
+    }
   }
 
   void submitFeedbackAction() async {
