@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,11 +16,198 @@ import 'package:psygo/utils/platform_infos.dart';
 class AppUpdateService {
   final PsygoApiClient _apiClient;
 
+  // 后台定时检查
+  static Timer? _backgroundTimer;
+  static bool _isDialogShowing = false;
+  static bool _hasSuccessfulCheck = false;  // 是否成功检查过一次
+  static const Duration _checkInterval = Duration(minutes: 5);
+  static const Duration _retryInterval = Duration(seconds: 30);  // 首次失败后的重试间隔
+  static const Duration _resumeDebounce = Duration(seconds: 3);  // 恢复检查的防抖时间
+
+  // 保存引用以便重试
+  static PsygoApiClient? _apiClient_;
+  static BuildContext Function()? _getContext;
+
+  // 网络监听
+  static StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  static bool _wasOffline = false;  // 上次是否处于离线状态
+  static DateTime? _lastCheckTime;  // 上次检查时间，用于防抖
+
   AppUpdateService(this._apiClient);
+
+  /// 启动后台定时检查
+  static void startBackgroundCheck(PsygoApiClient apiClient, BuildContext Function() getContext) {
+    // 避免重复启动
+    if (_backgroundTimer != null) return;
+
+    _apiClient_ = apiClient;
+    _getContext = getContext;
+
+    debugPrint('[AppUpdate] Starting background check every $_checkInterval');
+
+    // 1. 定时检查（每5分钟）
+    _backgroundTimer = Timer.periodic(_checkInterval, (_) async {
+      await _doBackgroundCheck();
+    });
+
+    // 2. 网络恢复时检查
+    _startNetworkListener();
+  }
+
+  /// 启动网络状态监听
+  static void _startNetworkListener() {
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+      final isOffline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+
+      if (_wasOffline && !isOffline) {
+        // 从离线恢复到在线
+        debugPrint('[AppUpdate] Network restored, triggering check');
+        _triggerCheckWithDebounce();
+      }
+
+      _wasOffline = isOffline;
+    });
+
+    // 初始化离线状态
+    Connectivity().checkConnectivity().then((results) {
+      _wasOffline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+      debugPrint('[AppUpdate] Initial network state: ${_wasOffline ? "offline" : "online"}');
+    });
+  }
+
+  /// 应用从后台恢复时调用
+  static void onAppResumed() {
+    debugPrint('[AppUpdate] App resumed, triggering check');
+    _triggerCheckWithDebounce();
+  }
+
+  /// 带防抖的检查触发
+  static void _triggerCheckWithDebounce() {
+    final now = DateTime.now();
+    if (_lastCheckTime != null && now.difference(_lastCheckTime!) < _resumeDebounce) {
+      debugPrint('[AppUpdate] Check debounced, skipping');
+      return;
+    }
+    _lastCheckTime = now;
+    _doBackgroundCheck();
+  }
+
+  /// 执行后台检查
+  static Future<void> _doBackgroundCheck() async {
+    // 如果已经有弹窗在显示，跳过本次检查
+    if (_isDialogShowing) {
+      debugPrint('[AppUpdate] Dialog is showing, skip background check');
+      return;
+    }
+
+    if (_apiClient_ == null || _getContext == null) return;
+
+    final context = _getContext!();
+    if (!context.mounted) return;
+
+    final service = AppUpdateService(_apiClient_!);
+    await service._silentCheck(context);
+  }
+
+  /// 首次检查失败时调用，启动短间隔重试
+  static void _scheduleRetry() {
+    if (_hasSuccessfulCheck) return;  // 已经成功检查过，不需要重试
+
+    debugPrint('[AppUpdate] Scheduling retry in $_retryInterval');
+
+    Future.delayed(_retryInterval, () async {
+      if (_hasSuccessfulCheck) return;  // 再次检查，避免重复
+      await _doBackgroundCheck();
+    });
+  }
+
+  /// 标记首次检查成功
+  static void _markCheckSuccess() {
+    _hasSuccessfulCheck = true;
+  }
+
+  /// 停止后台定时检查
+  static void stopBackgroundCheck() {
+    debugPrint('[AppUpdate] Stopping background check');
+    _backgroundTimer?.cancel();
+    _backgroundTimer = null;
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+    _hasSuccessfulCheck = false;
+    _wasOffline = false;
+    _lastCheckTime = null;
+    _apiClient_ = null;
+    _getContext = null;
+  }
+
+  /// 静默检查更新（后台调用，只在有更新时才弹窗）
+  Future<void> _silentCheck(BuildContext context) async {
+    try {
+      final currentVersion = await PlatformInfos.getVersion();
+      final platform = _getPlatformName();
+
+      debugPrint('[AppUpdate] Background check: version=$currentVersion, platform=$platform');
+
+      final response = await _apiClient.checkAppVersion(
+        currentVersion: currentVersion,
+        platform: platform,
+      );
+
+      // 检查成功，标记已成功检查
+      _markCheckSuccess();
+
+      if (!response.hasUpdate) {
+        debugPrint('[AppUpdate] Background check: no update available');
+        return;
+      }
+
+      if (!context.mounted) return;
+
+      debugPrint('[AppUpdate] Background check: update available v${response.latestVersion}');
+
+      // 标记弹窗正在显示
+      _isDialogShowing = true;
+
+      // 显示更新弹窗
+      await showDialog<bool>(
+        context: context,
+        barrierDismissible: !response.forceUpdate,
+        builder: (context) => _UpdateDialog(
+          latestVersion: response.latestVersion,
+          forceUpdate: response.forceUpdate,
+          downloadUrl: response.downloadUrl!,
+        ),
+      );
+
+      _isDialogShowing = false;
+    } catch (e) {
+      debugPrint('[AppUpdate] Background check failed: $e');
+      // 静默检查失败，如果从未成功检查过，安排重试
+      // 但如果是 404/500 等服务器错误，不重试（API 不存在或服务器问题）
+      if (!_isServerError(e)) {
+        _scheduleRetry();
+      }
+    }
+  }
+
+  /// 判断是否为服务器错误（不需要重试）
+  static bool _isServerError(dynamic e) {
+    if (e is DioException) {
+      final statusCode = e.response?.statusCode;
+      // 404 = API 不存在, 500/502/503 = 服务器错误
+      if (statusCode != null && (statusCode == 404 || statusCode >= 500)) {
+        debugPrint('[AppUpdate] Server error ($statusCode), skip retry');
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// 检查更新并显示弹窗
   /// 返回 true 表示用户可以继续使用，false 表示被强制更新阻止
-  Future<bool> checkAndPrompt(BuildContext context) async {
+  /// [showNoUpdateHint] 为 true 时，如果没有更新也会显示提示
+  Future<bool> checkAndPrompt(BuildContext context, {bool showNoUpdateHint = false}) async {
     try {
       final currentVersion = await PlatformInfos.getVersion();
       final platform = _getPlatformName();
@@ -30,10 +219,18 @@ class AppUpdateService {
         platform: platform,
       );
 
+      // 检查成功，标记已成功检查
+      _markCheckSuccess();
+
       debugPrint('[AppUpdate] Response: hasUpdate=${response.hasUpdate}, forceUpdate=${response.forceUpdate}');
 
       if (!response.hasUpdate) {
         // 已是最新版本
+        if (showNoUpdateHint && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('当前已是最新版本')),
+          );
+        }
         return true;
       }
 
@@ -58,7 +255,16 @@ class AppUpdateService {
       return true;
     } catch (e) {
       debugPrint('[AppUpdate] Check failed: $e');
-      // 检查失败时不阻止用户使用
+      // 首次检查失败，安排重试（服务器错误除外）
+      if (!_isServerError(e)) {
+        _scheduleRetry();
+      }
+      // 检查失败时不阻止用户使用，但如果是手动检查则显示错误
+      if (showNoUpdateHint && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('检查更新失败: $e')),
+        );
+      }
       return true;
     }
   }
@@ -226,136 +432,160 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    // PC端（宽度 > 600）使用更大的尺寸
+    final isDesktop = screenWidth > 600;
+
+    final dialogWidth = isDesktop ? 480.0 : 340.0;
+    final padding = isDesktop ? 36.0 : 24.0;
+    final iconSize = isDesktop ? 88.0 : 64.0;
+    final iconInnerSize = isDesktop ? 44.0 : 32.0;
+    final titleStyle = isDesktop ? theme.textTheme.headlineMedium : theme.textTheme.titleLarge;
+    final versionStyle = isDesktop ? theme.textTheme.titleLarge : theme.textTheme.titleMedium;
+    final progressHeight = isDesktop ? 8.0 : 6.0;
+    final buttonPadding = isDesktop ? 16.0 : 14.0;
 
     return PopScope(
       canPop: !widget.forceUpdate && _state != _UpdateState.downloading,
-      child: Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 图标
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withAlpha(77),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _state == _UpdateState.downloaded
-                      ? Icons.check_circle_rounded
-                      : Icons.system_update_rounded,
-                  color: _state == _UpdateState.downloaded
-                      ? Colors.green
-                      : theme.colorScheme.primary,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // 标题
-              Text(
-                _getTitle(),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // 版本号
-              Text(
-                'v${widget.latestVersion}',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 下载进度条
-              if (_state == _UpdateState.downloading) ...[
-                LinearProgressIndicator(
-                  value: _progress,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${(_progress * 100).toStringAsFixed(1)}%',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: dialogWidth),
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 图标
+                  Container(
+                    width: iconSize,
+                    height: iconSize,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withAlpha(77),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _state == _UpdateState.downloaded
+                          ? Icons.check_circle_rounded
+                          : isDesktop
+                              ? Icons.downloading_rounded  // PC端用下载图标
+                              : Icons.system_update_rounded,  // 移动端用系统更新图标
+                      color: _state == _UpdateState.downloaded
+                          ? Colors.green
+                          : theme.colorScheme.primary,
+                      size: iconInnerSize,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                  SizedBox(height: isDesktop ? 28.0 : 20.0),
 
-              // 错误信息
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withAlpha(77),
-                    borderRadius: BorderRadius.circular(12),
+                  // 标题
+                  Text(
+                    _getTitle(),
+                    style: titleStyle?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: theme.colorScheme.error,
-                        size: 20,
+                  const SizedBox(height: 8),
+
+                  // 版本号
+                  Text(
+                    'v${widget.latestVersion}',
+                    style: versionStyle?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: isDesktop ? 24.0 : 16.0),
+
+                  // 下载进度条
+                  if (_state == _UpdateState.downloading) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _progress,
+                        minHeight: progressHeight,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: theme.textTheme.bodySmall?.copyWith(
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${(_progress * 100).toStringAsFixed(0)}%',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: isDesktop ? 24.0 : 16.0),
+                  ],
+
+                  // 错误信息
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: EdgeInsets.all(isDesktop ? 16.0 : 12.0),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withAlpha(77),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
                             color: theme.colorScheme.error,
+                            size: isDesktop ? 24.0 : 20.0,
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                    ),
+                    SizedBox(height: isDesktop ? 24.0 : 16.0),
+                  ],
 
-              // 强制更新提示
-              if (widget.forceUpdate && _state == _UpdateState.idle)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withAlpha(77),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: theme.colorScheme.error,
-                        size: 20,
+                  // 强制更新提示
+                  if (widget.forceUpdate && _state == _UpdateState.idle)
+                    Container(
+                      padding: EdgeInsets.all(isDesktop ? 16.0 : 12.0),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withAlpha(77),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '当前版本过低，请更新后继续使用',
-                          style: theme.textTheme.bodyMedium?.copyWith(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
                             color: theme.colorScheme.error,
+                            size: isDesktop ? 24.0 : 20.0,
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '当前版本过低，请更新后继续使用',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-              const SizedBox(height: 24),
+                  SizedBox(height: isDesktop ? 32.0 : 24.0),
 
-              // 按钮
-              _buildButtons(theme),
-            ],
+                  // 按钮
+                  _buildButtons(theme, buttonPadding),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -375,7 +605,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     }
   }
 
-  Widget _buildButtons(ThemeData theme) {
+  Widget _buildButtons(ThemeData theme, double buttonPadding) {
     switch (_state) {
       case _UpdateState.idle:
         return Row(
@@ -386,7 +616,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: buttonPadding),
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -408,7 +638,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               child: FilledButton(
                 onPressed: _needsInAppDownload ? _startDownload : _openExternalUrl,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: buttonPadding),
                   backgroundColor: theme.colorScheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -427,7 +657,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         return TextButton(
           onPressed: _cancelDownload,
           style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+            padding: EdgeInsets.symmetric(vertical: buttonPadding, horizontal: 32),
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -446,7 +676,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         return FilledButton(
           onPressed: _installUpdate,
           style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+            padding: EdgeInsets.symmetric(vertical: buttonPadding, horizontal: 32),
             backgroundColor: Colors.green,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -465,7 +695,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               child: TextButton(
                 onPressed: () => setState(() => _state = _UpdateState.idle),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: buttonPadding),
                   backgroundColor: theme.colorScheme.surfaceContainerHighest,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -485,7 +715,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               child: FilledButton(
                 onPressed: _openExternalUrl,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: buttonPadding),
                   backgroundColor: theme.colorScheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

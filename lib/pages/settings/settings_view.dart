@@ -1,9 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/app_update_service.dart';
+import 'package:psygo/utils/app_update_test.dart';
 import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -15,6 +20,14 @@ class SettingsView extends StatelessWidget {
   final SettingsController controller;
 
   const SettingsView(this.controller, {super.key});
+
+  /// 检查更新
+  Future<void> _checkForUpdate(BuildContext context) async {
+    final api = context.read<PsygoApiClient>();
+    final updateService = AppUpdateService(api);
+    // showNoUpdateHint 为 true 表示没有更新时也提示
+    await updateService.checkAndPrompt(context, showNoUpdateHint: true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +178,29 @@ class SettingsView extends StatelessWidget {
                     title: Text(L10n.of(context).about),
                     onTap: () => PlatformInfos.showDialog(context),
                   ),
+                  Builder(
+                    builder: (context) {
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final isDesktop = screenWidth > 600;
+                      return ListTile(
+                        leading: Icon(
+                          isDesktop
+                              ? Icons.downloading_rounded
+                              : Icons.system_update_outlined,
+                        ),
+                        title: const Text('检查更新'),
+                        onTap: () => _checkForUpdate(context),
+                      );
+                    },
+                  ),
+                  // 仅在调试模式下显示更新UI测试入口
+                  if (kDebugMode)
+                    ListTile(
+                      leading: const Icon(Icons.bug_report_outlined),
+                      title: const Text('测试更新弹窗'),
+                      subtitle: const Text('预览应用更新UI效果'),
+                      onTap: () => AppUpdateTest.showTestDialog(context),
+                    ),
                   Divider(color: theme.dividerColor),
                   ListTile(
                     leading: Icon(

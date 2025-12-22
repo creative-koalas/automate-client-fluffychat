@@ -132,8 +132,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _hasRetriedMatrixLogin = false;  // Track if we already retried Matrix login
   int _resumeRetryCount = 0;  // Track resume retry attempts to avoid infinite loops
   static const int _maxResumeRetries = 3;  // Max retries on resume
-  bool _isInitialStartup = true;  // Track if this is the first startup
-  bool _hasCheckedUpdate = false;  // Track if we already checked for updates
   bool _blockedByForceUpdate = false;  // Track if blocked by force update
 
   // Pending new user registration data
@@ -154,6 +152,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _invitationCodeController.dispose();
+    // 停止后台更新检查
+    AppUpdateService.stopBackgroundCheck();
     super.dispose();
   }
 
@@ -167,9 +167,34 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Wait 1 second after first frame to let iOS services initialize
       Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) _checkAuthStateSafe();
+        if (mounted) {
+          _checkAuthStateSafe();
+          // 应用启动时立即检查更新（不等待登录完成）
+          _initUpdateCheck();
+        }
       });
     });
+  }
+
+  /// 应用启动时初始化更新检查
+  Future<void> _initUpdateCheck() async {
+    try {
+      final api = context.read<PsygoApiClient>();
+      // 启动后台检查服务（包含网络监听）
+      AppUpdateService.startBackgroundCheck(api, () => context);
+      // 立即执行一次检查
+      final updateService = AppUpdateService(api);
+      final canContinue = await updateService.checkAndPrompt(context);
+
+      // 处理强制更新阻止
+      if (!canContinue && mounted) {
+        setState(() {
+          _blockedByForceUpdate = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('[AuthGate] Init update check failed: $e');
+    }
   }
 
   @override
@@ -185,6 +210,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       if (PlatformInfos.isMobile) {
         OneClickLoginService.quitLoginPage();
       }
+
+      // 应用恢复时检查更新
+      AppUpdateService.onAppResumed();
 
       // iOS FIX: Handle permission approval during auth check
       // When user slowly approves network permissions, SDK initialization may timeout
@@ -700,36 +728,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _navigateToOnboarding();
   }
 
-  /// 检查应用更新
-  Future<void> _checkAppUpdate() async {
-    if (_hasCheckedUpdate) return;
-    _hasCheckedUpdate = true;
-
-    debugPrint('[AuthGate] Checking for app updates...');
-
-    try {
-      final api = context.read<PsygoApiClient>();
-      final updateService = AppUpdateService(api);
-
-      // 延迟一点显示更新弹窗，让用户先看到主界面
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (!mounted) return;
-
-      final canContinue = await updateService.checkAndPrompt(context);
-
-      if (!canContinue) {
-        // 用户被强制更新阻止
-        debugPrint('[AuthGate] User blocked by force update');
-        setState(() {
-          _blockedByForceUpdate = true;
-        });
-      }
-    } catch (e) {
-      debugPrint('[AuthGate] App update check failed: $e');
-      // 检查失败不阻止用户使用
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -770,12 +768,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         if (_blockedByForceUpdate) {
           return _buildForceUpdateBlockedScreen();
         }
-        // 认证成功后检查更新（只检查一次）
-        if (_state == _AuthState.authenticated && !_hasCheckedUpdate) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _checkAppUpdate();
-          });
-        }
         return widget.child ?? const SizedBox.shrink();
     }
   }
@@ -813,11 +805,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
               ),
               const SizedBox(height: 32),
               FilledButton(
-                onPressed: () {
+                onPressed: () async {
                   // 重新触发更新检查
-                  _hasCheckedUpdate = false;
-                  _blockedByForceUpdate = false;
-                  setState(() {});
+                  setState(() {
+                    _blockedByForceUpdate = false;
+                  });
+                  await _initUpdateCheck();
                 },
                 child: const Text('重新检查'),
               ),
