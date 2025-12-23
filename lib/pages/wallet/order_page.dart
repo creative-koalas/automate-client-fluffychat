@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:tobias/tobias.dart' as tobias;
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/backend/api_client.dart';
+import 'payment_success_page.dart';
 
 /// 支付状态枚举
 enum PaymentState {
@@ -44,6 +45,10 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   PaymentState _paymentState = PaymentState.idle;
   String _statusMessage = '';
   String? _pendingOutTradeNo;  // 待验证的订单号
+
+  // 真实订单数据（从后端返回）
+  double? _realTotalAmount;
+  int? _realCreditsAmount;
 
   // 主题绿色
   static const Color _primaryGreen = Color(0xFF4CAF50);
@@ -146,8 +151,10 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
         return;
       }
 
-      // 2. 保存订单号，切换状态为等待支付宝
+      // 2. 保存订单号和真实金额数据，切换状态为等待支付宝
       _pendingOutTradeNo = orderResponse.outTradeNo;
+      _realTotalAmount = orderResponse.totalAmount;
+      _realCreditsAmount = orderResponse.creditsAmount;
       _updatePaymentState(PaymentState.awaitingAlipay, message: '正在跳转支付宝...');
 
       // 3. 调用支付宝 SDK
@@ -330,11 +337,20 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
 
     if (mounted) {
       _updatePaymentState(PaymentState.success, message: '支付成功！');
-      // 短暂显示成功状态后返回
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        Navigator.of(context).pop(true);
-      }
+
+      // 使用真实的订单数据，如果没有则使用默认计算值
+      final amount = _realTotalAmount ?? widget.amount;
+      final credits = _realCreditsAmount ?? (widget.amount * 100).round();
+
+      // 跳转到充值成功页面
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => PaymentSuccessPage(
+            amount: amount,
+            credits: credits,
+          ),
+        ),
+      );
     }
   }
 

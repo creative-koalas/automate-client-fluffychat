@@ -11,6 +11,8 @@ class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio, http.Client? httpClient})
       : _dio = dio ?? Dio(),
         _http = httpClient ?? http.Client() {
+    // 设置默认请求头
+    _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(
       InterceptorsWrapper(
         onError: (error, handler) {
