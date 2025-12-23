@@ -105,6 +105,7 @@ dev_dependencies:
     sdk: flutter
   license_checker: ^1.6.0
   translations_cleaner: ^0.0.5
+  msix: ^3.16.12
 
 import_sorter:
   ignored_files: # Optional, defaults to []
