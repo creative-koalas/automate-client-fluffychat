@@ -2,6 +2,11 @@
 .env
 env.json
 
+# Flutter generated files (desktop)
+/linux/flutter/generated_*
+/windows/flutter/generated_*
+/macos/flutter/generated_*
+
 # Miscellaneous
 *.class
 *.log
