@@ -12,6 +12,12 @@ env.json
 /android/app/src/main/res/mipmap-xxhdpi
 /android/app/src/main/res/mipmap-xxxhdpi
 
+# Common Redist
+**/VC_redist*.exe
+
+# Output Artifacts
+/windows/innosetup/Output
+
 # Flutter generated files (desktop)
 /linux/flutter/generated_*
 /windows/flutter/generated_*

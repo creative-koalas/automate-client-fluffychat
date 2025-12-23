@@ -129,6 +129,14 @@ flutter_launcher_icons:
 tobias:
   url_scheme: psygo
 
+msix_config:
+  display_name: Psygo
+  publisher_display_name: 创意考拉
+  identity_name: company.suite.flutterapp
+  msix_version: 1.0.0.0
+  logo_path: C:\path\to\logo.png
+  capabilities: internetClient, location, microphone, webcam
+
 flutter:
   generate: true
   uses-material-design: true
