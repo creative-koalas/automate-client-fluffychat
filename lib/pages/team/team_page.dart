@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 
 import 'package:psygo/pages/wallet/wallet_page.dart';
@@ -21,21 +20,15 @@ class TeamPage extends StatefulWidget {
 class TeamPageController extends State<TeamPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late PageController _pageController;
 
   // GlobalKey to access EmployeesTab state
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
-
-  // Current selected tab index
-  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _pageController = PageController();
-
-    // Listen to TabController changes, sync with PageView
+    // 监听 tab 变化以更新图标状态
     _tabController.addListener(_onTabChanged);
   }
 
@@ -43,44 +36,20 @@ class TeamPageController extends State<TeamPage>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
-    _pageController.dispose();
     super.dispose();
   }
 
   void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    if (_currentIndex != _tabController.index) {
-      setState(() {
-        _currentIndex = _tabController.index;
-      });
-      _pageController.animateToPage(
-        _tabController.index,
-        duration: FluffyThemes.animationDuration,
-        curve: FluffyThemes.animationCurve,
-      );
-    }
-  }
-
-  void _onPageChanged(int index) {
-    if (_currentIndex != index) {
-      setState(() {
-        _currentIndex = index;
-      });
-      _tabController.animateTo(index);
+    // 仅用于刷新图标状态，不需要手动同步 PageView
+    if (!_tabController.indexIsChanging) {
+      setState(() {});
     }
   }
 
   /// Switch to Employees tab and refresh the list
   /// Called after successful employee hire
   void switchToEmployeesAndRefresh() {
-    // Switch to employees tab (index 0)
     _tabController.animateTo(0);
-    _pageController.animateToPage(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-
     // Trigger refresh on employees tab
     Future.delayed(const Duration(milliseconds: 100), () {
       _employeesTabKey.currentState?.refreshEmployeeList();
@@ -91,11 +60,6 @@ class TeamPageController extends State<TeamPage>
   /// Called from empty state in Employees tab
   void switchToRecruitTab() {
     _tabController.animateTo(1);
-    _pageController.animateToPage(
-      1,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
   }
 
   /// Refresh employee list without switching tab
@@ -170,9 +134,10 @@ class TeamPageView extends StatelessWidget {
           child: _buildTabBar(context, theme),
         ),
       ),
-      body: PageView(
-        controller: controller._pageController,
-        onPageChanged: controller._onPageChanged,
+      // TabBarView 内部使用 PageView，自动与 TabController 同步
+      // 左右滑动和点击菜单都由同一个 TabController 驱动
+      body: TabBarView(
+        controller: controller._tabController,
         children: [
           EmployeesTab(
             key: controller._employeesTabKey,
@@ -223,7 +188,7 @@ class TeamPageView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  controller._currentIndex == 0
+                  controller._tabController.index == 0
                       ? Icons.people
                       : Icons.people_outline,
                   size: 20,
@@ -238,7 +203,7 @@ class TeamPageView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  controller._currentIndex == 1
+                  controller._tabController.index == 1
                       ? Icons.person_add
                       : Icons.person_add_outlined,
                   size: 20,
@@ -253,7 +218,7 @@ class TeamPageView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  controller._currentIndex == 2
+                  controller._tabController.index == 2
                       ? Icons.school
                       : Icons.school_outlined,
                   size: 20,
