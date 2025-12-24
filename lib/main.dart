@@ -54,11 +54,13 @@ void main() async {
     // 初始化窗口管理器 - 登录页面使用小窗口无边框样式
     await windowManager.ensureInitialized();
 
-    // 检查是否已登录：通过 SharedPreferences 检查 Matrix 客户端列表
-    final prefs = await SharedPreferences.getInstance();
-    final clientNames = prefs.getStringList('com.psygo.store.clients') ?? [];
-    final isLoggedIn = clientNames.isNotEmpty;
-    debugPrint('[Window] isLoggedIn: $isLoggedIn, clientNames: $clientNames');
+    // 检查是否已登录：通过 FlutterSecureStorage 检查 Psygo 认证 token
+    // 使用 automate_primary_token 判断，而不是 Matrix 客户端列表
+    // 因为用户可能收到验证码但未完成登录，此时 Matrix 客户端已创建但用户未真正登录
+    const storage = FlutterSecureStorage();
+    final primaryToken = await storage.read(key: 'automate_primary_token');
+    final isLoggedIn = primaryToken != null && primaryToken.isNotEmpty;
+    debugPrint('[Window] isLoggedIn: $isLoggedIn');
 
     // 设置关闭时隐藏到托盘（拦截系统关闭按钮）
     await WindowService.setCloseToTray();
@@ -91,6 +93,9 @@ void main() async {
         await windowManager.focus();
       });
     }
+
+    // 初始化系统托盘（登录和主窗口都需要）
+    await WindowService.initSystemTray();
   }
 
   // iOS: Avoid "black screen" on cold start by rendering a first frame ASAP.

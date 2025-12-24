@@ -13,6 +13,7 @@ class WindowService with TrayListener {
   static WindowService get instance => _instance;
 
   static bool _trayInitialized = false;
+  static _CloseInterceptor? _closeInterceptor;
 
   static const Size loginWindowSize = Size(420, 580);
   static const Size mainWindowSize = Size(1280, 720);
@@ -29,7 +30,7 @@ class WindowService with TrayListener {
       if (Platform.isWindows) {
         iconPath = 'assets/logo.ico';
       } else {
-        iconPath = 'assets/logo.png';
+        iconPath = 'assets/logo_opaque.png';
       }
 
       await trayManager.setIcon(iconPath);
@@ -141,8 +142,11 @@ class WindowService with TrayListener {
   /// 设置关闭时隐藏到托盘（拦截系统关闭事件）
   static Future<void> setCloseToTray() async {
     if (!PlatformInfos.isDesktop) return;
+    if (_closeInterceptor != null) return; // 避免重复添加
+
     await windowManager.setPreventClose(true);
-    windowManager.addListener(_CloseInterceptor());
+    _closeInterceptor = _CloseInterceptor();
+    windowManager.addListener(_closeInterceptor!);
   }
 
   /// 切换到主窗口模式（登录成功后调用）
@@ -158,6 +162,9 @@ class WindowService with TrayListener {
     await windowManager.setSize(mainWindowSize);
     await windowManager.center();
     await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+
+    // 主窗口关闭时隐藏到托盘
+    await setCloseToTray();
 
     // 初始化系统托盘
     await initSystemTray();
@@ -175,6 +182,10 @@ class WindowService with TrayListener {
     await windowManager.center();
     await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     await windowManager.setResizable(false);
+
+    // 登录窗口也使用系统托盘
+    await setCloseToTray();
+    await initSystemTray();
   }
 
   /// 最小化窗口
