@@ -43,9 +43,12 @@ class PsygoApp extends StatelessWidget {
 
   // Router must be outside of build method so that hot reload does not reset
   // the current path.
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static final GoRouter router = GoRouter(
     routes: AppRoutes.routes,
     debugLogDiagnostics: true,
+    navigatorKey: navigatorKey,
   );
 
   @override
@@ -180,11 +183,33 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   Future<void> _initUpdateCheck() async {
     try {
       final api = context.read<PsygoApiClient>();
-      // 启动后台检查服务（包含网络监听）
-      AppUpdateService.startBackgroundCheck(api, () => context);
+
+      // 获取 Navigator context
+      // MaterialApp.builder 里的 context 在 Navigator 之外，需要使用 navigatorKey
+      BuildContext? getNavigatorContext() {
+        return PsygoApp.navigatorKey.currentContext;
+      }
+
+      // 启动后台检查服务（使用 navigatorKey 的 context）
+      AppUpdateService.startBackgroundCheck(api, () => getNavigatorContext() ?? context);
+
+      // 等待 Navigator 可用
+      int waitAttempts = 0;
+      const maxWaitAttempts = 10;
+      BuildContext? navContext;
+      while (waitAttempts < maxWaitAttempts) {
+        navContext = getNavigatorContext();
+        if (navContext != null) break;
+        await Future.delayed(const Duration(milliseconds: 300));
+        waitAttempts++;
+        if (!mounted) return;
+      }
+
+      if (navContext == null) return;
+
       // 立即执行一次检查
       final updateService = AppUpdateService(api);
-      final canContinue = await updateService.checkAndPrompt(context);
+      final canContinue = await updateService.checkAndPrompt(navContext);
 
       // 处理强制更新阻止
       if (!canContinue && mounted) {
@@ -193,7 +218,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         });
       }
     } catch (e) {
-      debugPrint('[AuthGate] Init update check failed: $e');
+      debugPrint('[AppUpdate] Init update check failed: $e');
     }
   }
 
