@@ -963,15 +963,17 @@ class UserInfo {
 class AppVersionResponse {
   final String latestVersion;   // 最新版本号
   final bool forceUpdate;       // 是否强制更新
-  final String? downloadUrl;    // 下载链接（null 表示已是最新）
+  final String? downloadUrl;    // 下载链接（null 表示已是最新，链接有效期 10 分钟）
+  final String? changelog;      // 更新日志
 
   AppVersionResponse({
     required this.latestVersion,
     required this.forceUpdate,
     this.downloadUrl,
+    this.changelog,
   });
 
-  /// 是否有更新
+  /// 是否有更新（download_url 不为空才需要更新）
   bool get hasUpdate => downloadUrl != null && downloadUrl!.isNotEmpty;
 
   factory AppVersionResponse.fromJson(Map<String, dynamic> json) {
@@ -979,6 +981,7 @@ class AppVersionResponse {
       latestVersion: json['latest_version'] as String? ?? '',
       forceUpdate: json['force_update'] as bool? ?? false,
       downloadUrl: json['download_url'] as String?,
+      changelog: json['changelog'] as String?,
     );
   }
 }

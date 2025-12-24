@@ -43,8 +43,6 @@ class AppUpdateService {
     _apiClient_ = apiClient;
     _getContext = getContext;
 
-    debugPrint('[AppUpdate] Starting background check every $_checkInterval');
-
     // 1. 定时检查（每5分钟）
     _backgroundTimer = Timer.periodic(_checkInterval, (_) async {
       await _doBackgroundCheck();
@@ -62,7 +60,6 @@ class AppUpdateService {
 
       if (_wasOffline && !isOffline) {
         // 从离线恢复到在线
-        debugPrint('[AppUpdate] Network restored, triggering check');
         _triggerCheckWithDebounce();
       }
 
@@ -72,13 +69,11 @@ class AppUpdateService {
     // 初始化离线状态
     Connectivity().checkConnectivity().then((results) {
       _wasOffline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
-      debugPrint('[AppUpdate] Initial network state: ${_wasOffline ? "offline" : "online"}');
     });
   }
 
   /// 应用从后台恢复时调用
   static void onAppResumed() {
-    debugPrint('[AppUpdate] App resumed, triggering check');
     _triggerCheckWithDebounce();
   }
 
@@ -86,7 +81,6 @@ class AppUpdateService {
   static void _triggerCheckWithDebounce() {
     final now = DateTime.now();
     if (_lastCheckTime != null && now.difference(_lastCheckTime!) < _resumeDebounce) {
-      debugPrint('[AppUpdate] Check debounced, skipping');
       return;
     }
     _lastCheckTime = now;
@@ -96,10 +90,7 @@ class AppUpdateService {
   /// 执行后台检查
   static Future<void> _doBackgroundCheck() async {
     // 如果已经有弹窗在显示，跳过本次检查
-    if (_isDialogShowing) {
-      debugPrint('[AppUpdate] Dialog is showing, skip background check');
-      return;
-    }
+    if (_isDialogShowing) return;
 
     if (_apiClient_ == null || _getContext == null) return;
 
@@ -114,8 +105,6 @@ class AppUpdateService {
   static void _scheduleRetry() {
     if (_hasSuccessfulCheck) return;  // 已经成功检查过，不需要重试
 
-    debugPrint('[AppUpdate] Scheduling retry in $_retryInterval');
-
     Future.delayed(_retryInterval, () async {
       if (_hasSuccessfulCheck) return;  // 再次检查，避免重复
       await _doBackgroundCheck();
@@ -129,7 +118,6 @@ class AppUpdateService {
 
   /// 停止后台定时检查
   static void stopBackgroundCheck() {
-    debugPrint('[AppUpdate] Stopping background check');
     _backgroundTimer?.cancel();
     _backgroundTimer = null;
     _connectivitySubscription?.cancel();
@@ -147,8 +135,6 @@ class AppUpdateService {
       final currentVersion = await PlatformInfos.getVersion();
       final platform = _getPlatformName();
 
-      debugPrint('[AppUpdate] Background check: version=$currentVersion, platform=$platform');
-
       final response = await _apiClient.checkAppVersion(
         currentVersion: currentVersion,
         platform: platform,
@@ -157,14 +143,18 @@ class AppUpdateService {
       // 检查成功，标记已成功检查
       _markCheckSuccess();
 
-      if (!response.hasUpdate) {
-        debugPrint('[AppUpdate] Background check: no update available');
-        return;
-      }
-
+      if (!response.hasUpdate) return;
       if (!context.mounted) return;
 
-      debugPrint('[AppUpdate] Background check: update available v${response.latestVersion}');
+      // 确保 downloadUrl 不为空
+      final downloadUrl = response.downloadUrl;
+      if (downloadUrl == null || downloadUrl.isEmpty) return;
+
+      // 检查当前 context 是否有 Navigator
+      if (Navigator.maybeOf(context) == null) {
+        _scheduleRetry();
+        return;
+      }
 
       // 标记弹窗正在显示
       _isDialogShowing = true;
@@ -173,16 +163,17 @@ class AppUpdateService {
       await showDialog<bool>(
         context: context,
         barrierDismissible: !response.forceUpdate,
-        builder: (context) => _UpdateDialog(
+        builder: (dialogContext) => _UpdateDialog(
           latestVersion: response.latestVersion,
           forceUpdate: response.forceUpdate,
-          downloadUrl: response.downloadUrl!,
+          downloadUrl: downloadUrl,
+          changelog: response.changelog,
+          refreshDownloadUrl: () => _refreshDownloadUrl(currentVersion, platform),
         ),
       );
 
       _isDialogShowing = false;
     } catch (e) {
-      debugPrint('[AppUpdate] Background check failed: $e');
       // 静默检查失败，如果从未成功检查过，安排重试
       // 但如果是 404/500 等服务器错误，不重试（API 不存在或服务器问题）
       if (!_isServerError(e)) {
@@ -197,7 +188,6 @@ class AppUpdateService {
       final statusCode = e.response?.statusCode;
       // 404 = API 不存在, 500/502/503 = 服务器错误
       if (statusCode != null && (statusCode == 404 || statusCode >= 500)) {
-        debugPrint('[AppUpdate] Server error ($statusCode), skip retry');
         return true;
       }
     }
@@ -212,8 +202,6 @@ class AppUpdateService {
       final currentVersion = await PlatformInfos.getVersion();
       final platform = _getPlatformName();
 
-      debugPrint('[AppUpdate] Checking update: version=$currentVersion, platform=$platform');
-
       final response = await _apiClient.checkAppVersion(
         currentVersion: currentVersion,
         platform: platform,
@@ -222,28 +210,33 @@ class AppUpdateService {
       // 检查成功，标记已成功检查
       _markCheckSuccess();
 
-      debugPrint('[AppUpdate] Response: hasUpdate=${response.hasUpdate}, forceUpdate=${response.forceUpdate}');
-
       if (!response.hasUpdate) {
         // 已是最新版本
         if (showNoUpdateHint && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('当前已是最新版本')),
-          );
+          await _showNoUpdateDialog(context, response.latestVersion, response.changelog);
         }
         return true;
       }
 
       if (!context.mounted) return true;
 
+      // 确保 downloadUrl 不为空
+      final downloadUrl = response.downloadUrl;
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        debugPrint('[AppUpdate] Error: hasUpdate=true but downloadUrl is null/empty');
+        return true;
+      }
+
       // 显示更新弹窗
       final shouldContinue = await showDialog<bool>(
         context: context,
         barrierDismissible: !response.forceUpdate,
-        builder: (context) => _UpdateDialog(
+        builder: (builderContext) => _UpdateDialog(
           latestVersion: response.latestVersion,
           forceUpdate: response.forceUpdate,
-          downloadUrl: response.downloadUrl!,
+          downloadUrl: downloadUrl,
+          changelog: response.changelog,
+          refreshDownloadUrl: () => _refreshDownloadUrl(currentVersion, platform),
         ),
       );
 
@@ -279,6 +272,151 @@ class AppUpdateService {
     if (Platform.isLinux) return 'linux';
     return 'unknown';
   }
+
+  /// 显示"已是最新版本"弹窗（包含当前版本 changelog）
+  Future<void> _showNoUpdateDialog(BuildContext context, String currentVersion, String? changelog) async {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isDesktop = screenWidth > 600;
+
+    final dialogWidth = isDesktop ? 420.0 : 320.0;
+    final padding = isDesktop ? 32.0 : 24.0;
+    final iconSize = isDesktop ? 80.0 : 64.0;
+    final iconInnerSize = isDesktop ? 40.0 : 32.0;
+    // changelog 最大高度，确保弹窗不会超出屏幕
+    final maxChangelogHeight = screenHeight * 0.3;
+
+    await showDialog(
+      context: context,
+      builder: (context) => Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: dialogWidth,
+            maxHeight: screenHeight * 0.85,
+          ),
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 成功图标
+                  Container(
+                    width: iconSize,
+                    height: iconSize,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withAlpha(30),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.green,
+                      size: iconInnerSize,
+                    ),
+                  ),
+                  SizedBox(height: isDesktop ? 24.0 : 20.0),
+
+                  // 标题
+                  Text(
+                    '已是最新版本',
+                    style: (isDesktop
+                            ? theme.textTheme.headlineSmall
+                            : theme.textTheme.titleLarge)
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 版本号
+                  Text(
+                    'v$currentVersion',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                  // 更新日志
+                  if (changelog != null && changelog.isNotEmpty) ...[
+                    SizedBox(height: isDesktop ? 20.0 : 16.0),
+                    Container(
+                      width: double.infinity,
+                      constraints: BoxConstraints(maxHeight: maxChangelogHeight),
+                      padding: EdgeInsets.all(isDesktop ? 16.0 : 12.0),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '当前版本更新内容',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              changelog,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: isDesktop ? 28.0 : 24.0),
+
+                  // 确定按钮
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isDesktop ? 16.0 : 14.0,
+                        ),
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '知道了',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 刷新下载链接（下载链接 10 分钟有效，过期后需要重新获取）
+  Future<String?> _refreshDownloadUrl(String currentVersion, String platform) async {
+    try {
+      final response = await _apiClient.checkAppVersion(
+        currentVersion: currentVersion,
+        platform: platform,
+      );
+      return response.downloadUrl;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 /// 更新弹窗（支持下载进度）
@@ -286,11 +424,15 @@ class _UpdateDialog extends StatefulWidget {
   final String latestVersion;
   final bool forceUpdate;
   final String downloadUrl;
+  final String? changelog;
+  final Future<String?> Function() refreshDownloadUrl;  // 刷新下载链接的回调
 
   const _UpdateDialog({
     required this.latestVersion,
     required this.forceUpdate,
     required this.downloadUrl,
+    this.changelog,
+    required this.refreshDownloadUrl,
   });
 
   @override
@@ -310,6 +452,13 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   String? _errorMessage;
   String? _downloadedFilePath;
   CancelToken? _cancelToken;
+  late String _currentDownloadUrl;  // 当前下载链接（可能会刷新）
+
+  @override
+  void initState() {
+    super.initState();
+    _currentDownloadUrl = widget.downloadUrl;
+  }
 
   @override
   void dispose() {
@@ -326,10 +475,15 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 获取下载文件名
   String _getFileName() {
-    final uri = Uri.parse(widget.downloadUrl);
+    final uri = Uri.parse(_currentDownloadUrl);
     final pathSegments = uri.pathSegments;
     if (pathSegments.isNotEmpty) {
-      return pathSegments.last;
+      final fileName = pathSegments.last;
+      // 去掉查询参数中可能包含的部分
+      final dotIndex = fileName.lastIndexOf('.');
+      if (dotIndex > 0) {
+        return fileName;
+      }
     }
     // 默认文件名
     if (Platform.isWindows) return 'psygo-setup.exe';
@@ -340,7 +494,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   }
 
   /// 开始下载
-  Future<void> _startDownload() async {
+  Future<void> _startDownload({bool isRetry = false}) async {
     setState(() {
       _state = _UpdateState.downloading;
       _progress = 0;
@@ -353,13 +507,11 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       final fileName = _getFileName();
       final filePath = '${dir.path}/$fileName';
 
-      debugPrint('[AppUpdate] Downloading to: $filePath');
-
       _cancelToken = CancelToken();
       final dio = Dio();
 
       await dio.download(
-        widget.downloadUrl,
+        _currentDownloadUrl,
         filePath,
         cancelToken: _cancelToken,
         onReceiveProgress: (received, total) {
@@ -371,25 +523,52 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         },
       );
 
-      debugPrint('[AppUpdate] Download completed');
-
       setState(() {
         _state = _UpdateState.downloaded;
         _downloadedFilePath = filePath;
       });
     } catch (e) {
-      debugPrint('[AppUpdate] Download failed: $e');
       if (e is DioException && e.type == DioExceptionType.cancel) {
         // 用户取消
         setState(() {
           _state = _UpdateState.idle;
         });
+      } else if (e is DioException && _isLinkExpiredError(e) && !isRetry) {
+        // 链接可能过期，尝试刷新
+        await _refreshAndRetry();
       } else {
         setState(() {
           _state = _UpdateState.error;
-          _errorMessage = '下载失败: $e';
+          _errorMessage = '下载失败，请重试';
         });
       }
+    }
+  }
+
+  /// 判断是否为链接过期错误（403/401/410 等）
+  bool _isLinkExpiredError(DioException e) {
+    final statusCode = e.response?.statusCode;
+    return statusCode == 403 || statusCode == 401 || statusCode == 410;
+  }
+
+  /// 刷新下载链接并重试
+  Future<void> _refreshAndRetry() async {
+    try {
+      final newUrl = await widget.refreshDownloadUrl();
+      if (newUrl != null && newUrl.isNotEmpty) {
+        _currentDownloadUrl = newUrl;
+        await _startDownload(isRetry: true);
+      } else {
+        setState(() {
+          _state = _UpdateState.error;
+          _errorMessage = '获取下载链接失败，请重试';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _state = _UpdateState.error;
+        _errorMessage = '获取下载链接失败，请重试';
+      });
     }
   }
 
@@ -403,15 +582,11 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (_downloadedFilePath == null) return;
 
     try {
-      debugPrint('[AppUpdate] Opening file: $_downloadedFilePath');
-      final result = await OpenFile.open(_downloadedFilePath!);
-      debugPrint('[AppUpdate] Open result: ${result.message}');
-
+      await OpenFile.open(_downloadedFilePath!);
       if (context.mounted) {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      debugPrint('[AppUpdate] Failed to open file: $e');
       setState(() {
         _errorMessage = '无法打开文件: $e';
       });
@@ -433,6 +608,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     // PC端（宽度 > 600）使用更大的尺寸
     final isDesktop = screenWidth > 600;
 
@@ -444,12 +620,17 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final versionStyle = isDesktop ? theme.textTheme.titleLarge : theme.textTheme.titleMedium;
     final progressHeight = isDesktop ? 8.0 : 6.0;
     final buttonPadding = isDesktop ? 16.0 : 14.0;
+    // changelog 最大高度
+    final maxChangelogHeight = screenHeight * 0.25;
 
     return PopScope(
       canPop: !widget.forceUpdate && _state != _UpdateState.downloading,
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: dialogWidth),
+          constraints: BoxConstraints(
+            maxWidth: dialogWidth,
+            maxHeight: screenHeight * 0.85,
+          ),
           child: Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
@@ -498,6 +679,30 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
+                  // 更新日志
+                  if (widget.changelog != null && widget.changelog!.isNotEmpty) ...[
+                    SizedBox(height: isDesktop ? 16.0 : 12.0),
+                    Container(
+                      width: double.infinity,
+                      constraints: BoxConstraints(maxHeight: maxChangelogHeight),
+                      padding: EdgeInsets.all(isDesktop ? 16.0 : 12.0),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          widget.changelog!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.start,
+                        ),
+                      ),
+                    ),
+                  ],
                   SizedBox(height: isDesktop ? 24.0 : 16.0),
 
                   // 下载进度条
