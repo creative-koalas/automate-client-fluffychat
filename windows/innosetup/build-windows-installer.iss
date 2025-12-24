@@ -9,6 +9,7 @@
 #define MySourceDir "{#SourcePath}\..\..\..\build\windows\x64\runner\Release"
 #define VCRedistSource "{#SourcePath}\..\VC_redist.x64.exe"
 #define VCRedistFileName "VC_redist.x64.exe"
+#define IconFilePath "{#SourcePath}\..\..\..\assets\logo_opaque.ico"
 
 ; ---- compile-time sanity checks (recommended) ----
 #if !FileExists(AddBackslash(MySourceDir) + MyAppExeName)
@@ -27,6 +28,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+SetupIconFile={#IconFilePath}
 
 DefaultDirName={autopf}\{#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
