@@ -71,11 +71,12 @@ void main() async {
       // 最小宽度必须大于 PC 模式阈值 (columnWidth * 2 + navRailWidth = 840)
       const mainWindowMinSize = Size(960, 600);
       await windowManager.waitUntilReadyToShow(null, () async {
+        await windowManager.setResizable(true);
+        await windowManager.setMaximumSize(const Size(9999, 9999));
         await windowManager.setSize(mainWindowSize);
         await windowManager.setMinimumSize(mainWindowMinSize);
         await windowManager.center();
         await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-        await windowManager.setResizable(true);
         await windowManager.show();
         await windowManager.focus();
       });

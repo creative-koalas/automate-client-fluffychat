@@ -63,6 +63,10 @@ class SettingsController extends State<Settings> {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 600;
+    final dialogWidth = isDesktop ? 400.0 : screenWidth;
+
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -72,7 +76,7 @@ class SettingsController extends State<Settings> {
         ),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Container(
-          width: MediaQuery.of(context).size.width,
+          width: dialogWidth,
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
