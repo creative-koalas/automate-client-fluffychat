@@ -192,9 +192,11 @@ class PsygoApiClient {
 
   /// 完成登录/注册（新登录流程第二步）
   /// 新用户需要传入邀请码
-  Future<AuthResponse> completeLogin(String pendingToken, {String? invitationCode}) async {
+  /// [agreeAgreements] 必须为 true，表示用户已同意所有协议
+  Future<AuthResponse> completeLogin(String pendingToken, {String? invitationCode, bool agreeAgreements = true}) async {
     final body = <String, dynamic>{
       'pending_token': pendingToken,
+      'agree_agreements': agreeAgreements,
     };
     if (invitationCode != null && invitationCode.isNotEmpty) {
       body['invitation_code'] = invitationCode;
@@ -595,6 +597,59 @@ class PsygoApiClient {
     return AppVersionResponse.fromJson(respData);
   }
 
+  /// 获取所有激活的协议列表（公开接口，无需认证）
+  /// 返回用户协议和隐私政策的 URL
+  Future<List<Agreement>> getAgreements() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/agreements/',
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to get agreements',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as List<dynamic>?;
+    if (respData == null) {
+      return [];
+    }
+
+    return respData
+        .whereType<Map<String, dynamic>>()
+        .map((json) => Agreement.fromJson(json))
+        .toList();
+  }
+
+  /// 获取用户协议接受状态（需要认证）
+  /// 用于检查用户是否已同意所有激活的协议
+  Future<AgreementStatus> getAgreementStatus() async {
+    final token = auth.primaryToken;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/agreements/status',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to get agreement status',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return AgreementStatus.fromJson(respData);
+  }
+
   Stream<ChatStreamEvent> streamChatResponse(String message) async* {
     final token = auth.chatbotToken;
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');
@@ -982,6 +1037,93 @@ class AppVersionResponse {
       forceUpdate: json['force_update'] as bool? ?? false,
       downloadUrl: json['download_url'] as String?,
       changelog: json['changelog'] as String?,
+    );
+  }
+}
+
+/// 协议信息
+class Agreement {
+  final int id;
+  final String type;      // terms 或 privacy
+  final String version;   // 版本号，如 v1.0.0
+  final String url;       // 协议页面 URL
+  final bool isActive;
+
+  Agreement({
+    required this.id,
+    required this.type,
+    required this.version,
+    required this.url,
+    required this.isActive,
+  });
+
+  /// 是否是用户协议
+  bool get isTerms => type == 'terms';
+
+  /// 是否是隐私政策
+  bool get isPrivacy => type == 'privacy';
+
+  factory Agreement.fromJson(Map<String, dynamic> json) {
+    return Agreement(
+      id: json['id'] as int? ?? 0,
+      type: json['type'] as String? ?? '',
+      version: json['version'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      isActive: json['is_active'] as bool? ?? false,
+    );
+  }
+}
+
+/// 用户协议接受状态
+class AgreementStatus {
+  final bool allAccepted;                    // 是否已接受所有必需协议
+  final List<AgreementAcceptance> agreements; // 各协议的接受状态
+
+  AgreementStatus({
+    required this.allAccepted,
+    required this.agreements,
+  });
+
+  factory AgreementStatus.fromJson(Map<String, dynamic> json) {
+    final agreementsList = json['agreements'] as List<dynamic>? ?? [];
+    return AgreementStatus(
+      allAccepted: json['all_accepted'] as bool? ?? false,
+      agreements: agreementsList
+          .whereType<Map<String, dynamic>>()
+          .map((e) => AgreementAcceptance.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+/// 单个协议的接受状态
+class AgreementAcceptance {
+  final int agreementId;
+  final String type;
+  final String version;
+  final String url;
+  final bool accepted;
+  final DateTime? acceptedAt;
+
+  AgreementAcceptance({
+    required this.agreementId,
+    required this.type,
+    required this.version,
+    required this.url,
+    required this.accepted,
+    this.acceptedAt,
+  });
+
+  factory AgreementAcceptance.fromJson(Map<String, dynamic> json) {
+    return AgreementAcceptance(
+      agreementId: json['agreement_id'] as int? ?? 0,
+      type: json['type'] as String? ?? '',
+      version: json['version'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      accepted: json['accepted'] as bool? ?? false,
+      acceptedAt: json['accepted_at'] != null
+          ? DateTime.tryParse(json['accepted_at'] as String)
+          : null,
     );
   }
 }

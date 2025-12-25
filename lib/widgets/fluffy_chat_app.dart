@@ -19,6 +19,7 @@ import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/theme_builder.dart';
 import 'package:psygo/utils/app_update_service.dart';
+import 'package:psygo/utils/agreement_check_service.dart';
 import '../utils/custom_scroll_behaviour.dart';
 import 'matrix.dart';
 
@@ -155,8 +156,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _invitationCodeController.dispose();
-    // 停止后台更新检查
+    // 停止后台检查服务
     AppUpdateService.stopBackgroundCheck();
+    AgreementCheckService.stopBackgroundCheck();
     super.dispose();
   }
 
@@ -236,8 +238,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         OneClickLoginService.quitLoginPage();
       }
 
-      // 应用恢复时检查更新
+      // 应用恢复时检查更新（先检查 App 更新，再检查协议）
       AppUpdateService.onAppResumed();
+      // 协议检查（仅已登录用户）
+      if (_state == _AuthState.authenticated) {
+        AgreementCheckService.onAppResumed();
+      }
 
       // iOS FIX: Handle permission approval during auth check
       // When user slowly approves network permissions, SDK initialization may timeout
@@ -584,6 +590,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
         setState(() => _state = _AuthState.authenticated);
 
+        // 启动协议检查后台服务
+        _startAgreementCheckService();
+
         // Navigate to main page after successful login
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -617,6 +626,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       }
 
       setState(() => _state = _AuthState.authenticated);
+
+      // 启动协议检查后台服务
+      _startAgreementCheckService();
 
       // Navigate to main page if not already there
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -740,6 +752,58 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       GoRouter.of(ctx).go('/onboarding-chatbot');
     });
+  }
+
+  /// 启动协议检查后台服务
+  void _startAgreementCheckService() {
+    final api = context.read<PsygoApiClient>();
+
+    BuildContext? getNavigatorContext() {
+      return PsygoApp.navigatorKey.currentContext;
+    }
+
+    AgreementCheckService.startBackgroundCheck(
+      api,
+      () => getNavigatorContext() ?? context,
+      _forceLogout,
+    );
+  }
+
+  /// 强制登出（协议未接受时调用）
+  Future<void> _forceLogout() async {
+    debugPrint('[AuthGate] Force logout triggered - agreement not accepted');
+
+    // 停止后台检查服务
+    AgreementCheckService.stopBackgroundCheck();
+
+    // 清除登录状态
+    final auth = context.read<PsygoAuthState>();
+    await auth.markLoggedOut();
+
+    // 清除 Matrix 客户端状态
+    final matrix = Matrix.of(context);
+    for (final client in matrix.widget.clients) {
+      if (client.isLogged()) {
+        try {
+          await client.logout();
+        } catch (e) {
+          debugPrint('[AuthGate] Matrix logout error: $e');
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    // 重置 AuthGate 状态
+    setState(() {
+      _state = _AuthState.checking;
+      _hasTriedAuth = false;
+      _hasRetriedMatrixLogin = false;
+      _resumeRetryCount = 0;
+    });
+
+    // 重新触发登录流程
+    _checkAuthStateSafe();
   }
 
   /// Navigate to onboarding page for new users.
