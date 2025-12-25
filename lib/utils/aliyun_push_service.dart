@@ -114,6 +114,11 @@ class AliyunPushService {
         // 获取设备 ID
         await _fetchDeviceId();
 
+        // 初始化厂商通道（Android 专用，支持 vivo/华为/小米等离线推送）
+        if (Platform.isAndroid) {
+          await initThirdPush();
+        }
+
         // 设置日志级别（调试时可开启）
         if (kDebugMode) {
           await _aliyunPush.setLogLevel(AliyunPushLogLevel.debug);
@@ -207,7 +212,8 @@ class AliyunPushService {
         _handleMessage(message);
       },
       onAndroidNotificationReceivedInApp: (message) async {
-        Logs().d('[AliyunPush] Android notification in app: $message');
+        Logs().i('[AliyunPush] Android notification in app: $message');
+        _handleNotificationReceivedInApp(message);
       },
       onIOSChannelOpened: (message) async {
         Logs().d('[AliyunPush] iOS channel opened: $message');
@@ -228,10 +234,128 @@ class AliyunPushService {
 
   /// 处理通知点击
   void _handleNotificationOpened(Map<dynamic, dynamic> message) {
-    // TODO: 在这里处理通知点击事件
-    // 可以导航到对应的聊天室
-    if (kDebugMode) {
-      print('[AliyunPush] Notification opened: $message');
+    Logs().i('[AliyunPush] Notification opened: $message');
+
+    try {
+      // 解析扩展参数
+      final extraMap = message['extraMap'] as Map<dynamic, dynamic>?;
+      if (extraMap == null) {
+        Logs().w('[AliyunPush] No extraMap in notification');
+        return;
+      }
+
+      final roomId = extraMap['room_id'] as String?;
+      final eventId = extraMap['event_id'] as String?;
+
+      if (roomId != null && onNotificationTapped != null) {
+        _navigatingToRoomId = roomId;
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (_navigatingToRoomId == roomId) {
+            _navigatingToRoomId = null;
+          }
+        });
+        onNotificationTapped!(roomId, eventId);
+      }
+    } catch (e, s) {
+      Logs().e('[AliyunPush] Failed to handle notification opened', e, s);
+    }
+  }
+
+  /// 处理前台收到的通知（AndroidRemind=false 时触发）
+  ///
+  /// 当 App 在前台时，NOTICE 通知不会弹系统通知栏，而是触发此回调。
+  /// 在这里判断用户是否在当前聊天室，智能决定是否显示本地通知。
+  ///
+  /// 消息格式：
+  /// {
+  ///   "title": "通知标题",
+  ///   "body": "通知内容",
+  ///   "extraMap": {
+  ///     "type": "matrix_message",
+  ///     "room_id": "!roomid:server",
+  ///     "event_id": "$eventid",
+  ///     "sender": "@user:server",
+  ///     "badge": "5"
+  ///   }
+  /// }
+  void _handleNotificationReceivedInApp(Map<dynamic, dynamic> message) {
+    Logs().i('[AliyunPush] Received NOTICE in app: $message');
+
+    try {
+      // 获取通知标题和内容
+      final title = message['title'] as String? ?? 'Psygo';
+      final body = message['body'] as String? ?? message['summary'] as String? ?? '你收到了一条新消息';
+
+      // 解析扩展参数
+      final extraMap = message['extraMap'] as Map<dynamic, dynamic>?;
+      if (extraMap == null) {
+        Logs().w('[AliyunPush] No extraMap in notification');
+        return;
+      }
+
+      final type = extraMap['type'] as String?;
+
+      // 只处理 matrix_message 类型
+      if (type != 'matrix_message') {
+        Logs().d('[AliyunPush] Ignoring non-matrix notification type: $type');
+        return;
+      }
+
+      final roomId = extraMap['room_id'] as String?;
+      final eventId = extraMap['event_id'] as String?;
+      // badge 可能是 String 或 int
+      final badgeValue = extraMap['badge'];
+      final badge = badgeValue is int ? badgeValue : int.tryParse(badgeValue?.toString() ?? '0') ?? 0;
+
+      Logs().d('[AliyunPush] Matrix notification in app: room=$roomId, event=$eventId, title=$title');
+
+      // 检查 event_id 去重（防止同一消息多次显示通知）
+      if (eventId != null && _shownEventIds.contains(eventId)) {
+        Logs().d('[AliyunPush] Event already shown, skip duplicate: $eventId');
+        setBadgeNumber(badge);
+        return;
+      }
+
+      // 检查用户是否在当前房间
+      final activeRoomId = activeRoomIdGetter?.call();
+      if (activeRoomId != null && activeRoomId == roomId) {
+        Logs().d('[AliyunPush] User is in current room, skip notification');
+        setBadgeNumber(badge);
+        return;
+      }
+
+      // 检查用户是否正在导航到该房间（防止点击通知后的竞态条件）
+      if (_navigatingToRoomId != null && _navigatingToRoomId == roomId) {
+        Logs().d('[AliyunPush] User is navigating to this room, skip notification');
+        setBadgeNumber(badge);
+        return;
+      }
+
+      // 记录已显示的 event_id（维护集合大小）
+      if (eventId != null) {
+        _shownEventIds.add(eventId);
+        while (_shownEventIds.length > _maxShownEventIds) {
+          _shownEventIds.remove(_shownEventIds.first);
+        }
+      }
+
+      // 用户不在当前房间，显示本地通知
+      final payload = jsonEncode({
+        'type': type,
+        'room_id': roomId,
+        'event_id': eventId,
+        'sender': extraMap['sender'],
+        'badge': badge,
+      });
+
+      _showLocalNotification(
+        title: title,
+        body: body,
+        payload: payload,
+        badge: badge,
+      );
+    } catch (e, s) {
+      Logs().e('[AliyunPush] Failed to handle notification in app', e, s);
     }
   }
 
@@ -319,7 +443,48 @@ class AliyunPushService {
     }
   }
 
-  /// 显示本地通知
+  /// 显示本地通知（public 方法，供 Matrix SDK 调用）
+  ///
+  /// [roomId] 房间 ID，用于点击通知后跳转
+  /// [eventId] 事件 ID，可选
+  /// [title] 通知标题
+  /// [body] 通知内容
+  /// [badge] 角标数量
+  Future<void> showNotificationForRoom({
+    required String roomId,
+    String? eventId,
+    required String title,
+    required String body,
+    int badge = 0,
+  }) async {
+    // 检查用户是否在当前房间
+    final activeRoomId = activeRoomIdGetter?.call();
+    if (activeRoomId != null && activeRoomId == roomId) {
+      Logs().d('[AliyunPush] User is in current room, skip notification');
+      return;
+    }
+
+    // 检查用户是否正在导航到该房间
+    if (_navigatingToRoomId != null && _navigatingToRoomId == roomId) {
+      Logs().d('[AliyunPush] User is navigating to this room, skip notification');
+      return;
+    }
+
+    final payload = jsonEncode({
+      'type': 'matrix_message',
+      'room_id': roomId,
+      'event_id': eventId,
+    });
+
+    await _showLocalNotification(
+      title: title,
+      body: body,
+      payload: payload,
+      badge: badge,
+    );
+  }
+
+  /// 显示本地通知（内部方法）
   Future<void> _showLocalNotification({
     required String title,
     required String body,

@@ -292,15 +292,14 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
-    if (PlatformInfos.isWeb || PlatformInfos.isDesktop) {
-      c.onSync.stream.first.then((s) {
-        if (PlatformInfos.isWeb) {
-          html.Notification.requestPermission();
-        }
-        onNotification[name] ??=
-            c.onNotification.stream.listen(showLocalNotification);
-      });
-    }
+    // 订阅通知事件（所有平台都需要，移动端通过本地通知显示）
+    c.onSync.stream.first.then((s) {
+      if (PlatformInfos.isWeb) {
+        html.Notification.requestPermission();
+      }
+      onNotification[name] ??=
+          c.onNotification.stream.listen(showLocalNotification);
+    });
   }
 
   void _cancelSubs(String name) {
