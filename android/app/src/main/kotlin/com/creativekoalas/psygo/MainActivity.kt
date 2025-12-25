@@ -10,14 +10,19 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 
 class MainActivity : FlutterActivity() {
 
     private val TAG = "MainActivity"
     private val APP_CONTROL_CHANNEL = "com.creativekoalas.psygo/app_control"
+    private val INSTALL_CHANNEL = "com.psygo.app/install"
+    private val REQUEST_INSTALL_PERMISSION = 1001
+    private var installPermissionResult: MethodChannel.Result? = null
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -70,6 +75,62 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+
+        // 注册安装权限 channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALL_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "canRequestPackageInstalls" -> {
+                    result.success(canRequestPackageInstalls())
+                }
+                "requestInstallPermission" -> {
+                    requestInstallPermission(result)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /**
+     * 检查是否有安装未知应用的权限
+     */
+    private fun canRequestPackageInstalls(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            packageManager.canRequestPackageInstalls()
+        } else {
+            true // Android 8.0 以下不需要此权限
+        }
+    }
+
+    /**
+     * 请求安装未知应用权限
+     */
+    private fun requestInstallPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (packageManager.canRequestPackageInstalls()) {
+                result.success(true)
+            } else {
+                installPermissionResult = result
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivityForResult(intent, REQUEST_INSTALL_PERMISSION)
+            }
+        } else {
+            result.success(true)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_INSTALL_PERMISSION) {
+            val canInstall = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                packageManager.canRequestPackageInstalls()
+            } else {
+                true
+            }
+            installPermissionResult?.success(canInstall)
+            installPermissionResult = null
         }
     }
 

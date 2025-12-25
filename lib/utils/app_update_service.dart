@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -519,6 +520,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   CancelToken? _cancelToken;
   bool _allowPop = false;  // 是否允许关闭弹窗（只有按钮点击时才设为true）
   late String _currentDownloadUrl;  // 当前下载链接（可能会刷新）
+  DateTime? _lastProgressUpdate;  // 上次更新进度的时间
 
   @override
   void initState() {
@@ -582,15 +584,25 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         cancelToken: _cancelToken,
         onReceiveProgress: (received, total) {
           if (total > 0) {
-            setState(() {
-              _progress = received / total;
-            });
+            final newProgress = received / total;
+            final now = DateTime.now();
+            // 每 1 秒更新一次 UI，或下载完成时立即更新
+            final shouldUpdate = newProgress >= 1.0 ||
+                _lastProgressUpdate == null ||
+                now.difference(_lastProgressUpdate!).inMilliseconds >= 1000;
+            if (shouldUpdate) {
+              _lastProgressUpdate = now;
+              setState(() {
+                _progress = newProgress >= 1.0 ? 0.99 : newProgress;  // 下载中最多显示 99%
+              });
+            }
           }
         },
       );
 
       setState(() {
         _state = _UpdateState.downloaded;
+        _progress = 1.0;  // 下载完成后设为 100%
         _downloadedFilePath = filePath;
       });
     } catch (e) {
@@ -648,7 +660,30 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (_downloadedFilePath == null) return;
 
     try {
-      await OpenFile.open(_downloadedFilePath!);
+      // Android 8.0+ 需要检查"安装未知应用"权限
+      if (Platform.isAndroid) {
+        final canInstall = await _checkInstallPermission();
+        if (!canInstall) {
+          // 引导用户去设置页面开启权限
+          final granted = await _requestInstallPermission();
+          if (!granted) {
+            setState(() {
+              _errorMessage = '需要开启"安装未知应用"权限才能安装更新';
+            });
+            return;
+          }
+        }
+      }
+
+      final result = await OpenFile.open(_downloadedFilePath!);
+      if (result.type != ResultType.done) {
+        // 打开失败
+        setState(() {
+          _errorMessage = '无法打开文件: ${result.message}';
+        });
+        return;
+      }
+
       if (context.mounted) {
         setState(() => _allowPop = true);
         Navigator.of(context).pop(true);
@@ -657,6 +692,29 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       setState(() {
         _errorMessage = '无法打开文件: $e';
       });
+    }
+  }
+
+  /// 检查是否有安装未知应用权限 (Android)
+  Future<bool> _checkInstallPermission() async {
+    try {
+      const channel = MethodChannel('com.psygo.app/install');
+      final result = await channel.invokeMethod<bool>('canRequestPackageInstalls');
+      return result ?? false;
+    } catch (e) {
+      // 如果检查失败，假设有权限，让系统处理
+      return true;
+    }
+  }
+
+  /// 请求安装未知应用权限 (Android)
+  Future<bool> _requestInstallPermission() async {
+    try {
+      const channel = MethodChannel('com.psygo.app/install');
+      final result = await channel.invokeMethod<bool>('requestInstallPermission');
+      return result ?? false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -774,14 +832,24 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   ],
                   SizedBox(height: isDesktop ? 24.0 : 16.0),
 
-                  // 下载进度条
+                  // 下载进度条（使用自定义进度条，避免 LinearProgressIndicator 的动画延迟）
                   if (_state == _UpdateState.downloading) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: _progress,
-                        minHeight: progressHeight,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      child: Container(
+                        height: progressHeight,
+                        width: double.infinity,
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: _progress.clamp(0.0, 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
