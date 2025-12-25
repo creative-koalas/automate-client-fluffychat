@@ -27,6 +27,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- VIVO 角标权限 -->
     <uses-permission android:name="com.vivo.notification.permission.BADGE_ICON" />
+    <!-- 应用内更新安装 APK 权限 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- To make app compatible with tablets -->
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
@@ -177,6 +179,19 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- FileProvider for open_file package (APK installation) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true"
+            tools:replace="android:authorities">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths"
+                tools:replace="android:resource" />
+        </provider>
 
         <!-- VIVO 推送厂商通道 -->
         <meta-data
