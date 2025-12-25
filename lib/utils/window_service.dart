@@ -156,10 +156,11 @@ class WindowService with TrayListener {
 
     // 先解除大小限制，再设置新的大小
     await windowManager.setResizable(true);
-    await windowManager.setMinimumSize(mainWindowMinSize);
     // 使用足够大的值代替 infinity（Windows 不支持 infinity）
     await windowManager.setMaximumSize(const Size(9999, 9999));
     await windowManager.setSize(mainWindowSize);
+    // 设置最小大小（在设置完窗口大小后再设置）
+    await windowManager.setMinimumSize(mainWindowMinSize);
     await windowManager.center();
     await windowManager.setTitleBarStyle(TitleBarStyle.normal);
 
