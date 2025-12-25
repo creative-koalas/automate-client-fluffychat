@@ -2,6 +2,17 @@
 .env
 env.json
 
+# Common Redist
+**/VC_redist*.exe
+
+# Output Artifacts
+/windows/innosetup/Output
+
+# Flutter generated files (desktop)
+/linux/flutter/generated_*
+/windows/flutter/generated_*
+/macos/flutter/generated_*
+
 # Miscellaneous
 *.class
 *.log

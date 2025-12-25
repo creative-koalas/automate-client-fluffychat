@@ -105,6 +105,7 @@ dev_dependencies:
     sdk: flutter
   license_checker: ^1.6.0
   translations_cleaner: ^0.0.5
+  msix: ^3.16.12
 
 import_sorter:
   ignored_files: # Optional, defaults to []
@@ -124,6 +125,14 @@ flutter_launcher_icons:
 
 tobias:
   url_scheme: psygo
+
+msix_config:
+  display_name: Psygo
+  publisher_display_name: 创意考拉
+  identity_name: company.suite.flutterapp
+  msix_version: 1.0.0.0
+  logo_path: C:\path\to\logo.png
+  capabilities: internetClient, location, microphone, webcam
 
 flutter:
   generate: true
