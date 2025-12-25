@@ -370,8 +370,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // 协议文案
         model.privacyPreText = "登录即同意"
         model.privacySufText = ""
-        model.privacyOne = ["《用户协议》", "app-privacy://user_agreement"]
-        model.privacyTwo = ["《隐私政策》", "app-privacy://privacy_policy"]
+        model.privacyOne = ["《用户协议》", "https://psygoai.com/legal/user-agreement.html"]
+        model.privacyTwo = ["《隐私政策》", "https://psygoai.com/legal/privacy-policy.html"]
         model.privacyConectTexts = ["和", "、", "、"]
         model.privacyColors = [
             UIColor(red: 0x99/255.0, green: 0x99/255.0, blue: 0x99/255.0, alpha: 1.0),  // #999999
@@ -495,11 +495,15 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // 自动隐藏登录loading，默认为YES
         model.autoHideLoginLoading = true
 
-        // ========== 协议详情页（使用自定义处理） ==========
-        model.privacyVCIsCustomized = true
+        // ========== 协议详情页（使用 SDK 内置 WebView） ==========
+        model.privacyVCIsCustomized = false  // 使用 SDK 内置 WebView
         model.privacyNavColor = .white
         model.privacyNavTitleFont = UIFont.systemFont(ofSize: 18, weight: .medium)
         model.privacyNavTitleColor = .black
+        // 设置返回按钮图片，确保导航栏正确显示
+        if let backImage = UIImage(named: "auth_close") {
+            model.privacyNavBackImage = backImage
+        }
 
         return model
     }
