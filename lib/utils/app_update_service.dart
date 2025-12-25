@@ -650,9 +650,31 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     }
   }
 
-  /// 取消下载
-  void _cancelDownload() {
-    _cancelToken?.cancel();
+  /// 取消下载（带二次确认）
+  Future<void> _cancelDownload() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认取消'),
+        content: const Text('确定要取消下载吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('继续下载'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              '取消下载',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _cancelToken?.cancel();
+    }
   }
 
   /// 安装/打开下载的文件
@@ -1015,7 +1037,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           child: Text(
             '取消下载',
             style: TextStyle(
-              color: theme.colorScheme.onSurface,
+              color: theme.colorScheme.error,
               fontWeight: FontWeight.w600,
             ),
           ),
