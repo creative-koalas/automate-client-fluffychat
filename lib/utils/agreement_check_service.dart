@@ -10,38 +10,32 @@ import 'package:psygo/backend/api_client.dart';
 class AgreementCheckService {
   final PsygoApiClient _apiClient;
 
-  // 后台定时检查
-  static Timer? _backgroundTimer;
+  // 状态管理
   static bool _isDialogShowing = false;
-  static const Duration _checkInterval = Duration(minutes: 10);
-  static const Duration _resumeDebounce = Duration(seconds: 5);
+  static bool _isInitialized = false;
+  static const Duration _resumeDebounce = Duration(seconds: 3);
 
-  // 保存引用以便重试
+  // 保存引用
   static PsygoApiClient? _apiClient_;
   static BuildContext Function()? _getContext;
   static VoidCallback? _onForceLogout;
-
   static DateTime? _lastCheckTime;
 
   AgreementCheckService(this._apiClient);
 
-  /// 启动后台定时检查
+  /// 启动后台检查（仅初始化，不启动轮询）
   static void startBackgroundCheck(
     PsygoApiClient apiClient,
     BuildContext Function() getContext,
     VoidCallback onForceLogout,
   ) {
-    // 避免重复启动
-    if (_backgroundTimer != null) return;
+    // 避免重复初始化
+    if (_isInitialized) return;
 
     _apiClient_ = apiClient;
     _getContext = getContext;
     _onForceLogout = onForceLogout;
-
-    // 定时检查（每10分钟）
-    _backgroundTimer = Timer.periodic(_checkInterval, (_) async {
-      await _doBackgroundCheck();
-    });
+    _isInitialized = true;
   }
 
   /// 应用从后台恢复时调用
@@ -59,7 +53,7 @@ class AgreementCheckService {
     _doBackgroundCheck();
   }
 
-  /// 执行后台检查
+  /// 执行后台检查（静默）
   static Future<void> _doBackgroundCheck() async {
     if (_isDialogShowing) return;
     if (_apiClient_ == null || _getContext == null) return;
@@ -67,58 +61,39 @@ class AgreementCheckService {
     final context = _getContext!();
     if (!context.mounted) return;
 
+    // 检查当前 context 是否有 Navigator
+    if (Navigator.maybeOf(context) == null) return;
+
     final service = AgreementCheckService(_apiClient_!);
     await service._silentCheck(context);
   }
 
-  /// 停止后台定时检查
+  /// 停止后台检查
   static void stopBackgroundCheck() {
-    _backgroundTimer?.cancel();
-    _backgroundTimer = null;
     _lastCheckTime = null;
     _apiClient_ = null;
     _getContext = null;
     _onForceLogout = null;
+    _isInitialized = false;
   }
 
-  /// 静默检查协议状态（后台调用）
+  /// 静默检查协议状态（后台恢复时调用）
   Future<void> _silentCheck(BuildContext context) async {
-    debugPrint('[AgreementCheck] Starting silent check...');
     try {
       final status = await _apiClient.getAgreementStatus();
-      debugPrint('[AgreementCheck] Status: allAccepted=${status.allAccepted}, agreements=${status.agreements.length}');
 
-      if (status.allAccepted) {
-        // 用户已接受所有最新协议
-        debugPrint('[AgreementCheck] All agreements accepted, no action needed');
-        return;
-      }
-
+      if (status.allAccepted) return;
       if (!context.mounted) return;
 
       // 用户未接受最新协议，显示提示并强制登出
-      debugPrint('[AgreementCheck] User has not accepted all agreements, showing force logout dialog');
       _showForceLogoutDialog(context);
     } catch (e) {
-      debugPrint('[AgreementCheck] Silent check failed: $e');
       // 静默失败，不处理（可能是网络问题）
+      debugPrint('[AgreementCheck] Silent check failed: $e');
     }
   }
 
-  /// 检查协议状态
-  /// 返回 true 表示用户已接受所有协议，false 表示需要重新同意
-  Future<bool> checkAgreementStatus() async {
-    try {
-      final status = await _apiClient.getAgreementStatus();
-      return status.allAccepted;
-    } catch (e) {
-      debugPrint('[AgreementCheck] Check failed: $e');
-      // 检查失败时默认通过，避免误伤用户
-      return true;
-    }
-  }
-
-  /// 检查协议状态并处理
+  /// 检查协议状态并处理（冷启动时调用）
   /// 返回 true 表示可以继续，false 表示需要强制登出
   Future<bool> checkAndHandle(BuildContext context) async {
     try {
