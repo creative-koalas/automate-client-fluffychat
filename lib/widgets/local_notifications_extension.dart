@@ -12,6 +12,7 @@ import 'package:universal_html/html.dart' as html;
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/aliyun_push_service.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -71,9 +72,15 @@ extension LocalNotificationsExtension on MatrixState {
 
   void showLocalNotification(Event event) async {
     final roomId = event.room.id;
+    // 如果用户在当前房间，不显示通知
     if (activeRoomId == roomId) {
       if (kIsWeb && webHasFocus) return;
       if (PlatformInfos.isDesktop &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        return;
+      }
+      // 移动端：App 在前台且在当前房间时不显示通知
+      if ((Platform.isAndroid || Platform.isIOS) &&
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
         return;
       }
@@ -223,6 +230,21 @@ extension LocalNotificationsExtension on MatrixState {
         body,
         notificationDetails,
         payload: roomId,
+      );
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      // Android/iOS: 通过阿里云推送服务显示本地通知
+      // 这里处理的是在线时 Matrix SDK 收到的消息
+      // 离线时由 Push Gateway → 阿里云推送 → 厂商通道处理
+      final unreadCount = client.rooms
+          .where((r) => r.isUnreadOrInvited)
+          .length;
+
+      await AliyunPushService.instance.showNotificationForRoom(
+        roomId: roomId,
+        eventId: event.eventId,
+        title: title,
+        body: body,
+        badge: unreadCount,
       );
     }
   }

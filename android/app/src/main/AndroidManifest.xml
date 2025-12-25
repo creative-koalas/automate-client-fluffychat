@@ -25,6 +25,8 @@
     <!-- 阿里云推送所需权限 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- VIVO 角标权限 -->
+    <uses-permission android:name="com.vivo.notification.permission.BADGE_ICON" />
 
     <!-- To make app compatible with tablets -->
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
@@ -33,7 +35,7 @@
     <uses-sdk
             tools:overrideLibrary="io.wazo.callkeep, net.touchcapture.qr.flutterqr, com.cloudwebrtc.webrtc, org.webrtc, com.it_nomads.fluttersecurestorage, com.pichillilorenzo.flutter_inappwebview, com.example.video_compress, com.otaliastudios.transcoder, com.otaliastudios.opengl, com.kineapps.flutter_file_dialog, com.llfbandit.record, com.pravera.flutter_foreground_task"/>
     <application
-        android:label="Psygo-Test"
+        android:label="Psygo"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
         android:allowBackup="false"
@@ -176,6 +178,14 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- VIVO 推送厂商通道 -->
+        <meta-data
+            android:name="com.vivo.push.api_key"
+            android:value="dc64a38d94ecff572fc1122a1a753520" />
+        <meta-data
+            android:name="com.vivo.push.app_id"
+            android:value="106014439" />
+
         <!-- 阿里云推送消息接收器 -->
         <receiver
             android:name="com.aliyun.ams.push.AliyunPushMessageReceiver"
@@ -190,5 +200,12 @@
                 <action android:name="com.alibaba.sdk.android.push.RECEIVE" />
             </intent-filter>
         </receiver>
+
+        <!-- 厂商通道辅助弹窗 Activity（vivo/华为/小米等离线推送点击后打开） -->
+        <activity
+            android:name=".PopupPushActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>
