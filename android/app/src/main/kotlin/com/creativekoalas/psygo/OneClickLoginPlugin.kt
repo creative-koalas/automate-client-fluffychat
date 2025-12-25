@@ -324,8 +324,8 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setPrivacyOffsetY_B(80)
                     .setPrivacyTextSize(12)
                     // 协议名称和链接（使用自定义 Scheme 跳转到 App 内页面，避免 SDK WebView 适配问题）
-                    .setAppPrivacyOne("《用户协议》", "app-privacy://user_agreement")
-                    .setAppPrivacyTwo("《隐私政策》", "app-privacy://privacy_policy")
+                    .setAppPrivacyOne("《用户协议》", "https://psygoai.com/legal/user-agreement.html")
+                    .setAppPrivacyTwo("《隐私政策》", "https://psygoai.com/legal/privacy-policy.html")
                     .setAppPrivacyColor(secondaryTextColor, privacyLinkColor)
                     .setPrivacyBefore("登录即同意")
                     .setPrivacyEnd("")
@@ -358,13 +358,12 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setPrivacyAlertBtnWidth(240)
                     .setPrivacyAlertBtnHeigth(42)
                     .setPrivacyAlertBackgroundColor(alertBgColor)
-                    // 协议页面（内置 WebView）导航栏配置
+                    // 协议页面（SDK 内置 WebView）
                     .setWebNavColor(backgroundColor)
                     .setWebNavTextColor(primaryTextColor)
                     .setWebNavTextSize(18)
                     .setWebNavReturnImgDrawable(act.getDrawable(if (isDarkMode) R.drawable.auth_close_dark else R.drawable.auth_close))
                     .setWebSupportedJavascript(true)
-                    // WebView 状态栏配置（解决黑框问题）
                     .setWebViewStatusBarColor(backgroundColor)
                     // 设置底部虚拟按键背景色
                     .setBottomNavColor(backgroundColor)

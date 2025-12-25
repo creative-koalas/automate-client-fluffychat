@@ -83,17 +83,21 @@ class AgreementCheckService {
 
   /// 静默检查协议状态（后台调用）
   Future<void> _silentCheck(BuildContext context) async {
+    debugPrint('[AgreementCheck] Starting silent check...');
     try {
       final status = await _apiClient.getAgreementStatus();
+      debugPrint('[AgreementCheck] Status: allAccepted=${status.allAccepted}, agreements=${status.agreements.length}');
 
       if (status.allAccepted) {
         // 用户已接受所有最新协议
+        debugPrint('[AgreementCheck] All agreements accepted, no action needed');
         return;
       }
 
       if (!context.mounted) return;
 
       // 用户未接受最新协议，显示提示并强制登出
+      debugPrint('[AgreementCheck] User has not accepted all agreements, showing force logout dialog');
       _showForceLogoutDialog(context);
     } catch (e) {
       debugPrint('[AgreementCheck] Silent check failed: $e');

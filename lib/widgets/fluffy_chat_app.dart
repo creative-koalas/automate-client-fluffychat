@@ -755,7 +755,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   /// 启动协议检查后台服务
-  void _startAgreementCheckService() {
+  Future<void> _startAgreementCheckService() async {
     final api = context.read<PsygoApiClient>();
 
     BuildContext? getNavigatorContext() {
@@ -767,6 +767,24 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       () => getNavigatorContext() ?? context,
       _forceLogout,
     );
+
+    // 等待 Navigator 可用
+    int waitAttempts = 0;
+    const maxWaitAttempts = 10;
+    BuildContext? navContext;
+    while (waitAttempts < maxWaitAttempts) {
+      navContext = getNavigatorContext();
+      if (navContext != null) break;
+      await Future.delayed(const Duration(milliseconds: 300));
+      waitAttempts++;
+      if (!mounted) return;
+    }
+
+    if (navContext == null) return;
+
+    // 立即执行一次检查
+    final agreementService = AgreementCheckService(api);
+    await agreementService.checkAndHandle(navContext);
   }
 
   /// 强制登出（协议未接受时调用）
