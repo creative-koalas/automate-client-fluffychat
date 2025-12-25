@@ -366,7 +366,7 @@ class ChatListController extends State<ChatList>
             Matrix.of(context).store.getString(_serverStoreNamespace);
         // 已使用阿里云推送（AliyunPushService），禁用原有 BackgroundPush 避免重复推送
         // Matrix.of(context).backgroundPush?.setupPush();
-        UpdateNotifier.showUpdateSnackBar(context);
+        UpdateNotifier.showUpdateSnackBar();
       }
 
       // Workaround for system UI overlay style not applied on app start
