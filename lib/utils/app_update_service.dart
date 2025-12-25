@@ -7,10 +7,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/utils/platform_infos.dart';
+
+/// 版本跳过存储 key
+const String _skipVersionKey = 'app_update_skip_version';
 
 /// 应用更新服务
 class AppUpdateService {
@@ -34,6 +38,57 @@ class AppUpdateService {
   static DateTime? _lastCheckTime;  // 上次检查时间，用于防抖
 
   AppUpdateService(this._apiClient);
+
+  /// 获取用户跳过的版本号
+  static Future<String?> getSkipVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_skipVersionKey);
+  }
+
+  /// 设置用户跳过的版本号
+  static Future<void> setSkipVersion(String version) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_skipVersionKey, version);
+  }
+
+  /// 清除用户跳过的版本号
+  static Future<void> clearSkipVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_skipVersionKey);
+  }
+
+  /// 比较版本号，返回 1 如果 v1 > v2，0 如果相等，-1 如果 v1 < v2
+  static int compareVersion(String v1, String v2) {
+    final parts1 = v1.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final parts2 = v2.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
+    // 补齐长度
+    while (parts1.length < parts2.length) {
+      parts1.add(0);
+    }
+    while (parts2.length < parts1.length) {
+      parts2.add(0);
+    }
+
+    for (var i = 0; i < parts1.length; i++) {
+      if (parts1[i] > parts2[i]) return 1;
+      if (parts1[i] < parts2[i]) return -1;
+    }
+    return 0;
+  }
+
+  /// 检查是否应该跳过此版本（非强制更新且版本 <= skip_version）
+  static Future<bool> shouldSkipVersion(String latestVersion, bool forceUpdate) async {
+    // 强制更新不跳过
+    if (forceUpdate) return false;
+
+    final skipVersion = await getSkipVersion();
+    if (skipVersion == null || skipVersion.isEmpty) return false;
+
+    // 新版本 > skip_version 则不跳过（显示弹窗）
+    // 新版本 <= skip_version 则跳过（不显示弹窗）
+    return compareVersion(latestVersion, skipVersion) <= 0;
+  }
 
   /// 启动后台定时检查
   static void startBackgroundCheck(PsygoApiClient apiClient, BuildContext Function() getContext) {
@@ -146,6 +201,11 @@ class AppUpdateService {
       if (!response.hasUpdate) return;
       if (!context.mounted) return;
 
+      // 检查是否应该跳过此版本
+      if (await shouldSkipVersion(response.latestVersion, response.forceUpdate)) {
+        return;
+      }
+
       // 确保 downloadUrl 不为空
       final downloadUrl = response.downloadUrl;
       if (downloadUrl == null || downloadUrl.isEmpty) return;
@@ -159,10 +219,10 @@ class AppUpdateService {
       // 标记弹窗正在显示
       _isDialogShowing = true;
 
-      // 显示更新弹窗
+      // 显示更新弹窗（禁止点击遮罩层关闭，只能通过按钮操作）
       await showDialog<bool>(
         context: context,
-        barrierDismissible: !response.forceUpdate,
+        barrierDismissible: false,
         builder: (dialogContext) => _UpdateDialog(
           latestVersion: response.latestVersion,
           forceUpdate: response.forceUpdate,
@@ -220,6 +280,11 @@ class AppUpdateService {
 
       if (!context.mounted) return true;
 
+      // 如果不是手动检查（showNoUpdateHint=false），检查是否应该跳过此版本
+      if (!showNoUpdateHint && await shouldSkipVersion(response.latestVersion, response.forceUpdate)) {
+        return true;
+      }
+
       // 确保 downloadUrl 不为空
       final downloadUrl = response.downloadUrl;
       if (downloadUrl == null || downloadUrl.isEmpty) {
@@ -227,10 +292,10 @@ class AppUpdateService {
         return true;
       }
 
-      // 显示更新弹窗
+      // 显示更新弹窗（非手动检查时禁止点击遮罩层关闭）
       final shouldContinue = await showDialog<bool>(
         context: context,
-        barrierDismissible: !response.forceUpdate,
+        barrierDismissible: showNoUpdateHint ? !response.forceUpdate : false,
         builder: (builderContext) => _UpdateDialog(
           latestVersion: response.latestVersion,
           forceUpdate: response.forceUpdate,
@@ -452,6 +517,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   String? _errorMessage;
   String? _downloadedFilePath;
   CancelToken? _cancelToken;
+  bool _allowPop = false;  // 是否允许关闭弹窗（只有按钮点击时才设为true）
   late String _currentDownloadUrl;  // 当前下载链接（可能会刷新）
 
   @override
@@ -584,6 +650,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     try {
       await OpenFile.open(_downloadedFilePath!);
       if (context.mounted) {
+        setState(() => _allowPop = true);
         Navigator.of(context).pop(true);
       }
     } catch (e) {
@@ -600,6 +667,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
     if (context.mounted) {
+      setState(() => _allowPop = true);
       Navigator.of(context).pop(true);
     }
   }
@@ -624,7 +692,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final maxChangelogHeight = screenHeight * 0.25;
 
     return PopScope(
-      canPop: !widget.forceUpdate && _state != _UpdateState.downloading,
+      // 只有按钮点击设置 _allowPop = true 后才允许关闭
+      canPop: _allowPop,
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -819,7 +888,14 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             if (!widget.forceUpdate) ...[
               Expanded(
                 child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () async {
+                    // 保存跳过版本号
+                    await AppUpdateService.setSkipVersion(widget.latestVersion);
+                    if (context.mounted) {
+                      setState(() => _allowPop = true);
+                      Navigator.of(context).pop(false);
+                    }
+                  },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: buttonPadding),
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
