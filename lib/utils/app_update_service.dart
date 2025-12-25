@@ -5,12 +5,17 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/utils/platform_infos.dart';
+
+/// 版本跳过存储 key
+const String _skipVersionKey = 'app_update_skip_version';
 
 /// 应用更新服务
 class AppUpdateService {
@@ -34,6 +39,57 @@ class AppUpdateService {
   static DateTime? _lastCheckTime;  // 上次检查时间，用于防抖
 
   AppUpdateService(this._apiClient);
+
+  /// 获取用户跳过的版本号
+  static Future<String?> getSkipVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_skipVersionKey);
+  }
+
+  /// 设置用户跳过的版本号
+  static Future<void> setSkipVersion(String version) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_skipVersionKey, version);
+  }
+
+  /// 清除用户跳过的版本号
+  static Future<void> clearSkipVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_skipVersionKey);
+  }
+
+  /// 比较版本号，返回 1 如果 v1 > v2，0 如果相等，-1 如果 v1 < v2
+  static int compareVersion(String v1, String v2) {
+    final parts1 = v1.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final parts2 = v2.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
+    // 补齐长度
+    while (parts1.length < parts2.length) {
+      parts1.add(0);
+    }
+    while (parts2.length < parts1.length) {
+      parts2.add(0);
+    }
+
+    for (var i = 0; i < parts1.length; i++) {
+      if (parts1[i] > parts2[i]) return 1;
+      if (parts1[i] < parts2[i]) return -1;
+    }
+    return 0;
+  }
+
+  /// 检查是否应该跳过此版本（非强制更新且版本 <= skip_version）
+  static Future<bool> shouldSkipVersion(String latestVersion, bool forceUpdate) async {
+    // 强制更新不跳过
+    if (forceUpdate) return false;
+
+    final skipVersion = await getSkipVersion();
+    if (skipVersion == null || skipVersion.isEmpty) return false;
+
+    // 新版本 > skip_version 则不跳过（显示弹窗）
+    // 新版本 <= skip_version 则跳过（不显示弹窗）
+    return compareVersion(latestVersion, skipVersion) <= 0;
+  }
 
   /// 启动后台定时检查
   static void startBackgroundCheck(PsygoApiClient apiClient, BuildContext Function() getContext) {
@@ -146,6 +202,11 @@ class AppUpdateService {
       if (!response.hasUpdate) return;
       if (!context.mounted) return;
 
+      // 检查是否应该跳过此版本
+      if (await shouldSkipVersion(response.latestVersion, response.forceUpdate)) {
+        return;
+      }
+
       // 确保 downloadUrl 不为空
       final downloadUrl = response.downloadUrl;
       if (downloadUrl == null || downloadUrl.isEmpty) return;
@@ -159,10 +220,10 @@ class AppUpdateService {
       // 标记弹窗正在显示
       _isDialogShowing = true;
 
-      // 显示更新弹窗
+      // 显示更新弹窗（禁止点击遮罩层关闭，只能通过按钮操作）
       await showDialog<bool>(
         context: context,
-        barrierDismissible: !response.forceUpdate,
+        barrierDismissible: false,
         builder: (dialogContext) => _UpdateDialog(
           latestVersion: response.latestVersion,
           forceUpdate: response.forceUpdate,
@@ -220,6 +281,11 @@ class AppUpdateService {
 
       if (!context.mounted) return true;
 
+      // 如果不是手动检查（showNoUpdateHint=false），检查是否应该跳过此版本
+      if (!showNoUpdateHint && await shouldSkipVersion(response.latestVersion, response.forceUpdate)) {
+        return true;
+      }
+
       // 确保 downloadUrl 不为空
       final downloadUrl = response.downloadUrl;
       if (downloadUrl == null || downloadUrl.isEmpty) {
@@ -227,10 +293,10 @@ class AppUpdateService {
         return true;
       }
 
-      // 显示更新弹窗
+      // 显示更新弹窗（非手动检查时禁止点击遮罩层关闭）
       final shouldContinue = await showDialog<bool>(
         context: context,
-        barrierDismissible: !response.forceUpdate,
+        barrierDismissible: showNoUpdateHint ? !response.forceUpdate : false,
         builder: (builderContext) => _UpdateDialog(
           latestVersion: response.latestVersion,
           forceUpdate: response.forceUpdate,
@@ -452,7 +518,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   String? _errorMessage;
   String? _downloadedFilePath;
   CancelToken? _cancelToken;
+  bool _allowPop = false;  // 是否允许关闭弹窗（只有按钮点击时才设为true）
   late String _currentDownloadUrl;  // 当前下载链接（可能会刷新）
+  DateTime? _lastProgressUpdate;  // 上次更新进度的时间
 
   @override
   void initState() {
@@ -516,15 +584,25 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         cancelToken: _cancelToken,
         onReceiveProgress: (received, total) {
           if (total > 0) {
-            setState(() {
-              _progress = received / total;
-            });
+            final newProgress = received / total;
+            final now = DateTime.now();
+            // 每 1 秒更新一次 UI，或下载完成时立即更新
+            final shouldUpdate = newProgress >= 1.0 ||
+                _lastProgressUpdate == null ||
+                now.difference(_lastProgressUpdate!).inMilliseconds >= 1000;
+            if (shouldUpdate) {
+              _lastProgressUpdate = now;
+              setState(() {
+                _progress = newProgress >= 1.0 ? 0.99 : newProgress;  // 下载中最多显示 99%
+              });
+            }
           }
         },
       );
 
       setState(() {
         _state = _UpdateState.downloaded;
+        _progress = 1.0;  // 下载完成后设为 100%
         _downloadedFilePath = filePath;
       });
     } catch (e) {
@@ -572,9 +650,31 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     }
   }
 
-  /// 取消下载
-  void _cancelDownload() {
-    _cancelToken?.cancel();
+  /// 取消下载（带二次确认）
+  Future<void> _cancelDownload() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认取消'),
+        content: const Text('确定要取消下载吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('继续下载'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              '取消下载',
+              style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _cancelToken?.cancel();
+    }
   }
 
   /// 安装/打开下载的文件
@@ -582,14 +682,61 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (_downloadedFilePath == null) return;
 
     try {
-      await OpenFile.open(_downloadedFilePath!);
+      // Android 8.0+ 需要检查"安装未知应用"权限
+      if (Platform.isAndroid) {
+        final canInstall = await _checkInstallPermission();
+        if (!canInstall) {
+          // 引导用户去设置页面开启权限
+          final granted = await _requestInstallPermission();
+          if (!granted) {
+            setState(() {
+              _errorMessage = '需要开启"安装未知应用"权限才能安装更新';
+            });
+            return;
+          }
+        }
+      }
+
+      final result = await OpenFile.open(_downloadedFilePath!);
+      if (result.type != ResultType.done) {
+        // 打开失败
+        setState(() {
+          _errorMessage = '无法打开文件: ${result.message}';
+        });
+        return;
+      }
+
       if (context.mounted) {
+        setState(() => _allowPop = true);
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       setState(() {
         _errorMessage = '无法打开文件: $e';
       });
+    }
+  }
+
+  /// 检查是否有安装未知应用权限 (Android)
+  Future<bool> _checkInstallPermission() async {
+    try {
+      const channel = MethodChannel('com.psygo.app/install');
+      final result = await channel.invokeMethod<bool>('canRequestPackageInstalls');
+      return result ?? false;
+    } catch (e) {
+      // 如果检查失败，假设有权限，让系统处理
+      return true;
+    }
+  }
+
+  /// 请求安装未知应用权限 (Android)
+  Future<bool> _requestInstallPermission() async {
+    try {
+      const channel = MethodChannel('com.psygo.app/install');
+      final result = await channel.invokeMethod<bool>('requestInstallPermission');
+      return result ?? false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -600,6 +747,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
     if (context.mounted) {
+      setState(() => _allowPop = true);
       Navigator.of(context).pop(true);
     }
   }
@@ -624,7 +772,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     final maxChangelogHeight = screenHeight * 0.25;
 
     return PopScope(
-      canPop: !widget.forceUpdate && _state != _UpdateState.downloading,
+      // 只有按钮点击设置 _allowPop = true 后才允许关闭
+      canPop: _allowPop,
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -705,14 +854,24 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   ],
                   SizedBox(height: isDesktop ? 24.0 : 16.0),
 
-                  // 下载进度条
+                  // 下载进度条（使用自定义进度条，避免 LinearProgressIndicator 的动画延迟）
                   if (_state == _UpdateState.downloading) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: _progress,
-                        minHeight: progressHeight,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      child: Container(
+                        height: progressHeight,
+                        width: double.infinity,
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: _progress.clamp(0.0, 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -819,7 +978,14 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             if (!widget.forceUpdate) ...[
               Expanded(
                 child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () async {
+                    // 保存跳过版本号
+                    await AppUpdateService.setSkipVersion(widget.latestVersion);
+                    if (context.mounted) {
+                      setState(() => _allowPop = true);
+                      Navigator.of(context).pop(false);
+                    }
+                  },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: buttonPadding),
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
@@ -871,7 +1037,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           child: Text(
             '取消下载',
             style: TextStyle(
-              color: theme.colorScheme.onSurface,
+              color: theme.colorScheme.error,
               fontWeight: FontWeight.w600,
             ),
           ),
