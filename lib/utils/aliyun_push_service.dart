@@ -55,13 +55,11 @@ class AliyunPushService {
     _navigatingToRoomId = null;
   }
 
-  /// 阿里云推送配置
-  /// Android: appKey=335631945, appSecret=5972362998844c5c8cdb8b0d38e16969
-  /// iOS: appKey=335631946, appSecret=91669fd16fb6431a87d70314226a62b6
-  static const _androidAppKey = '335631945';
-  static const _androidAppSecret = '5972362998844c5c8cdb8b0d38e16969';
-  static const _iosAppKey = '335631946';
-  static const _iosAppSecret = '91669fd16fb6431a87d70314226a62b6';
+  /// 阿里云推送配置（通过 --dart-define-from-file=env.json 注入）
+  static const _androidAppKey = String.fromEnvironment('PUSH_ANDROID_APP_KEY');
+  static const _androidAppSecret = String.fromEnvironment('PUSH_ANDROID_APP_SECRET');
+  static const _iosAppKey = String.fromEnvironment('PUSH_IOS_APP_KEY');
+  static const _iosAppSecret = String.fromEnvironment('PUSH_IOS_APP_SECRET');
 
   /// 获取当前平台的 appKey
   String get _appKey => Platform.isIOS ? _iosAppKey : _androidAppKey;
