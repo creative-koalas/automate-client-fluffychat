@@ -27,7 +27,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_new_badger/flutter_new_badger.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 import 'package:unifiedpush/unifiedpush.dart';
@@ -175,19 +174,6 @@ class BackgroundPush {
   Future<void> cancelNotification(String roomId) async {
     Logs().v('Cancel notification for room', roomId);
     await _flutterLocalNotificationsPlugin.cancel(roomId.hashCode);
-
-    // Workaround for app icon badge not updating
-    if (Platform.isIOS) {
-      final unreadCount = client.rooms
-          .where((room) => room.isUnreadOrInvited && room.id != roomId)
-          .length;
-      if (unreadCount == 0) {
-        FlutterNewBadger.removeBadge();
-      } else {
-        FlutterNewBadger.setBadge(unreadCount);
-      }
-      return;
-    }
   }
 
   Future<void> setupPusher({

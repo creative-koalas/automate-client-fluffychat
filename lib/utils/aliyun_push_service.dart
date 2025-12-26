@@ -119,6 +119,17 @@ class AliyunPushService {
           await initThirdPush();
         }
 
+        // 清除角标（角标功能已禁用，启动时清除残留角标）
+        try {
+          if (Platform.isIOS) {
+            await _aliyunPush.setIOSBadgeNum(0);
+          } else if (Platform.isAndroid) {
+            await _aliyunPush.setAndroidBadgeNum(0);
+          }
+        } catch (e) {
+          // 忽略清除角标失败
+        }
+
         // 设置日志级别（调试时可开启）
         if (kDebugMode) {
           await _aliyunPush.setLogLevel(AliyunPushLogLevel.debug);
@@ -589,19 +600,9 @@ class AliyunPushService {
     }
   }
 
-  /// 设置角标数量
+  /// 设置角标数量（已禁用）
   Future<void> setBadgeNumber(int count) async {
-    if (!_initialized) return;
-
-    try {
-      if (Platform.isIOS) {
-        await _aliyunPush.setIOSBadgeNum(count);
-      } else if (Platform.isAndroid) {
-        await _aliyunPush.setAndroidBadgeNum(count);
-      }
-    } catch (e) {
-      Logs().w('[AliyunPush] Set badge failed', e);
-    }
+    // 角标功能已禁用
   }
 
   /// 初始化厂商通道（Android 专用，后续接入时使用）

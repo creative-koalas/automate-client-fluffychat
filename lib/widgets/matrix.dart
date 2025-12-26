@@ -75,9 +75,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   /// Returns null if no clients are available (e.g., during first-time login
   /// before the client is fully initialized and added to the list).
   Client? get clientOrNull {
-    debugPrint('[Matrix] clientOrNull called, clients.length=${widget.clients.length}, hashCode=${widget.clients.hashCode}');
     if (widget.clients.isEmpty) {
-      debugPrint('[Matrix] clientOrNull: clients is empty, returning null');
       return null;
     }
     if (_activeClient < 0 || _activeClient >= widget.clients.length) {
