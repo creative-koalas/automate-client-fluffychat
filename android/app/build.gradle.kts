@@ -1,5 +1,21 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.util.Base64
+
+// 从 dart-define 读取环境变量
+fun getDartDefine(key: String): String? {
+    val dartDefines = project.findProperty("dart-defines")?.toString() ?: return null
+    return dartDefines.split(",")
+        .mapNotNull { encoded ->
+            try {
+                String(Base64.getDecoder().decode(encoded))
+            } catch (e: Exception) {
+                null
+            }
+        }
+        .find { it.startsWith("$key=") }
+        ?.substringAfter("=")
+}
 
 plugins {
     id("com.android.application")
@@ -64,12 +80,20 @@ android {
     require(keystorePropertiesFile.exists()) { "Missing key.properties" }
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
+    // 从 dart-define 读取包名后缀（prod 为空，test 为 _test，dev 为 _dev）
+    val appIdSuffix = getDartDefine("APP_ID_SUFFIX") ?: ""
+    // 从 dart-define 读取 app 名称
+    val appName = getDartDefine("APP_NAME") ?: "Psygo"
+
     defaultConfig {
-        applicationId = "com.creativekoalas.psygo"
+        applicationId = "com.creativekoalas.psygo$appIdSuffix"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // 注入 app 名称到 manifest
+        manifestPlaceholders["appName"] = appName
     }
 
     signingConfigs {
