@@ -118,7 +118,10 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo.png"
+  macos:
+    generate: true
+    image_path: "assets/logo_opaque_large_background.png"
+  image_path: "assets/logo_opaque.png"
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/logo.png"
 
