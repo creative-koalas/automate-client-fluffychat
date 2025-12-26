@@ -28,6 +28,7 @@ import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../config/setting_keys.dart';
 import '../pages/key_verification/key_verification_dialog.dart';
+import '../services/agent_service.dart';
 import '../utils/aliyun_push_service.dart';
 import '../utils/background_push.dart';
 import 'local_notifications_extension.dart';
@@ -75,9 +76,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   /// Returns null if no clients are available (e.g., during first-time login
   /// before the client is fully initialized and added to the list).
   Client? get clientOrNull {
-    debugPrint('[Matrix] clientOrNull called, clients.length=${widget.clients.length}, hashCode=${widget.clients.hashCode}');
     if (widget.clients.isEmpty) {
-      debugPrint('[Matrix] clientOrNull: clients is empty, returning null');
       return null;
     }
     if (_activeClient < 0 || _activeClient >= widget.clients.length) {
@@ -265,9 +264,14 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         ClientManager.removeClientNameFromStore(c.clientName, store);
         InitWithRestoreExtension.deleteSessionBackup(name);
       }
-      // 登录成功后只注册推送（权限请求移到登录页面，确保时序正确）
-      if (state == LoginState.loggedIn && PlatformInfos.isMobile) {
-        _registerAliyunPushAfterLogin(c);
+      // 登录成功后注册推送和刷新员工列表
+      if (state == LoginState.loggedIn) {
+        // 刷新员工列表缓存（登录后才有 token）
+        AgentService.instance.refresh();
+        // 移动端注册推送
+        if (PlatformInfos.isMobile) {
+          _registerAliyunPushAfterLogin(c);
+        }
       }
       if (loggedInWithMultipleClients && state != LoginState.loggedIn) {
         ScaffoldMessenger.of(
@@ -356,6 +360,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     }
 
     createVoipPlugin();
+
+    // 初始化员工服务（加载员工列表缓存）
+    AgentService.instance.init();
   }
 
   void createVoipPlugin() async {

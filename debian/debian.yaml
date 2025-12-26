@@ -1,0 +1,17 @@
+flutter_app: 
+  command: psygo
+  arch: x64
+  parent: /usr/local/lib
+  nonInteractive: true
+
+control:
+  Package: psygo
+  Version: 0.1.0
+  Architecture: amd64
+  Priority: optional
+  Depends:
+  Maintainer: Creative Koalas Co., Ltd.
+  Description: Your AI coworkers. Give a git URL, get a production-ready project.
+  
+#options:
+#  exec_out_dir: debian/packages
