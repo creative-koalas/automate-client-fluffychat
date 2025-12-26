@@ -8,7 +8,7 @@
 PRODUCT_NAME = Psygo
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.psygo.app
+PRODUCT_BUNDLE_IDENTIFIER = com.creativekoalas.psygo
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2024 Psygo authors. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 Creative Koalas. All rights reserved.
