@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'chatbot_message_renderer.dart';
 import 'onboarding_chatbot.dart';
@@ -392,9 +393,17 @@ const _quickTasks = [
     defaultMessage: '帮我部署项目，项目地址是：',
     previewImage: 'assets/quick_start_deploy.png',
   ),
+  _QuickTask(
+    icon: Icons.travel_explore,
+    iconColor: Color(0xFF00BCD4),
+    label: '帮我查找网站',
+    description: '让 Psygo 帮你搜索和查找相关网站资源，包括工具网站、学习资源、开源项目等。',
+    defaultMessage: '帮我查找网站，我想找：',
+    previewImage: 'assets/quick_start_search_web.png',
+  ),
 ];
 
-/// 快速开始按钮组 - 横向滑动长条卡片（PageView 分页效果）
+/// 快速开始按钮组 - 自适应布局（移动端 PageView，PC端 GridView）
 class _QuickStartButtons extends StatefulWidget {
   final OnboardingChatbotController controller;
   final ThemeData theme;
@@ -409,23 +418,144 @@ class _QuickStartButtons extends StatefulWidget {
 }
 
 class _QuickStartButtonsState extends State<_QuickStartButtons> {
-  late PageController _pageController;
+  PageController? _pageController;
+  int _currentPage = 0;
+  bool? _lastIsDesktop;
 
-  @override
-  void initState() {
-    super.initState();
-    // viewportFraction 控制每页显示比例，留出下一张卡片的预览
-    _pageController = PageController(viewportFraction: 0.92);
-  }
+  /// PC端宽度阈值
+  static const double _desktopBreakpoint = 600;
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController?.removeListener(_onPageChanged);
+    _pageController?.dispose();
     super.dispose();
+  }
+
+  void _initPageController(bool isDesktop) {
+    if (_lastIsDesktop == isDesktop && _pageController != null) return;
+
+    _pageController?.removeListener(_onPageChanged);
+    _pageController?.dispose();
+
+    // PC端不露出下一页，移动端露出一点
+    final viewportFraction = isDesktop ? 1.0 : 0.92;
+    _pageController = PageController(viewportFraction: viewportFraction);
+    _pageController!.addListener(_onPageChanged);
+    _lastIsDesktop = isDesktop;
+  }
+
+  void _onPageChanged() {
+    final page = _pageController?.page?.round() ?? 0;
+    if (page != _currentPage) {
+      setState(() => _currentPage = page);
+    }
+  }
+
+  /// 处理鼠标滚轮事件
+  void _handlePointerSignal(PointerSignalEvent event, int maxPage) {
+    if (event is PointerScrollEvent) {
+      // 滚轮向下滚动 -> 下一页，向上滚动 -> 上一页
+      if (event.scrollDelta.dy > 0) {
+        _nextPage(maxPage);
+      } else if (event.scrollDelta.dy < 0) {
+        _previousPage();
+      }
+    }
+  }
+
+  void _nextPage(int maxPage) {
+    if (_currentPage < maxPage - 1) {
+      _pageController?.animateToPage(
+        _currentPage + 1,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _previousPage() {
+    if (_currentPage > 0) {
+      _pageController?.animateToPage(
+        _currentPage - 1,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= _desktopBreakpoint;
+
+    // 初始化/更新 PageController
+    _initPageController(isDesktop);
+
+    if (isDesktop) {
+      return _buildDesktopLayout(screenWidth);
+    } else {
+      return _buildMobileLayout(screenWidth);
+    }
+  }
+
+  /// PC端布局 - 固定宽度卡片，横向滚动列表，鼠标滚轮连续滚动
+  Widget _buildDesktopLayout(double screenWidth) {
+    const cardWidth = 480.0;  // 卡片固定宽度
+    const cardGap = 16.0;  // 卡片之间间隔
+    const horizontalPadding = 32.0;  // 左右边距
+
+    final scrollController = ScrollController();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Listener(
+        onPointerSignal: (event) {
+          if (event is PointerScrollEvent) {
+            // 鼠标滚轮横向滚动，速度加倍
+            scrollController.animateTo(
+              (scrollController.offset + event.scrollDelta.dy * 3).clamp(
+                0.0,
+                scrollController.position.maxScrollExtent,
+              ),
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOut,
+            );
+          }
+        },
+        child: SizedBox(
+          height: 100,
+          child: ListView.builder(
+            controller: scrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+            itemCount: _quickTasks.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index < _quickTasks.length - 1 ? cardGap : 0,
+                ),
+                child: SizedBox(
+                  width: cardWidth,
+                  child: _QuickTaskCard(
+                    task: _quickTasks[index],
+                    theme: widget.theme,
+                    controller: widget.controller,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 移动端布局 - 单卡片滑动（保持原样）
+  Widget _buildMobileLayout(double screenWidth) {
+    final sideMargin = screenWidth * 0.04;
+    const cardGap = 6.0;
+
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: SizedBox(
@@ -434,13 +564,12 @@ class _QuickStartButtonsState extends State<_QuickStartButtons> {
           controller: _pageController,
           itemCount: _quickTasks.length,
           itemBuilder: (context, index) {
-            // 第一个卡片左边距小，其他卡片正常间距
             final isFirst = index == 0;
             final isLast = index == _quickTasks.length - 1;
             return Padding(
               padding: EdgeInsets.only(
-                left: isFirst ? 2 : 6,
-                right: isLast ? 2 : 6,
+                left: isFirst ? (sideMargin * 0.3) : cardGap,
+                right: isLast ? (sideMargin * 0.3) : cardGap,
               ),
               child: _QuickTaskCard(
                 task: _quickTasks[index],
@@ -550,33 +679,62 @@ class _QuickTaskCard extends StatelessWidget {
   }
 
   void _showTaskDetailDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _QuickTaskDetailSheet(
-        task: task,
-        theme: theme,
-        onConfirm: (message) {
-          Navigator.of(context).pop();
-          controller.messageController.text = message;
-          controller.sendMessage();
-        },
-      ),
-    );
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 600;
+
+    if (isDesktop) {
+      // PC端使用居中弹窗，保持固定宽度480，高度自适应内容
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: _QuickTaskDetailSheet(
+              task: task,
+              theme: theme,
+              isDialog: true,
+              onConfirm: (message) {
+                Navigator.of(context).pop();
+                controller.messageController.text = message;
+                controller.sendMessage();
+              },
+            ),
+          ),
+        ),
+      );
+    } else {
+      // 移动端使用底部弹窗
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _QuickTaskDetailSheet(
+          task: task,
+          theme: theme,
+          onConfirm: (message) {
+            Navigator.of(context).pop();
+            controller.messageController.text = message;
+            controller.sendMessage();
+          },
+        ),
+      );
+    }
   }
 }
 
-/// 快速开始详情底部弹窗
+/// 快速开始详情弹窗（支持底部弹窗和居中对话框两种模式）
 class _QuickTaskDetailSheet extends StatefulWidget {
   final _QuickTask task;
   final ThemeData theme;
   final void Function(String message) onConfirm;
+  final bool isDialog;
 
   const _QuickTaskDetailSheet({
     required this.task,
     required this.theme,
     required this.onConfirm,
+    this.isDialog = false,
   });
 
   @override
@@ -609,7 +767,9 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(20)
+            : const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -621,18 +781,19 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 拖动指示条
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: subtitleColor.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+              // 拖动指示条（仅底部弹窗模式显示）
+              if (!widget.isDialog)
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: subtitleColor.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
+              if (!widget.isDialog) const SizedBox(height: 20),
 
               // 预览图
               Container(
