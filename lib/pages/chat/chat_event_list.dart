@@ -186,10 +186,19 @@ class ChatEventList extends StatelessWidget {
       );
 
     return SelectionArea(
-      // PC端禁用右键菜单，只保留文本选择功能
-      contextMenuBuilder: PlatformInfos.isDesktop
-          ? (context, selectableRegionState) => const SizedBox.shrink()
-          : null,
+      // 自定义 contextMenuBuilder，添加空值检查避免 Flutter 框架 bug
+      contextMenuBuilder: (context, selectableRegionState) {
+        // 检查 anchors 是否有效，避免 Null check 错误
+        final anchors = selectableRegionState.contextMenuAnchors;
+        if (anchors.primaryAnchor == Offset.zero) {
+          return const SizedBox.shrink();
+        }
+        // 使用平台自适应的选择工具栏
+        return AdaptiveTextSelectionToolbar.buttonItems(
+          anchors: anchors,
+          buttonItems: selectableRegionState.contextMenuButtonItems,
+        );
+      },
       child: listView,
     );
   }
