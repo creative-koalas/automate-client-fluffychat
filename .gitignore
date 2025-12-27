@@ -63,6 +63,11 @@ web/Imaging.wasm
 .pub/
 /build/
 
+# Flutter generated files (machine-specific)
+**/local.properties
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+
 # Web related
 docs/tailwind.css
 
