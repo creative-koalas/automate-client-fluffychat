@@ -14,23 +14,9 @@ class OnboardingChatbotView extends StatelessWidget {
     final textTheme = theme.textTheme;
     final isDark = theme.brightness == Brightness.dark;
     final backgroundColor = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFEDEDED);
-    final titleColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: controller.isFinishing
-          ? null
-          : AppBar(
-              backgroundColor: backgroundColor,
-              elevation: 0,
-              centerTitle: true,
-              title: Text('Psygo',
-                  style: TextStyle(
-                      color: titleColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 17)),
-              automaticallyImplyLeading: false,
-            ),
       body: Stack(
         children: [
           AnimatedOpacity(
@@ -44,7 +30,7 @@ class OnboardingChatbotView extends StatelessWidget {
                   Expanded(
                     child: ListView.builder(
                       controller: controller.scrollController,
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
                       itemCount: controller.messages.length,
                       itemBuilder: (context, index) {
                         final message = controller.messages[index];
@@ -60,13 +46,13 @@ class OnboardingChatbotView extends StatelessWidget {
                   // Loading Indicator (Simple text or small spinner)
                   if (controller.isLoading)
                     Padding(
-                      padding: const EdgeInsets.only(left: 16, bottom: 8),
+                      padding: const EdgeInsets.only(left: 12, bottom: 6),
                       child: Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
-                            padding: const EdgeInsets.all(8),
+                            width: 28,
+                            height: 28,
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                               borderRadius: BorderRadius.circular(4),
@@ -80,14 +66,21 @@ class OnboardingChatbotView extends StatelessWidget {
                   // "开始吧!" 按钮 - 用户发送 >= 3 条消息后显示
                   _StartButton(controller: controller, theme: theme),
 
-                  // Suggestion Bubbles
-                  _SuggestionBubbles(
-                    controller: controller,
-                    theme: theme,
-                    textTheme: textTheme,
-                  ),
+                  // 快速开始卡片 - 只在只有欢迎消息时显示
+                  if (controller.messages.length == 1 && controller.messages.first.isGreeting)
+                    _QuickStartButtons(
+                      controller: controller,
+                      theme: theme,
+                    ),
 
-                  // Input Area
+                  // Suggestion Bubbles - 暂时注释
+                  // _SuggestionBubbles(
+                  //   controller: controller,
+                  //   theme: theme,
+                  //   textTheme: textTheme,
+                  // ),
+
+                  // Input Area - 使用 mt-auto 效果，自动推到底部
                   _InputArea(
                     controller: controller,
                     theme: theme,
@@ -232,7 +225,7 @@ class _GreetingCard extends StatelessWidget {
     final bodyTextColor = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black54;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -244,7 +237,7 @@ class _GreetingCard extends StatelessWidget {
               theme.colorScheme.primaryContainer.withValues(alpha: isDark ? 0.15 : 0.3),
             ],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: theme.colorScheme.primary.withValues(alpha: 0.2),
             width: 1,
@@ -252,8 +245,8 @@ class _GreetingCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.15 : 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              blurRadius: 16,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -266,7 +259,7 @@ class _GreetingCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo - 适配深浅色主题
+                  // Logo
                   Container(
                     width: 48,
                     height: 48,
@@ -276,7 +269,7 @@ class _GreetingCard extends StatelessWidget {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                          blurRadius: 8,
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -298,10 +291,11 @@ class _GreetingCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           title,
-                          style: textTheme.titleMedium?.copyWith(
+                          style: textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: titleTextColor,
-                            height: 1.4,
+                            height: 1.3,
+                            fontSize: 16,
                           ),
                         ),
                       ],
@@ -325,7 +319,7 @@ class _GreetingCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // 内容段落 - 使用 ChatbotMessageRenderer 支持 Markdown
+                // 内容段落
                 ChatbotMessageRenderer(
                   text: bodyParagraphs.join('\n\n'),
                   textColor: bodyTextColor,
@@ -337,6 +331,502 @@ class _GreetingCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 快速开始任务数据
+class _QuickTask {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String description;
+  final String defaultMessage;
+  final String previewImage; // 预览图片路径
+
+  const _QuickTask({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.description,
+    required this.defaultMessage,
+    required this.previewImage,
+  });
+}
+
+/// 预定义的快速开始任务
+const _quickTasks = [
+  _QuickTask(
+    icon: Icons.school_outlined,
+    iconColor: Color(0xFF9C27B0),
+    label: '帮我完成毕业设计',
+    description: '让 Psygo 帮你完成毕业设计项目，包括需求分析、技术选型、代码实现、文档撰写等全流程支持。',
+    defaultMessage: '帮我完成毕业设计，我的题目是：',
+    previewImage: 'assets/quick_start_graduation.png',
+  ),
+  _QuickTask(
+    icon: Icons.search,
+    iconColor: Color(0xFF2196F3),
+    label: '帮我做个调研',
+    description: '让 Psygo 帮你进行市场调研、技术调研或竞品分析，生成详细的调研报告。',
+    defaultMessage: '帮我做个调研，调研主题是：',
+    previewImage: 'assets/quick_start_research.png',
+  ),
+  _QuickTask(
+    icon: Icons.grid_view_rounded,
+    iconColor: Color(0xFF4CAF50),
+    label: '帮我做一个项目',
+    description: '让 Psygo 从零开始帮你构建一个完整的软件项目，包括前后端开发、数据库设计、部署配置等。',
+    defaultMessage: '帮我做一个项目，项目需求是：',
+    previewImage: 'assets/quick_start_project.png',
+  ),
+  _QuickTask(
+    icon: Icons.rocket_launch_outlined,
+    iconColor: Color(0xFFFF9800),
+    label: '帮我部署项目',
+    description: '让 Psygo 帮你将现有项目部署到服务器，配置域名、SSL证书、CI/CD等。',
+    defaultMessage: '帮我部署项目，项目地址是：',
+    previewImage: 'assets/quick_start_deploy.png',
+  ),
+];
+
+/// 快速开始按钮组 - 横向滑动长条卡片（PageView 分页效果）
+class _QuickStartButtons extends StatefulWidget {
+  final OnboardingChatbotController controller;
+  final ThemeData theme;
+
+  const _QuickStartButtons({
+    required this.controller,
+    required this.theme,
+  });
+
+  @override
+  State<_QuickStartButtons> createState() => _QuickStartButtonsState();
+}
+
+class _QuickStartButtonsState extends State<_QuickStartButtons> {
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    // viewportFraction 控制每页显示比例，留出下一张卡片的预览
+    _pageController = PageController(viewportFraction: 0.92);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: SizedBox(
+        height: 100,
+        child: PageView.builder(
+          controller: _pageController,
+          itemCount: _quickTasks.length,
+          itemBuilder: (context, index) {
+            // 第一个卡片左边距小，其他卡片正常间距
+            final isFirst = index == 0;
+            final isLast = index == _quickTasks.length - 1;
+            return Padding(
+              padding: EdgeInsets.only(
+                left: isFirst ? 2 : 6,
+                right: isLast ? 2 : 6,
+              ),
+              child: _QuickTaskCard(
+                task: _quickTasks[index],
+                theme: widget.theme,
+                controller: widget.controller,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// 快速开始卡片 - 长条形，左图右文
+class _QuickTaskCard extends StatelessWidget {
+  final _QuickTask task;
+  final ThemeData theme;
+  final OnboardingChatbotController controller;
+
+  const _QuickTaskCard({
+    required this.task,
+    required this.theme,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
+    final textColor = isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black87;
+    final subtitleColor = isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black54;
+
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(18),
+      elevation: isDark ? 0 : 1,
+      shadowColor: Colors.black12,
+      child: InkWell(
+        onTap: () => _showTaskDetailDialog(context),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              // 左侧预览图 - 撑满卡片高度
+              Container(
+                width: 90,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: task.iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    task.previewImage,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Icon(
+                        task.icon,
+                        color: task.iconColor,
+                        size: 36,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              // 右侧文字内容
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 标题
+                    Text(
+                      task.label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    // 描述/默认消息
+                    Text(
+                      task.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: subtitleColor,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showTaskDetailDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _QuickTaskDetailSheet(
+        task: task,
+        theme: theme,
+        onConfirm: (message) {
+          Navigator.of(context).pop();
+          controller.messageController.text = message;
+          controller.sendMessage();
+        },
+      ),
+    );
+  }
+}
+
+/// 快速开始详情底部弹窗
+class _QuickTaskDetailSheet extends StatefulWidget {
+  final _QuickTask task;
+  final ThemeData theme;
+  final void Function(String message) onConfirm;
+
+  const _QuickTaskDetailSheet({
+    required this.task,
+    required this.theme,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_QuickTaskDetailSheet> createState() => _QuickTaskDetailSheetState();
+}
+
+class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
+  late TextEditingController _editController;
+
+  @override
+  void initState() {
+    super.initState();
+    _editController = TextEditingController(text: widget.task.defaultMessage);
+  }
+
+  @override
+  void dispose() {
+    _editController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF1A1A1A) : Colors.white;
+    final cardBgColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5);
+    final textColor = isDark ? Colors.white : Colors.black;
+    final subtitleColor = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black54;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 拖动指示条
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: subtitleColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 预览图
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: widget.task.iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    widget.task.previewImage,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Icon(
+                        widget.task.icon,
+                        color: widget.task.iconColor,
+                        size: 56,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 标题行：图标 + 标题
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: widget.task.iconColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      widget.task.icon,
+                      color: widget.task.iconColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.task.label,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // 描述
+              Text(
+                widget.task.description,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: subtitleColor,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // 可编辑消息区 - 直接显示输入框，带闪动光标
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: cardBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.theme.colorScheme.primary.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit_note,
+                            size: 16,
+                            color: widget.theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '编辑发送内容',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: widget.theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+                      child: TextField(
+                        controller: _editController,
+                        maxLines: 4,
+                        minLines: 2,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: textColor,
+                          height: 1.4,
+                        ),
+                        cursorColor: widget.theme.colorScheme.primary,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                          hintText: '点击编辑发送内容...',
+                          hintStyle: TextStyle(
+                            color: subtitleColor.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 按钮行
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(
+                          color: subtitleColor.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        '取消',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: textColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final message = _editController.text.trim();
+                        if (message.isNotEmpty) {
+                          widget.onConfirm(message);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.theme.colorScheme.primary,
+                        foregroundColor: widget.theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.send, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            '发送',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
