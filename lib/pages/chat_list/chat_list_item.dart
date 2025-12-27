@@ -116,23 +116,35 @@ class ChatListItem extends StatelessWidget {
                         Positioned(
                           bottom: 0,
                           right: 0,
-                          child: Avatar(
-                            border: space == null
-                                ? null
-                                : BorderSide(
-                                    width: 2,
-                                    color: backgroundColor ??
-                                        theme.colorScheme.surface,
-                                  ),
-                            borderRadius: null,
-                            mxContent: room.avatar,
-                            size: space != null
-                                ? Avatar.defaultSize * 0.75
-                                : Avatar.defaultSize,
-                            name: displayname,
-                            presenceUserId: directChatMatrixId,
-                            presenceBackgroundColor: backgroundColor,
-                            onTap: () => onLongPress?.call(context),
+                          child: Builder(
+                            builder: (context) {
+                              // 私聊时显示对方用户的头像
+                              Uri? avatarUrl = room.avatar;
+                              String avatarName = displayname;
+                              if (directChatMatrixId != null) {
+                                final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
+                                avatarUrl = user.avatarUrl;
+                                avatarName = user.calcDisplayname();
+                              }
+                              return Avatar(
+                                border: space == null
+                                    ? null
+                                    : BorderSide(
+                                        width: 2,
+                                        color: backgroundColor ??
+                                            theme.colorScheme.surface,
+                                      ),
+                                borderRadius: null,
+                                mxContent: avatarUrl,
+                                size: space != null
+                                    ? Avatar.defaultSize * 0.75
+                                    : Avatar.defaultSize,
+                                name: avatarName,
+                                presenceUserId: directChatMatrixId,
+                                presenceBackgroundColor: backgroundColor,
+                                onTap: () => onLongPress?.call(context),
+                              );
+                            },
                           ),
                         ),
                         Positioned(

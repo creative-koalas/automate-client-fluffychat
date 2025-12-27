@@ -106,17 +106,29 @@ class ChatDetailsView extends StatelessWidget {
                                                 null
                                             ? 'embedded_content_banner'
                                             : 'content_banner',
-                                    child: Avatar(
-                                      mxContent: room.avatar,
-                                      name: displayname,
-                                      size: Avatar.defaultSize * 2.5,
-                                      onTap: roomAvatar != null
-                                          ? () => showDialog(
-                                                context: context,
-                                                builder: (_) =>
-                                                    MxcImageViewer(roomAvatar),
-                                              )
-                                          : null,
+                                    child: Builder(
+                                      builder: (context) {
+                                        // 私聊时显示对方用户的头像
+                                        Uri? avatarUrl = room.avatar;
+                                        String avatarName = displayname;
+                                        if (directChatMatrixID != null) {
+                                          final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+                                          avatarUrl = user.avatarUrl;
+                                          avatarName = user.calcDisplayname();
+                                        }
+                                        return Avatar(
+                                          mxContent: avatarUrl,
+                                          name: avatarName,
+                                          size: Avatar.defaultSize * 2.5,
+                                          onTap: avatarUrl != null
+                                              ? () => showDialog(
+                                                    context: context,
+                                                    builder: (_) =>
+                                                        MxcImageViewer(avatarUrl!),
+                                                  )
+                                              : null,
+                                        );
+                                      },
                                     ),
                                   ),
                                 ],

@@ -122,13 +122,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
         children: [
           Hero(
             tag: 'content_banner',
-            child: Avatar(
-              mxContent: room.avatar,
-              name: room.getLocalizedDisplayname(
-                MatrixLocals(L10n.of(context)),
-              ),
-              size: 32,
-            ),
+            child: _buildAvatar(room, context),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -152,6 +146,30 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 构建头像 - 私聊时显示对方头像，群聊显示房间头像
+  Widget _buildAvatar(Room room, BuildContext context) {
+    final directChatMatrixID = room.directChatMatrixID;
+
+    // 如果是私聊，获取对方用户的头像
+    if (directChatMatrixID != null) {
+      final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+      return Avatar(
+        mxContent: user.avatarUrl,
+        name: user.calcDisplayname(),
+        size: 32,
+      );
+    }
+
+    // 群聊使用房间头像
+    return Avatar(
+      mxContent: room.avatar,
+      name: room.getLocalizedDisplayname(
+        MatrixLocals(L10n.of(context)),
+      ),
+      size: 32,
     );
   }
 

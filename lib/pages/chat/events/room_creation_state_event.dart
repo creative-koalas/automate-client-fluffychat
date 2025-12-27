@@ -19,6 +19,17 @@ class RoomCreationStateEvent extends StatelessWidget {
     final matrixLocals = MatrixLocals(l10n);
     final theme = Theme.of(context);
     final roomName = event.room.getLocalizedDisplayname(matrixLocals);
+
+    // 私聊时显示对方用户的头像
+    final directChatMatrixID = event.room.directChatMatrixID;
+    Uri? avatarUrl = event.room.avatar;
+    String avatarName = roomName;
+    if (directChatMatrixID != null) {
+      final user = event.room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+      avatarUrl = user.avatarUrl;
+      avatarName = user.calcDisplayname();
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 32.0),
       child: Center(
@@ -33,8 +44,8 @@ class RoomCreationStateEvent extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Avatar(
-                    mxContent: event.room.avatar,
-                    name: roomName,
+                    mxContent: avatarUrl,
+                    name: avatarName,
                     size: Avatar.defaultSize * 2,
                   ),
                   Text(
