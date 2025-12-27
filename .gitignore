@@ -67,6 +67,8 @@ web/Imaging.wasm
 **/local.properties
 **/Flutter/ephemeral/
 **/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+**/example/**/GeneratedPluginRegistrant.*
 
 # Web related
 docs/tailwind.css
