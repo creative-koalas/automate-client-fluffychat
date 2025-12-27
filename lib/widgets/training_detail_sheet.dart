@@ -7,16 +7,18 @@ import '../models/plugin.dart';
 import '../repositories/agent_repository.dart';
 import '../repositories/plugin_repository.dart';
 
-/// 培训详情 Sheet
+/// 培训详情 Sheet（支持底部弹窗和居中对话框两种模式）
 /// 展示插件详情和可培训的员工列表
 class TrainingDetailSheet extends StatefulWidget {
   final Plugin plugin;
   final VoidCallback? onInstalled;
+  final bool isDialog;
 
   const TrainingDetailSheet({
     super.key,
     required this.plugin,
     this.onInstalled,
+    this.isDialog = false,
   });
 
   @override
@@ -201,39 +203,53 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
     final l10n = L10n.of(context);
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(24)
+            : const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 拖动指示器
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+          // 拖动指示器（仅底部弹窗模式显示）
+          if (!widget.isDialog)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
 
           // 插件信息头部
           _buildHeader(theme, l10n),
 
           const Divider(height: 1),
 
-          // 员工列表（使用固定高度）
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.5,
-            child: _buildEmployeeList(theme, l10n),
+          // 员工列表（使用固定高度，对话框模式隐藏滚动条）
+          Flexible(
+            child: ScrollConfiguration(
+              behavior: widget.isDialog
+                  ? ScrollConfiguration.of(context).copyWith(scrollbars: false)
+                  : ScrollConfiguration.of(context),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.5,
+                child: _buildEmployeeList(theme, l10n),
+              ),
+            ),
           ),
 
-          // 安全区域
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
+          // 安全区域（仅底部弹窗模式）
+          if (!widget.isDialog)
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );

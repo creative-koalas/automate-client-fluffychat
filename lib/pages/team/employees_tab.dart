@@ -196,19 +196,40 @@ class EmployeesTabState extends State<EmployeesTab>
   /// Called from parent when a new employee is hired
   Future<void> refreshEmployeeList() => _refresh();
 
-  /// 打开员工详情 Sheet
+  /// 打开员工详情 Sheet（移动端）或对话框（PC端）
   void _onEmployeeTap(Agent employee) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => EmployeeDetailSheet(
-        employee: employee,
-        onDelete: () => _deleteEmployee(employee),
-      ),
-    );
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    if (isDesktop) {
+      // PC端使用居中对话框，保持固定宽度480
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: EmployeeDetailSheet(
+              employee: employee,
+              onDelete: () => _deleteEmployee(employee),
+              isDialog: true,
+            ),
+          ),
+        ),
+      );
+    } else {
+      // 移动端使用底部弹窗
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        isDismissible: true,
+        enableDrag: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => EmployeeDetailSheet(
+          employee: employee,
+          onDelete: () => _deleteEmployee(employee),
+        ),
+      );
+    }
   }
 
   /// 长按显示快捷菜单

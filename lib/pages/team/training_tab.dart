@@ -78,23 +78,43 @@ class TrainingTabState extends State<TrainingTab>
   Future<void> refresh() => _loadPlugins();
 
   Future<void> _onPluginTap(Plugin plugin) async {
-    // 打开培训详情 Sheet
-    // 注意：不要用 GestureDetector 包装，否则会吞掉 barrier 的点击事件
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: true, // 点击外部关闭
-      enableDrag: true, // 支持拖动关闭
-      builder: (context) => TrainingDetailSheet(
-        plugin: plugin,
-        onInstalled: () {
-          // 安装成功后刷新列表
-          _loadPlugins();
-        },
-      ),
-    );
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    if (isDesktop) {
+      // PC端使用居中对话框
+      await showDialog<void>(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: TrainingDetailSheet(
+              plugin: plugin,
+              onInstalled: () {
+                _loadPlugins();
+              },
+              isDialog: true,
+            ),
+          ),
+        ),
+      );
+    } else {
+      // 移动端使用底部弹窗
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        isDismissible: true,
+        enableDrag: true,
+        builder: (context) => TrainingDetailSheet(
+          plugin: plugin,
+          onInstalled: () {
+            _loadPlugins();
+          },
+        ),
+      );
+    }
   }
 
   @override

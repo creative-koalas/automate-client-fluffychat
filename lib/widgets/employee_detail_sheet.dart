@@ -8,16 +8,18 @@ import '../models/agent.dart';
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
 
-/// 员工详情 Sheet
+/// 员工详情 Sheet（支持底部弹窗和居中对话框两种模式）
 /// 展示员工详细信息，提供开始聊天、管理技能等操作
 class EmployeeDetailSheet extends StatefulWidget {
   final Agent employee;
   final VoidCallback? onDelete;
+  final bool isDialog;
 
   const EmployeeDetailSheet({
     super.key,
     required this.employee,
     this.onDelete,
+    this.isDialog = false,
   });
 
   @override
@@ -180,180 +182,191 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     final l10n = L10n.of(context);
     final employee = widget.employee;
 
+    final contentWidgets = [
+      // 头像和基本信息
+      Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // 大头像
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: employee.avatarUrl != null &&
+                      employee.avatarUrl!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.network(
+                        employee.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _buildAvatarFallback(theme),
+                      ),
+                    )
+                  : _buildAvatarFallback(theme),
+            ),
+            const SizedBox(height: 16),
+
+            // 名称
+            Text(
+              employee.displayName,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            // Matrix ID
+            if (employee.matrixUserId != null)
+              Text(
+                employee.matrixUserId!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const SizedBox(height: 8),
+
+            // 状态徽章
+            _buildStatusBadge(theme, l10n),
+
+            // 合同到期时间
+            if (employee.contractExpiresAt != null) ...[
+              const SizedBox(height: 12),
+              _buildContractInfo(theme, l10n),
+            ],
+
+            // 最后活跃时间
+            if (employee.lastActiveAt != null) ...[
+              const SizedBox(height: 8),
+              _buildLastActiveInfo(theme, l10n),
+            ],
+          ],
+        ),
+      ),
+
+      const Divider(height: 1),
+
+      // 操作按钮
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          children: [
+            // 开始聊天按钮
+            Expanded(
+              child: FilledButton.icon(
+                onPressed:
+                    employee.isReady && !_isStartingChat ? _startChat : null,
+                icon: _isStartingChat
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.chat_outlined),
+                label: Text(l10n.startChat),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      // 已掌握技能列表
+      if (employee.isReady) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+          child: Row(
+            children: [
+              Icon(
+                Icons.school_outlined,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                l10n.skills,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildSkillsList(theme, l10n),
+      ],
+
+      // 优化按钮（删除）
+      Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: TextButton.icon(
+          onPressed: () => _confirmDelete(context),
+          icon: Icon(
+            Icons.delete_outline,
+            color: theme.colorScheme.error,
+          ),
+          label: Text(
+            l10n.deleteEmployee,
+            style: TextStyle(color: theme.colorScheme.error),
+          ),
+        ),
+      ),
+
+      // 安全区域（仅底部弹窗模式）
+      if (!widget.isDialog)
+        SizedBox(height: MediaQuery.of(context).padding.bottom),
+    ];
+
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(24)
+            : const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 拖动指示器
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+          // 拖动指示器（仅底部弹窗模式显示）
+          if (!widget.isDialog)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
 
-          // 可滚动内容区域
+          // 内容区域（都可滚动，对话框模式隐藏滚动条）
           Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-          // 头像和基本信息
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                // 大头像
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: employee.avatarUrl != null &&
-                          employee.avatarUrl!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: Image.network(
-                            employee.avatarUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildAvatarFallback(theme),
-                          ),
-                        )
-                      : _buildAvatarFallback(theme),
+            child: ScrollConfiguration(
+              behavior: widget.isDialog
+                  ? ScrollConfiguration.of(context).copyWith(scrollbars: false)
+                  : ScrollConfiguration.of(context),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: contentWidgets,
                 ),
-                const SizedBox(height: 16),
-
-                // 名称
-                Text(
-                  employee.displayName,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                // Matrix ID
-                if (employee.matrixUserId != null)
-                  Text(
-                    employee.matrixUserId!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                const SizedBox(height: 8),
-
-                // 状态徽章
-                _buildStatusBadge(theme, l10n),
-
-                // 合同到期时间
-                if (employee.contractExpiresAt != null) ...[
-                  const SizedBox(height: 12),
-                  _buildContractInfo(theme, l10n),
-                ],
-
-                // 最后活跃时间
-                if (employee.lastActiveAt != null) ...[
-                  const SizedBox(height: 8),
-                  _buildLastActiveInfo(theme, l10n),
-                ],
-              ],
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // 操作按钮
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              children: [
-                // 开始聊天按钮
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed:
-                        employee.isReady && !_isStartingChat ? _startChat : null,
-                    icon: _isStartingChat
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.chat_outlined),
-                    label: Text(l10n.startChat),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 已掌握技能列表
-          if (employee.isReady) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.school_outlined,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.skills,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildSkillsList(theme, l10n),
-          ],
-
-          // 优化按钮（删除）
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: TextButton.icon(
-              onPressed: () => _confirmDelete(context),
-              icon: Icon(
-                Icons.delete_outline,
-                color: theme.colorScheme.error,
-              ),
-              label: Text(
-                l10n.deleteEmployee,
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-            ),
-          ),
-
-          // 安全区域
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
-                ],
               ),
             ),
           ),
