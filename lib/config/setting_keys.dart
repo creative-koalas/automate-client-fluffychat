@@ -147,6 +147,11 @@ extension AppSettingsBoolExtension on AppSettings<bool> {
 
 extension AppSettingsStringExtension on AppSettings<String> {
   String get value {
+    // applicationName 不从本地存储读取，直接使用默认值
+    // 避免旧版本缓存的 "Automate" 覆盖 "Psygo"
+    if (this == AppSettings.applicationName) {
+      return defaultValue;
+    }
     final value = Result(() => AppSettings.store.getString(key));
     final error = value.asError;
     if (error != null) {

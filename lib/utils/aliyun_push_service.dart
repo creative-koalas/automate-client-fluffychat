@@ -466,6 +466,12 @@ class AliyunPushService {
     required String body,
     int badge = 0,
   }) async {
+    // 检查 event_id 去重（防止同一消息多次显示通知）
+    if (eventId != null && _shownEventIds.contains(eventId)) {
+      Logs().d('[AliyunPush] Event already shown, skip duplicate: $eventId');
+      return;
+    }
+
     // 检查用户是否在当前房间
     final activeRoomId = activeRoomIdGetter?.call();
     if (activeRoomId != null && activeRoomId == roomId) {
@@ -477,6 +483,14 @@ class AliyunPushService {
     if (_navigatingToRoomId != null && _navigatingToRoomId == roomId) {
       Logs().d('[AliyunPush] User is navigating to this room, skip notification');
       return;
+    }
+
+    // 记录已显示的 event_id（维护集合大小）
+    if (eventId != null) {
+      _shownEventIds.add(eventId);
+      while (_shownEventIds.length > _maxShownEventIds) {
+        _shownEventIds.remove(_shownEventIds.first);
+      }
     }
 
     final payload = jsonEncode({

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -7,6 +8,7 @@ import 'package:http/http.dart';
 import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
+import 'package:psygo/backend/exceptions.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'uia_request_manager.dart';
@@ -105,4 +107,26 @@ enum ExceptionContext {
   checkHomeserver,
   checkServerSupportInfo,
   joinRoom,
+  // 业务场景
+  hireEmployee,
+  customHireEmployee,
+  loadEmployeeList,
+  loadTrainingList,
+  loadRecruitTemplates,
+  loadTrainingDetail,
+  installPlugin,
+  uninstallPlugin,
+  // 登录认证
+  phoneLogin,
+  requestVerifyCode,
+  verifyCode,
+  oneClickLogin,
+  matrixLogin,
+  // 其他功能
+  startChat,
+  sendMessage,
+  getLocation,
+  recordVoice,
+  onboarding,
+  matrixConnection,
 }
