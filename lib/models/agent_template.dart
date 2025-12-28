@@ -132,6 +132,7 @@ class UnifiedCreateAgentRequest {
   final String? apiKey; // Agent 专属 API Key（可选）
   final String? llmProvider; // LLM 厂商（可选）
   final String? llmModel; // LLM 模型（可选）
+  final String? avatarUrl; // 头像 URL（可选，DiceBear 等）
 
   const UnifiedCreateAgentRequest({
     required this.name,
@@ -143,6 +144,7 @@ class UnifiedCreateAgentRequest {
     this.apiKey,
     this.llmProvider,
     this.llmModel,
+    this.avatarUrl,
   });
 
   Map<String, dynamic> toJson() {
@@ -157,6 +159,7 @@ class UnifiedCreateAgentRequest {
       if (apiKey != null) 'api_key': apiKey,
       if (llmProvider != null) 'llm_provider': llmProvider,
       if (llmModel != null) 'llm_model': llmModel,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
     };
   }
 }

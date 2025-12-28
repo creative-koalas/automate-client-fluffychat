@@ -123,6 +123,7 @@ class AgentTemplateRepository {
   /// [name] 员工名称
   /// [systemPrompt] 系统提示词（可选）
   /// [plugins] 插件配置列表（可选）
+  /// [avatarUrl] 头像 URL（可选，DiceBear 等）
   ///
   /// 返回 [UnifiedCreateAgentResponse]
   Future<UnifiedCreateAgentResponse> createCustomAgentWithPlugins({
@@ -130,6 +131,7 @@ class AgentTemplateRepository {
     String? systemPrompt,
     List<PluginConfig>? plugins,
     String invitationCode = '',
+    String? avatarUrl,
   }) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
@@ -138,6 +140,7 @@ class AgentTemplateRepository {
         invitationCode: invitationCode,
         systemPrompt: systemPrompt,
         plugins: plugins,
+        avatarUrl: avatarUrl,
       ).toJson(),
       fromJsonT: (data) => data as Map<String, dynamic>,
     );
