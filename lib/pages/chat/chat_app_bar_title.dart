@@ -49,7 +49,6 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   @override
   void dispose() {
     _stopPolling();
-    AgentService.instance.agentsNotifier.removeListener(_onAgentsCacheUpdated);
     _repository.dispose();
     super.dispose();
   }
@@ -61,29 +60,29 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
     if (directChatMatrixID == null) return;
 
-    // 从缓存中查找员工
+    // 从缓存中快速查找（用于立即显示）
     final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
     if (cachedEmployee != null) {
-      // 立即使用缓存数据显示，然后启动轮询获取最新状态
       setState(() => _employee = cachedEmployee);
       _startPolling(cachedEmployee.agentId);
     } else {
-      // 缓存没找到，监听缓存更新（处理新招员工的情况）
-      AgentService.instance.agentsNotifier.addListener(_onAgentsCacheUpdated);
+      // 缓存没有，直接调用 API 获取
+      _fetchAndCheckEmployee(directChatMatrixID);
     }
   }
 
-  /// 缓存更新回调
-  void _onAgentsCacheUpdated() {
-    final directChatMatrixID = controller.room.directChatMatrixID;
-    if (directChatMatrixID == null) return;
-
-    final employee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
-    if (employee != null && mounted) {
-      // 找到了，移除监听，立即显示，然后启动轮询
-      AgentService.instance.agentsNotifier.removeListener(_onAgentsCacheUpdated);
-      setState(() => _employee = employee);
-      _startPolling(employee.agentId);
+  /// 获取并检查是否是员工
+  Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
+    try {
+      final page = await _repository.getUserAgents(limit: 50);
+      final agent = page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
+      if (mounted && agent != null) {
+        setState(() => _employee = agent);
+        _startPolling(agent.agentId);
+      }
+      // 如果没找到，_employee 保持 null，显示在线状态
+    } catch (_) {
+      // 出错时显示在线状态
     }
   }
 
