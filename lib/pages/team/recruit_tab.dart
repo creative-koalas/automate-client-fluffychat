@@ -120,16 +120,32 @@ class RecruitTabState extends State<RecruitTab>
   }
 
   Future<void> _onCustomHire() async {
-    final result = await showModalBottomSheet<UnifiedCreateAgentResponse>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: true, // 允许点击外部关闭
-      enableDrag: true, // 允许拖拽关闭
-      builder: (context) => CustomHireDialog(
-        repository: _repository,
-      ),
-    );
+    final isDesktop = FluffyThemes.isColumnMode(context);
+
+    final result = isDesktop
+        ? await showDialog<UnifiedCreateAgentResponse>(
+            context: context,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: CustomHireDialog(
+                  repository: _repository,
+                  isDialog: true,
+                ),
+              ),
+            ),
+          )
+        : await showModalBottomSheet<UnifiedCreateAgentResponse>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            isDismissible: true,
+            enableDrag: true,
+            builder: (context) => CustomHireDialog(
+              repository: _repository,
+            ),
+          );
 
     _handleHireResult(result);
   }

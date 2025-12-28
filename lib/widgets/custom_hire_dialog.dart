@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
@@ -6,6 +8,7 @@ import '../models/agent_template.dart';
 import '../models/plugin.dart';
 import '../repositories/agent_template_repository.dart';
 import '../repositories/plugin_repository.dart';
+import 'dicebear_avatar_picker.dart';
 
 /// 定制招聘向导（三步）
 /// 第1步：基本信息（名称 + 系统提示词）
@@ -13,10 +16,12 @@ import '../repositories/plugin_repository.dart';
 /// 第3步：配置插件（如有需要）
 class CustomHireDialog extends StatefulWidget {
   final AgentTemplateRepository repository;
+  final bool isDialog;
 
   const CustomHireDialog({
     super.key,
     required this.repository,
+    this.isDialog = false,
   });
 
   @override
@@ -45,6 +50,9 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   bool _isSubmitting = false;
   String? _error;
 
+  // 头像 URL
+  String? _avatarUrl;
+
   // 名称长度限制
   static const int _maxNameLength = 20;
 
@@ -70,9 +78,33 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   @override
   void initState() {
     super.initState();
+    // 初始化随机头像
+    _initRandomAvatar();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _nameFocusNode.requestFocus();
     });
+  }
+
+  void _initRandomAvatar() {
+    final random = Random();
+    final styles = [
+      'avataaars',
+      'bottts',
+      'fun-emoji',
+      'adventurer',
+      'adventurer-neutral',
+      'big-smile',
+      'lorelei',
+      'notionists',
+      'open-peeps',
+      'personas',
+      'pixel-art',
+      'thumbs',
+    ];
+    final style = styles[random.nextInt(styles.length)];
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final seed = List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
+    _avatarUrl = 'https://api.dicebear.com/9.x/$style/png?seed=$seed&size=256';
   }
 
   @override
@@ -314,6 +346,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         systemPrompt: systemPrompt,
         plugins: plugins.isNotEmpty ? plugins : null,
         invitationCode: invitationCode,
+        avatarUrl: _avatarUrl,
       );
 
       if (mounted) {
@@ -333,6 +366,10 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+
+    if (widget.isDialog) {
+      return _buildDialogContent(theme, l10n);
+    }
 
     return GestureDetector(
       onTap: () {}, // 阻止点击传递到背景
@@ -388,6 +425,40 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// PC 端 Dialog 样式
+  Widget _buildDialogContent(ThemeData theme, L10n l10n) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 640),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 标题栏
+          _buildHeader(theme, l10n),
+          // 步骤指示器
+          _buildStepIndicator(theme, l10n),
+          // 内容区域
+          Flexible(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: _buildContent(theme, l10n),
+              ),
+            ),
+          ),
+          // 错误提示
+          if (_error != null) _buildErrorBanner(theme),
+          // 底部按钮
+          _buildActions(theme, l10n),
+        ],
       ),
     );
   }
@@ -549,6 +620,20 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // 头像选择
+        Center(
+          child: DiceBearAvatarPicker(
+            initialAvatarUrl: _avatarUrl,
+            onAvatarChanged: (url) {
+              setState(() {
+                _avatarUrl = url;
+              });
+            },
+            size: 88,
+          ),
+        ),
+        const SizedBox(height: 20),
+
         // 员工名称
         _buildInputField(
           theme: theme,
@@ -1275,6 +1360,9 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
+        borderRadius: widget.isDialog
+            ? const BorderRadius.vertical(bottom: Radius.circular(24))
+            : null,
         border: Border(
           top: BorderSide(
             color: theme.colorScheme.outlineVariant.withOpacity(0.3),
