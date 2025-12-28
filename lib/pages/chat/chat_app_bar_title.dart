@@ -64,6 +64,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     // 从缓存中查找员工
     final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
     if (cachedEmployee != null) {
+      // 立即使用缓存数据显示，然后启动轮询获取最新状态
+      setState(() => _employee = cachedEmployee);
       _startPolling(cachedEmployee.agentId);
     } else {
       // 缓存没找到，监听缓存更新（处理新招员工的情况）
@@ -77,9 +79,10 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     if (directChatMatrixID == null) return;
 
     final employee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
-    if (employee != null) {
-      // 找到了，移除监听并开始轮询
+    if (employee != null && mounted) {
+      // 找到了，移除监听，立即显示，然后启动轮询
       AgentService.instance.agentsNotifier.removeListener(_onAgentsCacheUpdated);
+      setState(() => _employee = employee);
       _startPolling(employee.agentId);
     }
   }
