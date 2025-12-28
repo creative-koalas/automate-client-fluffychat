@@ -49,6 +49,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   @override
   void dispose() {
     _stopPolling();
+    AgentService.instance.agentsNotifier.removeListener(_onAgentsCacheUpdated);
     _repository.dispose();
     super.dispose();
   }
@@ -60,10 +61,26 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
     if (directChatMatrixID == null) return;
 
-    // 从缓存中查找员工（只用于判断是否是员工，不用于显示）
+    // 从缓存中查找员工
     final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
     if (cachedEmployee != null) {
       _startPolling(cachedEmployee.agentId);
+    } else {
+      // 缓存没找到，监听缓存更新（处理新招员工的情况）
+      AgentService.instance.agentsNotifier.addListener(_onAgentsCacheUpdated);
+    }
+  }
+
+  /// 缓存更新回调
+  void _onAgentsCacheUpdated() {
+    final directChatMatrixID = controller.room.directChatMatrixID;
+    if (directChatMatrixID == null) return;
+
+    final employee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+    if (employee != null) {
+      // 找到了，移除监听并开始轮询
+      AgentService.instance.agentsNotifier.removeListener(_onAgentsCacheUpdated);
+      _startPolling(employee.agentId);
     }
   }
 

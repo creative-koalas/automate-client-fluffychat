@@ -4,6 +4,7 @@ import 'package:psygo/l10n/l10n.dart';
 import '../../models/agent_template.dart';
 import '../../repositories/agent_repository.dart';
 import '../../repositories/agent_template_repository.dart';
+import '../../services/agent_service.dart';
 import '../../utils/retry_helper.dart';
 import '../../widgets/custom_hire_dialog.dart';
 import '../../widgets/empty_state.dart';
@@ -154,6 +155,9 @@ class RecruitTabState extends State<RecruitTab>
     if (result != null && mounted) {
       // 自动刷新员工列表（后台刷新，用户切回时能看到新员工）
       widget.onRefreshEmployees?.call();
+
+      // 刷新 AgentService 缓存（聊天界面状态显示依赖此缓存）
+      AgentService.instance.refresh();
 
       // 判断是否是第一位员工
       final isFirstEmployee = _employeeCount == 0;
