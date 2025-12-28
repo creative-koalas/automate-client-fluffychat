@@ -63,6 +63,13 @@ web/Imaging.wasm
 .pub/
 /build/
 
+# Flutter generated files (machine-specific)
+**/local.properties
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+**/example/**/GeneratedPluginRegistrant.*
+
 # Web related
 docs/tailwind.css
 
@@ -105,6 +112,7 @@ web/pkg/vodozemac_bindings_dart.js
 
 # Kotlin build cache
 android/.kotlin/
+android/build/
 env.local.json
 env.test.json
 env.dev.json
