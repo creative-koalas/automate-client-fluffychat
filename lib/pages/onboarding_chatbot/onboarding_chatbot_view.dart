@@ -342,66 +342,31 @@ class _GreetingCard extends StatelessWidget {
 
 /// 快速开始任务数据
 class _QuickTask {
-  final IconData icon;
-  final Color iconColor;
+  final int? id;
   final String label;
   final String description;
   final String defaultMessage;
-  final String previewImage; // 预览图片路径
+  final String previewImage; // 预览图片 URL
 
   const _QuickTask({
-    required this.icon,
-    required this.iconColor,
+    this.id,
     required this.label,
     required this.description,
     required this.defaultMessage,
     required this.previewImage,
   });
-}
 
-/// 预定义的快速开始任务
-const _quickTasks = [
-  _QuickTask(
-    icon: Icons.school_outlined,
-    iconColor: Color(0xFF9C27B0),
-    label: '帮我完成毕业设计',
-    description: '让 Psygo 帮你完成毕业设计项目，包括需求分析、技术选型、代码实现、文档撰写等全流程支持。',
-    defaultMessage: '帮我完成毕业设计，我的题目是：',
-    previewImage: 'assets/quick_start_graduation.png',
-  ),
-  _QuickTask(
-    icon: Icons.search,
-    iconColor: Color(0xFF2196F3),
-    label: '帮我做个调研',
-    description: '让 Psygo 帮你进行市场调研、技术调研或竞品分析，生成详细的调研报告。',
-    defaultMessage: '帮我做个调研，调研主题是：',
-    previewImage: 'assets/quick_start_research.png',
-  ),
-  _QuickTask(
-    icon: Icons.grid_view_rounded,
-    iconColor: Color(0xFF4CAF50),
-    label: '帮我做一个项目',
-    description: '让 Psygo 从零开始帮你构建一个完整的软件项目，包括前后端开发、数据库设计、部署配置等。',
-    defaultMessage: '帮我做一个项目，项目需求是：',
-    previewImage: 'assets/quick_start_project.png',
-  ),
-  _QuickTask(
-    icon: Icons.rocket_launch_outlined,
-    iconColor: Color(0xFFFF9800),
-    label: '帮我部署项目',
-    description: '让 Psygo 帮你将现有项目部署到服务器，配置域名、SSL证书、CI/CD等。',
-    defaultMessage: '帮我部署项目，项目地址是：',
-    previewImage: 'assets/quick_start_deploy.png',
-  ),
-  _QuickTask(
-    icon: Icons.travel_explore,
-    iconColor: Color(0xFF00BCD4),
-    label: '帮我查找网站',
-    description: '让 Psygo 帮你搜索和查找相关网站资源，包括工具网站、学习资源、开源项目等。',
-    defaultMessage: '帮我查找网站，我想找：',
-    previewImage: 'assets/quick_start_search_web.png',
-  ),
-];
+  /// 从 API JSON 创建
+  factory _QuickTask.fromJson(Map<String, dynamic> json) {
+    return _QuickTask(
+      id: json['id'] as int?,
+      label: json['label'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      defaultMessage: json['defaultMessage'] as String? ?? '',
+      previewImage: json['previewImage'] as String? ?? '',
+    );
+  }
+}
 
 /// 快速开始按钮组 - 自适应布局（移动端 PageView，PC端 GridView）
 class _QuickStartButtons extends StatefulWidget {
@@ -424,6 +389,31 @@ class _QuickStartButtonsState extends State<_QuickStartButtons> {
 
   /// PC端宽度阈值
   static const double _desktopBreakpoint = 600;
+
+  /// 卡片数据
+  List<_QuickTask> _quickTasks = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuickStartCards();
+  }
+
+  Future<void> _loadQuickStartCards() async {
+    try {
+      final cards = await widget.controller.backend.getQuickStartCards();
+      if (mounted) {
+        setState(() {
+          _quickTasks = cards.map((json) => _QuickTask.fromJson(json)).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[QuickStartCards] Failed to load: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -486,6 +476,11 @@ class _QuickStartButtonsState extends State<_QuickStartButtons> {
 
   @override
   Widget build(BuildContext context) {
+    // 加载中或无数据时不显示
+    if (_isLoading || _quickTasks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= _desktopBreakpoint;
 
@@ -620,22 +615,12 @@ class _QuickTaskCard extends StatelessWidget {
                 width: 90,
                 height: double.infinity,
                 decoration: BoxDecoration(
-                  color: task.iconColor.withValues(alpha: 0.1),
+                  color: isDark ? Colors.white10 : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    task.previewImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(
-                      child: Icon(
-                        task.icon,
-                        color: task.iconColor,
-                        size: 36,
-                      ),
-                    ),
-                  ),
+                  child: _buildPreviewImage(task.previewImage, isDark),
                 ),
               ),
               const SizedBox(width: 14),
@@ -674,6 +659,40 @@ class _QuickTaskCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 构建预览图（支持本地 assets 和网络 URL）
+  Widget _buildPreviewImage(String imageUrl, bool isDark) {
+    final isNetworkImage = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+
+    if (isNetworkImage) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildImagePlaceholder(isDark),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildImagePlaceholder(isDark);
+        },
+      );
+    } else {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildImagePlaceholder(isDark),
+      );
+    }
+  }
+
+  /// 图片占位符
+  Widget _buildImagePlaceholder(bool isDark) {
+    return Center(
+      child: Icon(
+        Icons.image_outlined,
+        color: isDark ? Colors.white38 : Colors.grey.shade400,
+        size: 32,
       ),
     );
   }
@@ -800,54 +819,24 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
                 width: double.infinity,
                 height: 140,
                 decoration: BoxDecoration(
-                  color: widget.task.iconColor.withValues(alpha: 0.1),
+                  color: isDark ? Colors.white10 : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    widget.task.previewImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(
-                      child: Icon(
-                        widget.task.icon,
-                        color: widget.task.iconColor,
-                        size: 56,
-                      ),
-                    ),
-                  ),
+                  child: _buildDetailPreviewImage(widget.task.previewImage, isDark),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // 标题行：图标 + 标题
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: widget.task.iconColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      widget.task.icon,
-                      color: widget.task.iconColor,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.task.label,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                  ),
-                ],
+              // 标题
+              Text(
+                widget.task.label,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -991,6 +980,42 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 构建详情页预览图（支持本地 assets 和网络 URL）
+  Widget _buildDetailPreviewImage(String imageUrl, bool isDark) {
+    final isNetworkImage = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+
+    if (isNetworkImage) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => _buildDetailImagePlaceholder(isDark),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildDetailImagePlaceholder(isDark);
+        },
+      );
+    } else {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => _buildDetailImagePlaceholder(isDark),
+      );
+    }
+  }
+
+  /// 详情页图片占位符
+  Widget _buildDetailImagePlaceholder(bool isDark) {
+    return Center(
+      child: Icon(
+        Icons.image_outlined,
+        color: isDark ? Colors.white38 : Colors.grey.shade400,
+        size: 48,
       ),
     );
   }
