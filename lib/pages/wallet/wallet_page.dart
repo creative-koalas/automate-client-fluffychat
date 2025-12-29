@@ -14,15 +14,17 @@ import 'order_page.dart';
 /// 按照新 UI 设计重构
 /// Credit 与人民币 1:1 兑换（1元 = 1分）
 class WalletPage extends StatefulWidget {
-  const WalletPage({super.key});
+  final bool showBackButton;
+
+  const WalletPage({super.key, this.showBackButton = true});
 
   @override
   State<WalletPage> createState() => _WalletPageState();
 }
 
 class _WalletPageState extends State<WalletPage> {
-  // 预设金额选项（0.01 元为测试用，后续移除）
-  final List<double> _presetAmounts = [0.01, 10, 50, 100, 200];
+  // 预设金额选项
+  final List<double> _presetAmounts = [10, 50, 100, 200];
 
   // 选中的预设金额索引
   int _selectedPresetIndex = 1; // 默认选中 50
@@ -99,6 +101,93 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> _onRecharge() async {
+    // 公测阶段提示弹窗
+    await showDialog(
+      context: context,
+      builder: (context) {
+        bool copied = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            insetPadding: const EdgeInsets.all(24),
+            title: const Row(
+              children: [
+                Icon(Icons.info_outline, color: _primaryGreen, size: 28),
+                SizedBox(width: 12),
+                Text('温馨提示', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('公测阶段，无需充值即可体验全部功能！', style: TextStyle(fontSize: 15, height: 1.5)),
+                const SizedBox(height: 16),
+                const Text('如有积分需求，请通过邮箱联系我们：', style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5)),
+                const SizedBox(height: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(const ClipboardData(text: 'psygofeedback@163.com'));
+                          setDialogState(() => copied = true);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(color: _lightGreen, borderRadius: BorderRadius.circular(8)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.email_outlined, size: 18, color: _primaryGreen),
+                              const SizedBox(width: 8),
+                              const Flexible(
+                                child: Text(
+                                  'psygofeedback@163.com',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _primaryGreen),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                copied ? Icons.check : Icons.copy,
+                                size: 14,
+                                color: _primaryGreen,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (copied)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          '✓ 已复制到剪贴板',
+                          style: TextStyle(fontSize: 12, color: _primaryGreen),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('我知道了', style: TextStyle(color: _primaryGreen, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return;
+
+    // 以下代码暂时注销（公测阶段）
+    // ignore: dead_code
     if (_customAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -110,17 +199,16 @@ class _WalletPageState extends State<WalletPage> {
     }
 
     // 跳转到订单页面
-    final result = await Navigator.of(context).push(
+    final payResult = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => OrderPage(amount: _customAmount),
       ),
     );
 
     // 如果支付成功，刷新余额并显示提示
-    if (result == true && mounted) {
+    if (payResult == true && mounted) {
       // 刷新余额
       await _loadUserBalance();
-
       // 显示成功提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,7 +225,6 @@ class _WalletPageState extends State<WalletPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = L10n.of(context);
 
     return Scaffold(
@@ -145,6 +232,7 @@ class _WalletPageState extends State<WalletPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
+        automaticallyImplyLeading: widget.showBackButton,
         iconTheme: const IconThemeData(
           color: Colors.black, // 返回按钮固定为黑色
         ),
@@ -215,7 +303,7 @@ class _WalletPageState extends State<WalletPage> {
                 onTap: _loadUserBalance,
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.refresh,
                       size: 14,
                       color: _primaryGreen,
@@ -294,7 +382,7 @@ class _WalletPageState extends State<WalletPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -330,7 +418,7 @@ class _WalletPageState extends State<WalletPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -495,7 +583,7 @@ class _WalletPageState extends State<WalletPage> {
           Center(
             child: Text(
               '${l10n.walletWillGet} ${(_customAmount * 100).toInt()}${l10n.walletCreditsUnit}',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13,
                 color: _primaryGreen,
               ),

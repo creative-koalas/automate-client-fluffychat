@@ -11,6 +11,7 @@ import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
 import 'package:psygo/pages/team/recruit_tab.dart';
 import 'package:psygo/pages/team/training_tab.dart';
+import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -60,9 +61,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   int _unreadCount = 0;
   bool _isMenuOpen = false;
   bool _isDraggingDivider = false;
-  double _dragStartX = 0;
-  double _dragStartWidth = 0;
-
+  
   // 监听同步事件以更新未读计数
   StreamSubscription? _syncSubscription;
 
@@ -444,6 +443,36 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           appBar: AppBar(
             title: const Text('员工管理'),
             automaticallyImplyLeading: false,
+            actions: [
+              // 钱包按钮
+              IconButton(
+                icon: Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                tooltip: L10n.of(context).walletTitle,
+                onPressed: () {
+                  // PC 端以独立窗口形式打开
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: const SizedBox(
+                          width: 420,
+                          height: 680,
+                          child: WalletPage(showBackButton: false),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: EmployeesTab(
             key: _employeesTabKey,
