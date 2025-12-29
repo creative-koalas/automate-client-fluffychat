@@ -296,13 +296,17 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
-    // 订阅通知事件（所有平台都需要，移动端通过本地通知显示）
+    // 订阅通知事件（桌面端和 Web 使用 Matrix SDK 通知，移动端由阿里云推送统一处理）
     c.onSync.stream.first.then((s) {
       if (PlatformInfos.isWeb) {
         html.Notification.requestPermission();
       }
-      onNotification[name] ??=
-          c.onNotification.stream.listen(showLocalNotification);
+      // 移动端不订阅 Matrix SDK 的通知事件，由阿里云推送服务统一处理
+      // 避免 Matrix SDK 本地通知和阿里云推送通知重复
+      if (!PlatformInfos.isMobile) {
+        onNotification[name] ??=
+            c.onNotification.stream.listen(showLocalNotification);
+      }
     });
   }
 
@@ -380,7 +384,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       // 1. 获取当前活跃房间 ID（用于判断是否显示通知）
       AliyunPushService.instance.activeRoomIdGetter = () => activeRoomId;
 
-      // 2. 通知点击回调（导航到对应房间）
+      // 2. 获取当前用户 Matrix ID（用于过滤自己发的消息）
+      AliyunPushService.instance.currentUserIdGetter = () => clientOrNull?.userID;
+
+      // 3. 通知点击回调（导航到对应房间）
       AliyunPushService.instance.onNotificationTapped = (roomId, eventId) {
         Logs().i('[Matrix] Notification tapped: room=$roomId, event=$eventId');
         PsygoApp.router.go('/rooms/$roomId');
