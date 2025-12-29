@@ -400,8 +400,9 @@ class PsygoApiClient {
   }
 
   /// 完成新手引导并创建首个 Agent
+  /// [avatarUrl] 可选，Agent 头像 URL（如 DiceBear）
   /// 返回创建的 Agent 信息（agent_id, matrix_user_id, pod_url）
-  Future<OnboardingResult> completeOnboarding() async {
+  Future<OnboardingResult> completeOnboarding({String? avatarUrl}) async {
     final userIdInt = auth.userIdInt;
     if (userIdInt == null || userIdInt == 0) {
       throw AutomateBackendException('User ID not found');
@@ -410,6 +411,7 @@ class PsygoApiClient {
     final token = auth.primaryToken;
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/users/$userIdInt/complete-onboarding',
+      data: avatarUrl != null ? {'avatar_url': avatarUrl} : null,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     final data = res.data ?? {};
@@ -595,6 +597,35 @@ class PsygoApiClient {
     }
 
     return AppVersionResponse.fromJson(respData);
+  }
+
+  /// 获取快速开始卡片列表（公开接口，无需认证）
+  /// Onboarding 引导页使用
+  Future<List<Map<String, dynamic>>> getQuickStartCards() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/quick-start-cards',
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? 'Failed to get quick start cards',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      return [];
+    }
+
+    final cards = respData['cards'] as List<dynamic>?;
+    if (cards == null) {
+      return [];
+    }
+
+    return cards.whereType<Map<String, dynamic>>().toList();
   }
 
   /// 获取所有激活的协议列表（公开接口，无需认证）

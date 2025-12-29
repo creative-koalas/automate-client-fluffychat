@@ -169,8 +169,11 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     });
 
     // 🚀 立即触发 Agent 创建（与动画并行执行）
-    debugPrint('[Onboarding] Starting agent creation in background...');
-    _createAgentFuture = backend.completeOnboarding();
+    // 生成随机头像 URL（使用 DiceBear bottts 风格）
+    final avatarSeed = DateTime.now().millisecondsSinceEpoch.toString();
+    final avatarUrl = 'https://api.dicebear.com/7.x/bottts/png?seed=$avatarSeed';
+    debugPrint('[Onboarding] Starting agent creation with avatar: $avatarUrl');
+    _createAgentFuture = backend.completeOnboarding(avatarUrl: avatarUrl);
 
     // 1. Focus/Blur Animation Phase (3s)
     // Wait for the UI to blur and the text to "lift off"
