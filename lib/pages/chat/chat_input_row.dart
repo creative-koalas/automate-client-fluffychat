@@ -102,6 +102,20 @@ class ChatInputRow extends StatelessWidget {
                       ),
                     ),
                   ),
+                  SizedBox(
+                    height: height,
+                    child: TextButton(
+                      style: selectedTextButtonStyle,
+                      onPressed: controller.shareEventsAction,
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(Icons.share_outlined),
+                          const SizedBox(width: 4),
+                          Text(L10n.of(context).share),
+                        ],
+                      ),
+                    ),
+                  ),
                   controller.selectedEvents.length == 1
                       ? controller.selectedEvents.first
                               .getDisplayEvent(controller.timeline!)

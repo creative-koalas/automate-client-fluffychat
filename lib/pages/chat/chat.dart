@@ -24,6 +24,7 @@ import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/error_reporter.dart';
+import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
@@ -803,6 +804,15 @@ class ChatController extends State<ChatPageWithRoom>
 
   void copyEventsAction() {
     Clipboard.setData(ClipboardData(text: _getSelectedEventString()));
+    setState(() {
+      showEmojiPicker = false;
+      selectedEvents.clear();
+    });
+  }
+
+  void shareEventsAction() async {
+    final text = _getSelectedEventString();
+    await FluffyShare.share(text, context);
     setState(() {
       showEmojiPicker = false;
       selectedEvents.clear();
