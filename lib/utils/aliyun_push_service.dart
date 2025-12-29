@@ -24,6 +24,9 @@ class AliyunPushService {
   /// 获取当前活跃房间 ID 的回调（由 MatrixState 设置）
   String? Function()? activeRoomIdGetter;
 
+  /// 获取当前用户 Matrix ID 的回调（由 MatrixState 设置，用于过滤自己发的消息）
+  String? Function()? currentUserIdGetter;
+
   /// 通知点击回调（由 MatrixState 设置）
   void Function(String roomId, String? eventId)? onNotificationTapped;
 
@@ -221,6 +224,9 @@ class AliyunPushService {
         _handleMessage(message);
       },
       onAndroidNotificationReceivedInApp: (message) async {
+        // 延迟 50ms，让 onNotification 先执行并记录 event_id
+        // 这样可以避免系统通知栏 + 本地通知的重复
+        await Future.delayed(const Duration(milliseconds: 50));
         Logs().i('[AliyunPush] Android notification in app: $message');
         _handleNotificationReceivedInApp(message);
       },
@@ -232,13 +238,61 @@ class AliyunPushService {
     Logs().d('[AliyunPush] Callbacks registered');
   }
 
-  /// 处理通知消息
+  /// 处理通知消息（通知展示在通知栏时触发）
+  ///
+  /// 当系统通知栏展示通知时，此回调被触发。
+  /// 需要将 event_id 加入去重集合，防止 onAndroidNotificationReceivedInApp 再次弹出本地通知。
+  ///
+  /// 注意：此回调在系统已经展示通知后触发，无法阻止系统通知栏的显示。
+  /// 如果是自己发的消息，后端不应该推送，但我们仍然记录 event_id 用于去重。
   void _handleNotification(Map<dynamic, dynamic> message) {
-    // TODO: 在这里处理通知消息
-    // 可以触发本地通知或更新 UI
-    if (kDebugMode) {
-      print('[AliyunPush] Notification: $message');
+    try {
+      // 解析扩展参数，提取 event_id 用于去重（可能是 Map 或 JSON 字符串）
+      final extraMap = _parseExtraMap(message['extraMap']);
+      if (extraMap != null) {
+        final eventId = extraMap['event_id'] as String?;
+        final sender = extraMap['sender'] as String?;
+
+        // 检查是否是自己发的消息
+        final currentUserId = currentUserIdGetter?.call();
+        if (sender != null && currentUserId != null && sender == currentUserId) {
+          Logs().d('[AliyunPush] System notification for self message, this should not happen (backend issue)');
+          // 仍然记录 event_id，防止后续重复
+        }
+
+        if (eventId != null && eventId.isNotEmpty) {
+          // 将 event_id 加入去重集合，防止重复通知
+          _shownEventIds.add(eventId);
+          while (_shownEventIds.length > _maxShownEventIds) {
+            _shownEventIds.remove(_shownEventIds.first);
+          }
+          Logs().d('[AliyunPush] Notification shown by system, marked event: $eventId');
+        }
+      }
+    } catch (e) {
+      Logs().w('[AliyunPush] Failed to parse notification for dedup', e);
     }
+  }
+
+  /// 安全解析 extraMap（可能是 Map 或 JSON 字符串）
+  Map<String, dynamic>? _parseExtraMap(dynamic extraMapValue) {
+    if (extraMapValue == null) return null;
+
+    if (extraMapValue is Map) {
+      // 已经是 Map，转换为 Map<String, dynamic>
+      return Map<String, dynamic>.from(extraMapValue);
+    } else if (extraMapValue is String) {
+      // 是 JSON 字符串，需要解析
+      try {
+        final parsed = jsonDecode(extraMapValue);
+        if (parsed is Map) {
+          return Map<String, dynamic>.from(parsed);
+        }
+      } catch (e) {
+        Logs().w('[AliyunPush] Failed to parse extraMap string: $e');
+      }
+    }
+    return null;
   }
 
   /// 处理通知点击
@@ -246,8 +300,8 @@ class AliyunPushService {
     Logs().i('[AliyunPush] Notification opened: $message');
 
     try {
-      // 解析扩展参数
-      final extraMap = message['extraMap'] as Map<dynamic, dynamic>?;
+      // 解析扩展参数（可能是 Map 或 JSON 字符串）
+      final extraMap = _parseExtraMap(message['extraMap']);
       if (extraMap == null) {
         Logs().w('[AliyunPush] No extraMap in notification');
         return;
@@ -295,8 +349,8 @@ class AliyunPushService {
       final title = message['title'] as String? ?? 'Psygo';
       final body = message['body'] as String? ?? message['summary'] as String? ?? '你收到了一条新消息';
 
-      // 解析扩展参数
-      final extraMap = message['extraMap'] as Map<dynamic, dynamic>?;
+      // 解析扩展参数（可能是 Map 或 JSON 字符串）
+      final extraMap = _parseExtraMap(message['extraMap']);
       if (extraMap == null) {
         Logs().w('[AliyunPush] No extraMap in notification');
         return;
@@ -312,11 +366,19 @@ class AliyunPushService {
 
       final roomId = extraMap['room_id'] as String?;
       final eventId = extraMap['event_id'] as String?;
+      final sender = extraMap['sender'] as String?;
       // badge 可能是 String 或 int
       final badgeValue = extraMap['badge'];
       final badge = badgeValue is int ? badgeValue : int.tryParse(badgeValue?.toString() ?? '0') ?? 0;
 
-      Logs().d('[AliyunPush] Matrix notification in app: room=$roomId, event=$eventId, title=$title');
+      Logs().d('[AliyunPush] Matrix notification in app: room=$roomId, event=$eventId, sender=$sender, title=$title');
+
+      // 检查是否是自己发的消息（不应该给自己显示通知）
+      final currentUserId = currentUserIdGetter?.call();
+      if (sender != null && currentUserId != null && sender == currentUserId) {
+        Logs().d('[AliyunPush] Message from self, skip notification');
+        return;
+      }
 
       // 检查 event_id 去重（防止同一消息多次显示通知）
       if (eventId != null && _shownEventIds.contains(eventId)) {
@@ -403,11 +465,19 @@ class AliyunPushService {
 
       final roomId = payload['room_id'] as String?;
       final eventId = payload['event_id'] as String?;
+      final sender = payload['sender'] as String?;
       final title = payload['title'] as String? ?? 'Psygo';
       final body = payload['body'] as String? ?? '你收到了一条新消息';
       final badge = payload['badge'] as int? ?? 0;
 
-      Logs().d('[AliyunPush] Matrix message: room=$roomId, event=$eventId, title=$title');
+      Logs().d('[AliyunPush] Matrix message: room=$roomId, event=$eventId, sender=$sender, title=$title');
+
+      // 检查是否是自己发的消息（不应该给自己显示通知）
+      final currentUserId = currentUserIdGetter?.call();
+      if (sender != null && currentUserId != null && sender == currentUserId) {
+        Logs().d('[AliyunPush] Message from self, skip notification');
+        return;
+      }
 
       // 检查 event_id 去重（防止同一消息多次显示通知）
       if (eventId != null && _shownEventIds.contains(eventId)) {
