@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'chatbot_message_renderer.dart';
 import 'onboarding_chatbot.dart';
 
@@ -814,17 +816,19 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
                 ),
               if (!widget.isDialog) const SizedBox(height: 20),
 
-              // 预览图
-              Container(
-                width: double.infinity,
-                height: 140,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white10 : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: _buildDetailPreviewImage(widget.task.previewImage, isDark),
+                // 预览图 - 比例与卡片一致 (90:80 = 9:8)
+              AspectRatio(
+                aspectRatio: 90 / 80,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white10 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: _buildDetailPreviewImage(widget.task.previewImage, isDark),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -1159,21 +1163,39 @@ class _InputAreaState extends State<_InputArea> {
                   color: inputFieldColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: TextField(
-                  controller: widget.controller.messageController,
-                  maxLines: null,
-                  textInputAction: TextInputAction.newline,
-                  style: TextStyle(fontSize: 16, color: inputTextColor),
-                  enabled: !widget.controller.isLoading,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 10,
+                child: Focus(
+                  onKeyEvent: (node, event) {
+                    // PC端：回车发送，Shift+回车换行
+                    final isEnter = event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+                    if (PlatformInfos.isDesktop &&
+                        event is KeyDownEvent &&
+                        isEnter &&
+                        !HardwareKeyboard.instance.isShiftPressed) {
+                      if (!widget.controller.isLoading &&
+                          widget.controller.messageController.text.trim().isNotEmpty) {
+                        widget.controller.sendMessage();
+                      }
+                      return KeyEventResult.handled; // 阻止换行
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: TextField(
+                    controller: widget.controller.messageController,
+                    maxLines: null,
+                    textInputAction: TextInputAction.newline,
+                    style: TextStyle(fontSize: 16, color: inputTextColor),
+                    enabled: !widget.controller.isLoading,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
                     ),
+                    onSubmitted: (_) => widget.controller.sendMessage(),
                   ),
-                  onSubmitted: (_) => widget.controller.sendMessage(),
                 ),
               ),
             ),
