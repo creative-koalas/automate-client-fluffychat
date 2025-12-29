@@ -22,6 +22,7 @@ import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/unread_rooms_badge.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import '../../utils/stream_extension.dart';
 import 'chat_emoji_picker.dart';
 import 'chat_input_row.dart';
@@ -351,11 +352,20 @@ class ChatView extends StatelessWidget {
                           else if (controller.room.canSendDefaultMessages &&
                               controller.room.membership == Membership.join)
                             Container(
-                              margin: EdgeInsets.all(bottomSheetPadding),
-                              constraints: const BoxConstraints(
-                                maxWidth: FluffyThemes.maxTimelineWidth,
-                              ),
-                              alignment: Alignment.center,
+                              margin: PlatformInfos.isDesktop
+                                  ? EdgeInsets.symmetric(
+                                      vertical: bottomSheetPadding,
+                                      horizontal: 60.0,  // PC 端水平间隔（约为居中时的一半）
+                                    )
+                                  : EdgeInsets.all(bottomSheetPadding),
+                              constraints: PlatformInfos.isDesktop
+                                  ? null  // PC 端不限制宽度，动态适应
+                                  : const BoxConstraints(
+                                      maxWidth: FluffyThemes.maxTimelineWidth,
+                                    ),
+                              alignment: PlatformInfos.isDesktop
+                                  ? null  // PC 端不居中
+                                  : Alignment.center,
                               child: Material(
                                 clipBehavior: Clip.hardEdge,
                                 color: controller.selectedEvents.isNotEmpty

@@ -34,7 +34,9 @@ class ChatEventList extends StatelessWidget {
       theme.bubbleColor,
     ];
 
-    final horizontalPadding = FluffyThemes.isColumnMode(context) ? 8.0 : 0.0;
+    final horizontalPadding = PlatformInfos.isDesktop
+        ? 16.0
+        : FluffyThemes.isColumnMode(context) ? 8.0 : 0.0;
 
     final events = timeline.events.filterByVisibleInGui(
       threadId: controller.activeThreadId,

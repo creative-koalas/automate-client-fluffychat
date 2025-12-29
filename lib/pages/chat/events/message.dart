@@ -189,7 +189,16 @@ class Message extends StatelessWidget {
 
     final enterThread = this.enterThread;
 
-    return Center(
+    // PC 端消息靠边对齐（自己的靠右，对方的靠左），移动端居中
+    final Alignment messageAlignment;
+    if (PlatformInfos.isDesktop) {
+      messageAlignment = ownMessage ? Alignment.topRight : Alignment.topLeft;
+    } else {
+      messageAlignment = Alignment.center;
+    }
+
+    return Align(
+      alignment: messageAlignment,
       child: Swipeable(
         key: ValueKey(event.eventId),
         background: const Padding(
@@ -206,7 +215,12 @@ class Message extends StatelessWidget {
           constraints: const BoxConstraints(
             maxWidth: FluffyThemes.maxTimelineWidth,
           ),
-          padding: const EdgeInsets.all(8.0),
+          padding: EdgeInsets.only(
+            top: 8.0,
+            bottom: 8.0,
+            left: PlatformInfos.isDesktop ? 0.0 : 8.0,
+            right: 8.0,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment:
@@ -457,11 +471,10 @@ class Message extends StatelessWidget {
                                                         AppConfig.borderRadius,
                                                       ),
                                                     ),
-                                                    constraints:
-                                                        const BoxConstraints(
-                                                      maxWidth: FluffyThemes
-                                                              .columnWidth *
-                                                          1.5,
+                                                    constraints: BoxConstraints(
+                                                      maxWidth: PlatformInfos.isDesktop
+                                                          ? FluffyThemes.columnWidth * 2.5
+                                                          : FluffyThemes.columnWidth * 1.5,
                                                     ),
                                                     child: Column(
                                                       mainAxisSize:
