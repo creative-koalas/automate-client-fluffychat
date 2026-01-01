@@ -106,7 +106,10 @@ class ChatListViewBody extends StatelessWidget {
                     //       onStatusEdit: controller.setStatus,
                     //     ),
                     //   ),
-                    if (client.rooms.isNotEmpty && !controller.isSearchMode)
+                    // 移动端显示筛选按钮（PC 端已移至 ChatListHeader）
+                    if (!FluffyThemes.isColumnMode(context) &&
+                        client.rooms.isNotEmpty &&
+                        !controller.isSearchMode)
                       SizedBox(
                         height: 64,
                         child: ListView(
