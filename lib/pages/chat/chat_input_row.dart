@@ -52,304 +52,328 @@ class ChatInputRow extends StatelessWidget {
             onSend: controller.onVoiceMessageSend,
           );
         }
+        // 选择模式：显示操作按钮
+        if (controller.selectMode) {
+          final showReply = controller.selectedEvents.length == 1;
+          final isSent = showReply &&
+              controller.selectedEvents.first
+                  .getDisplayEvent(controller.timeline!)
+                  .status
+                  .isSent;
+          final isError = controller.selectedEvents
+              .every((event) => event.status == EventStatus.error);
+
+          return Row(
+            children: <Widget>[
+              // 删除/转发按钮
+              Expanded(
+                child: SizedBox(
+                  height: height,
+                  child: isError
+                      ? TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                          ),
+                          onPressed: controller.deleteErrorEventsAction,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(Icons.delete_forever_outlined, size: 18),
+                              const SizedBox(width: 2),
+                              Text(L10n.of(context).delete),
+                            ],
+                          ),
+                        )
+                      : TextButton(
+                          style: selectedTextButtonStyle,
+                          onPressed: controller.forwardEventsAction,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(Icons.keyboard_arrow_left_outlined, size: 18),
+                              Text(L10n.of(context).forward),
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+              // 复制按钮
+              Expanded(
+                child: SizedBox(
+                  height: height,
+                  child: TextButton(
+                    style: selectedTextButtonStyle,
+                    onPressed: controller.copyEventsAction,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Icon(Icons.copy_outlined, size: 18),
+                        const SizedBox(width: 2),
+                        Text(L10n.of(context).copy),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // 分享按钮
+              Expanded(
+                child: SizedBox(
+                  height: height,
+                  child: TextButton(
+                    style: selectedTextButtonStyle,
+                    onPressed: controller.shareEventsAction,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Icon(Icons.share_outlined, size: 18),
+                        const SizedBox(width: 2),
+                        Text(L10n.of(context).share),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // 回复/重试按钮
+              if (showReply)
+                Expanded(
+                  child: SizedBox(
+                    height: height,
+                    child: isSent
+                        ? TextButton(
+                            style: selectedTextButtonStyle,
+                            onPressed: controller.replyAction,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Text(L10n.of(context).reply),
+                                const Icon(Icons.keyboard_arrow_right, size: 18),
+                              ],
+                            ),
+                          )
+                        : TextButton(
+                            style: selectedTextButtonStyle,
+                            onPressed: controller.sendAgainAction,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Text(L10n.of(context).tryToSendAgain),
+                                const SizedBox(width: 2),
+                                const Icon(Icons.send_outlined, size: 16),
+                              ],
+                            ),
+                          ),
+                  ),
+                ),
+            ],
+          );
+        }
+
+        // 正常输入模式
         return Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: controller.selectMode
-              ? <Widget>[
-                  if (controller.selectedEvents
-                      .every((event) => event.status == EventStatus.error))
-                    SizedBox(
-                      height: height,
-                      child: TextButton(
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.error,
-                        ),
-                        onPressed: controller.deleteErrorEventsAction,
-                        child: Row(
-                          children: <Widget>[
-                            const Icon(Icons.delete_forever_outlined),
-                            Text(L10n.of(context).delete),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    SizedBox(
-                      height: height,
-                      child: TextButton(
-                        style: selectedTextButtonStyle,
-                        onPressed: controller.forwardEventsAction,
-                        child: Row(
-                          children: <Widget>[
-                            const Icon(Icons.keyboard_arrow_left_outlined),
-                            Text(L10n.of(context).forward),
-                          ],
-                        ),
-                      ),
-                    ),
-                  SizedBox(
-                    height: height,
-                    child: TextButton(
-                      style: selectedTextButtonStyle,
-                      onPressed: controller.copyEventsAction,
-                      child: Row(
-                        children: <Widget>[
-                          const Icon(Icons.copy_outlined),
-                          const SizedBox(width: 4),
-                          Text(L10n.of(context).copy),
-                        ],
-                      ),
-                    ),
+          children: <Widget>[
+            const SizedBox(width: 4),
+            AnimatedContainer(
+              duration: FluffyThemes.animationDuration,
+              curve: FluffyThemes.animationCurve,
+              width: controller.sendController.text.isNotEmpty ? 0 : height,
+              height: height,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(),
+              clipBehavior: Clip.hardEdge,
+              child: IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                color: theme.colorScheme.onPrimaryContainer,
+                onPressed: () => _showAttachmentBottomSheet(
+                  context,
+                  controller,
+                ),
+              ),
+            ),
+            if (PlatformInfos.isMobile)
+              AnimatedContainer(
+                duration: FluffyThemes.animationDuration,
+                curve: FluffyThemes.animationCurve,
+                width: controller.sendController.text.isNotEmpty ? 0 : height,
+                height: height,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(),
+                clipBehavior: Clip.hardEdge,
+                // 禁用录像功能，点击相机按钮直接拍照
+                child: IconButton(
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  onPressed: () => controller.onAddPopupMenuButtonSelected(
+                    AddPopupMenuActions.photoCamera,
                   ),
-                  SizedBox(
-                    height: height,
-                    child: TextButton(
-                      style: selectedTextButtonStyle,
-                      onPressed: controller.shareEventsAction,
-                      child: Row(
-                        children: <Widget>[
-                          const Icon(Icons.share_outlined),
-                          const SizedBox(width: 4),
-                          Text(L10n.of(context).share),
-                        ],
-                      ),
-                    ),
+                  iconSize: height * 0.5,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                // child: PopupMenuButton(
+                //   useRootNavigator: true,
+                //   icon: const Icon(Icons.camera_alt_outlined),
+                //   onSelected: controller.onAddPopupMenuButtonSelected,
+                //   iconColor: theme.colorScheme.onPrimaryContainer,
+                //   itemBuilder: (context) => [
+                //     PopupMenuItem(
+                //       value: AddPopupMenuActions.videoCamera,
+                //       child: ListTile(
+                //         leading: CircleAvatar(
+                //           backgroundColor:
+                //               theme.colorScheme.onPrimaryContainer,
+                //           foregroundColor:
+                //               theme.colorScheme.primaryContainer,
+                //           child: const Icon(Icons.videocam_outlined),
+                //         ),
+                //         title: Text(L10n.of(context).recordAVideo),
+                //         contentPadding: const EdgeInsets.all(0),
+                //       ),
+                //     ),
+                //     PopupMenuItem(
+                //       value: AddPopupMenuActions.photoCamera,
+                //       child: ListTile(
+                //         leading: CircleAvatar(
+                //           backgroundColor:
+                //               theme.colorScheme.onPrimaryContainer,
+                //           foregroundColor:
+                //               theme.colorScheme.primaryContainer,
+                //           child: const Icon(Icons.camera_alt_outlined),
+                //         ),
+                //         title: Text(L10n.of(context).takeAPhoto),
+                //         contentPadding: const EdgeInsets.all(0),
+                //       ),
+                //     ),
+                //   ],
+                // ),
+              ),
+            Container(
+              height: height,
+              width: height,
+              alignment: Alignment.center,
+              child: IconButton(
+                tooltip: L10n.of(context).emojis,
+                color: theme.colorScheme.onPrimaryContainer,
+                icon: PageTransitionSwitcher(
+                  transitionBuilder: (
+                    Widget child,
+                    Animation<double> primaryAnimation,
+                    Animation<double> secondaryAnimation,
+                  ) {
+                    return SharedAxisTransition(
+                      animation: primaryAnimation,
+                      secondaryAnimation: secondaryAnimation,
+                      transitionType: SharedAxisTransitionType.scaled,
+                      fillColor: Colors.transparent,
+                      child: child,
+                    );
+                  },
+                  child: Icon(
+                    controller.showEmojiPicker
+                        ? Icons.keyboard
+                        : Icons.add_reaction_outlined,
+                    key: ValueKey(controller.showEmojiPicker),
                   ),
-                  controller.selectedEvents.length == 1
-                      ? controller.selectedEvents.first
-                              .getDisplayEvent(controller.timeline!)
-                              .status
-                              .isSent
-                          ? SizedBox(
-                              height: height,
-                              child: TextButton(
-                                style: selectedTextButtonStyle,
-                                onPressed: controller.replyAction,
-                                child: Row(
-                                  children: <Widget>[
-                                    Text(L10n.of(context).reply),
-                                    const Icon(Icons.keyboard_arrow_right),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : SizedBox(
-                              height: height,
-                              child: TextButton(
-                                style: selectedTextButtonStyle,
-                                onPressed: controller.sendAgainAction,
-                                child: Row(
-                                  children: <Widget>[
-                                    Text(L10n.of(context).tryToSendAgain),
-                                    const SizedBox(width: 4),
-                                    const Icon(Icons.send_outlined, size: 16),
-                                  ],
-                                ),
-                              ),
-                            )
-                      : const SizedBox.shrink(),
-                ]
-              : <Widget>[
-                  const SizedBox(width: 4),
-                  AnimatedContainer(
-                    duration: FluffyThemes.animationDuration,
-                    curve: FluffyThemes.animationCurve,
-                    width:
-                        controller.sendController.text.isNotEmpty ? 0 : height,
-                    height: height,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(),
-                    clipBehavior: Clip.hardEdge,
-                    child: IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: theme.colorScheme.onPrimaryContainer,
-                      onPressed: () => _showAttachmentBottomSheet(
-                        context,
-                        controller,
-                      ),
+                ),
+                onPressed: controller.emojiPickerAction,
+              ),
+            ),
+            if (Matrix.of(context).isMultiAccount &&
+                Matrix.of(context).hasComplexBundles &&
+                Matrix.of(context).currentBundle.length > 1)
+              Container(
+                height: height,
+                width: height,
+                alignment: Alignment.center,
+                child: _ChatAccountPicker(controller),
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 0.0),
+                child: InputBar(
+                  room: controller.room,
+                  minLines: 1,
+                  maxLines: 8,
+                  autofocus: !PlatformInfos.isMobile,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: AppSettings.sendOnEnter.value == true &&
+                          PlatformInfos.isMobile
+                      ? TextInputAction.send
+                      : null,
+                  onSubmitted: controller.onInputBarSubmitted,
+                  onSubmitImage: controller.sendImageFromClipBoard,
+                  focusNode: controller.inputFocus,
+                  controller: controller.sendController,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.only(
+                      left: 6.0,
+                      right: 6.0,
+                      bottom: 6.0,
+                      top: 3.0,
                     ),
+                    counter: const SizedBox.shrink(),
+                    hintText: L10n.of(context).writeAMessage,
+                    hintMaxLines: 1,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    filled: false,
                   ),
-                  if (PlatformInfos.isMobile)
-                    AnimatedContainer(
-                      duration: FluffyThemes.animationDuration,
-                      curve: FluffyThemes.animationCurve,
-                      width: controller.sendController.text.isNotEmpty
-                          ? 0
-                          : height,
-                      height: height,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(),
-                      clipBehavior: Clip.hardEdge,
-                      // 禁用录像功能，点击相机按钮直接拍照
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        onPressed: () => controller.onAddPopupMenuButtonSelected(
-                          AddPopupMenuActions.photoCamera,
-                        ),
-                        iconSize: height * 0.5,
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                      // child: PopupMenuButton(
-                      //   useRootNavigator: true,
-                      //   icon: const Icon(Icons.camera_alt_outlined),
-                      //   onSelected: controller.onAddPopupMenuButtonSelected,
-                      //   iconColor: theme.colorScheme.onPrimaryContainer,
-                      //   itemBuilder: (context) => [
-                      //     PopupMenuItem(
-                      //       value: AddPopupMenuActions.videoCamera,
-                      //       child: ListTile(
-                      //         leading: CircleAvatar(
-                      //           backgroundColor:
-                      //               theme.colorScheme.onPrimaryContainer,
-                      //           foregroundColor:
-                      //               theme.colorScheme.primaryContainer,
-                      //           child: const Icon(Icons.videocam_outlined),
-                      //         ),
-                      //         title: Text(L10n.of(context).recordAVideo),
-                      //         contentPadding: const EdgeInsets.all(0),
-                      //       ),
-                      //     ),
-                      //     PopupMenuItem(
-                      //       value: AddPopupMenuActions.photoCamera,
-                      //       child: ListTile(
-                      //         leading: CircleAvatar(
-                      //           backgroundColor:
-                      //               theme.colorScheme.onPrimaryContainer,
-                      //           foregroundColor:
-                      //               theme.colorScheme.primaryContainer,
-                      //           child: const Icon(Icons.camera_alt_outlined),
-                      //         ),
-                      //         title: Text(L10n.of(context).takeAPhoto),
-                      //         contentPadding: const EdgeInsets.all(0),
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
-                    ),
-                  Container(
-                    height: height,
-                    width: height,
-                    alignment: Alignment.center,
-                    child: IconButton(
-                      tooltip: L10n.of(context).emojis,
-                      color: theme.colorScheme.onPrimaryContainer,
-                      icon: PageTransitionSwitcher(
-                        transitionBuilder: (
-                          Widget child,
-                          Animation<double> primaryAnimation,
-                          Animation<double> secondaryAnimation,
-                        ) {
-                          return SharedAxisTransition(
-                            animation: primaryAnimation,
-                            secondaryAnimation: secondaryAnimation,
-                            transitionType: SharedAxisTransitionType.scaled,
-                            fillColor: Colors.transparent,
-                            child: child,
-                          );
-                        },
-                        child: Icon(
-                          controller.showEmojiPicker
-                              ? Icons.keyboard
-                              : Icons.add_reaction_outlined,
-                          key: ValueKey(controller.showEmojiPicker),
-                        ),
-                      ),
-                      onPressed: controller.emojiPickerAction,
-                    ),
+                  onChanged: controller.onInputBarChanged,
+                  suggestionEmojis: getDefaultEmojiLocale(
+                    AppSettings.emojiSuggestionLocale.value.isNotEmpty
+                        ? Locale(AppSettings.emojiSuggestionLocale.value)
+                        : Localizations.localeOf(context),
+                  ).fold(
+                    [],
+                    (emojis, category) => emojis..addAll(category.emoji),
                   ),
-                  if (Matrix.of(context).isMultiAccount &&
-                      Matrix.of(context).hasComplexBundles &&
-                      Matrix.of(context).currentBundle.length > 1)
-                    Container(
-                      height: height,
-                      width: height,
-                      alignment: Alignment.center,
-                      child: _ChatAccountPicker(controller),
-                    ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 0.0),
-                      child: InputBar(
-                        room: controller.room,
-                        minLines: 1,
-                        maxLines: 8,
-                        autofocus: !PlatformInfos.isMobile,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction:
-                            AppSettings.sendOnEnter.value == true &&
-                                    PlatformInfos.isMobile
-                                ? TextInputAction.send
-                                : null,
-                        onSubmitted: controller.onInputBarSubmitted,
-                        onSubmitImage: controller.sendImageFromClipBoard,
-                        focusNode: controller.inputFocus,
-                        controller: controller.sendController,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.only(
-                            left: 6.0,
-                            right: 6.0,
-                            bottom: 6.0,
-                            top: 3.0,
-                          ),
-                          counter: const SizedBox.shrink(),
-                          hintText: L10n.of(context).writeAMessage,
-                          hintMaxLines: 1,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          filled: false,
-                        ),
-                        onChanged: controller.onInputBarChanged,
-                        suggestionEmojis: getDefaultEmojiLocale(
-                          AppSettings.emojiSuggestionLocale.value.isNotEmpty
-                              ? Locale(AppSettings.emojiSuggestionLocale.value)
-                              : Localizations.localeOf(context),
-                        ).fold(
-                          [],
-                          (emojis, category) => emojis..addAll(category.emoji),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    height: height,
-                    width: height,
-                    alignment: Alignment.center,
-                    child:
-                        // 禁用语音消息功能，始终显示发送按钮
-                        // PlatformInfos.platformCanRecord &&
-                        //         controller.sendController.text.isEmpty
-                        //     ? IconButton(
-                        //         tooltip: L10n.of(context).voiceMessage,
-                        //         onPressed: () =>
-                        //             ScaffoldMessenger.of(context).showSnackBar(
-                        //           SnackBar(
-                        //             content: Text(
-                        //               L10n.of(context)
-                        //                   .longPressToRecordVoiceMessage,
-                        //             ),
-                        //           ),
-                        //         ),
-                        //         onLongPress: () => recordingViewModel
-                        //             .startRecording(controller.room),
-                        //         style: IconButton.styleFrom(
-                        //           backgroundColor: theme.bubbleColor,
-                        //           foregroundColor: theme.onBubbleColor,
-                        //         ),
-                        //         icon: const Icon(Icons.mic_none_outlined),
-                        //       )
-                        //     :
-                        IconButton(
-                            tooltip: L10n.of(context).send,
-                            onPressed: controller.send,
-                            style: IconButton.styleFrom(
-                              backgroundColor: theme.bubbleColor,
-                              foregroundColor: theme.onBubbleColor,
-                            ),
-                            icon: const Icon(Icons.send_outlined),
-                          ),
-                  ),
-                ],
+                ),
+              ),
+            ),
+            Container(
+              height: height,
+              width: height,
+              alignment: Alignment.center,
+              child:
+                  // 禁用语音消息功能，始终显示发送按钮
+                  // PlatformInfos.platformCanRecord &&
+                  //         controller.sendController.text.isEmpty
+                  //     ? IconButton(
+                  //         tooltip: L10n.of(context).voiceMessage,
+                  //         onPressed: () =>
+                  //             ScaffoldMessenger.of(context).showSnackBar(
+                  //           SnackBar(
+                  //             content: Text(
+                  //               L10n.of(context)
+                  //                   .longPressToRecordVoiceMessage,
+                  //             ),
+                  //           ),
+                  //         ),
+                  //         onLongPress: () => recordingViewModel
+                  //             .startRecording(controller.room),
+                  //         style: IconButton.styleFrom(
+                  //           backgroundColor: theme.bubbleColor,
+                  //           foregroundColor: theme.onBubbleColor,
+                  //         ),
+                  //         icon: const Icon(Icons.mic_none_outlined),
+                  //       )
+                  //     :
+                  IconButton(
+                tooltip: L10n.of(context).send,
+                onPressed: controller.send,
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.bubbleColor,
+                  foregroundColor: theme.onBubbleColor,
+                ),
+                icon: const Icon(Icons.send_outlined),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -442,7 +466,7 @@ void _showAttachmentBottomSheet(
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

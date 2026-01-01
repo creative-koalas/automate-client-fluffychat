@@ -134,7 +134,7 @@ class Message extends StatelessWidget {
 
     final displayEvent = event.getDisplayEvent(timeline);
     const roundedCorner = Radius.circular(AppConfig.borderRadius);
-    final borderRadius = BorderRadius.all(roundedCorner);
+    const borderRadius = BorderRadius.all(roundedCorner);
     final noBubble = ({
               MessageTypes.Video,
               MessageTypes.Image,
@@ -197,7 +197,8 @@ class Message extends StatelessWidget {
       messageAlignment = Alignment.center;
     }
 
-    return Align(
+    // 消息主体
+    final Widget messageWidget = Align(
       alignment: messageAlignment,
       child: Swipeable(
         key: ValueKey(event.eventId),
@@ -226,7 +227,8 @@ class Message extends StatelessWidget {
             crossAxisAlignment:
                 ownMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: <Widget>[
-              if (displayTime || selected)
+              // PC 端时间在外层显示，这里不显示
+              if ((displayTime || selected) && !PlatformInfos.isDesktop)
                 Padding(
                   padding: displayTime
                       ? const EdgeInsets.symmetric(vertical: 8.0)
@@ -285,17 +287,24 @@ class Message extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(
                                     AppConfig.borderRadius / 2,
                                   ),
-                                  color: selected || highlightMarker
-                                      ? theme.colorScheme.secondaryContainer
-                                          .withAlpha(128)
-                                      : Colors.transparent,
+                                  // PC 端选择模式下，选择高亮在外层显示
+                                  color: (longPressSelect && PlatformInfos.isDesktop)
+                                      ? Colors.transparent
+                                      : (selected || highlightMarker
+                                          ? theme.colorScheme.secondaryContainer
+                                              .withAlpha(128)
+                                          : Colors.transparent),
                                 ),
                               ),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: rowMainAxisAlignment,
                                 children: [
-                                  if (longPressSelect && !event.redacted)
+                                  // PC 端选择模式下勾选框在外层，这里不显示
+                                  // 移动端选择模式下仍在这里显示
+                                  if (longPressSelect &&
+                                      !event.redacted &&
+                                      !PlatformInfos.isDesktop)
                                     SizedBox(
                                       height: 32,
                                       width: Avatar.defaultSize,
@@ -310,7 +319,7 @@ class Message extends StatelessWidget {
                                         onPressed: () => onSelect(event),
                                       ),
                                     )
-                                  else if (ownMessage)
+                                  else if (ownMessage && !longPressSelect)
                                     SizedBox(
                                       width: Avatar.defaultSize,
                                       child: Center(
@@ -332,7 +341,10 @@ class Message extends StatelessWidget {
                                         ),
                                       ),
                                     )
-                                  else
+                                  else if (ownMessage && longPressSelect)
+                                    // PC 端选择模式下，自己的消息不显示头像占位
+                                    const SizedBox.shrink()
+                                  else if (!ownMessage && !longPressSelect)
                                     FutureBuilder<User?>(
                                       future: event.fetchSenderUser(),
                                       builder: (context, snapshot) {
@@ -353,7 +365,34 @@ class Message extends StatelessWidget {
                                               : null,
                                         );
                                       },
-                                    ),
+                                    )
+                                  else if (!ownMessage && longPressSelect)
+                                    // PC 端选择模式下，别人的消息也不显示头像（勾选框在外层）
+                                    // 移动端保持原有逻辑
+                                    PlatformInfos.isDesktop
+                                        ? const SizedBox.shrink()
+                                        : FutureBuilder<User?>(
+                                            future: event.fetchSenderUser(),
+                                            builder: (context, snapshot) {
+                                              final user = snapshot.data ??
+                                                  event.senderFromMemoryOrFallback;
+                                              return Avatar(
+                                                mxContent: user.avatarUrl,
+                                                name: user.calcDisplayname(),
+                                                onTap: () =>
+                                                    showMemberActionsPopupMenu(
+                                                  context: context,
+                                                  user: user,
+                                                  onMention: onMention,
+                                                ),
+                                                presenceUserId: user.stateKey,
+                                                presenceBackgroundColor:
+                                                    wallpaperMode
+                                                        ? Colors.transparent
+                                                        : null,
+                                              );
+                                            },
+                                          ),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -941,6 +980,128 @@ class Message extends StatelessWidget {
         ),
       ),
     );
+
+    // PC 端选择模式下，勾选框独立于消息位置，始终在最左边
+    // 选择高亮和时间跨全宽显示
+    if (longPressSelect && !event.redacted && PlatformInfos.isDesktop) {
+      return Container(
+        // 选择高亮背景跨全宽
+        color: selected
+            ? theme.colorScheme.secondaryContainer.withAlpha(128)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 时间居中显示（跨全宽）
+            if (displayTime || selected)
+              Padding(
+                padding: displayTime
+                    ? const EdgeInsets.symmetric(vertical: 8.0)
+                    : EdgeInsets.zero,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Material(
+                        borderRadius:
+                            BorderRadius.circular(AppConfig.borderRadius * 2),
+                        color: theme.colorScheme.surface.withAlpha(128),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 2.0,
+                          ),
+                          child: Text(
+                            event.originServerTs.localizedTime(context),
+                            style: TextStyle(
+                              fontSize: 12 * AppSettings.fontSizeFactor.value,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.secondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // 消息行：勾选框 + 消息内容
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 勾选框始终在最左边
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: SizedBox(
+                    width: Avatar.defaultSize,
+                    height: 32,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      tooltip: L10n.of(context).select,
+                      icon: Icon(
+                        selected ? Icons.check_circle : Icons.circle_outlined,
+                      ),
+                      onPressed: () => onSelect(event),
+                    ),
+                  ),
+                ),
+                // 消息内容填充剩余空间
+                Expanded(child: messageWidget),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // PC 端非选择模式下，时间也居中显示
+    if (PlatformInfos.isDesktop && (displayTime || selected)) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 时间居中显示（跨全宽）
+          Padding(
+            padding: displayTime
+                ? const EdgeInsets.symmetric(vertical: 8.0)
+                : EdgeInsets.zero,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Material(
+                    borderRadius:
+                        BorderRadius.circular(AppConfig.borderRadius * 2),
+                    color: theme.colorScheme.surface.withAlpha(128),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 2.0,
+                      ),
+                      child: Text(
+                        event.originServerTs.localizedTime(context),
+                        style: TextStyle(
+                          fontSize: 12 * AppSettings.fontSizeFactor.value,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.secondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 消息内容
+          messageWidget,
+        ],
+      );
+    }
+
+    return messageWidget;
   }
 }
 
