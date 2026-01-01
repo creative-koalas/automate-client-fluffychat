@@ -52,6 +52,10 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   static DesktopPageIndex _savedCurrentPage = DesktopPageIndex.messages;
   // 保存消息列表宽度
   static double _chatListWidth = FluffyThemes.columnWidth;
+  // 缓存用户 Profile，避免重复网络请求
+  static Profile? _cachedProfile;
+  // 缓存未读计数
+  static int _cachedUnreadCount = 0;
 
   // 消息列表最小/最大宽度
   static const double _minChatListWidth = 280.0;
@@ -61,7 +65,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   int _unreadCount = 0;
   bool _isMenuOpen = false;
   bool _isDraggingDivider = false;
-  
+
   // 监听同步事件以更新未读计数
   StreamSubscription? _syncSubscription;
 
@@ -78,11 +82,29 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     _currentPage = widget.activeChat != null
         ? DesktopPageIndex.messages
         : _savedCurrentPage;
+    // 先使用缓存的未读计数
+    _unreadCount = _cachedUnreadCount;
     // 延迟到 context 可用后初始化
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserProfile();
       _updateUnreadCount();
       _setupSyncListener();
     });
+  }
+
+  /// 加载用户 Profile（只在首次或缓存为空时请求）
+  Future<void> _loadUserProfile() async {
+    if (!mounted) return;
+    if (_cachedProfile != null) return; // 已有缓存，不重复请求
+    try {
+      final matrix = Matrix.of(context);
+      if (matrix.client.isLogged()) {
+        final profile = await matrix.client.fetchOwnProfile();
+        if (mounted) {
+          setState(() => _cachedProfile = profile);
+        }
+      }
+    } catch (_) {}
   }
 
   void _setupSyncListener() {
@@ -117,12 +139,14 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     try {
       final matrix = Matrix.of(context);
       final client = matrix.client;
-      int count = 0;
+      var count = 0;
       for (final room in client.rooms) {
         if (room.isUnreadOrInvited) {
           count += room.notificationCount;
         }
       }
+      // 更新缓存和状态
+      _cachedUnreadCount = count;
       if (_unreadCount != count) {
         setState(() => _unreadCount = count);
       }
@@ -275,91 +299,87 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     );
   }
 
-  /// 构建自适应宽度的 header - 使用单个 widget 避免重建问题
+  /// 构建自适应宽度的 header - 使用缓存的 Profile 避免重复请求
   Widget _buildAdaptiveHeader() {
     final theme = Theme.of(context);
     final matrix = Matrix.of(context);
+    final userId = matrix.client.userID ?? '';
+    var localpart = '用户';
+    if (userId.startsWith('@') && userId.contains(':')) {
+      localpart = userId.substring(1, userId.indexOf(':'));
+    }
+    final displayName = _cachedProfile?.displayName ?? localpart;
+    final avatarUrl = _cachedProfile?.avatarUrl;
 
-    return FutureBuilder<Profile>(
-      future: matrix.client.isLogged() ? matrix.client.fetchOwnProfile() : null,
-      builder: (context, snapshot) {
-        final userId = matrix.client.userID ?? '';
-        String localpart = '用户';
-        if (userId.startsWith('@') && userId.contains(':')) {
-          localpart = userId.substring(1, userId.indexOf(':'));
-        }
-        final displayName = snapshot.data?.displayName ?? localpart;
+    // 预构建头像组件，避免动画期间重复创建
+    final avatar = RepaintBoundary(
+      child: Avatar(
+        mxContent: avatarUrl,
+        name: displayName,
+        size: 40,
+      ),
+    );
 
-        // 使用 LayoutBuilder 自适应宽度，避免切换 widget 导致 PopupMenu 失效
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final showName = constraints.maxWidth > 150;
+    // 使用 LayoutBuilder 自适应宽度
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showName = constraints.maxWidth > 150;
 
-            return Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: showName ? 16 : 0,
-                  vertical: 12,
-                ),
-                child: Material(
-                  clipBehavior: Clip.hardEdge,
-                  borderRadius: BorderRadius.circular(99),
-                  color: Colors.transparent,
-                  child: PopupMenuButton<Object>(
-                    popUpAnimationStyle: AnimationStyle.noAnimation,
-                    onOpened: () => setState(() => _isMenuOpen = true),
-                    onCanceled: () => setState(() => _isMenuOpen = false),
-                    onSelected: (value) {
-                      setState(() => _isMenuOpen = false);
-                      _onMenuSelected(value);
-                    },
-                    itemBuilder: _buildMenuItems,
-                    child: showName
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Avatar(
-                                mxContent: snapshot.data?.avatarUrl,
-                                name: displayName,
-                                size: 40,
-                              ),
-                              const SizedBox(width: 12),
-                              Flexible(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      displayName,
-                                      style: theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                    Text(
-                                      userId,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ],
+        return Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: showName ? 16 : 0,
+              vertical: 12,
+            ),
+            child: Material(
+              clipBehavior: Clip.hardEdge,
+              borderRadius: BorderRadius.circular(99),
+              color: Colors.transparent,
+              child: PopupMenuButton<Object>(
+                popUpAnimationStyle: AnimationStyle.noAnimation,
+                onOpened: () => setState(() => _isMenuOpen = true),
+                onCanceled: () => setState(() => _isMenuOpen = false),
+                onSelected: (value) {
+                  setState(() => _isMenuOpen = false);
+                  _onMenuSelected(value);
+                },
+                itemBuilder: _buildMenuItems,
+                child: showName
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          avatar,
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  displayName,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
-                              ),
-                            ],
-                          )
-                        : Avatar(
-                            mxContent: snapshot.data?.avatarUrl,
-                            name: displayName,
-                            size: 44,
+                                Text(
+                                  userId,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ],
+                            ),
                           ),
-                  ),
-                ),
+                        ],
+                      )
+                    : avatar,
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -515,17 +535,17 @@ class _DesktopLayoutState extends State<DesktopLayout> {
         label: '消息',
         badgeCount: _unreadCount,
       ),
-      SidebarMenuItem(
+      const SidebarMenuItem(
         icon: Icons.people_outline,
         selectedIcon: Icons.people,
         label: '员工',
       ),
-      SidebarMenuItem(
+      const SidebarMenuItem(
         icon: Icons.person_add_outlined,
         selectedIcon: Icons.person_add,
         label: '招聘',
       ),
-      SidebarMenuItem(
+      const SidebarMenuItem(
         icon: Icons.school_outlined,
         selectedIcon: Icons.school,
         label: '培训',
@@ -541,7 +561,6 @@ class _DesktopLayoutState extends State<DesktopLayout> {
             selectedIndex: _currentPage.value,
             onItemSelected: _onPageSelected,
             header: _buildAdaptiveHeader(),
-            collapsedHeader: _buildAdaptiveHeader(),
             backgroundColor: theme.colorScheme.surface,
             preventCollapse: _isMenuOpen,
           ),

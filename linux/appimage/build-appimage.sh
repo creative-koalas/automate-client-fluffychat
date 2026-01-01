@@ -119,7 +119,8 @@ cd "$PROJECT_ROOT/build"
 export ARCH=x86_64
 
 # 生成 AppImage
-"$APPIMAGETOOL" --no-appstream "$APPDIR" "${APP_NAME}-x86_64.AppImage"
+# 使用 APPIMAGE_EXTRACT_AND_RUN 避免 FUSE 挂载问题（新版 Ubuntu）
+APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGETOOL" --no-appstream "$APPDIR" "${APP_NAME}-x86_64.AppImage"
 
 echo ""
 echo "=== 打包完成 ==="
