@@ -395,12 +395,12 @@ class InputBar extends StatelessWidget {
       focusNode: focusNode,
       textEditingController: controller,
       optionsBuilder: getSuggestions,
-      fieldViewBuilder: (context, controller, autocompleteFocusNode, onFieldSubmitted) {
+      fieldViewBuilder: (context, textController, autocompleteFocusNode, onFieldSubmitted) {
         final textField = TextField(
-          controller: controller,
+          controller: textController,
           focusNode: focusNode ?? autocompleteFocusNode,
           readOnly: readOnly,
-        contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, controller),
+        contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, textController),
         contentInsertionConfiguration: ContentInsertionConfiguration(
           onContentInserted: (KeyboardInsertedContent content) {
             final data = content.data;
@@ -441,6 +441,7 @@ class InputBar extends StatelessWidget {
         );
 
         // PC 端：按 Enter 发送消息（Shift+Enter 换行）
+        // Enter 键始终用于发送消息，自动补全只能通过点击选择
         if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
           return Focus(
             onKeyEvent: (node, event) {
@@ -448,7 +449,7 @@ class InputBar extends StatelessWidget {
                   (event.logicalKey == LogicalKeyboardKey.enter ||
                       event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
                   !HardwareKeyboard.instance.isShiftPressed) {
-                final text = controller.text.trim();
+                final text = textController.text.trim();
                 if (text.isNotEmpty) {
                   onSubmitted?.call(text);
                 }
