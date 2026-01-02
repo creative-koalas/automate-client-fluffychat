@@ -339,7 +339,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     OnboardingResult? result;
     try {
       result = await _createAgentFuture;
-      debugPrint('[Onboarding] Agent created: agentId=${result?.agentId}, matrixUserId=${result?.matrixUserId}');
+      debugPrint('[Onboarding] Agent created: agentId=${result?.agentId}, matrixUserId=${result?.matrixUserId}, invitationExpired=${result?.invitationExpired}');
     } catch (e) {
       debugPrint('[Onboarding] Agent creation failed: $e');
       _showLoginErrorAndRedirect('创建员工失败，请重试');
@@ -347,6 +347,13 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     }
 
     if (!mounted) return;
+
+    // 邀请码已过期，跳过 Agent 创建，显示友好提示
+    if (result?.invitationExpired == true) {
+      debugPrint('[Onboarding] Invitation code expired, no agent created');
+      _showInvitationExpiredAndRedirect();
+      return;
+    }
 
     // 登录 Matrix（使用用户的 Matrix 账号，不是 Agent 的）
     final matrixAccessToken = backend.auth.matrixAccessToken;
@@ -439,6 +446,35 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         context.go(kIsWeb ? '/login-signup' : '/');
       }
     });
+  }
+
+  /// 邀请码过期提示，引导用户重新申请
+  void _showInvitationExpiredAndRedirect() {
+    if (!mounted) return;
+
+    // 显示对话框而非 SnackBar，更醒目
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('试用已过期'),
+        content: const Text(
+          '您的试用邀请码已过期，暂时无法为您创建员工。\n\n'
+          '请前往官网重新申请试用名额，我们会尽快为您安排。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // 登出并跳转到登录页
+              backend.auth.markLoggedOut();
+              context.go('/login-signup');
+            },
+            child: const Text('我知道了'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onInputChanged() {

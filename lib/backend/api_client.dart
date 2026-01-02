@@ -432,6 +432,7 @@ class PsygoApiClient {
       agentId: respData?['agent_id'] as String? ?? '',
       matrixUserId: respData?['matrix_user_id'] as String? ?? '',
       podUrl: respData?['pod_url'] as String? ?? '',
+      invitationExpired: respData?['invitation_expired'] as bool? ?? false,
     );
   }
 
@@ -866,11 +867,13 @@ class OnboardingResult {
   final String agentId;
   final String matrixUserId;
   final String podUrl;
+  final bool invitationExpired; // 邀请码是否已过期（过期则无 Agent 创建）
 
   OnboardingResult({
     required this.agentId,
     required this.matrixUserId,
     required this.podUrl,
+    this.invitationExpired = false,
   });
 }
 
