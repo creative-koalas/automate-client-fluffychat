@@ -14,6 +14,7 @@ import '../../widgets/employee_card.dart';
 import '../../widgets/employee_detail_sheet.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeleton_card.dart';
+import '../../widgets/trial_countdown_banner.dart';
 
 /// 员工列表 Tab
 /// 显示当前用户的所有 Agent（员工）
@@ -38,6 +39,7 @@ class EmployeesTabState extends State<EmployeesTab>
   String? _error;
   int? _nextCursor;
   bool _hasMore = true;
+  String? _trialExpiresAt;
 
   // 轮询定时器：用于检测员工 isReady 状态变化
   Timer? _readyPollingTimer;
@@ -90,6 +92,7 @@ class EmployeesTabState extends State<EmployeesTab>
           _employees = page.agents;
           _nextCursor = page.nextCursor;
           _hasMore = page.hasNextPage;
+          _trialExpiresAt = page.trialExpiresAt;
           _isLoading = false;
         });
         // 检查是否需要启动/停止轮询
@@ -526,7 +529,6 @@ class EmployeesTabState extends State<EmployeesTab>
         builder: (context, constraints) {
           // 计算最佳列数：每列最小宽度 280，最大宽度 400
           const minCardWidth = 280.0;
-          const maxCardWidth = 400.0;
           final availableWidth = constraints.maxWidth - 32; // 减去左右 padding
 
           // 计算列数（至少 2 列，最多 5 列）
@@ -539,77 +541,111 @@ class EmployeesTabState extends State<EmployeesTab>
           // 根据卡片宽度调整宽高比（数值越小，卡片越高）
           final aspectRatio = cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
 
-          return GridView.builder(
+          return CustomScrollView(
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: 32,
-            ),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: aspectRatio,
-            ),
-            itemCount: _employees.length + (_isLoadingMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == _employees.length) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final employee = _employees[index];
-              return GestureDetector(
-                // PC端使用右键触发快捷菜单
-                onSecondaryTapDown: (details) {
-                  _onEmployeeLongPress(employee, details.globalPosition);
-                },
-                child: EmployeeCard(
-                  employee: employee,
-                  onTap: () => _onEmployeeTap(employee),
+            slivers: [
+              // 试用期倒计时横幅
+              if (_trialExpiresAt != null)
+                SliverToBoxAdapter(
+                  child: TrialCountdownBanner(
+                    expiresAt: _trialExpiresAt!,
+                    onExpired: _refresh,
+                  ),
                 ),
-              );
-            },
+              // 员工网格
+              SliverPadding(
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 8,
+                  bottom: 32,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: aspectRatio,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index == _employees.length) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final employee = _employees[index];
+                      return GestureDetector(
+                        // PC端使用右键触发快捷菜单
+                        onSecondaryTapDown: (details) {
+                          _onEmployeeLongPress(employee, details.globalPosition);
+                        },
+                        child: EmployeeCard(
+                          employee: employee,
+                          onTap: () => _onEmployeeTap(employee),
+                        ),
+                      );
+                    },
+                    childCount: _employees.length + (_isLoadingMore ? 1 : 0),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       );
     }
 
     // 移动端：列表布局
-    return ListView.builder(
+    return CustomScrollView(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 96,
-      ),
-      itemCount: _employees.length + (_isLoadingMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _employees.length) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final employee = _employees[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: GestureDetector(
-            onLongPressStart: (details) {
-              _onEmployeeLongPress(employee, details.globalPosition);
-            },
-            child: EmployeeCard(
-              employee: employee,
-              onTap: () => _onEmployeeTap(employee),
+      slivers: [
+        // 试用期倒计时横幅
+        if (_trialExpiresAt != null)
+          SliverToBoxAdapter(
+            child: TrialCountdownBanner(
+              expiresAt: _trialExpiresAt!,
+              onExpired: _refresh,
             ),
           ),
-        );
-      },
+        // 员工列表
+        SliverPadding(
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: 96,
+          ),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index == _employees.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final employee = _employees[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GestureDetector(
+                    onLongPressStart: (details) {
+                      _onEmployeeLongPress(employee, details.globalPosition);
+                    },
+                    child: EmployeeCard(
+                      employee: employee,
+                      onTap: () => _onEmployeeTap(employee),
+                    ),
+                  ),
+                );
+              },
+              childCount: _employees.length + (_isLoadingMore ? 1 : 0),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
