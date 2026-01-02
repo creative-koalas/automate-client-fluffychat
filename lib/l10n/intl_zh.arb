@@ -3908,5 +3908,17 @@
     "orderInstant": "即时到账",
     "@orderInstant": {},
     "orderSecurityHint": "支付过程采用银行级SSL加密传输，确保资金安全",
-    "@orderSecurityHint": {}
+    "@orderSecurityHint": {},
+    "trialPeriod": "限时体验",
+    "@trialPeriod": {},
+    "trialExpired": "体验已结束",
+    "@trialExpired": {},
+    "trialRemainingDays": "剩余 {days}天 {hours}时 {minutes}分",
+    "@trialRemainingDays": {},
+    "trialRemainingHours": "剩余 {hours}时 {minutes}分",
+    "@trialRemainingHours": {},
+    "trialRemainingMinutes": "剩余 {minutes}分钟",
+    "@trialRemainingMinutes": {},
+    "trialHint": "到期后员工将被删除，但聊天记录会保留",
+    "@trialHint": {}
 }

@@ -232,10 +232,15 @@ class AgentPage {
   final int? nextCursor;
   final bool hasNextPage;
 
+  /// 试用期到期时间（ISO 8601 格式）
+  /// 用于显示全局倒计时
+  final String? trialExpiresAt;
+
   const AgentPage({
     required this.agents,
     this.nextCursor,
     required this.hasNextPage,
+    this.trialExpiresAt,
   });
 
   factory AgentPage.fromJson(Map<String, dynamic> json) {
@@ -244,6 +249,31 @@ class AgentPage {
       agents: agentsJson.map((e) => Agent.fromJson(e as Map<String, dynamic>)).toList(),
       nextCursor: json['next_cursor'] as int?,
       hasNextPage: json['has_next_page'] as bool? ?? false,
+      trialExpiresAt: json['trial_expires_at'] as String?,
     );
+  }
+
+  /// 获取试用期剩余时间
+  /// 返回 null 表示没有试用期限制或已过期
+  Duration? get trialRemaining {
+    if (trialExpiresAt == null) return null;
+    try {
+      final expiresAt = DateTime.parse(trialExpiresAt!);
+      final remaining = expiresAt.difference(DateTime.now());
+      return remaining.isNegative ? null : remaining;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 试用期是否已过期
+  bool get isTrialExpired {
+    if (trialExpiresAt == null) return false;
+    try {
+      final expiresAt = DateTime.parse(trialExpiresAt!);
+      return DateTime.now().isAfter(expiresAt);
+    } catch (_) {
+      return false;
+    }
   }
 }

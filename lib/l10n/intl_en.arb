@@ -3858,5 +3858,32 @@
   "orderSSL": "SSL Encrypted",
   "orderFundSafe": "Secure Funds",
   "orderInstant": "Instant",
-  "orderSecurityHint": "Bank-grade SSL encryption for secure payment"
+  "orderSecurityHint": "Bank-grade SSL encryption for secure payment",
+  "trialPeriod": "Trial Period",
+  "@trialPeriod": {},
+  "trialExpired": "Trial has expired",
+  "@trialExpired": {},
+  "trialRemainingDays": "{days}d {hours}h {minutes}m remaining",
+  "@trialRemainingDays": {
+    "placeholders": {
+      "days": {"type": "int"},
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "trialRemainingHours": "{hours}h {minutes}m remaining",
+  "@trialRemainingHours": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "trialRemainingMinutes": "{minutes}m remaining",
+  "@trialRemainingMinutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "trialHint": "Employees will be deleted when expired, but chat history will be kept",
+  "@trialHint": {}
 }
