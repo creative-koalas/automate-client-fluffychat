@@ -156,16 +156,63 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _invitationCodeController.dispose();
+    // 移除认证状态监听
+    try {
+      final auth = context.read<PsygoAuthState>();
+      auth.removeListener(_onAuthStateChanged);
+    } catch (_) {}
     // 停止后台检查服务
     AppUpdateService.stopBackgroundCheck();
     AgreementCheckService.stopBackgroundCheck();
     super.dispose();
   }
 
+  /// 认证状态变化回调
+  void _onAuthStateChanged() {
+    if (!mounted) return;
+
+    final auth = context.read<PsygoAuthState>();
+    debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}, onboardingCompleted=${auth.onboardingCompleted}');
+
+    // 登出时重置状态
+    if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
+      debugPrint('[AuthGate] User logged out, resetting state');
+      setState(() {
+        _state = _AuthState.needsLogin;
+        _hasTriedAuth = false;
+        _hasRetriedMatrixLogin = false;
+        _resumeRetryCount = 0;
+      });
+      return;
+    }
+
+    // 登录成功时更新状态
+    if (auth.isLoggedIn && auth.onboardingCompleted && _state != _AuthState.authenticated) {
+      // 检查 Matrix 是否也已登录
+      try {
+        final matrix = Matrix.of(context);
+        if (matrix.client.isLogged()) {
+          debugPrint('[AuthGate] User logged in with Matrix, updating state to authenticated');
+          setState(() => _state = _AuthState.authenticated);
+          _startAgreementCheckService();
+        }
+      } catch (e) {
+        debugPrint('[AuthGate] Could not check Matrix state: $e');
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // 监听认证状态变化
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<PsygoAuthState>();
+      auth.addListener(_onAuthStateChanged);
+    });
+
     // iOS FIX: Delay auth check to give system services time to initialize
     // On cold start, carrier/network services need time to become available
     // before Aliyun SDK can initialize properly
@@ -649,12 +696,34 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Matrix login failed: $e');
       debugPrint('[AuthGate] Stack trace: $stackTrace');
 
-      // iOS FIX: Auto-retry with fresh credentials on first failure
-      // On cold start after deleting data, the credentials from backend might be stale
-      // Clear all credentials and trigger a fresh one-click login flow
+      final errorStr = e.toString();
+      final isInvalidToken = errorStr.contains('M_UNKNOWN_TOKEN') ||
+          errorStr.contains('Invalid access token');
+
+      // Token 失效：清除所有状态并跳转到登录页
+      if (isInvalidToken) {
+        debugPrint('[AuthGate] Matrix token invalid, clearing all auth state and redirecting to login...');
+        await _clearAllAuthStateAndRedirectToLogin();
+        return;
+      }
+
+      // 网络/加密错误：显示错误信息
+      if (errorStr.contains('Upload key failed') ||
+          errorStr.contains('Connection refused') ||
+          errorStr.contains('SocketException')) {
+        debugPrint('[AuthGate] Matrix encryption/network error');
+
+        setState(() {
+          _state = _AuthState.error;
+          _errorMessage = 'Matrix 服务器连接失败\n\n可能原因：\n- Matrix 服务器未启动或无法访问\n- 网络连接问题\n\n请确保网络连接正常后重试';
+        });
+        return;
+      }
+
+      // 其他错误：尝试重试一次
       if (!_hasRetriedMatrixLogin) {
-        debugPrint('[AuthGate] Matrix login failed, clearing credentials and retrying with fresh login...');
-        _hasRetriedMatrixLogin = true;  // Mark that we've retried once
+        debugPrint('[AuthGate] Matrix login failed, retrying once...');
+        _hasRetriedMatrixLogin = true;
 
         final auth = context.read<PsygoAuthState>();
         await auth.markLoggedOut();
@@ -666,33 +735,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           _hasTriedAuth = false;
         });
 
-        // Trigger fresh one-click login (will call _loginMatrixAndProceed again with new credentials)
         await _checkAuthState();
         return;
       }
 
-      // iOS FIX: Handle Matrix login failures after retry
-      // Common causes: Network issues, stale credentials, encryption problems
-      // Don't force logout - user's automate token is still valid!
-      if (e.toString().contains('Upload key failed') ||
-          e.toString().contains('Connection refused') ||
-          e.toString().contains('SocketException')) {
-        debugPrint('[AuthGate] Matrix encryption/network error - possible causes:');
-        debugPrint('[AuthGate] 1. Network issue (cannot reach Matrix homeserver)');
-        debugPrint('[AuthGate] 2. Stale encryption keys or database corruption');
-        debugPrint('[AuthGate] 3. Matrix server not running or not accessible');
-
-        setState(() {
-          _state = _AuthState.error;
-          _errorMessage = 'Matrix 服务器连接失败\n\n可能原因：\n- Matrix 服务器未启动或无法访问\n- 网络连接问题\n- 数据库损坏\n\n请确保：\n1. Matrix 服务器正在运行\n2. 网络连接正常\n3. 或重新登录获取新凭证';
-        });
-        return;
-      }
-
-      setState(() {
-        _state = _AuthState.error;
-        _errorMessage = 'Matrix 服务连接失败: ${e.toString()}\n\n请重试或重新登录';
-      });
+      // 重试后仍然失败：清除状态并跳转登录
+      debugPrint('[AuthGate] Matrix login failed after retry, clearing auth and redirecting to login...');
+      await _clearAllAuthStateAndRedirectToLogin();
     }
   }
 
@@ -798,9 +847,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     final auth = context.read<PsygoAuthState>();
     await auth.markLoggedOut();
 
-    // 清除 Matrix 客户端状态
+    // 清除 Matrix 客户端状态（先复制列表避免并发修改）
     final matrix = Matrix.of(context);
-    for (final client in matrix.widget.clients) {
+    final clients = List.from(matrix.widget.clients);
+    for (final client in clients) {
       if (client.isLogged()) {
         try {
           await client.logout();
@@ -822,6 +872,61 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 重新触发登录流程
     _checkAuthStateSafe();
+  }
+
+  /// 清除所有认证状态并跳转到登录页（Token 失效时调用）
+  Future<void> _clearAllAuthStateAndRedirectToLogin() async {
+    debugPrint('[AuthGate] Clearing all auth state and redirecting to login...');
+
+    // 停止后台检查服务
+    AgreementCheckService.stopBackgroundCheck();
+
+    // 清除 Automate 认证状态
+    final auth = context.read<PsygoAuthState>();
+    await auth.markLoggedOut();
+
+    // 清除 Matrix 客户端状态（先复制列表避免并发修改）
+    try {
+      final matrix = Matrix.of(context);
+      final clients = List.from(matrix.widget.clients);
+      for (final client in clients) {
+        if (client.isLogged()) {
+          try {
+            await client.logout();
+          } catch (e) {
+            debugPrint('[AuthGate] Matrix logout error: $e');
+          }
+        }
+        // 清除客户端数据（即使未登录）
+        try {
+          await client.clear();
+        } catch (e) {
+          debugPrint('[AuthGate] Matrix client clear error: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuthGate] Could not access Matrix: $e');
+    }
+
+    if (!mounted) return;
+
+    // 重置 AuthGate 状态
+    setState(() {
+      _state = _AuthState.needsLogin;
+      _hasTriedAuth = false;
+      _hasRetriedMatrixLogin = false;
+      _resumeRetryCount = 0;
+    });
+
+    // PC端：切换到登录小窗口
+    if (PlatformInfos.isDesktop) {
+      await WindowService.switchToLoginWindow();
+    }
+
+    // 跳转到登录页
+    PsygoApp.router.go('/login-signup');
+
+    debugPrint('[AuthGate] Auth state cleared, redirected to login page');
   }
 
   /// Navigate to onboarding page for new users.

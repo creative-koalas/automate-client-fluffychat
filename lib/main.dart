@@ -20,6 +20,23 @@ import 'widgets/fluffy_chat_app.dart';
 ReceivePort? mainIsolateReceivePort;
 
 void main() async {
+  // 全局错误处理器：捕获并忽略第三方包的 setState 错误
+  // swipe_to_action 包在 widget 销毁后仍会尝试 setState，这是包的 bug
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final exception = details.exception;
+    final stack = details.stack?.toString() ?? '';
+
+    // 忽略 swipe_to_action 包的 setState 错误
+    if (exception.toString().contains('Null check operator used on a null value') &&
+        stack.contains('SwipeableState')) {
+      debugPrint('[ErrorHandler] Suppressed swipe_to_action setState error');
+      return;
+    }
+
+    // 其他错误正常处理
+    FlutterError.presentError(details);
+  };
+
   if (PlatformInfos.isAndroid) {
     final port = mainIsolateReceivePort = ReceivePort();
     IsolateNameServer.removePortNameMapping(AppConfig.mainIsolatePortName);

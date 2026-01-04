@@ -173,7 +173,10 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
           PermissionService.instance.requestPushPermissions();
         });
       }
-      // Matrix login success -> auto redirect to /rooms by MatrixState
+
+      // 导航到主页面
+      debugPrint('[LoginFlow] Matrix login success, navigating to /rooms');
+      PsygoApp.router.go('/rooms');
       return true;
     } catch (e) {
       debugPrint('Matrix 登录失败: $e');
@@ -262,18 +265,22 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
     // 1. 清除 Automate 认证状态
     await backend.auth.markLoggedOut();
 
-    // 2. 清除 Matrix 客户端状态（如果有）
+    // 2. 清除 Matrix 客户端状态（如果有，先复制列表避免并发修改）
     if (mounted) {
       try {
         final matrix = Matrix.of(context);
-        for (final client in matrix.widget.clients) {
-          if (client.isLogged()) {
-            try {
+        final clients = List.from(matrix.widget.clients);
+        for (final client in clients) {
+          try {
+            if (client.isLogged()) {
               await client.logout();
               debugPrint('[LoginFlow] Matrix client logged out');
-            } catch (e) {
-              debugPrint('[LoginFlow] Matrix logout error: $e');
             }
+            // 清除客户端本地数据
+            await client.clear();
+            debugPrint('[LoginFlow] Matrix client data cleared');
+          } catch (e) {
+            debugPrint('[LoginFlow] Matrix client cleanup error: $e');
           }
         }
       } catch (e) {

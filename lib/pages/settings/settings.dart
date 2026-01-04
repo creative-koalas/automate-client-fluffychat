@@ -194,19 +194,38 @@ class SettingsController extends State<Settings> {
     // 在 context 失效前获取需要的引用
     final matrix = Matrix.of(context);
     final auth = context.read<PsygoAuthState>();
-    final client = matrix.client;
 
     try {
-      // 1. 退出 Matrix（使用之前获取的 client 引用）
-      await client.logout();
-      // 2. 清除 Automate 认证状态
+      debugPrint('[Settings] Starting logout...');
+
+      // 1. 清除 Automate 认证状态
       await auth.markLoggedOut();
+      debugPrint('[Settings] Automate auth cleared');
+
+      // 2. 退出并清除所有 Matrix 客户端（先复制列表避免并发修改）
+      final clients = List.from(matrix.widget.clients);
+      for (final client in clients) {
+        try {
+          if (client.isLogged()) {
+            await client.logout();
+            debugPrint('[Settings] Matrix client logged out');
+          }
+          // 清除客户端本地数据
+          await client.clear();
+          debugPrint('[Settings] Matrix client data cleared');
+        } catch (e) {
+          debugPrint('[Settings] Matrix client cleanup error: $e');
+        }
+      }
+
       // 3. PC端：切换回登录小窗口
       if (PlatformInfos.isDesktop) {
         await WindowService.switchToLoginWindow();
       }
+
       // 4. 导航到登录页面（使用全局 router，因为此时 widget 可能已卸载）
       PsygoApp.router.go('/login-signup');
+      debugPrint('[Settings] Logout completed, redirected to login');
     } catch (e) {
       debugPrint('[Settings] Logout error: $e');
     }
