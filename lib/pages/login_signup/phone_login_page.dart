@@ -79,11 +79,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   // LoginFlowMixin 实现
   @override
   void setLoginError(String? error) {
+    if (!mounted) return;
     setState(() => codeError = error);
   }
 
   @override
   void setLoading(bool value) {
+    if (!mounted) return;
     setState(() => loading = value);
   }
 
@@ -238,6 +240,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       await handlePostVerify(verifyResponse: verifyResponse);
     } catch (e) {
       debugPrint('验证码登录错误: $e');
+      if (!mounted) return;
       setState(() {
         codeError = (e is AutomateBackendException) ? e.message : e.toString();
         loading = false;

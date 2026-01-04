@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:psygo/widgets/matrix.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -87,7 +88,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
           }
         }
 
-        // 非新用户或其他错误，直接显示错误
+        // 非新用户或其他错误，清除登录状态并显示错误
+        await _clearAuthState();
         setLoginError(_extractErrorMessage(e));
         setLoading(false);
         return false;
@@ -111,8 +113,12 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       if (PlatformInfos.isDesktop) {
         await WindowService.switchToMainWindow();
       }
-      setLoading(false);
-      context.go('/onboarding-chatbot');
+      // 窗口切换后 widget 可能已被卸载，使用全局 router 导航
+      if (mounted) {
+        setLoading(false);
+      }
+      // 使用全局 router，确保即使 widget 被卸载也能正常跳转
+      PsygoApp.router.go('/onboarding-chatbot');
       return true;
     }
   }
@@ -124,6 +130,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
 
     if (matrixAccessToken == null || matrixUserId == null) {
       debugPrint('Matrix access token 缺失，无法登录 Matrix');
+      // 清除登录状态
+      await _clearAuthState();
       if (mounted) {
         setLoginError('Matrix 凭证缺失，请重新登录');
         setLoading(false);
@@ -169,6 +177,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       return true;
     } catch (e) {
       debugPrint('Matrix 登录失败: $e');
+      // 清除登录状态和 Matrix 客户端
+      await _clearAuthState();
       if (mounted) {
         setLoginError('登录失败: $e');
         setLoading(false);
@@ -242,6 +252,36 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         ),
       ),
     );
+  }
+
+  /// 清除登录状态（登录失败/退出登录时调用）
+  /// 同时清除 Automate 认证状态和 Matrix 客户端状态
+  Future<void> _clearAuthState() async {
+    debugPrint('[LoginFlow] Clearing auth state...');
+
+    // 1. 清除 Automate 认证状态
+    await backend.auth.markLoggedOut();
+
+    // 2. 清除 Matrix 客户端状态（如果有）
+    if (mounted) {
+      try {
+        final matrix = Matrix.of(context);
+        for (final client in matrix.widget.clients) {
+          if (client.isLogged()) {
+            try {
+              await client.logout();
+              debugPrint('[LoginFlow] Matrix client logged out');
+            } catch (e) {
+              debugPrint('[LoginFlow] Matrix logout error: $e');
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[LoginFlow] Could not access Matrix: $e');
+      }
+    }
+
+    debugPrint('[LoginFlow] Auth state cleared');
   }
 
   /// 提取干净的错误消息

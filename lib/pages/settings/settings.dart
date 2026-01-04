@@ -307,9 +307,10 @@ class SettingsController extends State<Settings> {
   @override
   Widget build(BuildContext context) {
     final client = Matrix.of(context).client;
-    profileFuture ??= client.getProfileFromUserId(
-      client.userID!,
-    );
+    final userID = client.userID;
+    if (userID != null) {
+      profileFuture ??= client.getProfileFromUserId(userID);
+    }
     return SettingsView(this);
   }
 }
