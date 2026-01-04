@@ -58,10 +58,21 @@ class PsygoApiClient {
 
   /// 发送短信验证码
   Future<void> sendVerificationCode(String phone) async {
-    final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/send-code',
-      data: {'phone': phone},
-    );
+    Response<Map<String, dynamic>> res;
+    try {
+      res = await _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/auth/send-code',
+        data: {'phone': phone},
+      );
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      String errorMsg = '验证码发送失败，请稍后重试';
+      if (responseData is Map<String, dynamic>) {
+        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+      }
+      throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
+    }
+
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
@@ -165,15 +176,26 @@ class PsygoApiClient {
   /// 验证手机号 - 验证码登录（新登录流程第一步）
   /// 返回是否新用户 + pending_token
   Future<VerifyPhoneResponse> verifyPhoneCode(String phone, String code) async {
-    final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/verify-phone-code',
-      data: {'phone': phone, 'code': code},
-    );
+    Response<Map<String, dynamic>> res;
+    try {
+      res = await _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/auth/verify-phone-code',
+        data: {'phone': phone, 'code': code},
+      );
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      String errorMsg = '验证失败，请稍后重试';
+      if (responseData is Map<String, dynamic>) {
+        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+      }
+      throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
+    }
+
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Verification code failed',
+        data['msg']?.toString() ?? '验证失败',
         statusCode: res.statusCode,
       );
     }
@@ -202,15 +224,27 @@ class PsygoApiClient {
       body['invitation_code'] = invitationCode;
     }
 
-    final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/complete-login',
-      data: body,
-    );
+    Response<Map<String, dynamic>> res;
+    try {
+      res = await _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/auth/complete-login',
+        data: body,
+      );
+    } on DioException catch (e) {
+      // 处理 HTTP 错误状态码（如 400），提取服务器返回的错误信息
+      final responseData = e.response?.data;
+      String errorMsg = '登录失败，请稍后重试';
+      if (responseData is Map<String, dynamic>) {
+        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+      }
+      throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
+    }
+
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Login failed',
+        data['msg']?.toString() ?? '登录失败',
         statusCode: res.statusCode,
       );
     }

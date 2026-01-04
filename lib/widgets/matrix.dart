@@ -155,6 +155,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
               widget.clients.add(_loginClientCandidate!);
               debugPrint('[Matrix] Client added via onLoginStateChanged, clients.length=${widget.clients.length}');
             }
+            // 设置新登录的客户端为活跃客户端
+            _activeClient = widget.clients.indexOf(_loginClientCandidate!);
+            debugPrint('[Matrix] Set activeClient to $_activeClient');
             ClientManager.addClientNameToStore(
               _loginClientCandidate!.clientName,
               store,
@@ -322,6 +325,13 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   }
 
   void initMatrix() {
+    // 设置活跃客户端：优先选择已登录的客户端
+    if (widget.clients.isNotEmpty) {
+      final loggedInIndex = widget.clients.indexWhere((c) => c.isLogged());
+      _activeClient = loggedInIndex >= 0 ? loggedInIndex : 0;
+      debugPrint('[Matrix] initMatrix: Set activeClient to $_activeClient (userID: ${widget.clients[_activeClient].userID})');
+    }
+
     for (final c in widget.clients) {
       _registerSubs(c.clientName);
     }

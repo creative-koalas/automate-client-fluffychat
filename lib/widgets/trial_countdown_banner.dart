@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/services/agent_service.dart';
 
 /// 试用期倒计时横幅
 /// 显示剩余时间，支持实时倒计时更新
@@ -25,6 +26,7 @@ class TrialCountdownBanner extends StatefulWidget {
 
 class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
   Timer? _timer;
+  Timer? _refreshTimer;
   Duration _remaining = Duration.zero;
   bool _isExpired = false;
 
@@ -46,6 +48,7 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
   @override
   void dispose() {
     _timer?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -76,14 +79,25 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
 
-      setState(() {
-        if (_remaining.inSeconds > 0) {
-          _remaining = _remaining - const Duration(seconds: 1);
-        } else if (!_isExpired) {
-          _isExpired = true;
-          widget.onExpired?.call();
-        }
-      });
+      // 内部继续计时
+      if (_remaining.inSeconds > 0) {
+        _remaining = _remaining - const Duration(seconds: 1);
+      }
+
+      // 只更新显示（显示最小为1分钟）
+      setState(() {});
+
+      // 当真正到期后（剩余时间 <= 0），开始刷新员工列表
+      if (_remaining.inSeconds <= 0 && !_isExpired) {
+        _isExpired = true;
+        // 立即刷新一次
+        AgentService.instance.refresh();
+        // 每30秒刷新一次，直到组件被销毁（即员工状态已更新）
+        _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+          AgentService.instance.refresh();
+        });
+        widget.onExpired?.call();
+      }
     });
   }
 
@@ -94,14 +108,16 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
 
     final days = _remaining.inDays;
     final hours = _remaining.inHours % 24;
+    // 显示最小为1分钟（不显示0分钟）
     final minutes = _remaining.inMinutes % 60;
+    final displayMinutes = minutes < 1 ? 1 : minutes;
 
     if (days > 0) {
       return l10n.trialRemainingDays(days, hours, minutes);
     } else if (hours > 0) {
       return l10n.trialRemainingHours(hours, minutes);
     } else {
-      return l10n.trialRemainingMinutes(minutes);
+      return l10n.trialRemainingMinutes(displayMinutes);
     }
   }
 

@@ -46,21 +46,52 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
     }
 
     debugPrint('=== 完成登录 ===');
-    try {
-      final authResponse = await backend.completeLogin(
-        verifyResponse.pendingToken,
-        invitationCode: invitationCode,
-      );
-      debugPrint('后端响应: onboardingCompleted=${authResponse.onboardingCompleted}');
 
-      if (!mounted) return false;
+    // 循环重试邀请码，直到成功或用户取消
+    String? currentInvitationCode = invitationCode;
+    while (true) {
+      try {
+        final authResponse = await backend.completeLogin(
+          verifyResponse.pendingToken,
+          invitationCode: currentInvitationCode,
+        );
+        debugPrint('后端响应: onboardingCompleted=${authResponse.onboardingCompleted}');
 
-      return await handlePostLogin(authResponse);
-    } catch (e) {
-      debugPrint('完成登录错误: $e');
-      setLoginError(_extractErrorMessage(e));
-      setLoading(false);
-      return false;
+        if (!mounted) return false;
+
+        return await handlePostLogin(authResponse);
+      } catch (e) {
+        debugPrint('完成登录错误: $e');
+
+        // 如果是新用户且邀请码验证失败，重新显示邀请码对话框
+        if (verifyResponse.isNewUser && mounted) {
+          final errorMsg = _extractErrorMessage(e);
+          // 显示错误提示
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+          // 重新显示邀请码对话框，让用户可以重试
+          final newInvitationCode = await showInvitationCodeDialog(verifyResponse.phone);
+          if (newInvitationCode != null && mounted) {
+            // 用户输入了新的邀请码，继续循环重试
+            currentInvitationCode = newInvitationCode;
+            continue;
+          } else {
+            // 用户取消了
+            onCancel?.call();
+            setLoading(false);
+            return false;
+          }
+        }
+
+        // 非新用户或其他错误，直接显示错误
+        setLoginError(_extractErrorMessage(e));
+        setLoading(false);
+        return false;
+      }
     }
   }
 
@@ -119,6 +150,9 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         newDeviceName: PlatformInfos.clientName,
       );
       debugPrint('Matrix 登录成功');
+
+      // 设置当前客户端为活跃客户端（确保侧边栏显示正确的头像）
+      matrix.setActiveClient(client);
 
       // PC端：切换到主窗口模式
       if (PlatformInfos.isDesktop) {
