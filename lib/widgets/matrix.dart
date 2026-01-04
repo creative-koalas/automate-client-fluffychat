@@ -26,6 +26,8 @@ import 'package:psygo/utils/voip_plugin.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/layouts/desktop_layout.dart';
+import 'package:psygo/widgets/mxc_image.dart';
 import '../config/setting_keys.dart';
 import '../pages/key_verification/key_verification_dialog.dart';
 import '../services/agent_service.dart';
@@ -266,6 +268,14 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         widget.clients.remove(c);
         ClientManager.removeClientNameFromStore(c.clientName, store);
         InitWithRestoreExtension.deleteSessionBackup(name);
+
+        // 清除图片缓存和用户信息缓存，避免显示旧用户的头像
+        MxcImage.clearCache();
+        DesktopLayout.clearUserCache();
+
+        // 重置状态，确保下次登录使用新的 client
+        _activeClient = widget.clients.isNotEmpty ? 0 : -1;
+        _loginClientCandidate = null;
       }
       // 登录成功后注册推送和刷新员工列表
       if (state == LoginState.loggedIn) {

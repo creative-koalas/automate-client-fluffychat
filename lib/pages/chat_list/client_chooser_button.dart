@@ -63,9 +63,12 @@ class ClientChooserButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final matrix = Matrix.of(context);
+    final client = matrix.client;
 
+    // 使用 userID 作为 key，当用户变化时强制重建 FutureBuilder
     return FutureBuilder<Profile>(
-      future: matrix.client.isLogged() ? matrix.client.fetchOwnProfile() : null,
+      key: ValueKey(client.userID),
+      future: client.isLogged() ? client.fetchOwnProfile() : null,
       builder: (context, snapshot) => Material(
         clipBehavior: Clip.hardEdge,
         borderRadius: BorderRadius.circular(99),
@@ -79,8 +82,7 @@ class ClientChooserButton extends StatelessWidget {
           child: Center(
             child: Avatar(
               mxContent: snapshot.data?.avatarUrl,
-              name:
-                  snapshot.data?.displayName ?? matrix.client.userID?.localpart,
+              name: snapshot.data?.displayName ?? client.userID?.localpart,
               size: 32,
             ),
           ),

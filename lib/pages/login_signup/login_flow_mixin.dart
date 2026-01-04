@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
+import 'package:psygo/widgets/layouts/desktop_layout.dart';
+import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -143,12 +145,31 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       final matrix = Matrix.of(context);
       final client = await matrix.getLoginClient();
 
+      // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
+      final needsLogin = !client.isLogged() || client.userID != matrixUserId;
+      if (!needsLogin) {
+        // 已登录且 userID 匹配，直接使用
+        matrix.setActiveClient(client);
+        if (PlatformInfos.isDesktop) {
+          await WindowService.switchToMainWindow();
+        }
+        PsygoApp.router.go('/rooms');
+        return true;
+      }
+
+      // 如果已登录但 userID 不匹配，先退出旧账号
+      if (client.isLogged() && client.userID != matrixUserId) {
+        try {
+          await client.logout();
+        } catch (_) {}
+      }
+
+      // 清除旧数据
+      await client.clear();
+
       // Set homeserver before login
       final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
-      debugPrint('设置 homeserver: $homeserverUrl');
       await client.checkHomeserver(homeserverUrl);
-
-      debugPrint('尝试 Matrix 登录: matrixUserId=$matrixUserId');
 
       // 使用后端返回的 access_token 直接初始化，无需密码登录
       await client.init(
@@ -265,7 +286,11 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
     // 1. 清除 Automate 认证状态
     await backend.auth.markLoggedOut();
 
-    // 2. 清除 Matrix 客户端状态（如果有，先复制列表避免并发修改）
+    // 2. 清除图片缓存和用户信息缓存，避免显示旧用户的头像
+    MxcImage.clearCache();
+    DesktopLayout.clearUserCache();
+
+    // 3. 清除 Matrix 客户端状态（如果有，先复制列表避免并发修改）
     if (mounted) {
       try {
         final matrix = Matrix.of(context);

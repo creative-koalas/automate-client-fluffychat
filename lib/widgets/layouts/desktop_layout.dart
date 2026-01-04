@@ -43,6 +43,11 @@ class DesktopLayout extends StatefulWidget {
     this.initialPage = DesktopPageIndex.messages,
   });
 
+  /// 清除用户缓存（退出登录时调用）
+  static void clearUserCache() {
+    _DesktopLayoutState.clearUserCache();
+  }
+
   @override
   State<DesktopLayout> createState() => _DesktopLayoutState();
 }
@@ -56,6 +61,12 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   static Profile? _cachedProfile;
   // 缓存未读计数
   static int _cachedUnreadCount = 0;
+
+  /// 清除用户缓存（退出登录时调用）
+  static void clearUserCache() {
+    _cachedProfile = null;
+    _cachedUnreadCount = 0;
+  }
 
   // 消息列表最小/最大宽度
   static const double _minChatListWidth = 280.0;

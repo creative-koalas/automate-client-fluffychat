@@ -12,6 +12,11 @@ import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/widgets/matrix.dart';
 
 class MxcImage extends StatefulWidget {
+  /// 清除所有图片缓存（退出登录时调用）
+  static void clearCache() {
+    _MxcImageState.clearCache();
+  }
+
   final Uri? uri;
   final Event? event;
   final double? width;
@@ -54,6 +59,11 @@ class MxcImage extends StatefulWidget {
 class _MxcImageState extends State<MxcImage> {
   static final Map<String, Uint8List> _imageDataCache = {};
   Uint8List? _imageDataNoCache;
+
+  /// 清除所有图片缓存（退出登录时调用）
+  static void clearCache() {
+    _imageDataCache.clear();
+  }
 
   Uint8List? get _imageData => widget.cacheKey == null
       ? _imageDataNoCache

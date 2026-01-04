@@ -597,12 +597,18 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Client deviceID: ${client.deviceID}');
 
       // Note: Encryption is disabled for this Matrix server
-      if (!client.isLogged()) {
-        debugPrint('[AuthGate] Client not logged in, performing Matrix login...');
+      // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
+      final needsLogin = !client.isLogged() || client.userID != matrixUserId;
+      if (needsLogin) {
+        // 如果已登录但 userID 不匹配，先退出旧账号
+        if (client.isLogged() && client.userID != matrixUserId) {
+          try {
+            await client.logout();
+          } catch (_) {}
+        }
 
         // Clear old data before login
         await client.clear();
-        debugPrint('[AuthGate] Client data cleared');
 
         // Set homeserver before login
         final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
@@ -658,8 +664,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
 
-      // Client is already logged in, just proceed
-      debugPrint('[AuthGate] Client already logged in with deviceID=${client.deviceID}');
+      // Client is already logged in with correct userID, just proceed
+      debugPrint('[AuthGate] Client already logged in with correct userID=${client.userID}, deviceID=${client.deviceID}');
 
       // Ensure client is in the clients list
       if (!widget.clients.contains(client)) {
