@@ -301,10 +301,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         }
       } else {
         // Mobile: Don't redirect to /login-signup, let AuthGate handle
-        // Web: Redirect to /login-signup for manual login
+        // Web/Desktop: Redirect to /login-signup for manual login
         final destination = state == LoginState.loggedIn
             ? '/rooms'
-            : (kIsWeb ? '/login-signup' : '/');
+            : (PlatformInfos.isMobile ? '/' : '/login-signup');
         PsygoApp.router.go(destination);
       }
     });

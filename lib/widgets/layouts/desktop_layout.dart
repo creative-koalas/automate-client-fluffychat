@@ -59,15 +59,19 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   static double _chatListWidth = FluffyThemes.columnWidth;
   // 缓存未读计数
   static int _cachedUnreadCount = 0;
-  // Profile Future（和设置页面一样的模式）
-  static Future<Profile>? _profileFuture;
+  // Profile 版本号（用于通知实例刷新缓存）
+  static int _profileVersion = 0;
 
   /// 清除用户缓存（退出登录或更新头像时调用）
   static void clearUserCache() {
     debugPrint('[DesktopLayout] clearUserCache called');
-    _profileFuture = null;
     _cachedUnreadCount = 0;
+    _profileVersion++; // 递增版本号，通知实例刷新
   }
+
+  // Profile Future（实例变量，和设置页面一样的模式）
+  Future<Profile>? _profileFuture;
+  int _lastProfileVersion = 0; // 记录上次使用的版本号
 
   // 消息列表最小/最大宽度
   static const double _minChatListWidth = 280.0;
@@ -313,6 +317,11 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     }
 
     final userId = client.userID ?? '';
+    // 检查版本号是否变化（设置页面更新头像后会递增版本号）
+    if (_lastProfileVersion != _profileVersion) {
+      _profileFuture = null;
+      _lastProfileVersion = _profileVersion;
+    }
     // 初始化 profileFuture（和设置页面一样的逻辑）
     _profileFuture ??= client.getProfileFromUserId(userId);
 
