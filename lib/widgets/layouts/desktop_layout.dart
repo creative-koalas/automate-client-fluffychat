@@ -108,9 +108,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     if (!mounted) return;
     if (_cachedProfile != null) return; // 已有缓存，不重复请求
     try {
-      final matrix = Matrix.of(context);
-      if (matrix.client.isLogged()) {
-        final profile = await matrix.client.fetchOwnProfile();
+      final client = Matrix.of(context).clientOrNull;
+      if (client != null && client.isLogged()) {
+        final profile = await client.fetchOwnProfile();
         if (mounted) {
           setState(() => _cachedProfile = profile);
         }
@@ -121,7 +121,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   void _setupSyncListener() {
     if (!mounted) return;
     try {
-      final client = Matrix.of(context).client;
+      final client = Matrix.of(context).clientOrNull;
+      if (client == null) return;
       _syncSubscription = client.onSync.stream.listen((_) {
         _updateUnreadCount();
       });
@@ -148,8 +149,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   void _updateUnreadCount() {
     if (!mounted) return;
     try {
-      final matrix = Matrix.of(context);
-      final client = matrix.client;
+      final client = Matrix.of(context).clientOrNull;
+      if (client == null) return;
       var count = 0;
       for (final room in client.rooms) {
         if (room.isUnreadOrInvited) {
@@ -283,7 +284,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   /// 处理设置状态
   Future<void> _handleSetStatus() async {
     final matrix = Matrix.of(context);
-    final client = matrix.client;
+    final client = matrix.clientOrNull;
+    if (client == null) return;
     final currentPresence = await client.fetchCurrentPresence(client.userID!);
     final input = await showTextInputDialog(
       useRootNavigator: false,
@@ -314,7 +316,17 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   Widget _buildAdaptiveHeader() {
     final theme = Theme.of(context);
     final matrix = Matrix.of(context);
-    final userId = matrix.client.userID ?? '';
+    final client = matrix.clientOrNull;
+    // 客户端未初始化时显示占位符
+    if (client == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    final userId = client.userID ?? '';
     var localpart = '用户';
     if (userId.startsWith('@') && userId.contains(':')) {
       localpart = userId.substring(1, userId.indexOf(':'));
