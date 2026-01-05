@@ -876,7 +876,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username}がPsygoにあなたを招待しました. \n1. Psygoをインストールしてください: https://automate.app \n2. 新しくアカウントを作成するかサインインしてください\n3. 招待リンクを開いてください: {link}",
+    "inviteText": "{username}がPsygoにあなたを招待しました. \n1. Psygoをインストールしてください: https://psygoai.com \n2. 新しくアカウントを作成するかサインインしてください\n3. 招待リンクを開いてください: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

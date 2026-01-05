@@ -1837,7 +1837,7 @@
             }
         }
     },
-    "inviteText": "{username} pakvietė jus prisijungti prie Psygo. \n1. Įdiekite Psygo: https://automate.app \n2. Prisiregistruokite arba prisijunkite \n3. Atidarykite pakvietimo nuorodą: {link}",
+    "inviteText": "{username} pakvietė jus prisijungti prie Psygo. \n1. Įdiekite Psygo: https://psygoai.com \n2. Prisiregistruokite arba prisijunkite \n3. Atidarykite pakvietimo nuorodą: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

@@ -357,10 +357,6 @@ class SettingsStyleView extends StatelessWidget {
               title: L10n.of(context).separateChatTypes,
               setting: AppSettings.separateChatTypes,
             ),
-            SettingsSwitchListTile.adaptive(
-              title: L10n.of(context).displayNavigationRail,
-              setting: AppSettings.displayNavigationRail,
-            ),
           ],
         ),
       ),

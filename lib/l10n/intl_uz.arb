@@ -1090,7 +1090,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} sizni Psygo’ga taklif qildi.\n1. automate.app saytiga tashrif buyuring va ilovani oʻrnating.\n2. Roʻyxatdan oʻting yoki tizimga kiring.\n3. Taklif havolasini oching:\n{link}",
+    "inviteText": "{username} sizni Psygo’ga taklif qildi.\n1. psygoai.com saytiga tashrif buyuring va ilovani oʻrnating.\n2. Roʻyxatdan oʻting yoki tizimga kiring.\n3. Taklif havolasini oching:\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

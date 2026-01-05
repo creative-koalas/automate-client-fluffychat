@@ -680,7 +680,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} meghívta a Psygo-be.\n1. Keresse fel a automate.app oldalt, és telepítse az alkalmazást \n2. Regisztráljon vagy jelentkezzen be \n3. Nyissa meg a meghívó linket: \n {link}",
+    "inviteText": "{username} meghívta a Psygo-be.\n1. Keresse fel a psygoai.com oldalt, és telepítse az alkalmazást \n2. Regisztráljon vagy jelentkezzen be \n3. Nyissa meg a meghívó linket: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

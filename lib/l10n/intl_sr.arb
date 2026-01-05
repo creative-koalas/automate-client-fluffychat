@@ -945,7 +945,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} вас позива у Psygo. \n1. Инсталирајте Psygo: https://automate.app \n2. Региструјте се или пријавите \n3. Отворите везу позивнице: {link}",
+    "inviteText": "{username} вас позива у Psygo. \n1. Инсталирајте Psygo: https://psygoai.com \n2. Региструјте се или пријавите \n3. Отворите везу позивнице: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

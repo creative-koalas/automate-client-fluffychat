@@ -38,7 +38,7 @@ abstract class FluffyShare {
     await FluffyShare.share(
       L10n.of(context).inviteText(
         ownProfile.displayName ?? client.userID!,
-        'https://matrix.to/#/${client.userID}?client=com.automate',
+        'https://psygoai.com',
       ),
       context,
     );

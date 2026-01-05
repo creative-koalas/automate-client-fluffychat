@@ -977,7 +977,7 @@
             }
         }
     },
-    "inviteText": "{username} v-a invitat la Psygo.\n1. Instalați Psygo: https://automate.app\n2. Înregistrați-vă sau conectați-vă\n3. Deschideți invitația: {link}",
+    "inviteText": "{username} v-a invitat la Psygo.\n1. Instalați Psygo: https://psygoai.com\n2. Înregistrați-vă sau conectați-vă\n3. Deschideți invitația: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
