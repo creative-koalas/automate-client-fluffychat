@@ -181,7 +181,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     if (!mounted) return;
 
     // 2. Typing Animation Phase
-    const fullText = "我将为你招聘一名员工来完成它，需要一些时间...\n\n你先去忙其他事情吧，进度推进后我会通知你。\n\n将于 5 秒后置于后台工作";
+    const fullText = "我将为您招聘一名员工来完成它，需要一些时间...\n\n您先去忙其他事情吧，进度推进后我会通知您。\n\n将于 5 秒后置于后台工作";
 
     // Split by characters but keep newlines as distinct pauses if needed
     // Here we just type character by character but slower
