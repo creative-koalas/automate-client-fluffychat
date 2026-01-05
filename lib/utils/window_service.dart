@@ -176,6 +176,7 @@ class WindowService with TrayListener {
   /// 切换到登录窗口模式
   static Future<void> switchToLoginWindow() async {
     if (!PlatformInfos.isDesktop) return;
+    debugPrint('[WindowService] switchToLoginWindow called');
 
     await windowManager.setMinimumSize(loginWindowSize);
     await windowManager.setMaximumSize(loginWindowSize);
@@ -187,6 +188,8 @@ class WindowService with TrayListener {
     // 登录窗口也使用系统托盘
     await setCloseToTray();
     await initSystemTray();
+
+    debugPrint('[WindowService] switchToLoginWindow completed');
   }
 
   /// 最小化窗口

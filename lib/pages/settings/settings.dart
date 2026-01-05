@@ -13,6 +13,7 @@ import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart'
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/layouts/desktop_layout.dart';
 import '../../widgets/matrix.dart';
 import '../bootstrap/bootstrap_dialog.dart';
 import 'settings_view.dart';
@@ -31,6 +32,8 @@ class SettingsController extends State<Settings> {
   void updateProfile() => setState(() {
         profileUpdated = true;
         profileFuture = null;
+        // 清除侧边栏的 profile 缓存，确保头像同步更新
+        DesktopLayout.clearUserCache();
       });
 
   void setDisplaynameAction() async {
@@ -220,7 +223,10 @@ class SettingsController extends State<Settings> {
         }
       }
 
-      // 3. PC端：切换回登录小窗口
+      // 3. 先跳转到登录页（避免在小窗口渲染大布局导致溢出）
+      PsygoApp.router.go('/login-signup');
+
+      // 4. PC端：切换回登录小窗口
       if (PlatformInfos.isDesktop) {
         await WindowService.switchToLoginWindow();
       }
@@ -285,8 +291,8 @@ class SettingsController extends State<Settings> {
   }
 
   void checkBootstrap() async {
-    final client = Matrix.of(context).client;
-    if (!client.encryptionEnabled) return;
+    final client = Matrix.of(context).clientOrNull;
+    if (client == null || !client.encryptionEnabled) return;
     await client.accountDataLoading;
     await client.userDeviceKeysLoading;
     if (client.prevBatch == null) {
@@ -325,9 +331,9 @@ class SettingsController extends State<Settings> {
 
   @override
   Widget build(BuildContext context) {
-    final client = Matrix.of(context).client;
-    final userID = client.userID;
-    if (userID != null) {
+    final client = Matrix.of(context).clientOrNull;
+    final userID = client?.userID;
+    if (client != null && userID != null) {
       profileFuture ??= client.getProfileFromUserId(userID);
     }
     return SettingsView(this);

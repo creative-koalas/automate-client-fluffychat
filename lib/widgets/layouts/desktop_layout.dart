@@ -57,14 +57,15 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   static DesktopPageIndex _savedCurrentPage = DesktopPageIndex.messages;
   // 保存消息列表宽度
   static double _chatListWidth = FluffyThemes.columnWidth;
-  // 缓存用户 Profile，避免重复网络请求
-  static Profile? _cachedProfile;
   // 缓存未读计数
   static int _cachedUnreadCount = 0;
+  // Profile Future（和设置页面一样的模式）
+  static Future<Profile>? _profileFuture;
 
-  /// 清除用户缓存（退出登录时调用）
+  /// 清除用户缓存（退出登录或更新头像时调用）
   static void clearUserCache() {
-    _cachedProfile = null;
+    debugPrint('[DesktopLayout] clearUserCache called');
+    _profileFuture = null;
     _cachedUnreadCount = 0;
   }
 
@@ -97,25 +98,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     _unreadCount = _cachedUnreadCount;
     // 延迟到 context 可用后初始化
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserProfile();
       _updateUnreadCount();
       _setupSyncListener();
     });
-  }
-
-  /// 加载用户 Profile（只在首次或缓存为空时请求）
-  Future<void> _loadUserProfile() async {
-    if (!mounted) return;
-    if (_cachedProfile != null) return; // 已有缓存，不重复请求
-    try {
-      final client = Matrix.of(context).clientOrNull;
-      if (client != null && client.isLogged()) {
-        final profile = await client.fetchOwnProfile();
-        if (mounted) {
-          setState(() => _cachedProfile = profile);
-        }
-      }
-    } catch (_) {}
   }
 
   void _setupSyncListener() {
@@ -312,7 +297,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     );
   }
 
-  /// 构建自适应宽度的 header - 使用缓存的 Profile 避免重复请求
+  /// 构建自适应宽度的 header - 使用 FutureBuilder 和设置页面一样的模式
   Widget _buildAdaptiveHeader() {
     final theme = Theme.of(context);
     final matrix = Matrix.of(context);
@@ -326,51 +311,59 @@ class _DesktopLayoutState extends State<DesktopLayout> {
         ),
       );
     }
+
     final userId = client.userID ?? '';
-    var localpart = '用户';
-    if (userId.startsWith('@') && userId.contains(':')) {
-      localpart = userId.substring(1, userId.indexOf(':'));
-    }
-    final displayName = _cachedProfile?.displayName ?? localpart;
-    final avatarUrl = _cachedProfile?.avatarUrl;
+    // 初始化 profileFuture（和设置页面一样的逻辑）
+    _profileFuture ??= client.getProfileFromUserId(userId);
 
-    // 预构建头像组件，避免动画期间重复创建
-    final avatar = RepaintBoundary(
-      child: Avatar(
-        mxContent: avatarUrl,
-        name: displayName,
-        size: 40,
-      ),
-    );
+    return FutureBuilder<Profile>(
+      future: _profileFuture,
+      builder: (context, snapshot) {
+        var localpart = '用户';
+        if (userId.startsWith('@') && userId.contains(':')) {
+          localpart = userId.substring(1, userId.indexOf(':'));
+        }
+        final profile = snapshot.data;
+        final displayName = profile?.displayName ?? localpart;
+        final avatarUrl = profile?.avatarUrl;
 
-    // 使用 LayoutBuilder 自适应宽度
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final showName = constraints.maxWidth > 150;
+        // 预构建头像组件，避免动画期间重复创建
+        final avatar = RepaintBoundary(
+          child: Avatar(
+            mxContent: avatarUrl,
+            name: displayName,
+            size: 40,
+          ),
+        );
 
-        return Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: showName ? 16 : 0,
-              vertical: 12,
-            ),
-            child: Material(
-              clipBehavior: Clip.hardEdge,
-              borderRadius: BorderRadius.circular(99),
-              color: Colors.transparent,
-              child: PopupMenuButton<Object>(
-                popUpAnimationStyle: AnimationStyle.noAnimation,
-                onOpened: () => setState(() => _isMenuOpen = true),
-                onCanceled: () => setState(() => _isMenuOpen = false),
-                onSelected: (value) {
-                  setState(() => _isMenuOpen = false);
-                  _onMenuSelected(value);
-                },
-                itemBuilder: _buildMenuItems,
-                child: showName
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+        // 使用 LayoutBuilder 自适应宽度
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final showName = constraints.maxWidth > 150;
+
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: showName ? 16 : 0,
+                  vertical: 12,
+                ),
+                child: Material(
+                  clipBehavior: Clip.hardEdge,
+                  borderRadius: BorderRadius.circular(99),
+                  color: Colors.transparent,
+                  child: PopupMenuButton<Object>(
+                    popUpAnimationStyle: AnimationStyle.noAnimation,
+                    onOpened: () => setState(() => _isMenuOpen = true),
+                    onCanceled: () => setState(() => _isMenuOpen = false),
+                    onSelected: (value) {
+                      setState(() => _isMenuOpen = false);
+                      _onMenuSelected(value);
+                    },
+                    itemBuilder: _buildMenuItems,
+                    child: showName
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                           avatar,
                           const SizedBox(width: 12),
                           Flexible(
@@ -403,6 +396,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
               ),
             ),
           ),
+        );
+          },
         );
       },
     );
