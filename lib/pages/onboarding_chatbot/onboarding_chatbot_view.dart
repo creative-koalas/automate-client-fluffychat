@@ -718,7 +718,7 @@ class _QuickTaskCard extends StatelessWidget {
               onConfirm: (message) {
                 Navigator.of(context).pop();
                 controller.messageController.text = message;
-                controller.sendMessage();
+                controller.sendMessage(isQuickStart: true);
               },
             ),
           ),
@@ -736,7 +736,7 @@ class _QuickTaskCard extends StatelessWidget {
           onConfirm: (message) {
             Navigator.of(context).pop();
             controller.messageController.text = message;
-            controller.sendMessage();
+            controller.sendMessage(isQuickStart: true);
           },
         ),
       );

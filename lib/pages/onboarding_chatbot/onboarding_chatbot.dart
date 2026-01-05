@@ -237,7 +237,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     super.dispose();
   }
 
-  Future<void> sendMessage() async {
+  Future<void> sendMessage({bool isQuickStart = false}) async {
     final text = messageController.text.trim();
     if (isLoading || text.isEmpty) return;
 
@@ -268,7 +268,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
     bool shouldStop = false;
 
     try {
-      await for (final event in backend.streamChatResponse(text)) {
+      await for (final event in backend.streamChatResponse(text, isQuickStart: isQuickStart)) {
         if (!mounted) return;
 
         switch (event.type) {

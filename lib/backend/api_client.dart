@@ -716,13 +716,16 @@ class PsygoApiClient {
     return AgreementStatus.fromJson(respData);
   }
 
-  Stream<ChatStreamEvent> streamChatResponse(String message) async* {
+  Stream<ChatStreamEvent> streamChatResponse(String message, {bool isQuickStart = false}) async* {
     final token = auth.chatbotToken;
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');
     final request = http.Request('POST', url);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = 'Bearer $token';
-    request.body = jsonEncode({'content': message});
+    request.body = jsonEncode({
+      'content': message,
+      if (isQuickStart) 'is_quick_start': true,
+    });
 
     late final http.StreamedResponse response;
     try {
