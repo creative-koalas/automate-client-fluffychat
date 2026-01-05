@@ -3,9 +3,6 @@
 library;
 
 import '../core/api_client.dart';
-import '../core/config.dart';
-import '../core/token_manager.dart';
-import '../models/agent.dart';
 import '../models/agent_template.dart';
 
 // 导出 PluginConfig 供外部使用
@@ -14,13 +11,10 @@ export '../models/agent_template.dart' show PluginConfig;
 /// AgentTemplate 数据仓库
 class AgentTemplateRepository {
   final PsygoApiClient _apiClient;
-  final AutomateTokenManager _tokenManager;
 
   AgentTemplateRepository({
     PsygoApiClient? apiClient,
-    AutomateTokenManager? tokenManager,
-  })  : _apiClient = apiClient ?? PsygoApiClient(),
-        _tokenManager = tokenManager ?? AutomateTokenManager();
+  }) : _apiClient = apiClient ?? PsygoApiClient();
 
   /// 获取激活的 Agent 模板列表
   ///
@@ -150,45 +144,6 @@ class AgentTemplateRepository {
     }
 
     return UnifiedCreateAgentResponse.fromJson(response.data!);
-  }
-
-  /// [Deprecated] 自定义创建 Agent（旧接口）
-  ///
-  /// [name] 员工名称
-  /// [systemPrompt] 系统提示词
-  ///
-  /// 返回新创建的 [Agent]
-  @Deprecated('Use createCustomAgent instead')
-  Future<Agent> customCreateAgent(
-    String name,
-    String systemPrompt,
-  ) async {
-    // 获取用户 ID
-    final userId = await _tokenManager.getUserId();
-    if (userId == null) {
-      throw ApiException(7, 'No user ID available, please login again');
-    }
-
-    final response = await _apiClient.post<Map<String, dynamic>>(
-      '/api/agents/',
-      body: CustomCreateAgentRequest(
-        userId: userId,
-        name: name,
-        systemPrompt: systemPrompt,
-        llmProvider: PsygoConfig.defaultLLMProvider,
-        llmModel: PsygoConfig.defaultLLMModel,
-        maxMemoryTokens: PsygoConfig.defaultMaxMemoryTokens,
-      ).toJson(),
-      fromJsonT: (data) => data as Map<String, dynamic>,
-    );
-
-    // 从响应中提取 agent
-    final agentJson = response.data?['agent'] as Map<String, dynamic>?;
-    if (agentJson == null) {
-      throw ApiException(-1, 'Invalid response: missing agent data');
-    }
-
-    return Agent.fromJson(agentJson);
   }
 
   /// 释放资源

@@ -4,12 +4,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
-import 'package:psygo/widgets/layouts/desktop_layout.dart';
-import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
+import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -143,7 +143,18 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
 
     try {
       final matrix = Matrix.of(context);
-      final client = await matrix.getLoginClient();
+      final store = await SharedPreferences.getInstance();
+
+      // 使用用户专属的 client（基于 Matrix 用户 ID 命名数据库）
+      final client = await ClientManager.getOrCreateClientForUser(
+        matrixUserId,
+        store,
+      );
+
+      // 确保 client 在 clients 列表中
+      if (!matrix.widget.clients.contains(client)) {
+        matrix.widget.clients.add(client);
+      }
 
       // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
       final needsLogin = !client.isLogged() || client.userID != matrixUserId;
@@ -164,7 +175,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         } catch (_) {}
       }
 
-      // 清除旧数据
+      // 清除旧内存状态
       await client.clear();
 
       // Set homeserver before login
@@ -286,11 +297,11 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
     // 1. 清除 Automate 认证状态
     await backend.auth.markLoggedOut();
 
-    // 2. 清除图片缓存和用户信息缓存，避免显示旧用户的头像
-    MxcImage.clearCache();
-    DesktopLayout.clearUserCache();
-
-    // 3. 清除 Matrix 客户端状态（如果有，先复制列表避免并发修改）
+    // 2. 退出 Matrix 客户端
+    // 注意：client.logout() 会触发 onLoginStateChanged，自动执行：
+    // - 清除图片缓存 (MxcImage.clearCache)
+    // - 清除用户缓存 (DesktopLayout.clearUserCache)
+    // - 从 store 移除 clientName
     if (mounted) {
       try {
         final matrix = Matrix.of(context);
@@ -301,11 +312,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
               await client.logout();
               debugPrint('[LoginFlow] Matrix client logged out');
             }
-            // 清除客户端本地数据
-            await client.clear();
-            debugPrint('[LoginFlow] Matrix client data cleared');
           } catch (e) {
-            debugPrint('[LoginFlow] Matrix client cleanup error: $e');
+            debugPrint('[LoginFlow] Matrix client logout error: $e');
           }
         }
       } catch (e) {

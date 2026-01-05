@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart' hide Matrix;
+import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +20,7 @@ import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/theme_builder.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/agreement_check_service.dart';
+import 'package:psygo/utils/client_manager.dart';
 import '../utils/custom_scroll_behaviour.dart';
 import 'matrix.dart';
 
@@ -149,8 +150,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   // Aliyun SDK secret key
   // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
-  static const _secretKey = String.fromEnvironment('ALIYUN_SECRET_KEY',
-      defaultValue: '');
+  static const _secretKey = String.fromEnvironment(
+    'ALIYUN_SECRET_KEY',
+    defaultValue: '',
+  );
 
   @override
   void dispose() {
@@ -243,7 +246,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       AppUpdateService.startBackgroundCheck(api, () => getNavigatorContext() ?? context);
 
       // 等待 Navigator 可用
-      int waitAttempts = 0;
+      var waitAttempts = 0;
       const maxWaitAttempts = 10;
       BuildContext? navContext;
       while (waitAttempts < maxWaitAttempts) {
@@ -588,13 +591,23 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     try {
       final matrix = Matrix.of(context);
 
-      // Get login client - this handles returning the main client if not logged in
-      var client = await matrix.getLoginClient();
+      // 使用用户专属的 client（基于 Matrix 用户 ID 命名数据库）
+      // 这样每个用户都有独立的数据库，切换账号时不会有脏数据
+      final client = await ClientManager.getOrCreateClientForUser(
+        matrixUserId,
+        widget.store,
+      );
 
       debugPrint('[AuthGate] Client database: ${client.database}');
       debugPrint('[AuthGate] Client name: ${client.clientName}');
       debugPrint('[AuthGate] Client isLogged: ${client.isLogged()}');
       debugPrint('[AuthGate] Client deviceID: ${client.deviceID}');
+
+      // 确保 client 在 clients 列表中
+      if (!widget.clients.contains(client)) {
+        widget.clients.add(client);
+        debugPrint('[AuthGate] Client added to clients list, length=${widget.clients.length}');
+      }
 
       // Note: Encryption is disabled for this Matrix server
       // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
@@ -607,7 +620,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           } catch (_) {}
         }
 
-        // Clear old data before login
+        // Clear old data before login (仅清除内存状态，数据库保留)
         await client.clear();
 
         // Set homeserver before login
@@ -635,6 +648,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         } else {
           debugPrint('[AuthGate] Client already in clients list, length=${widget.clients.length}');
         }
+
+        // 设置当前 client 为活跃客户端
+        matrix.setActiveClient(client);
+        debugPrint('[AuthGate] Set active client to ${client.clientName}');
 
         // PC端：切换到主窗口模式
         if (PlatformInfos.isDesktop) {
@@ -672,6 +689,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         widget.clients.add(client);
         debugPrint('[AuthGate] Client added to clients list (already logged in), length=${widget.clients.length}');
       }
+
+      // 设置当前 client 为活跃客户端
+      matrix.setActiveClient(client);
+      debugPrint('[AuthGate] Set active client to ${client.clientName}');
 
       // PC端：切换到主窗口模式
       if (PlatformInfos.isDesktop) {
@@ -824,7 +845,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     );
 
     // 等待 Navigator 可用
-    int waitAttempts = 0;
+    var waitAttempts = 0;
     const maxWaitAttempts = 10;
     BuildContext? navContext;
     while (waitAttempts < maxWaitAttempts) {
@@ -849,35 +870,51 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 停止后台检查服务
     AgreementCheckService.stopBackgroundCheck();
 
-    // 清除登录状态
+    // 清除 Automate 认证状态
     final auth = context.read<PsygoAuthState>();
     await auth.markLoggedOut();
 
-    // 清除 Matrix 客户端状态（先复制列表避免并发修改）
+    // 退出所有 Matrix 客户端
+    // 注意：client.logout() 会触发 onLoginStateChanged，自动执行：
+    // - 清除图片缓存 (MxcImage.clearCache)
+    // - 清除用户缓存 (DesktopLayout.clearUserCache)
+    // - 从 store 移除 clientName
     final matrix = Matrix.of(context);
     final clients = List.from(matrix.widget.clients);
     for (final client in clients) {
-      if (client.isLogged()) {
-        try {
+      try {
+        if (client.isLogged()) {
           await client.logout();
-        } catch (e) {
-          debugPrint('[AuthGate] Matrix logout error: $e');
+          debugPrint('[AuthGate] Matrix client logged out');
         }
+      } catch (e) {
+        debugPrint('[AuthGate] Matrix client logout error: $e');
       }
     }
 
     if (!mounted) return;
 
+    // PC端：切换回登录小窗口
+    if (PlatformInfos.isDesktop) {
+      await WindowService.switchToLoginWindow();
+    }
+
     // 重置 AuthGate 状态
     setState(() {
-      _state = _AuthState.checking;
-      _hasTriedAuth = false;
+      _state = _AuthState.needsLogin;
+      _hasTriedAuth = true;  // 阻止自动一键登录，让用户手动登录以同意新协议
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
     });
 
-    // 重新触发登录流程
-    _checkAuthStateSafe();
+    // 确保跳转到登录页面（覆盖 onLoginStateChanged 的导航）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final navKey = PsygoApp.router.routerDelegate.navigatorKey;
+      final ctx = navKey.currentContext;
+      if (ctx != null) {
+        GoRouter.of(ctx).go('/login-signup');
+      }
+    });
   }
 
   /// 清除所有认证状态并跳转到登录页（Token 失效时调用）
@@ -891,7 +928,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     final auth = context.read<PsygoAuthState>();
     await auth.markLoggedOut();
 
-    // 清除 Matrix 客户端状态（先复制列表避免并发修改）
+    // 退出所有 Matrix 客户端
+    // 注意：client.logout() 会触发 onLoginStateChanged，自动执行：
+    // - 清除图片缓存 (MxcImage.clearCache)
+    // - 清除用户缓存 (DesktopLayout.clearUserCache)
+    // - 从 store 移除 clientName
     try {
       final matrix = Matrix.of(context);
       final clients = List.from(matrix.widget.clients);
@@ -899,15 +940,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         if (client.isLogged()) {
           try {
             await client.logout();
+            debugPrint('[AuthGate] Matrix client logged out');
           } catch (e) {
             debugPrint('[AuthGate] Matrix logout error: $e');
           }
-        }
-        // 清除客户端数据（即使未登录）
-        try {
-          await client.clear();
-        } catch (e) {
-          debugPrint('[AuthGate] Matrix client clear error: $e');
         }
       }
     } catch (e) {
@@ -916,7 +952,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     if (!mounted) return;
 
-    // 重置 AuthGate 状态
+    // 重置 AuthGate 状态（允许自动一键登录重试）
     setState(() {
       _state = _AuthState.needsLogin;
       _hasTriedAuth = false;
@@ -951,15 +987,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   Widget build(BuildContext context) {
     final auth = context.watch<PsygoAuthState>();
 
-    // If logged out externally, reset state
+    // If logged out externally (e.g., 401 error), clear all auth state including Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _state = _AuthState.checking;
-          _hasTriedAuth = false;
-          _hasRetriedMatrixLogin = false;
-        });
-        _checkAuthState();
+        // 清除所有认证状态（包括 Matrix）并跳转到登录页
+        // 这确保了 401 错误时 Matrix 也会被正确登出
+        _clearAllAuthStateAndRedirectToLogin();
       });
     }
 
@@ -1100,7 +1133,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final theme = Theme.of(context);
       final isDark = theme.brightness == Brightness.dark;
       final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
-      final subtitleColor = isDark ? Colors.white.withOpacity(0.7) : const Color(0xFF666666);
+      final subtitleColor = isDark ? Colors.white.withValues(alpha: 0.7) : const Color(0xFF666666);
       final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
       const errorColor = Color(0xFFFF6B6B);
 
@@ -1130,20 +1163,20 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.white.withOpacity(0.9),
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.black.withOpacity(0.08),
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.08),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: isDark
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.black.withOpacity(0.08),
+                        ? Colors.black.withValues(alpha: 0.3)
+                        : Colors.black.withValues(alpha: 0.08),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -1156,7 +1189,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: errorColor.withOpacity(0.15),
+                      color: errorColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: const Icon(
@@ -1205,14 +1238,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                                     const Color(0xFF00D4A1),
                                   ]
                                 : [
-                                    accentColor.withOpacity(0.9),
+                                    accentColor.withValues(alpha: 0.9),
                                     accentColor,
                                   ],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: accentColor.withOpacity(0.3),
+                              color: accentColor.withValues(alpha: 0.3),
                               blurRadius: 15,
                               offset: const Offset(0, 4),
                             ),

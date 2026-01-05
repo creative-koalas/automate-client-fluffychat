@@ -466,7 +466,9 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // 登出并跳转到登录页
+              // 清除认证状态并跳转到登录页
+              // 注意：onboarding 阶段 Matrix 可能还未登录，无需显式 logout
+              // 即使已登录，重新登录时 _loginMatrixAndProceed 会正确处理
               backend.auth.markLoggedOut();
               context.go('/login-signup');
             },

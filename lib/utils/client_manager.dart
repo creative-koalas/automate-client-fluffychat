@@ -23,6 +23,52 @@ import 'matrix_sdk_extensions/flutter_matrix_dart_sdk_database/builder.dart';
 abstract class ClientManager {
   static const String clientNamespace = 'com.psygo.store.clients';
 
+  /// 将 Matrix 用户 ID 转换为合法的 clientName
+  /// 例如: @user:server.com -> Psygo_user_server.com
+  static String userIdToClientName(String matrixUserId) {
+    // 去掉 @ 符号，将 : 替换为 _
+    final sanitized = matrixUserId
+        .replaceFirst('@', '')
+        .replaceAll(':', '_')
+        .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_'); // 替换其他非法文件名字符
+    return '${AppSettings.applicationName.value}_$sanitized';
+  }
+
+  /// 根据 Matrix 用户 ID 获取或创建 Client
+  /// 如果该用户已有数据库则复用，否则创建新的
+  static Future<Client> getOrCreateClientForUser(
+    String matrixUserId,
+    SharedPreferences store,
+  ) async {
+    final clientName = userIdToClientName(matrixUserId);
+    developer.log('[ClientManager] getOrCreateClientForUser: $matrixUserId -> $clientName', name: 'ClientManager');
+
+    // 检查是否已在 store 中
+    final clientNamesList = store.getStringList(clientNamespace) ?? [];
+    if (!clientNamesList.contains(clientName)) {
+      // 添加到 store
+      clientNamesList.add(clientName);
+      await store.setStringList(clientNamespace, clientNamesList);
+      developer.log('[ClientManager] Added new clientName to store: $clientName', name: 'ClientManager');
+    }
+
+    // 创建并初始化 client
+    final client = await createClient(clientName, store);
+    await client.initWithRestore(
+      onMigration: () async {
+        final l10n = await lookupL10n(PlatformDispatcher.instance.locale);
+        sendInitNotification(
+          l10n.databaseMigrationTitle,
+          l10n.databaseMigrationBody,
+        );
+      },
+    ).catchError(
+      (e, s) => Logs().e('Unable to initialize client', e, s),
+    );
+
+    return client;
+  }
+
   static Future<List<Client>> getClients({
     bool initialize = true,
     required SharedPreferences store,

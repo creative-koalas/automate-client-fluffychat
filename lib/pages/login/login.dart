@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:psygo/core/auth_service.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -83,30 +82,8 @@ class LoginController extends State<Login> {
         initialDeviceDisplayName: PlatformInfos.clientName,
       );
 
-      // Matrix 登录成功后，同步获取 Automate JWT Token
-      final matrixUserId = client.userID;
-      if (matrixUserId != null) {
-        final authService = PsygoAuthService();
-        try {
-          final result = await authService.authenticateWithMatrix(
-            matrixUserId: matrixUserId,
-            password: passwordController.text,
-          );
-          if (!result.success) {
-            Logs().w(
-              '[Login] Automate auth failed: ${result.error}, but Matrix login succeeded',
-            );
-            // Automate 认证失败不阻塞 Matrix 登录（降级体验）
-          } else {
-            Logs().i('[Login] Automate auth succeeded for user: ${result.userId}');
-          }
-        } catch (e) {
-          Logs().e('[Login] Automate auth error: $e');
-          // 错误不阻塞主流程
-        } finally {
-          authService.dispose();
-        }
-      }
+      // 注意：此页面是旧的 Matrix 密码登录，不再使用 Automate 认证
+      // 新的登录流程使用 login_signup 页面和一键登录
     } on MatrixException catch (exception) {
       setState(() => passwordError = exception.errorMessage);
       return setState(() => loading = false);

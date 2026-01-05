@@ -13,8 +13,6 @@ import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart'
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
-import 'package:psygo/widgets/layouts/desktop_layout.dart';
-import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/matrix.dart';
 import '../bootstrap/bootstrap_dialog.dart';
 import 'settings_view.dart';
@@ -204,11 +202,12 @@ class SettingsController extends State<Settings> {
       await auth.markLoggedOut();
       debugPrint('[Settings] Automate auth cleared');
 
-      // 2. 清除图片缓存和用户信息缓存，避免显示旧用户的头像
-      MxcImage.clearCache();
-      DesktopLayout.clearUserCache();
-
-      // 3. 退出并清除所有 Matrix 客户端（先复制列表避免并发修改）
+      // 2. 退出所有 Matrix 客户端
+      // 注意：client.logout() 会触发 onLoginStateChanged，自动执行：
+      // - 清除图片缓存 (MxcImage.clearCache)
+      // - 清除用户缓存 (DesktopLayout.clearUserCache)
+      // - 从 store 移除 clientName
+      // - 导航到登录页
       final clients = List.from(matrix.widget.clients);
       for (final client in clients) {
         try {
@@ -216,22 +215,17 @@ class SettingsController extends State<Settings> {
             await client.logout();
             debugPrint('[Settings] Matrix client logged out');
           }
-          // 清除客户端本地数据
-          await client.clear();
-          debugPrint('[Settings] Matrix client data cleared');
         } catch (e) {
-          debugPrint('[Settings] Matrix client cleanup error: $e');
+          debugPrint('[Settings] Matrix client logout error: $e');
         }
       }
 
-      // 4. PC端：切换回登录小窗口
+      // 3. PC端：切换回登录小窗口
       if (PlatformInfos.isDesktop) {
         await WindowService.switchToLoginWindow();
       }
 
-      // 5. 导航到登录页面（使用全局 router，因为此时 widget 可能已卸载）
-      PsygoApp.router.go('/login-signup');
-      debugPrint('[Settings] Logout completed, redirected to login');
+      debugPrint('[Settings] Logout completed');
     } catch (e) {
       debugPrint('[Settings] Logout error: $e');
     }
