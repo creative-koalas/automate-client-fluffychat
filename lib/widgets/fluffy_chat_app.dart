@@ -224,8 +224,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           _checkAuthStateSafe();
-          // 应用启动时立即检查更新（不等待登录完成）
-          _initUpdateCheck();
         }
       });
     });
@@ -236,32 +234,27 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     try {
       final api = context.read<PsygoApiClient>();
 
-      // 获取 Navigator context
-      // MaterialApp.builder 里的 context 在 Navigator 之外，需要使用 navigatorKey
+      // 获取可用的 context（优先使用 Navigator context，否则使用当前 widget context）
       BuildContext? getNavigatorContext() {
         return PsygoApp.navigatorKey.currentContext;
       }
 
-      // 启动后台检查服务（使用 navigatorKey 的 context）
-      AppUpdateService.startBackgroundCheck(api, () => getNavigatorContext() ?? context);
-
-      // 等待 Navigator 可用
-      var waitAttempts = 0;
-      const maxWaitAttempts = 10;
-      BuildContext? navContext;
-      while (waitAttempts < maxWaitAttempts) {
-        navContext = getNavigatorContext();
-        if (navContext != null) break;
-        await Future.delayed(const Duration(milliseconds: 300));
-        waitAttempts++;
-        if (!mounted) return;
+      // 获取最佳可用 context
+      // Navigator context 可能在登录完成后才可用，所以先用当前 context
+      BuildContext getAvailableContext() {
+        return getNavigatorContext() ?? context;
       }
 
-      if (navContext == null) return;
+      // 启动后台检查服务
+      AppUpdateService.startBackgroundCheck(api, getAvailableContext);
+
+      // 不再等待 Navigator，直接使用当前 context 执行检查
+      // 当前 context 在 MaterialApp.builder 内，可以正常显示 Dialog
+      if (!mounted) return;
 
       // 立即执行一次检查
       final updateService = AppUpdateService(api);
-      final canContinue = await updateService.checkAndPrompt(navContext);
+      final canContinue = await updateService.checkAndPrompt(context);
 
       // 处理强制更新阻止
       if (!canContinue && mounted) {
@@ -354,6 +347,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     await auth.load();
 
     debugPrint('[AuthGate] Checking auth state...');
+
+    // 在检查登录状态之前先检查更新（只在首次检查时执行）
+    if (!_hasTriedAuth) {
+      await _initUpdateCheck();
+      if (_blockedByForceUpdate) return;  // 被强制更新阻止，不继续
+    }
 
     // iOS CRITICAL FIX: Handle retry after stale credentials detected
     if (_needsRetryAfterStaleCredentials) {
