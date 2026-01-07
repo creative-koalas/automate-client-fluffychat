@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
 
-import 'package:psygo/config/setting_keys.dart';
-import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'chat_list_body.dart';
@@ -15,11 +13,7 @@ class ChatListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = L10n.of(context);
-    final isColumnMode = FluffyThemes.isColumnMode(context);
-    final showNavigationRail =
-        isColumnMode || AppSettings.displayNavigationRail.value;
 
     return PopScope(
       canPop: !controller.isSearchMode,

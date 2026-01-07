@@ -18,7 +18,6 @@
  */
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
@@ -27,7 +26,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 import 'package:unifiedpush/unifiedpush.dart';
 import 'package:unifiedpush_ui/unifiedpush_ui.dart';
@@ -35,7 +33,6 @@ import 'package:unifiedpush_ui/unifiedpush_ui.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/main.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
-import 'package:psygo/utils/push_helper.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import '../config/app_config.dart';
 import '../config/setting_keys.dart';
@@ -371,87 +368,6 @@ class BackgroundPush {
       showNoDistribDialog: false,
       onNoDistribDialogDismissed: () {}, // TODO: Implement me
     ).registerAppWithDialog();
-  }
-
-  Future<void> _newUpEndpoint(PushEndpoint newPushEndpoint, String i) async {
-    final newEndpoint = newPushEndpoint.url;
-    upAction = true;
-    if (newEndpoint.isEmpty) {
-      await _upUnregistered(i);
-      return;
-    }
-    var endpoint =
-        'https://matrix.gateway.unifiedpush.org/_matrix/push/v1/notify';
-    try {
-      final url = Uri.parse(newEndpoint)
-          .replace(
-            path: '/_matrix/push/v1/notify',
-            query: '',
-          )
-          .toString()
-          .split('?')
-          .first;
-      final res =
-          json.decode(utf8.decode((await http.get(Uri.parse(url))).bodyBytes));
-      if (res['gateway'] == 'matrix' ||
-          (res['unifiedpush'] is Map &&
-              res['unifiedpush']['gateway'] == 'matrix')) {
-        endpoint = url;
-      }
-    } catch (e) {
-      Logs().i(
-        '[Push] No self-hosted unified push gateway present: $newEndpoint',
-      );
-    }
-    Logs().i('[Push] UnifiedPush using endpoint $endpoint');
-    final oldTokens = <String?>{};
-    try {
-      //<GOOGLE_SERVICES>final fcmToken = await firebase.getToken();
-      //<GOOGLE_SERVICES>oldTokens.add(fcmToken);
-    } catch (_) {}
-    await setupPusher(
-      gatewayUrl: endpoint,
-      token: newEndpoint,
-      oldTokens: oldTokens,
-      useDeviceSpecificAppId: true,
-    );
-    await AppSettings.unifiedPushEndpoint.setItem(newEndpoint);
-    await AppSettings.unifiedPushRegistered.setItem(true);
-  }
-
-  Future<void> _upUnregistered(String i) async {
-    upAction = true;
-    Logs().i('[Push] Removing UnifiedPush endpoint...');
-    final oldEndpoint = AppSettings.unifiedPushEndpoint.value;
-    await AppSettings.unifiedPushEndpoint
-        .setItem(AppSettings.unifiedPushEndpoint.defaultValue);
-    await AppSettings.unifiedPushRegistered.setItem(false);
-    if (oldEndpoint.isNotEmpty) {
-      // remove the old pusher
-      await setupPusher(
-        oldTokens: {oldEndpoint},
-      );
-    }
-  }
-
-  Future<void> _onUpMessage(PushMessage pushMessage, String i) async {
-    Logs().wtf('Push Notification from UP received', pushMessage);
-    final message = pushMessage.content;
-    upAction = true;
-    final data = Map<String, dynamic>.from(
-      json.decode(utf8.decode(message))['notification'],
-    );
-    // UP may strip the devices list
-    data['devices'] ??= [];
-    await pushHelper(
-      PushNotification.fromJson(data),
-      client: client,
-      l10n: l10n,
-      activeRoomId: matrix?.activeRoomId,
-      flutterLocalNotificationsPlugin: _flutterLocalNotificationsPlugin,
-      useNotificationActions:
-          false, // Buggy with UP: https://codeberg.org/UnifiedPush/flutter-connector/issues/34
-    );
   }
 }
 

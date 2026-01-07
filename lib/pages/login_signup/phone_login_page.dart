@@ -6,11 +6,8 @@ library;
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:psygo/widgets/layouts/login_scaffold.dart';
 import 'package:psygo/backend/backend.dart';
-import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -151,7 +148,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
@@ -267,28 +264,28 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             end: Alignment.bottomRight,
             colors: isDark
                 ? [
-                    const Color(0xFF0A1628).withOpacity(0.95),
-                    const Color(0xFF0D2233).withOpacity(0.95),
-                    const Color(0xFF0F3D3E).withOpacity(0.95),
+                    const Color(0xFF0A1628).withValues(alpha: 0.95),
+                    const Color(0xFF0D2233).withValues(alpha: 0.95),
+                    const Color(0xFF0F3D3E).withValues(alpha: 0.95),
                   ]
                 : [
-                    const Color(0xFFF0F4F8).withOpacity(0.98),
-                    const Color(0xFFE8EFF5).withOpacity(0.98),
-                    const Color(0xFFE0F2F1).withOpacity(0.98),
+                    const Color(0xFFF0F4F8).withValues(alpha: 0.98),
+                    const Color(0xFFE8EFF5).withValues(alpha: 0.98),
+                    const Color(0xFFE0F2F1).withValues(alpha: 0.98),
                   ],
           ),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.08),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.08),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.black.withOpacity(0.08),
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -311,8 +308,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                       height: 4,
                       decoration: BoxDecoration(
                         color: isDark
-                            ? Colors.white.withOpacity(0.2)
-                            : Colors.black.withOpacity(0.15),
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : Colors.black.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -339,7 +336,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark
-                            ? Colors.white.withOpacity(0.7)
+                            ? Colors.white.withValues(alpha: 0.7)
                             : const Color(0xFF666666),
                         height: 1.6,
                       ),
@@ -388,7 +385,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                                 const Color(0xFF00D4A1),
                               ]
                             : [
-                                accentColor.withOpacity(0.9),
+                                accentColor.withValues(alpha: 0.9),
                                 accentColor,
                               ],
                       ),
@@ -396,7 +393,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                       boxShadow: [
                         BoxShadow(
                           color: (isDark ? const Color(0xFF00D3A1) : accentColor)
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 4),
                         ),
@@ -430,7 +427,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       foregroundColor: isDark
-                          ? Colors.white.withOpacity(0.5)
+                          ? Colors.white.withValues(alpha: 0.5)
                           : const Color(0xFF999999),
                     ),
                     child: const Text(
@@ -518,7 +515,6 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           final isExtraSmallScreen = screenWidth < 400;
           final isSmallScreen = screenWidth >= 400 && screenWidth < 600;
           final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
-          final isLargeScreen = screenWidth >= 900;
 
           // Logo 尺寸响应式 - 更大 Logo
           final logoSize = isExtraSmallScreen ? 100.0
@@ -527,13 +523,6 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           final logoImageHeight = isExtraSmallScreen ? 55.0
               : (isSmallScreen ? 60.0
               : (isMediumScreen ? 65.0 : 70.0));
-
-          // 标题字体响应式
-          final titleFontSize = isExtraSmallScreen ? 28.0
-              : (isSmallScreen ? 32.0
-              : (isMediumScreen ? 36.0 : 40.0));
-          final subtitleFontSize = isExtraSmallScreen ? 10.0
-              : (isSmallScreen ? 11.0 : 12.0);
 
           // 卡片宽度响应式
           final cardMaxWidth = (isExtraSmallScreen || isSmallScreen)
@@ -603,8 +592,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                     child: WindowControlButtons(
                       showMaximize: false,
                       iconColor: isDark
-                          ? Colors.white.withOpacity(0.6)
-                          : Colors.black.withOpacity(0.4),
+                          ? Colors.white.withValues(alpha: 0.6)
+                          : Colors.black.withValues(alpha: 0.4),
                     ),
                   ),
 
@@ -719,14 +708,14 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
     // Theme-based card colors
     final cardBgColor = isDark
-        ? Colors.white.withOpacity(0.05)
-        : Colors.white.withOpacity(0.4);
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.white.withValues(alpha: 0.4);
     final borderColor = isDark
-        ? Colors.white.withOpacity(0.1)
-        : Colors.white.withOpacity(0.5);
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.white.withValues(alpha: 0.5);
     final shadowColor = isDark
-        ? Colors.black.withOpacity(0.3)
-        : Colors.black.withOpacity(0.1);
+        ? Colors.black.withValues(alpha: 0.3)
+        : Colors.black.withValues(alpha: 0.1);
 
     return Container(
       decoration: BoxDecoration(
@@ -775,12 +764,11 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     Color accentColor,
   ) {
     final titleFontSize = isSmallScreen ? 20.0 : 22.0;
-    final subtitleFontSize = isSmallScreen ? 11.0 : 12.0;
     final spacingTop = isSmallScreen ? 14.0 : 16.0;
     final spacingBetween = isSmallScreen ? 10.0 : 12.0;
 
     final subtitleColor = isDark
-        ? Colors.white.withOpacity(0.6)
+        ? Colors.white.withValues(alpha: 0.6)
         : const Color(0xFF5A6A7A);
 
     return Column(
@@ -848,10 +836,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             child: TextButton(
               onPressed: countdown > 0 ? null : requestVerificationCode,
               child: Text(
-                countdown > 0 ? '${countdown}秒后重新发送' : '重新发送验证码',
+                countdown > 0 ? '$countdown秒后重新发送' : '重新发送验证码',
                 style: TextStyle(
                   color: countdown > 0
-                      ? (isDark ? Colors.white.withOpacity(0.4) : const Color(0xFF9E9E9E))
+                      ? (isDark ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF9E9E9E))
                       : accentColor,
                   fontSize: 13,
                 ),
@@ -870,16 +858,16 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               child: Checkbox(
                 value: agreedToEula,
                 onChanged: (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
-                fillColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return accentColor;
                   }
                   return Colors.transparent;
                 }),
                 side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.3),
+                      ? Colors.white.withValues(alpha: 0.3)
+                      : Colors.black.withValues(alpha: 0.3),
                   width: 2,
                 ),
                 shape: RoundedRectangleBorder(
@@ -931,7 +919,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           _GradientButton(
             onPressed: (loading || countdown > 0) ? null : requestVerificationCode,
             loading: loading,
-            text: countdown > 0 ? '${countdown}秒后重试' : '获取验证码',
+            text: countdown > 0 ? '$countdown秒后重试' : '获取验证码',
             isDark: isDark,
             accentColor: accentColor,
           )
@@ -946,309 +934,6 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       ],
     );
   }
-
-  Widget _buildFeatureItem(BuildContext context, IconData icon, String title, String subtitle) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.onPrimary.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            icon,
-            color: theme.colorScheme.onPrimary,
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Mobile: Original LoginScaffold layout
-  Widget _buildMobileLayout(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return LoginScaffold(
-      appBar: null,
-      enforceMobileMode: true,
-      body: Stack(
-        children: [
-          Positioned(
-            top: 12,
-            left: 12,
-            child: SafeArea(
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              child: _buildLoginForm(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Shared login form widget
-  Widget _buildLoginForm(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-    final isDesktop = FluffyThemes.isColumnMode(context);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        if (!isDesktop) ...[
-          Icon(
-            Icons.lock_person_outlined,
-            size: 80,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // Title
-        Text(
-          '手机号登录',
-          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-          style: textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          '欢迎回来！请验证您的手机号以继续。',
-          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-          style: textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 40),
-
-        // Phone Input
-        TextField(
-          readOnly: loading,
-          autocorrect: false,
-          autofocus: true,
-          controller: phoneController,
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.next,
-          style: textTheme.bodyLarge,
-          autofillHints: loading ? null : [AutofillHints.telephoneNumber],
-          decoration: InputDecoration(
-            labelText: '手机号',
-            hintText: '请输入手机号',
-            prefixIcon: const Icon(Icons.phone_outlined),
-            filled: true,
-            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-            ),
-            errorText: phoneError,
-            suffixIcon: codeSent
-                ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
-                : null,
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Code Input
-        if (codeSent) ...[
-          TextField(
-            readOnly: loading,
-            autocorrect: false,
-            autofocus: true,
-            controller: codeController,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            style: textTheme.bodyLarge,
-            autofillHints: loading ? null : [AutofillHints.oneTimeCode],
-            onSubmitted: (_) => verifyAndLogin(),
-            decoration: InputDecoration(
-              labelText: '验证码',
-              hintText: '请输入验证码',
-              prefixIcon: const Icon(Icons.security_outlined),
-              filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-              ),
-              errorText: codeError,
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: loading ? null : requestVerificationCode,
-              child: const Text('重新发送验证码'),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-
-        // EULA
-        Row(
-          children: [
-            Checkbox(
-              value: agreedToEula,
-              onChanged: loading ? null : (_) => toggleEulaAgreement(),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            Flexible(
-              child: Text.rich(
-                TextSpan(
-                  style: textTheme.bodyMedium,
-                  children: [
-                    const TextSpan(text: '我已阅读并同意'),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: _ClickableLink(
-                        text: '《用户协议》',
-                        accentColor: theme.colorScheme.primary,
-                        onTap: loading ? () {} : showEula,
-                      ),
-                    ),
-                    const TextSpan(text: '和'),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: _ClickableLink(
-                        text: '《隐私政策》',
-                        accentColor: theme.colorScheme.primary,
-                        onTap: loading ? () {} : showPrivacyPolicy,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // Buttons
-        if (!codeSent)
-          FilledButton(
-            onPressed: loading ? null : requestVerificationCode,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: loading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('获取验证码', style: TextStyle(fontSize: 16)),
-          ),
-
-        if (codeSent)
-          FilledButton(
-            onPressed: loading ? null : verifyAndLogin,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: loading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text(
-                    '登录 / 注册',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Grid pattern painter for background decoration
-class _GridPatternPainter extends CustomPainter {
-  final Color color;
-
-  _GridPatternPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-
-    const spacing = 40.0;
-
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ============================================================================
@@ -1340,7 +1025,7 @@ class _PulsingGlowState extends State<_PulsingGlow>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  widget.color.withOpacity(_opacityAnimation.value),
+                  widget.color.withValues(alpha: _opacityAnimation.value),
                   Colors.transparent,
                 ],
                 stops: const [0.0, 0.7],
@@ -1468,17 +1153,17 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
     // Theme-based colors
     final textColor = widget.isDark ? Colors.white : const Color(0xFF1A2332);
     final hintColor = widget.isDark
-        ? Colors.white.withOpacity(0.4)
+        ? Colors.white.withValues(alpha: 0.4)
         : const Color(0xFF9E9E9E);
     final iconColor = widget.isDark
-        ? Colors.white.withOpacity(0.5)
+        ? Colors.white.withValues(alpha: 0.5)
         : const Color(0xFF757575);
     final fillColor = widget.isDark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.black.withOpacity(0.03);
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.03);
     final borderColor = widget.isDark
-        ? Colors.white.withOpacity(0.1)
-        : Colors.black.withOpacity(0.15);
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.15);
     final focusBorderColor = widget.isDark
         ? const Color(0xFF00D4FF)
         : widget.accentColor;
@@ -1497,7 +1182,7 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
             boxShadow: _isFocused
                 ? [
                     BoxShadow(
-                      color: widget.accentColor.withOpacity(0.3),
+                      color: widget.accentColor.withValues(alpha: 0.3),
                       blurRadius: 30,
                       spreadRadius: 0,
                     ),
@@ -1579,13 +1264,13 @@ class _GradientButton extends StatelessWidget {
             const Color(0xFF00D4A1),
           ]
         : [
-            accentColor.withOpacity(0.9),
+            accentColor.withValues(alpha: 0.9),
             accentColor,
           ];
 
     final shadowColor = isDark
-        ? const Color(0xFF00D3A1).withOpacity(0.3)
-        : accentColor.withOpacity(0.25);
+        ? const Color(0xFF00D3A1).withValues(alpha: 0.3)
+        : accentColor.withValues(alpha: 0.25);
 
     return Container(
       decoration: BoxDecoration(
@@ -1693,7 +1378,7 @@ class _ClickableLinkState extends State<_ClickableLink> {
             style: TextStyle(
               fontSize: widget.fontSize,
               color: _isHovered
-                  ? widget.accentColor.withOpacity(0.8)
+                  ? widget.accentColor.withValues(alpha: 0.8)
                   : widget.accentColor,
               fontWeight: FontWeight.w600,
             ),

@@ -8,7 +8,6 @@ import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/core/config.dart';
 
 enum AppSettings<T> {
   textMessageMaxLength<int>('textMessageMaxLength', 16384),

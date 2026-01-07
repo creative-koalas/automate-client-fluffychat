@@ -39,7 +39,6 @@ class ChatDetailsView extends StatelessWidget {
     }
 
     final directChatMatrixID = room.directChatMatrixID;
-    final roomAvatar = room.avatar;
 
     return StreamBuilder(
       stream: room.client.onRoomState.stream

@@ -175,10 +175,6 @@ class SendFileDialogState extends State<SendFileDialog> {
         .toSet()
         .singleOrNull;
 
-    final fileName = widget.files.length == 1
-        ? widget.files.single.name
-        : L10n.of(context).countFiles(widget.files.length);
-
     if (uniqueFileType == 'image') {
       if (widget.files.length == 1) {
         sendStr = L10n.of(context).sendImage;
@@ -197,9 +193,6 @@ class SendFileDialogState extends State<SendFileDialog> {
     return FutureBuilder<String>(
       future: _calcCombinedFileSize(),
       builder: (context, snapshot) {
-        final sizeString =
-            snapshot.data ?? L10n.of(context).calculatingFileSize;
-
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
