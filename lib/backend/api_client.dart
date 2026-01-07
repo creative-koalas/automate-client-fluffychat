@@ -6,11 +6,12 @@ import 'package:http/http.dart' as http;
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
+import '../utils/custom_http_client.dart';
 
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio, http.Client? httpClient})
-      : _dio = dio ?? Dio(),
-        _http = httpClient ?? http.Client() {
+      : _dio = dio ?? CustomHttpClient.createDio(),
+        _http = httpClient ?? CustomHttpClient.createHTTPClient() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(
@@ -65,8 +66,24 @@ class PsygoApiClient {
         data: {'phone': phone},
       );
     } on DioException catch (e) {
+      debugPrint('[API] sendVerificationCode DioException: ${e.type}, ${e.message}');
+      debugPrint('[API] DioException error: ${e.error}');
+
       final responseData = e.response?.data;
       String errorMsg = '验证码发送失败，请稍后重试';
+
+      // 检查是否是 TLS/SSL 证书错误
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.unknown) {
+        final errorStr = e.error?.toString() ?? '';
+        if (errorStr.contains('CERTIFICATE_VERIFY_FAILED') ||
+            errorStr.contains('HandshakeException') ||
+            errorStr.contains('certificate')) {
+          errorMsg = '网络安全连接失败，请检查网络或更新系统';
+          debugPrint('[API] SSL/TLS certificate error detected');
+        }
+      }
+
       if (responseData is Map<String, dynamic>) {
         errorMsg = responseData['msg']?.toString() ?? errorMsg;
       }

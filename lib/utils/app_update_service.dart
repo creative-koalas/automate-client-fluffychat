@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
+import 'package:psygo/utils/custom_http_client.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 /// 版本跳过存储 key
@@ -576,7 +577,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       final filePath = '${dir.path}/$fileName';
 
       _cancelToken = CancelToken();
-      final dio = Dio();
+      final dio = CustomHttpClient.createDio();
 
       await dio.download(
         _currentDownloadUrl,
