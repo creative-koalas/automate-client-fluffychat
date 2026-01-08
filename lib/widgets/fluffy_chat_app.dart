@@ -901,19 +901,18 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 重置 AuthGate 状态
     setState(() {
       _state = _AuthState.needsLogin;
-      _hasTriedAuth = true;  // 阻止自动一键登录，让用户手动登录以同意新协议
+      _hasTriedAuth = false;  // 允许一键登录重新触发
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
     });
 
-    // 确保跳转到登录页面（覆盖 onLoginStateChanged 的导航）
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navKey = PsygoApp.router.routerDelegate.navigatorKey;
-      final ctx = navKey.currentContext;
-      if (ctx != null) {
-        GoRouter.of(ctx).go('/login-signup');
-      }
-    });
+    // 路由跳转由 Matrix.onLoginStateChanged 自动处理
+    // 移动端：跳转到 / 后触发一键登录
+    if (PlatformInfos.isMobile) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkAuthStateSafe();
+      });
+    }
   }
 
   /// 清除所有认证状态并跳转到登录页（Token 失效时调用）
