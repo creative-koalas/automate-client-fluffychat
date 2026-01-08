@@ -265,7 +265,7 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer.withOpacity(0.5),
+              color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: widget.plugin.iconUrl.isNotEmpty
@@ -474,8 +474,8 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: isTrained
-              ? theme.colorScheme.primary.withOpacity(0.3)
-              : theme.colorScheme.outlineVariant.withOpacity(0.3),
+              ? theme.colorScheme.primary.withValues(alpha: 0.3)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -492,7 +492,7 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.15),
+                  color: Colors.green.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -540,7 +540,7 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
       ),
       child: employee.avatarUrl != null && employee.avatarUrl!.isNotEmpty
@@ -674,7 +674,7 @@ class _ConfigDialogState extends State<_ConfigDialog> {
                       ),
                       filled: true,
                       fillColor: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                     ),
                   ),
                 );

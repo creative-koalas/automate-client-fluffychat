@@ -193,7 +193,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: employee.avatarUrl != null &&
@@ -397,7 +397,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.15),
+          color: Colors.orange.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -446,7 +446,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.15),
+        color: statusColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -527,7 +527,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer.withOpacity(0.5),
+              color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
@@ -565,9 +565,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: isExpired
-            ? theme.colorScheme.errorContainer.withOpacity(0.3)
+            ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
             : isExpiringSoon
-                ? Colors.orange.withOpacity(0.15)
+                ? Colors.orange.withValues(alpha: 0.15)
                 : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),

@@ -173,7 +173,7 @@ class _HireDialogState extends State<HireDialog> {
                   ),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.3),
+                      .withValues(alpha: 0.3),
                   counterText: '${_nameController.text.length}/$_maxNameLength',
                   counterStyle: TextStyle(
                     color: _isNameTooLong
@@ -201,7 +201,7 @@ class _HireDialogState extends State<HireDialog> {
                   ),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.3),
+                      .withValues(alpha: 0.3),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _onConfirm(),
@@ -214,7 +214,7 @@ class _HireDialogState extends State<HireDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
+                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -289,10 +289,10 @@ class _HireDialogState extends State<HireDialog> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
           width: 1,
         ),
       ),

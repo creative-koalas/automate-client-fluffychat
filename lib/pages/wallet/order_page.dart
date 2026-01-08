@@ -438,7 +438,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
           // 使用 Stack + 覆盖层替代 showDialog，解决生命周期问题
           if (isProcessing)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               child: Center(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 48),
@@ -512,7 +512,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -736,7 +736,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -833,7 +833,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

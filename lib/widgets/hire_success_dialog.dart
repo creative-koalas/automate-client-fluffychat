@@ -118,7 +118,7 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -147,10 +147,10 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.orange.withOpacity(0.3),
+                      color: Colors.orange.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -246,7 +246,7 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.green.withOpacity(0.3 * value),
+                color: Colors.green.withValues(alpha: 0.3 * value),
                 blurRadius: 20 * value,
                 spreadRadius: 5 * value,
               ),

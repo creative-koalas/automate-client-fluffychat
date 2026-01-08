@@ -297,8 +297,8 @@ class _WindowControlButtonsState extends State<WindowControlButtons> with Window
     if (!PlatformInfos.isDesktop) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultIconColor = isDark ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.5);
-    final defaultHoverColor = isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05);
+    final defaultIconColor = isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black.withValues(alpha: 0.5);
+    final defaultHoverColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
 
     return Row(
       mainAxisSize: MainAxisSize.min,

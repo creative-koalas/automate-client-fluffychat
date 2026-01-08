@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:matrix/matrix.dart';
@@ -317,7 +316,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                                   right: 12,
                                   bottom: 12,
                                   child: Material(
-                                    color: Colors.black.withOpacity(0.6),
+                                    color: Colors.black.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(20),
                                     child: InkWell(
                                       onTap: () => _showFullScreenImage(context),
@@ -423,7 +422,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                                   onChanged: compressionSupported
                                       ? (v) => setState(() => compress = v)
                                       : null,
-                                  activeColor: const Color(0xFF4CAF50),
+                                  activeTrackColor: const Color(0xFF4CAF50),
                                 ),
                               ],
                             ),
@@ -552,7 +551,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                 ),
                 onPressed: () => Navigator.of(context).pop(),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.black.withOpacity(0.6),
+                  backgroundColor: Colors.black.withValues(alpha: 0.6),
                 ),
               ),
             ),

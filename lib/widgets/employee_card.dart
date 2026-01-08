@@ -84,7 +84,7 @@ class _EmployeeCardState extends State<EmployeeCard>
             boxShadow: isOnboarding
                 ? [
                     BoxShadow(
-                      color: Colors.orange.withOpacity(glowOpacity),
+                      color: Colors.orange.withValues(alpha: glowOpacity),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
@@ -96,7 +96,7 @@ class _EmployeeCardState extends State<EmployeeCard>
             color: isOnboarding
                 ? Color.lerp(
                     theme.colorScheme.surfaceContainerLow,
-                    Colors.orange.withOpacity(0.1),
+                    Colors.orange.withValues(alpha: 0.1),
                     _pulseAnimation.value * 0.3,
                   )
                 : theme.colorScheme.surfaceContainerLow,
@@ -105,11 +105,11 @@ class _EmployeeCardState extends State<EmployeeCard>
               side: BorderSide(
                 color: isOnboarding
                     ? Color.lerp(
-                        theme.colorScheme.outlineVariant.withOpacity(0.3),
-                        Colors.orange.withOpacity(0.5),
+                        theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        Colors.orange.withValues(alpha: 0.5),
                         _pulseAnimation.value * 0.5,
                       )!
-                    : theme.colorScheme.outlineVariant.withOpacity(0.3),
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -138,7 +138,7 @@ class _EmployeeCardState extends State<EmployeeCard>
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: isOnboarding
-                                  ? theme.colorScheme.onSurface.withOpacity(0.7)
+                                  ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
                                   : null,
                             ),
                             maxLines: 1,
@@ -197,8 +197,8 @@ class _EmployeeCardState extends State<EmployeeCard>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.orange.withOpacity(
-                          0.3 + _pulseAnimation.value * 0.4,
+                        color: Colors.orange.withValues(
+                          alpha: 0.3 + _pulseAnimation.value * 0.4,
                         ),
                         width: 2,
                       ),
@@ -215,7 +215,7 @@ class _EmployeeCardState extends State<EmployeeCard>
               height: 44,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               ),
               child: widget.employee.avatarUrl != null &&
                       widget.employee.avatarUrl!.isNotEmpty
@@ -314,13 +314,13 @@ class _EmployeeCardState extends State<EmployeeCard>
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(
-                0.1 + _pulseAnimation.value * 0.1,
+              color: Colors.orange.withValues(
+                alpha: 0.1 + _pulseAnimation.value * 0.1,
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.orange.withOpacity(
-                  0.3 + _pulseAnimation.value * 0.2,
+                color: Colors.orange.withValues(
+                  alpha: 0.3 + _pulseAnimation.value * 0.2,
                 ),
                 width: 1,
               ),
@@ -355,7 +355,7 @@ class _EmployeeCardState extends State<EmployeeCard>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.15),
+        color: Colors.green.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

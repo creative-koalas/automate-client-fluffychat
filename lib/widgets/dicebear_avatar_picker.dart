@@ -191,10 +191,10 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
                 width: widget.size,
                 height: widget.size,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(widget.size * 0.2),
                   border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -237,7 +237,7 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.shadow.withOpacity(0.2),
+                        color: theme.colorScheme.shadow.withValues(alpha: 0.2),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),

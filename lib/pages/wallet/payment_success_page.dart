@@ -139,7 +139,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: _emeraldGreen.withOpacity(0.08),
+            color: _emeraldGreen.withValues(alpha: 0.08),
             blurRadius: 40,
             offset: const Offset(0, 8),
           ),
@@ -220,8 +220,8 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _emeraldGreen.withOpacity(
-                        0.15 * (1 - _pulseAnimation.value),
+                      color: _emeraldGreen.withValues(
+                        alpha: 0.15 * (1 - _pulseAnimation.value),
                       ),
                     ),
                   ),
@@ -233,7 +233,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                 height: 88,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _emeraldGreen.withOpacity(0.1),
+                  color: _emeraldGreen.withValues(alpha: 0.1),
                 ),
               ),
 
@@ -246,7 +246,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                   color: _emeraldGreen,
                   boxShadow: [
                     BoxShadow(
-                      color: _emeraldGreen.withOpacity(0.3),
+                      color: _emeraldGreen.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -325,7 +325,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
           backgroundColor: _emeraldGreen,
           foregroundColor: Colors.white,
           elevation: 0,
-          shadowColor: _emeraldGreen.withOpacity(0.3),
+          shadowColor: _emeraldGreen.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),

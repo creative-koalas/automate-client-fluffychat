@@ -164,14 +164,14 @@ class _EmptyStateState extends State<EmptyState>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primaryContainer.withOpacity(0.5),
-            theme.colorScheme.primaryContainer.withOpacity(0.2),
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
           ],
         ),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -180,7 +180,7 @@ class _EmptyStateState extends State<EmptyState>
       child: Icon(
         widget.icon,
         size: 48,
-        color: theme.colorScheme.primary.withOpacity(0.8),
+        color: theme.colorScheme.primary.withValues(alpha: 0.8),
       ),
     );
   }

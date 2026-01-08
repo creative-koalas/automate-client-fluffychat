@@ -397,7 +397,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -473,7 +473,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
@@ -531,7 +531,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                 decoration: BoxDecoration(
                   color: isCompleted
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                      : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -560,7 +560,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                     boxShadow: isCurrent
                         ? [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
                               blurRadius: 8,
                               spreadRadius: 1,
                             ),
@@ -772,7 +772,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: isSelected
-            ? theme.colorScheme.primaryContainer.withOpacity(0.4)
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
             : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
@@ -786,7 +786,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
               border: Border.all(
                 color: isSelected
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant.withOpacity(0.3),
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -824,7 +824,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer.withOpacity(0.5),
+                    color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: plugin.iconUrl.isNotEmpty
@@ -925,7 +925,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -984,7 +984,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -994,7 +994,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
@@ -1161,7 +1161,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
               ),
             ),
             filled: true,
-            fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             alignLabelWithHint: minLines > 1,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16,
@@ -1215,7 +1215,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.3),
+        color: color.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -1247,7 +1247,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             Icon(
               Icons.cloud_off_outlined,
               size: 48,
-              color: theme.colorScheme.error.withOpacity(0.7),
+              color: theme.colorScheme.error.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1282,7 +1282,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             Icon(
               Icons.extension_off_outlined,
               size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1320,7 +1320,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       margin: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer.withOpacity(0.4),
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1365,7 +1365,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             : null,
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
       ),
@@ -1385,7 +1385,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.5),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
                 ),
               ),
               child: Text(

@@ -54,7 +54,7 @@ class _SkeletonCardState extends State<SkeletonCard>
           width: widget.width,
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest
-                .withOpacity(_animation.value),
+                .withValues(alpha: _animation.value),
             borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
           ),
           child: Padding(
@@ -165,7 +165,7 @@ class _SkeletonGridItemState extends State<SkeletonGridItem>
           height: widget.height,
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest
-                .withOpacity(_animation.value),
+                .withValues(alpha: _animation.value),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(

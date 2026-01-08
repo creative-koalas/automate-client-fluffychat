@@ -122,12 +122,12 @@ class HomeserverPickerView extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surfaceContainerHighest
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(
                                 AppConfig.borderRadius,
                               ),
                               border: Border.all(
-                                color: theme.colorScheme.outline.withOpacity(0.3),
+                                color: theme.colorScheme.outline.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Row(
