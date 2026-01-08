@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
@@ -139,6 +141,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   static const int _maxResumeRetries = 3;  // Max retries on resume
   bool _blockedByForceUpdate = false;  // Track if blocked by force update
 
+  // Sync error tracking
+  StreamSubscription? _syncStatusSubscription;
+  int _consecutiveSyncErrors = 0;
+  static const int _maxConsecutiveSyncErrors = 5;  // 连续5次同步失败后登出
+
   // Pending new user registration data
   String? _pendingToken;
   String? _pendingPhone;
@@ -159,6 +166,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _invitationCodeController.dispose();
+    // 取消同步状态监听
+    _syncStatusSubscription?.cancel();
     // 移除认证状态监听
     try {
       final auth = context.read<PsygoAuthState>();
@@ -662,6 +671,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // 启动协议检查后台服务
         _startAgreementCheckService();
 
+        // 启动同步状态监听，检测持续连接失败
+        _startSyncStatusMonitoring(client);
+
         // Navigate to main page after successful login
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -702,6 +714,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // 启动协议检查后台服务
       _startAgreementCheckService();
+
+      // 启动同步状态监听，检测持续连接失败
+      _startSyncStatusMonitoring(client);
 
       // Navigate to main page if not already there
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -860,6 +875,68 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 立即执行一次检查
     final agreementService = AgreementCheckService(api);
     await agreementService.checkAndHandle(navContext);
+  }
+
+  /// 启动同步状态监听，检测持续连接失败
+  void _startSyncStatusMonitoring(Client client) {
+    // 取消之前的订阅
+    _syncStatusSubscription?.cancel();
+    _consecutiveSyncErrors = 0;
+
+    debugPrint('[AuthGate] Starting sync status monitoring');
+
+    _syncStatusSubscription = client.onSyncStatus.stream.listen((status) {
+      if (!mounted) return;
+
+      if (status.status == SyncStatus.error) {
+        _consecutiveSyncErrors++;
+        debugPrint('[AuthGate] Sync error #$_consecutiveSyncErrors: ${status.error}');
+
+        // 检查是否是连接超时或网络错误
+        final errorStr = status.error?.toString() ?? '';
+        final isConnectionError = errorStr.contains('SocketException') ||
+            errorStr.contains('Connection') ||
+            errorStr.contains('timeout') ||
+            errorStr.contains('TimeoutException') ||
+            errorStr.contains('Network') ||
+            errorStr.contains('Failed host lookup');
+
+        if (isConnectionError && _consecutiveSyncErrors >= _maxConsecutiveSyncErrors) {
+          debugPrint('[AuthGate] Max consecutive sync errors reached ($_consecutiveSyncErrors), logging out user');
+          _handlePersistentConnectionFailure();
+        }
+      } else if (status.status == SyncStatus.finished ||
+                 status.status == SyncStatus.processing) {
+        // 同步成功，重置计数器
+        if (_consecutiveSyncErrors > 0) {
+          debugPrint('[AuthGate] Sync recovered, resetting error counter');
+          _consecutiveSyncErrors = 0;
+        }
+      }
+    });
+  }
+
+  /// 处理持续连接失败：清除登录状态并跳转到登录页
+  Future<void> _handlePersistentConnectionFailure() async {
+    debugPrint('[AuthGate] Handling persistent connection failure');
+
+    // 取消同步监听避免重复触发
+    _syncStatusSubscription?.cancel();
+    _syncStatusSubscription = null;
+
+    // 显示提示
+    if (mounted) {
+      final navContext = PsygoApp.navigatorKey.currentContext ?? context;
+      ScaffoldMessenger.of(navContext).showSnackBar(
+        const SnackBar(
+          content: Text('网络连接持续失败，请重新登录'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+
+    // 清除所有认证状态并跳转到登录页
+    await _clearAllAuthStateAndRedirectToLogin();
   }
 
   /// 强制登出（协议未接受时调用）
