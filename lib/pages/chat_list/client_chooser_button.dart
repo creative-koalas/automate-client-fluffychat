@@ -63,7 +63,12 @@ class ClientChooserButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final matrix = Matrix.of(context);
-    final client = matrix.client;
+    final client = matrix.clientOrNull;
+
+    // 登出时 client 可能为空，显示空占位
+    if (client == null) {
+      return const SizedBox.shrink();
+    }
 
     // 使用 userID 作为 key，当用户变化时强制重建 FutureBuilder
     return FutureBuilder<Profile>(
