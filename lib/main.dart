@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,18 +57,18 @@ void main() async {
   // PC 端窗口初始化
   if (PlatformInfos.isDesktop) {
     // [DEBUG] 清除登录状态代码 - 测试时启用
-//     debugPrint('[DEBUG] Desktop: Clearing all login state...');
-//     await const FlutterSecureStorage().deleteAll();
-//     final debugPrefs = await SharedPreferences.getInstance();
-//     await debugPrefs.clear();
+    debugPrint('[DEBUG] Desktop: Clearing all login state...');
+    await const FlutterSecureStorage().deleteAll();
+    final debugPrefs = await SharedPreferences.getInstance();
+    await debugPrefs.clear();
     // 清除 Matrix 数据库
-//     final appSupportDir = await getApplicationSupportDirectory();
-//     final dbFiles = appSupportDir.listSync().where((f) => f.path.endsWith('.sqlite'));
-//     for (final dbFile in dbFiles) {
-//       debugPrint('[DEBUG] Deleting Matrix database: ${dbFile.path}');
-//       await File(dbFile.path).delete();
-//     }
-//     debugPrint('[DEBUG] Desktop: Login state cleared!');
+    final appSupportDir = await getApplicationSupportDirectory();
+    final dbFiles = appSupportDir.listSync().where((f) => f.path.endsWith('.sqlite'));
+    for (final dbFile in dbFiles) {
+      debugPrint('[DEBUG] Deleting Matrix database: ${dbFile.path}');
+      await File(dbFile.path).delete();
+    }
+    debugPrint('[DEBUG] Desktop: Login state cleared!');
 
     // 初始化窗口管理器 - 登录页面使用小窗口无边框样式
     await windowManager.ensureInitialized();

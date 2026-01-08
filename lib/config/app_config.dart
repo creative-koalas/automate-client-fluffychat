@@ -52,8 +52,8 @@ abstract class AppConfig {
 
   static final Uri privacyUrl = Uri(
     scheme: 'https',
-    host: 'fluffy.chat',
-    path: '/en/privacy',
+    host: 'psygoai.com',
+    path: '/legal/privacy-policy.html',
   );
 
   static const String mainIsolatePortName = 'main_isolate';

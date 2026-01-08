@@ -5,6 +5,8 @@ import 'package:matrix/matrix.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:psygo/backend/api_client.dart';
+import 'package:psygo/config/app_config.dart';
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/app_update_test.dart';
@@ -173,6 +175,14 @@ class SettingsView extends StatelessWidget {
                     onTap: controller.submitFeedbackAction,
                   ),
                   ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined),
+                    title: const Text('隐私政策'),
+                    onTap: () => launchUrlString(
+                      AppConfig.privacyUrl.toString(),
+                      mode: LaunchMode.inAppBrowserView,
+                    ),
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(L10n.of(context).about),
                     onTap: () => PlatformInfos.showDialog(context),
@@ -213,6 +223,20 @@ class SettingsView extends StatelessWidget {
                       ),
                     ),
                     onTap: controller.logoutAction,
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.delete_forever_outlined,
+                      color: theme.colorScheme.error,
+                    ),
+                    title: Text(
+                      '注销账号',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                    subtitle: const Text('永久删除账号及所有数据'),
+                    onTap: controller.deleteAccountAction,
                   ),
                 ],
               ),

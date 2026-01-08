@@ -733,6 +733,39 @@ class PsygoApiClient {
     return AgreementStatus.fromJson(respData);
   }
 
+  /// 注销账号（用户自助注销）
+  /// 级联删除：Agent、Matrix 账号、推送设备、用户记录（软删除）
+  Future<void> deleteAccount() async {
+    final token = auth.primaryToken;
+    if (token == null || token.isEmpty) {
+      throw AutomateBackendException('Not logged in');
+    }
+
+    Response<Map<String, dynamic>> res;
+    try {
+      res = await _dio.delete<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/users/me?confirm=true',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      String errorMsg = '注销失败，请稍后重试';
+      if (responseData is Map<String, dynamic>) {
+        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+      }
+      throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
+    }
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['msg']?.toString() ?? '注销失败',
+        statusCode: res.statusCode,
+      );
+    }
+  }
+
   Stream<ChatStreamEvent> streamChatResponse(String message, {bool isQuickStart = false}) async* {
     final token = auth.chatbotToken;
     final url = Uri.parse('$_chatbotBase/api/submit-user-message');

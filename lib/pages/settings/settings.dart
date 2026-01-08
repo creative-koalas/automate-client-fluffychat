@@ -62,6 +62,92 @@ class SettingsController extends State<Settings> {
     }
   }
 
+  void deleteAccountAction() async {
+    final l10n = L10n.of(context);
+
+    // 第一次确认
+    final firstConfirm = await showOkCancelAlertDialog(
+      context: context,
+      title: '注销账号',
+      message: '注销后，您的账号将被永久删除，所有数据将无法恢复。确定要继续吗？',
+      okLabel: '继续',
+      cancelLabel: l10n.cancel,
+      isDestructive: true,
+    );
+    if (firstConfirm != OkCancelResult.ok) return;
+
+    // 第二次确认，输入"注销"
+    final input = await showTextInputDialog(
+      useRootNavigator: false,
+      context: context,
+      title: '确认注销',
+      message: '请输入"注销"以确认删除账号',
+      okLabel: '确认注销',
+      cancelLabel: l10n.cancel,
+      isDestructive: true,
+    );
+    if (input == null || input != '注销') {
+      if (input != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('输入不正确，请输入"注销"')),
+        );
+      }
+      return;
+    }
+
+    final matrix = Matrix.of(context);
+    final auth = context.read<PsygoAuthState>();
+    final apiClient = context.read<PsygoApiClient>();
+
+    final success = await showFutureLoadingDialog(
+      context: context,
+      future: () async {
+        // 调用后端 API 注销账号（级联删除 Agent、Matrix 账号等）
+        await apiClient.deleteAccount();
+      },
+    );
+
+    if (success.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('注销失败: ${success.error}')),
+      );
+      return;
+    }
+
+    try {
+      debugPrint('[Settings] Account deletion successful, cleaning up...');
+
+      // 1. 先跳转到登录页（避免 context 失效）
+      PsygoApp.router.go('/login-signup');
+
+      // 2. PC端：切换回登录小窗口
+      if (PlatformInfos.isDesktop) {
+        await WindowService.switchToLoginWindow();
+      }
+
+      // 3. 清除 Automate 认证状态
+      await auth.markLoggedOut();
+      debugPrint('[Settings] Automate auth cleared');
+
+      // 4. 清理 Matrix 客户端（本地清理，不调用服务端 API）
+      final clients = List.from(matrix.widget.clients);
+      for (final client in clients) {
+        try {
+          if (client.isLogged()) {
+            await client.dispose();
+            debugPrint('[Settings] Matrix client disposed');
+          }
+        } catch (e) {
+          debugPrint('[Settings] Matrix client cleanup error: $e');
+        }
+      }
+
+      debugPrint('[Settings] Account deletion cleanup completed');
+    } catch (e) {
+      debugPrint('[Settings] Account deletion cleanup error: $e');
+    }
+  }
+
   void logoutAction() async {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
