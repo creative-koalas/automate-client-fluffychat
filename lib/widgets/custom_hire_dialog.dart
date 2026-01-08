@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 
-import '../models/agent_template.dart';
 import '../models/plugin.dart';
 import '../repositories/agent_template_repository.dart';
 import '../repositories/plugin_repository.dart';
@@ -965,8 +964,9 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           color: theme.colorScheme.secondaryContainer,
         ),
         const SizedBox(height: 16),
-        ...(pluginsToConfig.map((plugin) =>
-            _buildPluginConfigForm(plugin, theme, l10n))),
+        ...(pluginsToConfig.map(
+          (plugin) => _buildPluginConfigForm(plugin, theme, l10n),
+        )),
       ],
     );
   }
@@ -1309,9 +1309,11 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     // snake_case to Title Case
     return name
         .split('_')
-        .map((word) => word.isNotEmpty
-            ? '${word[0].toUpperCase()}${word.substring(1)}'
-            : '')
+        .map(
+          (word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1)}'
+              : '',
+        )
         .join(' ');
   }
 

@@ -156,7 +156,7 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
+                      const SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(

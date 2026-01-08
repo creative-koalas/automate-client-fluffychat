@@ -100,7 +100,7 @@ class ChatbotMessageRenderer extends StatelessWidget {
             color: rows.length % 2 == 0 ? Colors.transparent : textColor.withValues(alpha: 0.03),
           ),
           children: cells,
-        ));
+        ),);
       }
     }
 

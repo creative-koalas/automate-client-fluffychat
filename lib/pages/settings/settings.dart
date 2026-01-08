@@ -204,9 +204,9 @@ class SettingsController extends State<Settings> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle_outline,
-                      color: const Color(0xFF4CAF50),
+                      color: Color(0xFF4CAF50),
                       size: 20,
                     ),
                     const SizedBox(width: 12),

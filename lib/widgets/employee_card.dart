@@ -328,7 +328,7 @@ class _EmployeeCardState extends State<EmployeeCard>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(
@@ -361,7 +361,7 @@ class _EmployeeCardState extends State<EmployeeCard>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.check_circle,
             size: 14,
             color: Colors.green,
