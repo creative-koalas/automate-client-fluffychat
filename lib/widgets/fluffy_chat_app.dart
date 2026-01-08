@@ -189,12 +189,24 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 登出时重置状态
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
       debugPrint('[AuthGate] User logged out, resetting state');
+
+      // 取消同步状态监听
+      _syncStatusSubscription?.cancel();
+      _syncStatusSubscription = null;
+
       setState(() {
         _state = _AuthState.needsLogin;
         _hasTriedAuth = false;
         _hasRetriedMatrixLogin = false;
         _resumeRetryCount = 0;
       });
+
+      // 移动端：触发一键登录
+      if (PlatformInfos.isMobile) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _checkAuthStateSafe();
+        });
+      }
       return;
     }
 
@@ -1027,6 +1039,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     if (!mounted) return;
 
+    // PC端：切换到登录小窗口
+    if (PlatformInfos.isDesktop) {
+      await WindowService.switchToLoginWindow();
+    }
+
     // 重置 AuthGate 状态（允许自动一键登录重试）
     setState(() {
       _state = _AuthState.needsLogin;
@@ -1035,13 +1052,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       _resumeRetryCount = 0;
     });
 
-    // PC端：切换到登录小窗口
-    if (PlatformInfos.isDesktop) {
-      await WindowService.switchToLoginWindow();
+    // 移动端：触发一键登录
+    // PC端/Web端：跳转到登录页
+    if (PlatformInfos.isMobile) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkAuthStateSafe();
+      });
+    } else {
+      PsygoApp.router.go('/login-signup');
     }
-
-    // 跳转到登录页
-    PsygoApp.router.go('/login-signup');
 
     debugPrint('[AuthGate] Auth state cleared, redirected to login page');
   }
