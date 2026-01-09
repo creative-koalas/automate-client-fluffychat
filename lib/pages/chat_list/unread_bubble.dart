@@ -15,38 +15,66 @@ class UnreadBubble extends StatelessWidget {
     final hasNotifications = room.notificationCount > 0;
     final unreadBubbleSize = unread || room.hasNewMessages
         ? room.notificationCount > 0
-            ? 20.0
-            : 14.0
+            ? 22.0
+            : 12.0
         : 0.0;
+
+    final isHighlight = room.highlightCount > 0;
+    final bubbleColor = isHighlight
+        ? theme.colorScheme.error
+        : hasNotifications || room.markedUnread
+            ? theme.colorScheme.primary
+            : theme.colorScheme.primaryContainer;
+
     return AnimatedContainer(
       duration: FluffyThemes.animationDuration,
       curve: FluffyThemes.animationCurve,
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 7),
+      padding: EdgeInsets.symmetric(horizontal: hasNotifications ? 8 : 0),
       height: unreadBubbleSize,
+      constraints: hasNotifications
+          ? BoxConstraints(minWidth: unreadBubbleSize)
+          : null,
       width: !hasNotifications && !unread && !room.hasNewMessages
           ? 0
-          : (unreadBubbleSize - 9) * room.notificationCount.toString().length +
-              9,
+          : hasNotifications
+              ? null
+              : unreadBubbleSize,
       decoration: BoxDecoration(
-        color: room.highlightCount > 0
-            ? theme.colorScheme.error
-            : hasNotifications || room.markedUnread
-                ? theme.colorScheme.primary
-                : theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(7),
+        gradient: hasNotifications
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  bubbleColor,
+                  bubbleColor.withAlpha(220),
+                ],
+              )
+            : null,
+        color: hasNotifications ? null : bubbleColor,
+        borderRadius: BorderRadius.circular(hasNotifications ? 11 : 6),
+        boxShadow: hasNotifications
+            ? [
+                BoxShadow(
+                  color: bubbleColor.withAlpha(80),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: hasNotifications
           ? Text(
-              room.notificationCount.toString(),
+              room.notificationCount > 99
+                  ? '99+'
+                  : room.notificationCount.toString(),
               style: TextStyle(
-                color: room.highlightCount > 0
+                color: isHighlight
                     ? theme.colorScheme.onError
-                    : hasNotifications
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onPrimaryContainer,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+                    : theme.colorScheme.onPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
               ),
               textAlign: TextAlign.center,
             )

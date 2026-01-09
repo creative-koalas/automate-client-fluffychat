@@ -86,12 +86,12 @@ class _MainScreenState extends State<MainScreen> {
           : const TeamPage();
     }
 
-    // Mobile mode: PageView without swipe + bottom navigation
+    // Mobile mode: PageView without swipe + premium bottom navigation
     return Scaffold(
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
-        physics: const NeverScrollableScrollPhysics(), // Disable swipe between modules
+        physics: const NeverScrollableScrollPhysics(),
         children: [
           ChatList(
             activeChat: widget.activeChat,
@@ -99,42 +99,121 @@ class _MainScreenState extends State<MainScreen> {
           const TeamPage(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentPage,
-        onDestinationSelected: _onBottomNavTap,
-        backgroundColor: theme.colorScheme.surface,
-        indicatorColor: Colors.transparent,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        elevation: 0,
-        height: 80,
-        destinations: [
-          NavigationDestination(
-            icon: Icon(
-              Icons.chat_bubble_outline,
-              color: _currentPage == 0
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.shadow.withAlpha(8),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
             ),
-            selectedIcon: Icon(
-              Icons.chat_bubble,
-              color: theme.colorScheme.primary,
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavItem(
+                  icon: Icons.chat_bubble_outline,
+                  selectedIcon: Icons.chat_bubble_rounded,
+                  label: l10n.messages,
+                  isSelected: _currentPage == 0,
+                  onTap: () => _onBottomNavTap(0),
+                  theme: theme,
+                ),
+                _NavItem(
+                  icon: Icons.groups_outlined,
+                  selectedIcon: Icons.groups_rounded,
+                  label: l10n.teamPageTitle,
+                  isSelected: _currentPage == 1,
+                  onTap: () => _onBottomNavTap(1),
+                  theme: theme,
+                ),
+              ],
             ),
-            label: l10n.messages,
           ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.groups_outlined,
-              color: _currentPage == 1
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+/// 自定义底部导航项 - 精美动画效果
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final ThemeData theme;
+
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: FluffyThemes.animationDuration,
+        curve: FluffyThemes.animationCurve,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 20 : 16,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primaryContainer.withAlpha(180)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: FluffyThemes.animationDuration,
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: child,
+              ),
+              child: Icon(
+                isSelected ? selectedIcon : icon,
+                key: ValueKey(isSelected),
+                size: 24,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            selectedIcon: Icon(
-              Icons.groups,
-              color: theme.colorScheme.primary,
+            AnimatedSize(
+              duration: FluffyThemes.animationDuration,
+              curve: FluffyThemes.animationCurve,
+              child: isSelected
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
-            label: l10n.teamPageTitle,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

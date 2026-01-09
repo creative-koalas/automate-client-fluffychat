@@ -20,52 +20,60 @@ class SearchTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      shape: Border(
-        top: BorderSide(
-          color: theme.dividerColor,
-          width: 1,
-        ),
-        bottom: BorderSide(
-          color: theme.dividerColor,
-          width: 1,
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: color ?? theme.colorScheme.surfaceContainerHighest.withAlpha(80),
+        borderRadius: BorderRadius.circular(12),
       ),
-      color: color ?? theme.colorScheme.surface,
-      child: InkWell(
-        onTap: onTap,
-        splashColor: theme.colorScheme.surface,
-        child: Align(
-          alignment: Alignment.centerLeft,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          splashColor: theme.colorScheme.primary.withAlpha(20),
+          highlightColor: theme.colorScheme.primary.withAlpha(10),
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+              horizontal: 14,
+              vertical: 10,
             ),
-            child: IconTheme(
-              data: theme.iconTheme.copyWith(size: 16),
-              child: Row(
-                children: [
-                  icon,
-                  const SizedBox(width: 16),
-                  Text(
-                    title,
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconTheme(
+                    data: theme.iconTheme.copyWith(
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
+                    child: icon,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                if (trailing != null)
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: trailing!,
                     ),
                   ),
-                  if (trailing != null)
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: trailing!,
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
         ),

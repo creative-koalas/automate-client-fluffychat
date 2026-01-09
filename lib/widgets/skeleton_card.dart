@@ -45,71 +45,101 @@ class _SkeletonCardState extends State<SkeletonCard>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
+        final shimmerColor = isDark
+            ? Colors.white.withAlpha((20 * _animation.value).toInt())
+            : Colors.white.withAlpha((60 * _animation.value).toInt());
+
         return Container(
           height: widget.height,
           width: widget.width,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest
-                .withValues(alpha: _animation.value),
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
+            color: theme.colorScheme.surfaceContainerLow,
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                // 头像骨架
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            children: [
+              // 闪光效果
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment(-1.0 + 2 * _animation.value, 0),
+                      end: Alignment(0 + 2 * _animation.value, 0),
+                      colors: [
+                        Colors.transparent,
+                        shimmerColor,
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ).createShader(bounds),
+                    blendMode: BlendMode.srcATop,
+                    child: Container(color: theme.colorScheme.surfaceContainerLow),
                   ),
                 ),
-                const SizedBox(width: 12),
-
-                // 内容骨架
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        height: 16,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+              ),
+              // 内容
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    // 头像骨架
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 12,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                    const SizedBox(width: 14),
 
-                // 徽章骨架
-                Container(
-                  width: 60,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                    // 内容骨架
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            height: 14,
+                            width: 120,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            height: 12,
+                            width: 80,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHigh
+                                  .withAlpha(180),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 徽章骨架
+                    Container(
+                      width: 56,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

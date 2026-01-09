@@ -119,12 +119,24 @@ class _HireDialogState extends State<HireDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
+      elevation: 0,
+      backgroundColor: theme.colorScheme.surface,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 380),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.shadow.withAlpha(20),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -133,11 +145,12 @@ class _HireDialogState extends State<HireDialog> {
               Text(
                 l10n.hireEmployee,
                 style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // 模板信息预览
               _buildTemplatePreview(theme),
@@ -150,20 +163,24 @@ class _HireDialogState extends State<HireDialog> {
                 decoration: InputDecoration(
                   labelText: l10n.employeeName,
                   hintText: l10n.enterEmployeeName,
-                  prefixIcon: const Icon(Icons.badge_outlined),
+                  prefixIcon: Icon(
+                    Icons.badge_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
                       color: _isNameTooLong
                           ? theme.colorScheme.error
-                          : theme.colorScheme.outline,
+                          : theme.colorScheme.outlineVariant.withAlpha(80),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
                       color: _isNameTooLong
                           ? theme.colorScheme.error
@@ -172,8 +189,7 @@ class _HireDialogState extends State<HireDialog> {
                     ),
                   ),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.3),
+                  fillColor: theme.colorScheme.surfaceContainerLow,
                   counterText: '${_nameController.text.length}/$_maxNameLength',
                   counterStyle: TextStyle(
                     color: _isNameTooLong
@@ -182,6 +198,10 @@ class _HireDialogState extends State<HireDialog> {
                     fontSize: 12,
                   ),
                   errorText: _isNameTooLong ? l10n.employeeNameTooLong : null,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 textInputAction: TextInputAction.next,
                 enabled: !_isLoading,
@@ -195,13 +215,33 @@ class _HireDialogState extends State<HireDialog> {
                 decoration: InputDecoration(
                   labelText: l10n.invitationCode,
                   hintText: l10n.enterInvitationCode,
-                  prefixIcon: const Icon(Icons.vpn_key_outlined),
+                  prefixIcon: Icon(
+                    Icons.vpn_key_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.outlineVariant.withAlpha(80),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.3),
+                  fillColor: theme.colorScheme.surfaceContainerLow,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _onConfirm(),
@@ -210,26 +250,37 @@ class _HireDialogState extends State<HireDialog> {
 
               // 错误提示
               if (_error != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(8),
+                    color: theme.colorScheme.errorContainer.withAlpha(40),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.error.withAlpha(40),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 18,
-                        color: theme.colorScheme.error,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withAlpha(30),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.error_outline_rounded,
+                          size: 16,
+                          color: theme.colorScheme.error,
+                        ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _error!,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.error,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -237,7 +288,7 @@ class _HireDialogState extends State<HireDialog> {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // 操作按钮
               Row(
@@ -246,22 +297,28 @@ class _HireDialogState extends State<HireDialog> {
                     child: OutlinedButton(
                       onPressed: _isLoading ? null : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: theme.colorScheme.outline.withAlpha(100),
                         ),
                       ),
-                      child: Text(l10n.cancel),
+                      child: Text(
+                        l10n.cancel,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: FilledButton(
                       onPressed: _isLoading ? null : _onConfirm,
                       style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: _isLoading
@@ -269,11 +326,21 @@ class _HireDialogState extends State<HireDialog> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                                strokeWidth: 2.5,
                                 color: theme.colorScheme.onPrimary,
                               ),
                             )
-                          : Text(l10n.confirmHire),
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.person_add_rounded, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  l10n.confirmHire,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                 ],
@@ -287,12 +354,19 @@ class _HireDialogState extends State<HireDialog> {
 
   Widget _buildTemplatePreview(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primaryContainer.withAlpha(50),
+            theme.colorScheme.primaryContainer.withAlpha(25),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.2),
+          color: theme.colorScheme.primary.withAlpha(30),
           width: 1,
         ),
       ),
@@ -300,16 +374,30 @@ class _HireDialogState extends State<HireDialog> {
         children: [
           // 头像
           Container(
-            width: 56,
-            height: 56,
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primaryContainer,
+                  theme.colorScheme.primaryContainer.withAlpha(180),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withAlpha(30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: widget.template.avatarUrl != null &&
                     widget.template.avatarUrl!.isNotEmpty
                 ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     child: Image.network(
                       widget.template.avatarUrl!,
                       fit: BoxFit.cover,
@@ -318,7 +406,7 @@ class _HireDialogState extends State<HireDialog> {
                   )
                 : _buildAvatarFallback(theme),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
 
           // 信息
           Expanded(
@@ -328,16 +416,18 @@ class _HireDialogState extends State<HireDialog> {
                 Text(
                   widget.template.name,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   widget.template.subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.3,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -353,8 +443,8 @@ class _HireDialogState extends State<HireDialog> {
   Widget _buildAvatarFallback(ThemeData theme) {
     return Center(
       child: Icon(
-        Icons.smart_toy_outlined,
-        size: 28,
+        Icons.smart_toy_rounded,
+        size: 30,
         color: theme.colorScheme.primary,
       ),
     );

@@ -16,45 +16,65 @@ class ClientChooserButton extends StatelessWidget {
   const ClientChooserButton(this.controller, {super.key});
 
   List<PopupMenuEntry<Object>> _bundleMenuItems(BuildContext context) {
+    final theme = Theme.of(context);
+
+    Widget buildMenuItem(IconData icon, String text, Color? iconColor) {
+      return Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (iconColor ?? theme.colorScheme.primary).withAlpha(20),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor ?? theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+
     return <PopupMenuEntry<Object>>[
       PopupMenuItem(
         value: SettingsAction.newGroup,
-        child: Row(
-          children: [
-            const Icon(Icons.group_add_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).createGroup),
-          ],
+        child: buildMenuItem(
+          Icons.group_add_rounded,
+          L10n.of(context).createGroup,
+          theme.colorScheme.tertiary,
         ),
       ),
       PopupMenuItem(
         value: SettingsAction.setStatus,
-        child: Row(
-          children: [
-            const Icon(Icons.edit_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).setStatus),
-          ],
+        child: buildMenuItem(
+          Icons.edit_rounded,
+          L10n.of(context).setStatus,
+          theme.colorScheme.secondary,
         ),
       ),
       PopupMenuItem(
         value: SettingsAction.invite,
-        child: Row(
-          children: [
-            Icon(Icons.adaptive.share_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).inviteContact),
-          ],
+        child: buildMenuItem(
+          Icons.adaptive.share_rounded,
+          L10n.of(context).inviteContact,
+          theme.colorScheme.primary,
         ),
       ),
       PopupMenuItem(
         value: SettingsAction.settings,
-        child: Row(
-          children: [
-            const Icon(Icons.settings_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).settings),
-          ],
+        child: buildMenuItem(
+          Icons.settings_rounded,
+          L10n.of(context).settings,
+          theme.colorScheme.onSurfaceVariant,
         ),
       ),
     ];
@@ -64,26 +84,52 @@ class ClientChooserButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final matrix = Matrix.of(context);
     final client = matrix.client;
+    final theme = Theme.of(context);
 
     // 使用 userID 作为 key，当用户变化时强制重建 FutureBuilder
     return FutureBuilder<Profile>(
       key: ValueKey(client.userID),
       future: client.isLogged() ? client.fetchOwnProfile() : null,
-      builder: (context, snapshot) => Material(
-        clipBehavior: Clip.hardEdge,
-        borderRadius: BorderRadius.circular(99),
-        color: Colors.transparent,
-        child: PopupMenuButton<Object>(
-          popUpAnimationStyle: FluffyThemes.isColumnMode(context)
-              ? AnimationStyle.noAnimation
-              : null, // https://github.com/flutter/flutter/issues/167180
-          onSelected: (o) => _clientSelected(o, context),
-          itemBuilder: _bundleMenuItems,
-          child: Center(
-            child: Avatar(
-              mxContent: snapshot.data?.avatarUrl,
-              name: snapshot.data?.displayName ?? client.userID?.localpart,
-              size: 32,
+      builder: (context, snapshot) => Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary.withAlpha(60),
+              theme.colorScheme.tertiary.withAlpha(40),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.primary.withAlpha(20),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(2),
+        child: Material(
+          clipBehavior: Clip.hardEdge,
+          borderRadius: BorderRadius.circular(99),
+          color: theme.colorScheme.surface,
+          child: PopupMenuButton<Object>(
+            popUpAnimationStyle: FluffyThemes.isColumnMode(context)
+                ? AnimationStyle.noAnimation
+                : null, // https://github.com/flutter/flutter/issues/167180
+            onSelected: (o) => _clientSelected(o, context),
+            itemBuilder: _bundleMenuItems,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Avatar(
+                mxContent: snapshot.data?.avatarUrl,
+                name: snapshot.data?.displayName ?? client.userID?.localpart,
+                size: 32,
+              ),
             ),
           ),
         ),

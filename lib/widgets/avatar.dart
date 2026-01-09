@@ -11,7 +11,7 @@ class Avatar extends StatelessWidget {
   final String? name;
   final double size;
   final void Function()? onTap;
-  static const double defaultSize = 44;
+  static const double defaultSize = 48;
   final Client? client;
   final String? presenceUserId;
   final Color? presenceBackgroundColor;
@@ -20,6 +20,7 @@ class Avatar extends StatelessWidget {
   final BorderSide? border;
   final Color? backgroundColor;
   final Color? textColor;
+  final bool showShadow;
 
   const Avatar({
     this.mxContent,
@@ -34,6 +35,7 @@ class Avatar extends StatelessWidget {
     this.icon,
     this.backgroundColor,
     this.textColor,
+    this.showShadow = false,
     super.key,
   });
 
@@ -50,11 +52,25 @@ class Avatar extends StatelessWidget {
         mxContent.toString() == 'null';
     final borderRadius = this.borderRadius ?? BorderRadius.circular(size / 2);
     final presenceUserId = this.presenceUserId;
+    final avatarColor = backgroundColor ?? name?.lightColorAvatar;
     final container = Stack(
       children: [
-        SizedBox(
+        Container(
           width: size,
           height: size,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow: showShadow
+                ? [
+                    BoxShadow(
+                      color: (avatarColor ?? theme.colorScheme.primary)
+                          .withAlpha(40),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
           child: Material(
             color: theme.brightness == Brightness.light
                 ? Colors.white
@@ -76,7 +92,15 @@ class Avatar extends StatelessWidget {
               placeholder: (_) => noPic
                   ? Container(
                       decoration: BoxDecoration(
-                        color: backgroundColor ?? name?.lightColorAvatar,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            avatarColor ?? theme.colorScheme.primary,
+                            (avatarColor ?? theme.colorScheme.primary)
+                                .withAlpha(200),
+                          ],
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -85,14 +109,21 @@ class Avatar extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'RobotoMono',
                           color: textColor ?? Colors.white,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: (size / 2.5).roundToDouble(),
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withAlpha(30),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                       ),
                     )
                   : Center(
                       child: Icon(
-                        Icons.person_2,
+                        Icons.person_2_rounded,
                         color: theme.colorScheme.tertiary,
                         size: size / 1.5,
                       ),

@@ -67,6 +67,7 @@ class SettingsView extends StatelessWidget {
               child: ListView(
                 key: const Key('SettingsListViewContent'),
                 children: <Widget>[
+                  // 用户信息卡片
                   FutureBuilder<Profile>(
                     future: controller.profileFuture,
                     builder: (context, snapshot) {
@@ -76,16 +77,53 @@ class SettingsView extends StatelessWidget {
                           L10n.of(context).user;
                       final displayname =
                           profile?.displayName ?? mxid.localpart ?? mxid;
-                      return Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Stack(
-                              children: [
-                                Avatar(
+                      return Container(
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              theme.colorScheme.primaryContainer.withAlpha(120),
+                              theme.colorScheme.secondaryContainer.withAlpha(80),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.shadow.withAlpha(15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // 头像带装饰环
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    theme.colorScheme.primary,
+                                    theme.colorScheme.tertiary,
+                                  ],
+                                ),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: theme.colorScheme.surface,
+                                ),
+                                child: Avatar(
                                   mxContent: avatar,
                                   name: displayname,
-                                  size: Avatar.defaultSize * 2.5,
+                                  size: Avatar.defaultSize * 2,
                                   onTap: avatar != null
                                       ? () => showDialog(
                                             context: context,
@@ -94,51 +132,68 @@ class SettingsView extends StatelessWidget {
                                           )
                                       : null,
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 显示昵称（不可编辑）
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  child: Text(
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 显示昵称
+                                  Text(
                                     displayname,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
                                       color: theme.colorScheme.onSurface,
+                                      letterSpacing: -0.3,
                                     ),
                                   ),
-                                ),
-                                TextButton.icon(
-                                  onPressed: () =>
-                                      FluffyShare.share(mxid, context),
-                                  icon: const Icon(
-                                    Icons.copy_outlined,
-                                    size: 14,
+                                  const SizedBox(height: 6),
+                                  // 用户ID带复制按钮
+                                  GestureDetector(
+                                    onTap: () => FluffyShare.share(mxid, context),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.surface.withAlpha(200),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              mxid,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: theme.colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Icon(
+                                            Icons.copy_rounded,
+                                            size: 14,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor:
-                                        theme.colorScheme.secondary,
-                                    iconColor: theme.colorScheme.secondary,
-                                  ),
-                                  label: Text(
-                                    mxid,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    //    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       );
                     },
                   ),

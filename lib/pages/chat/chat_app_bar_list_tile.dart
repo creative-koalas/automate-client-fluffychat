@@ -25,39 +25,60 @@ class ChatAppBarListTile extends StatelessWidget {
     final theme = Theme.of(context);
     final leading = this.leading;
     final trailing = this.trailing;
-    return SizedBox(
+    return Container(
       height: fixedHeight,
-      child: InkWell(
-        onTap: onTap,
-        child: Row(
-          children: [
-            if (leading != null) leading,
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Linkify(
-                  text: title,
-                  textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
-                  options: const LinkifyOptions(humanize: false),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    overflow: TextOverflow.ellipsis,
-                    fontSize: 14,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withAlpha(20),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          splashColor: theme.colorScheme.primary.withAlpha(20),
+          highlightColor: theme.colorScheme.primary.withAlpha(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                if (leading != null) leading,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                    child: Linkify(
+                      text: title,
+                      textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
+                      options: const LinkifyOptions(humanize: false),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        overflow: TextOverflow.ellipsis,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      linkStyle: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        decoration: TextDecoration.underline,
+                        decorationColor: theme.colorScheme.primary,
+                      ),
+                      onOpen: (url) => UrlLauncher(context, url.url).launchUrl(),
+                    ),
                   ),
-                  linkStyle: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 14,
-                    decoration: TextDecoration.underline,
-                    decorationColor: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  onOpen: (url) => UrlLauncher(context, url.url).launchUrl(),
                 ),
-              ),
+                if (trailing != null) trailing,
+              ],
             ),
-            if (trailing != null) trailing,
-          ],
+          ),
         ),
       ),
     );

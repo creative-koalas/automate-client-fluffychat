@@ -128,40 +128,62 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
 
     // 根据剩余时间决定颜色
     Color backgroundColor;
+    Color gradientEndColor;
     Color textColor;
     Color iconColor;
 
     if (_isExpired || _remaining.inHours < 1) {
       // 已过期或不足1小时，红色警告
       backgroundColor = theme.colorScheme.errorContainer;
+      gradientEndColor = theme.colorScheme.errorContainer.withAlpha(180);
       textColor = theme.colorScheme.onErrorContainer;
       iconColor = theme.colorScheme.error;
     } else {
       // 正常状态，蓝色
       backgroundColor = theme.colorScheme.primaryContainer;
+      gradientEndColor = theme.colorScheme.primaryContainer.withAlpha(180);
       textColor = theme.colorScheme.onPrimaryContainer;
       iconColor = theme.colorScheme.primary;
     }
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [backgroundColor, gradientEndColor],
+        ),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: iconColor.withValues(alpha: 0.3),
+          color: iconColor.withAlpha(50),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withAlpha(20),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(
-            _isExpired ? Icons.timer_off : Icons.timer_outlined,
-            color: iconColor,
-            size: 20,
+          // 图标容器
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withAlpha(30),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
+              color: iconColor,
+              size: 22,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,15 +192,17 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
                 Text(
                   l10n.trialPeriod,
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: textColor.withValues(alpha: 0.7),
+                    color: textColor.withAlpha(180),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   _formatDuration(l10n),
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: textColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
@@ -186,7 +210,8 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
                 Text(
                   l10n.trialHint,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: textColor.withValues(alpha: 0.7),
+                    color: textColor.withAlpha(160),
+                    height: 1.3,
                   ),
                 ),
               ],

@@ -69,19 +69,29 @@ class ChatListItem extends StatelessWidget {
 
     final chatItem = Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 1,
+        horizontal: 12,
+        vertical: 2,
       ),
-      child: Material(
-        borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-        clipBehavior: Clip.hardEdge,
-        color: backgroundColor,
-        child: FutureBuilder(
-          future: room.loadHeroUsers(),
-          builder: (context, snapshot) => HoverBuilder(
-            builder: (context, listTileHovered) => ListTile(
-              visualDensity: const VisualDensity(vertical: -0.5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      child: AnimatedContainer(
+        duration: FluffyThemes.animationDuration,
+        curve: FluffyThemes.animationCurve,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: backgroundColor ?? Colors.transparent,
+        ),
+        child: Material(
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.hardEdge,
+          color: Colors.transparent,
+          child: FutureBuilder(
+            future: room.loadHeroUsers(),
+            builder: (context, snapshot) => HoverBuilder(
+              builder: (context, listTileHovered) => ListTile(
+                visualDensity: const VisualDensity(vertical: 0),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
               // 移动端用长按，PC端用右键（Listener处理）
               onLongPress: isDesktop ? null : () => onLongPress?.call(context),
               leading: HoverBuilder(
@@ -380,6 +390,7 @@ class ChatListItem extends StatelessWidget {
                       icon: const Icon(Icons.delete_outlined),
                       onPressed: onForget,
                     ),
+              ),
             ),
           ),
         ),

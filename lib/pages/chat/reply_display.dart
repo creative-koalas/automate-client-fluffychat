@@ -15,26 +15,50 @@ class ReplyDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isReply = controller.replyEvent != null;
+    final isEdit = controller.editEvent != null;
 
     return AnimatedContainer(
       duration: FluffyThemes.animationDuration,
       curve: FluffyThemes.animationCurve,
-      height: controller.editEvent != null || controller.replyEvent != null
-          ? 56
-          : 0,
+      height: isEdit || isReply ? 60 : 0,
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
-        color: theme.colorScheme.onInverseSurface,
+        color: theme.colorScheme.surfaceContainerLow,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outlineVariant.withAlpha(60),
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
         children: <Widget>[
-          IconButton(
-            tooltip: L10n.of(context).close,
-            icon: const Icon(Icons.close),
-            onPressed: controller.cancelReplyEventAction,
+          const SizedBox(width: 4),
+          // 左侧彩色指示条
+          Container(
+            width: 4,
+            height: 40,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: isEdit
+                  ? theme.colorScheme.tertiary
+                  : theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
+          // 图标
+          Icon(
+            isEdit ? Icons.edit_rounded : Icons.reply_rounded,
+            size: 20,
+            color: isEdit
+                ? theme.colorScheme.tertiary
+                : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          // 内容
           Expanded(
-            child: controller.replyEvent != null
+            child: isReply
                 ? ReplyContent(
                     controller.replyEvent!,
                     timeline: controller.timeline!,
@@ -43,6 +67,16 @@ class ReplyDisplay extends StatelessWidget {
                     controller.editEvent?.getDisplayEvent(controller.timeline!),
                   ),
           ),
+          // 关闭按钮
+          IconButton(
+            tooltip: L10n.of(context).close,
+            icon: Icon(
+              Icons.close_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            onPressed: controller.cancelReplyEventAction,
+          ),
+          const SizedBox(width: 4),
         ],
       ),
     );
@@ -61,13 +95,19 @@ class _EditContent extends StatelessWidget {
     if (event == null) {
       return const SizedBox.shrink();
     }
-    return Row(
-      children: <Widget>[
-        Icon(
-          Icons.edit,
-          color: theme.colorScheme.primary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          L10n.of(context).edit,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.tertiary,
+          ),
         ),
-        Container(width: 15.0),
+        const SizedBox(height: 2),
         Text(
           event.calcLocalizedBodyFallback(
             MatrixLocals(L10n.of(context)),
@@ -77,7 +117,8 @@ class _EditContent extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
           style: TextStyle(
-            color: theme.textTheme.bodyMedium!.color,
+            fontSize: 14,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],

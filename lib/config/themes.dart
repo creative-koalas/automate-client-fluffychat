@@ -38,8 +38,38 @@ abstract class FluffyThemes {
     );
   }
 
-  static const Duration animationDuration = Duration(milliseconds: 250);
-  static const Curve animationCurve = Curves.easeInOut;
+  // 优化后的动画配置 - 更流畅的交互体验
+  static const Duration animationDuration = Duration(milliseconds: 200);
+  static const Duration animationDurationSlow = Duration(milliseconds: 350);
+  static const Curve animationCurve = Curves.easeOutCubic;
+  static const Curve animationCurveBounce = Curves.easeOutBack;
+
+  // 统一的阴影配置
+  static List<BoxShadow> cardShadow(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: isDark
+            ? Colors.black.withAlpha(40)
+            : Colors.black.withAlpha(15),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ];
+  }
+
+  static List<BoxShadow> elevatedShadow(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: isDark
+            ? Colors.black.withAlpha(60)
+            : Colors.black.withAlpha(20),
+        blurRadius: 16,
+        offset: const Offset(0, 4),
+      ),
+    ];
+  }
 
   static ThemeData buildTheme(
     BuildContext context,
@@ -87,10 +117,23 @@ abstract class FluffyThemes {
       ),
       chipTheme: ChipThemeData(
         showCheckmark: false,
-        backgroundColor: colorScheme.surfaceContainer,
+        backgroundColor: colorScheme.surfaceContainerHigh.withAlpha(100),
+        selectedColor: colorScheme.primaryContainer,
         side: BorderSide.none,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConfig.borderRadius),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        labelStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        secondaryLabelStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onPrimaryContainer,
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -126,21 +169,150 @@ abstract class FluffyThemes {
         color: colorScheme.primary,
         refreshBackgroundColor: colorScheme.primaryContainer,
       ),
-      snackBarTheme: isColumnMode
-          ? const SnackBarThemeData(
-              showCloseIcon: true,
-              behavior: SnackBarBehavior.floating,
-              width: FluffyThemes.columnWidth * 1.5,
-            )
-          : const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      snackBarTheme: SnackBarThemeData(
+        showCloseIcon: isColumnMode,
+        behavior: SnackBarBehavior.floating,
+        width: isColumnMode ? FluffyThemes.columnWidth * 1.5 : null,
+        backgroundColor: colorScheme.inverseSurface,
+        actionTextColor: colorScheme.inversePrimary,
+        contentTextStyle: TextStyle(
+          color: colorScheme.onInverseSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 4,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.secondaryContainer,
-          foregroundColor: colorScheme.onSecondaryContainer,
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
           elevation: 0,
-          padding: const EdgeInsets.all(16),
-          textStyle: const TextStyle(fontSize: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
+      ),
+      // 填充按钮样式
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      // 文字按钮样式
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      // 图标按钮样式
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          padding: const EdgeInsets.all(8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      // 卡片样式
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        color: colorScheme.surfaceContainerLow,
+        clipBehavior: Clip.antiAlias,
+      ),
+      // 列表瓦片样式
+      listTileTheme: ListTileThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      // 对话框样式
+      dialogTheme: DialogThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: colorScheme.surface,
+      ),
+      // 底部表样式
+      bottomSheetTheme: BottomSheetThemeData(
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        backgroundColor: colorScheme.surface,
+        dragHandleColor: colorScheme.onSurfaceVariant.withAlpha(80),
+        dragHandleSize: const Size(40, 4),
+        showDragHandle: true,
+      ),
+      // 浮动按钮样式
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        elevation: 2,
+        highlightElevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      // 导航栏样式
+      navigationBarTheme: NavigationBarThemeData(
+        elevation: 0,
+        height: 72,
+        indicatorColor: colorScheme.primaryContainer.withAlpha(180),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.primary,
+            );
+          }
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: colorScheme.onSurfaceVariant,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(
+              size: 24,
+              color: colorScheme.primary,
+            );
+          }
+          return IconThemeData(
+            size: 24,
+            color: colorScheme.onSurfaceVariant,
+          );
+        }),
       ),
     );
   }

@@ -128,42 +128,52 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       );
     }
 
+    final theme = Theme.of(context);
     return InkWell(
       hoverColor: Colors.transparent,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
       onTap: controller.isArchived
           ? null
           : () => FluffyThemes.isThreeColumnMode(context)
               ? controller.toggleDisplayChatDetailsColumn()
               : context.go('/rooms/${room.id}/details'),
-      child: Row(
-        children: [
-          Hero(
-            tag: 'content_banner',
-            child: _buildAvatar(room, context),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                  ),
-                ),
-                // 如果是员工，显示工作状态；否则显示原有的在线状态
-                _employee != null
-                    ? _buildEmployeeWorkStatus(context, _employee!)
-                    : _buildPresenceStatus(context, room),
-              ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Hero(
+              tag: 'content_banner',
+              child: _buildAvatar(room, context),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  // 如果是员工，显示工作状态；否则显示原有的在线状态
+                  _employee != null
+                      ? _buildEmployeeWorkStatus(context, _employee!)
+                      : _buildPresenceStatus(context, room),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -178,7 +188,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       return Avatar(
         mxContent: user.avatarUrl,
         name: user.calcDisplayname(),
-        size: 32,
+        size: 36,
+        borderRadius: BorderRadius.circular(12),
       );
     }
 
@@ -188,17 +199,15 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       name: room.getLocalizedDisplayname(
         MatrixLocals(L10n.of(context)),
       ),
-      size: 32,
+      size: 36,
+      borderRadius: BorderRadius.circular(12),
     );
   }
 
   /// 构建员工工作状态显示
   Widget _buildEmployeeWorkStatus(BuildContext context, Agent employee) {
     final l10n = L10n.of(context);
-    final style = TextStyle(
-      fontSize: 12,
-      color: Theme.of(context).colorScheme.outline,
-    );
+    final theme = Theme.of(context);
 
     final status = employee.computedWorkStatus;
     String statusText;
@@ -228,10 +237,24 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
           decoration: BoxDecoration(
             color: dotColor,
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: dotColor.withAlpha(100),
+                blurRadius: 4,
+                spreadRadius: 1,
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 4),
-        Text(statusText, style: style),
+        const SizedBox(width: 6),
+        Text(
+          statusText,
+          style: TextStyle(
+            fontSize: 12,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
       ],
     );
   }

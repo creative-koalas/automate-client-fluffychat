@@ -80,45 +80,51 @@ class _EmployeeCardState extends State<EmployeeCard>
 
         return Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: isOnboarding
                 ? [
                     BoxShadow(
                       color: Colors.orange.withValues(alpha: glowOpacity),
-                      blurRadius: 12,
+                      blurRadius: 16,
                       spreadRadius: 2,
                     ),
                   ]
-                : null,
+                : [
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withAlpha(8),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Card(
             elevation: 0,
             color: isOnboarding
                 ? Color.lerp(
                     theme.colorScheme.surfaceContainerLow,
-                    Colors.orange.withValues(alpha: 0.1),
+                    Colors.orange.withValues(alpha: 0.08),
                     _pulseAnimation.value * 0.3,
                   )
                 : theme.colorScheme.surfaceContainerLow,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               side: BorderSide(
                 color: isOnboarding
                     ? Color.lerp(
-                        theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                        Colors.orange.withValues(alpha: 0.5),
+                        theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                        Colors.orange.withValues(alpha: 0.4),
                         _pulseAnimation.value * 0.5,
                       )!
-                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
             child: InkWell(
               onTap: widget.onTap,
               onLongPress: widget.onLongPress,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
                     // 头像 + 状态指示器
@@ -353,25 +359,35 @@ class _EmployeeCardState extends State<EmployeeCard>
 
     // 就绪状态
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [
+            Colors.green.withValues(alpha: 0.15),
+            Colors.green.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.green.withValues(alpha: 0.2),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.check_circle,
+            Icons.check_circle_rounded,
             size: 14,
-            color: Colors.green,
+            color: Colors.green.shade600,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           Text(
             l10n.employeeReady,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: Colors.green,
+              color: Colors.green.shade700,
               fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
             ),
           ),
         ],

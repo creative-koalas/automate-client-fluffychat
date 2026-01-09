@@ -185,21 +185,35 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     final contentWidgets = [
       // 头像和基本信息
       Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(28),
         child: Column(
           children: [
             // 大头像
             Container(
-              width: 80,
-              height: 80,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primaryContainer.withAlpha(180),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withAlpha(30),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: employee.avatarUrl != null &&
                       employee.avatarUrl!.isNotEmpty
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                       child: Image.network(
                         employee.avatarUrl!,
                         fit: BoxFit.cover,
@@ -209,50 +223,62 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
                     )
                   : _buildAvatarFallback(theme),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // 名称
             Text(
               employee.displayName,
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
 
             // Matrix ID
             if (employee.matrixUserId != null)
-              Text(
-                employee.matrixUserId!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  employee.matrixUserId!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             // 状态徽章
             _buildStatusBadge(theme, l10n),
 
             // 合同到期时间
             if (employee.contractExpiresAt != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               _buildContractInfo(theme, l10n),
             ],
 
             // 最后活跃时间
             if (employee.lastActiveAt != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               _buildLastActiveInfo(theme, l10n),
             ],
           ],
         ),
       ),
 
-      const Divider(height: 1),
+      Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        height: 1,
+        color: theme.colorScheme.outlineVariant.withAlpha(60),
+      ),
 
       // 操作按钮
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Row(
           children: [
             // 开始聊天按钮
@@ -265,16 +291,19 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          strokeWidth: 2.5,
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.chat_outlined),
-                label: Text(l10n.startChat),
+                    : const Icon(Icons.chat_rounded, size: 20),
+                label: Text(
+                  l10n.startChat,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
@@ -286,19 +315,26 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       // 已掌握技能列表
       if (employee.isReady) ...[
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
           child: Row(
             children: [
-              Icon(
-                Icons.school_outlined,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer.withAlpha(80),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.school_rounded,
+                  size: 16,
+                  color: theme.colorScheme.secondary,
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Text(
                 l10n.skills,
                 style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -310,16 +346,29 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
 
       // 优化按钮（删除）
       Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: TextButton.icon(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+        child: OutlinedButton.icon(
           onPressed: () => _confirmDelete(context),
           icon: Icon(
-            Icons.delete_outline,
+            Icons.delete_outline_rounded,
             color: theme.colorScheme.error,
+            size: 18,
           ),
           label: Text(
             l10n.deleteEmployee,
-            style: TextStyle(color: theme.colorScheme.error),
+            style: TextStyle(
+              color: theme.colorScheme.error,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            side: BorderSide(
+              color: theme.colorScheme.error.withAlpha(60),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),

@@ -153,21 +153,67 @@ class TrainingTabState extends State<TrainingTab>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: theme.colorScheme.error,
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        theme.colorScheme.errorContainer.withAlpha(120),
+                        theme.colorScheme.errorContainer.withAlpha(60),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.error.withAlpha(20),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withAlpha(150),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.error_outline_rounded,
+                        size: 36,
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Text(
                   l10n.errorLoadingData,
-                  style: theme.textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                TextButton.icon(
+                const SizedBox(height: 16),
+                FilledButton.icon(
                   onPressed: _loadPlugins,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(l10n.tryAgain),
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  label: Text(
+                    l10n.tryAgain,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ],
             ),

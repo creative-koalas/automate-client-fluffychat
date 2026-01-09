@@ -47,16 +47,34 @@ class SeenByRow extends StatelessWidget {
               ),
             ),
             if (seenByUsers.length > maxAvatars)
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: Material(
-                  color: theme.colorScheme.surface,
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primaryContainer,
+                      theme.colorScheme.secondaryContainer,
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(32),
-                  child: Center(
-                    child: Text(
-                      '+${seenByUsers.length - maxAvatars}',
-                      style: const TextStyle(fontSize: 9),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withAlpha(20),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    '+${seenByUsers.length - maxAvatars}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onPrimaryContainer,
                     ),
                   ),
                 ),

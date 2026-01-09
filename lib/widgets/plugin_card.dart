@@ -21,66 +21,81 @@ class PluginCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
 
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-          width: 1,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withAlpha(12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Row(
-                children: [
-                  // 图标
-                  _buildIcon(theme),
-                  const SizedBox(width: 12),
+      child: Card(
+        elevation: 0,
+        color: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.colorScheme.outlineVariant.withAlpha(60),
+            width: 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: theme.colorScheme.primary.withAlpha(20),
+          highlightColor: theme.colorScheme.primary.withAlpha(10),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Row(
+                  children: [
+                    // 图标
+                    _buildIcon(theme),
+                    const SizedBox(width: 14),
 
-                  // 信息
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // 名称
-                        Text(
-                          plugin.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                    // 信息
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 名称
+                          Text(
+                            plugin.name,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
+                          const SizedBox(height: 4),
 
-                        // 描述
-                        Text(
-                          plugin.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          // 描述
+                          Text(
+                            plugin.description,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              height: 1.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 10),
 
-                  // 安装统计
-                  _buildStats(theme, l10n),
-                ],
-              );
-            },
+                    // 安装统计
+                    _buildStats(theme, l10n),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -89,15 +104,29 @@ class PluginCard extends StatelessWidget {
 
   Widget _buildIcon(ThemeData theme) {
     return Container(
-      width: 44,
-      height: 44,
+      width: 52,
+      height: 52,
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primaryContainer.withAlpha(100),
+            theme.colorScheme.secondaryContainer.withAlpha(80),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withAlpha(15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: plugin.iconUrl.isNotEmpty
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               child: Image.network(
                 plugin.iconUrl,
                 fit: BoxFit.cover,

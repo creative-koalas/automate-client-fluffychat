@@ -479,10 +479,24 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   Widget _buildOrderCard(L10n l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _lightGreen,
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE8F5E9),
+            Color(0xFFC8E6C9),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryGreen.withAlpha(25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,10 +566,17 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
           // 支付金额区域
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: const EdgeInsets.symmetric(vertical: 24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -630,10 +651,17 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   Widget _buildPaymentMethods(L10n l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -717,17 +745,29 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
           _selectedPayment = index;
         });
       },
-      child: Opacity(
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
         opacity: isProcessing ? 0.5 : 1.0,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected ? _lightGreen.withAlpha(80) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected ? _primaryGreen : Colors.grey[200]!,
               width: isSelected ? 2 : 1,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: _primaryGreen.withAlpha(25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
@@ -828,14 +868,15 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
     final isProcessing = _paymentState != PaymentState.idle;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -846,7 +887,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
             // 确认支付按钮
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 52,
               child: ElevatedButton(
                 onPressed: isProcessing ? null : _onConfirmPayment,
                 style: ElevatedButton.styleFrom(
@@ -854,16 +895,24 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  l10n.orderConfirmPay,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock_rounded, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.orderConfirmPay,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

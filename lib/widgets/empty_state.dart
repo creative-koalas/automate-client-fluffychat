@@ -157,30 +157,40 @@ class _EmptyStateState extends State<EmptyState>
 
   Widget _buildIconContainer(ThemeData theme) {
     return Container(
-      width: 100,
-      height: 100,
+      width: 120,
+      height: 120,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-            theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+            theme.colorScheme.primaryContainer.withAlpha(100),
+            theme.colorScheme.primaryContainer.withAlpha(40),
           ],
         ),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 5,
+            color: theme.colorScheme.primary.withAlpha(25),
+            blurRadius: 32,
+            spreadRadius: 8,
           ),
         ],
       ),
-      child: Icon(
-        widget.icon,
-        size: 48,
-        color: theme.colorScheme.primary.withValues(alpha: 0.8),
+      child: Center(
+        child: Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withAlpha(120),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            widget.icon,
+            size: 40,
+            color: theme.colorScheme.primary,
+          ),
+        ),
       ),
     );
   }
@@ -198,15 +208,18 @@ class _EmptyStateState extends State<EmptyState>
       },
       child: FilledButton.icon(
         onPressed: widget.onAction,
-        icon: const Icon(Icons.add),
-        label: Text(widget.actionLabel!),
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: Text(
+          widget.actionLabel!,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 12,
+            horizontal: 28,
+            vertical: 14,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),

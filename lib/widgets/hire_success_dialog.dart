@@ -66,8 +66,10 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
 
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
       ),
+      elevation: 0,
+      backgroundColor: theme.colorScheme.surface,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
@@ -79,16 +81,26 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
             ),
           );
         },
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 360),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withAlpha(30),
+                blurRadius: 32,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // 成功图标 - 带动画的勾选图标
                 _buildSuccessIcon(theme),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // 标题
                 Text(
@@ -96,37 +108,54 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                       ? l10n.firstEmployeeHired
                       : l10n.hireSuccessTitle,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                     color: Colors.green.shade700,
+                    letterSpacing: -0.3,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
                 // 副标题
                 Text(
                   l10n.hireSuccessMessage(widget.employeeName),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
 
                 // 首次雇佣的特殊提示
                 if (widget.isFirstEmployee) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primaryContainer.withAlpha(60),
+                          theme.colorScheme.primaryContainer.withAlpha(30),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withAlpha(40),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.tips_and_updates_outlined,
-                          size: 20,
-                          color: theme.colorScheme.primary,
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withAlpha(30),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.tips_and_updates_rounded,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -134,6 +163,7 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                             l10n.firstEmployeeHint,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -143,39 +173,40 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                 ],
 
                 // 入职中提示
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.orange.withAlpha(20),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.orange.withValues(alpha: 0.3),
+                      color: Colors.orange.withAlpha(50),
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        width: 14,
-                        height: 14,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.orange,
+                          color: Colors.orange.shade600,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Text(
                         l10n.employeeOnboardingHint,
                         style: theme.textTheme.labelMedium?.copyWith(
                           color: Colors.orange.shade700,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
                 // 操作按钮
                 Row(
@@ -188,15 +219,21 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                           widget.onContinueHiring?.call();
                         },
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          side: BorderSide(
+                            color: theme.colorScheme.outline.withAlpha(100),
                           ),
                         ),
-                        child: Text(l10n.continueHiring),
+                        child: Text(
+                          l10n.continueHiring,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
 
                     // 查看员工按钮
                     Expanded(
@@ -206,13 +243,23 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                           widget.onViewEmployee?.call();
                         },
                         style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          backgroundColor: Colors.green,
+                          backgroundColor: Colors.green.shade600,
                         ),
-                        child: Text(l10n.viewEmployee),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.person_rounded, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              l10n.viewEmployee,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -232,8 +279,8 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
       curve: Curves.elasticOut,
       builder: (context, value, child) {
         return Container(
-          width: 80,
-          height: 80,
+          width: 88,
+          height: 88,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -246,9 +293,9 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.green.withValues(alpha: 0.3 * value),
-                blurRadius: 20 * value,
-                spreadRadius: 5 * value,
+                color: Colors.green.withAlpha((50 * value).toInt()),
+                blurRadius: 24 * value,
+                spreadRadius: 4 * value,
               ),
             ],
           ),
@@ -256,7 +303,7 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
             scale: value,
             child: const Icon(
               Icons.check_rounded,
-              size: 48,
+              size: 52,
               color: Colors.white,
             ),
           ),

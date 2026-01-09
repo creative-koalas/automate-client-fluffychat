@@ -132,11 +132,12 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final backgroundColor = widget.backgroundColor ?? theme.colorScheme.surface;
     final selectedColor = widget.selectedColor ??
-        theme.colorScheme.primaryContainer.withValues(alpha: 0.3);
+        theme.colorScheme.primaryContainer.withValues(alpha: 0.5);
     final hoverColor = widget.hoverColor ??
-        theme.colorScheme.onSurface.withValues(alpha: 0.08);
+        theme.colorScheme.onSurface.withValues(alpha: 0.06);
 
     return MouseRegion(
       onEnter: _onEnter,
@@ -145,13 +146,26 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
         child: AnimatedBuilder(
           animation: _widthAnimation,
           builder: (context, child) {
+            final progress = (_widthAnimation.value - widget.collapsedWidth) /
+                (widget.expandedWidth - widget.collapsedWidth);
             return Container(
               width: _widthAnimation.value,
               decoration: BoxDecoration(
                 color: backgroundColor,
+                boxShadow: progress > 0.3
+                    ? [
+                        BoxShadow(
+                          color: isDark
+                              ? Colors.black.withAlpha(30)
+                              : Colors.black.withAlpha(8),
+                          blurRadius: 12,
+                          offset: const Offset(2, 0),
+                        ),
+                      ]
+                    : null,
                 border: Border(
                   right: BorderSide(
-                    color: theme.dividerColor.withValues(alpha: 0.1),
+                    color: theme.dividerColor.withValues(alpha: progress > 0.3 ? 0 : 0.08),
                     width: 1,
                   ),
                 ),
@@ -165,18 +179,19 @@ class _CollapsibleSidebarState extends State<CollapsibleSidebar>
               if (widget.header != null || widget.collapsedHeader != null)
                 _buildHeader(),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
 
-              // Menu items - 使用 AnimatedBuilder 监听动画，避免 setState
+              // Menu items
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   itemCount: widget.items.length,
                   itemBuilder: (context, index) => _SidebarItem(
                     item: widget.items[index],
                     isSelected: index == widget.selectedIndex,
                     widthAnimation: _widthAnimation,
                     expandedWidth: widget.expandedWidth,
+                    collapsedWidth: widget.collapsedWidth,
                     selectedColor: selectedColor,
                     hoverColor: hoverColor,
                     onTap: () {
@@ -203,6 +218,7 @@ class _SidebarItem extends StatefulWidget {
   final bool isSelected;
   final Animation<double> widthAnimation;
   final double expandedWidth;
+  final double collapsedWidth;
   final Color selectedColor;
   final Color hoverColor;
   final VoidCallback? onTap;
@@ -212,6 +228,7 @@ class _SidebarItem extends StatefulWidget {
     required this.isSelected,
     required this.widthAnimation,
     required this.expandedWidth,
+    required this.collapsedWidth,
     required this.selectedColor,
     required this.hoverColor,
     this.onTap,
@@ -236,25 +253,27 @@ class _SidebarItemState extends State<_SidebarItem> {
         : theme.colorScheme.onSurfaceVariant;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
-          child: Container(
-            height: 48,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOutCubic,
+            height: 52,
             decoration: BoxDecoration(
               color: widget.isSelected
                   ? widget.selectedColor
                   : (_isHovered ? widget.hoverColor : Colors.transparent),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: AnimatedBuilder(
               animation: widget.widthAnimation,
               builder: (context, _) {
-                // 根据动画进度决定显示模式
-                final progress = (widget.widthAnimation.value - 72) / (widget.expandedWidth - 72);
+                final progress = (widget.widthAnimation.value - widget.collapsedWidth) /
+                    (widget.expandedWidth - widget.collapsedWidth);
                 final showExpanded = progress > 0.5;
 
                 if (showExpanded) {
@@ -275,9 +294,9 @@ class _SidebarItemState extends State<_SidebarItem> {
       opacity: progress.clamp(0.0, 1.0),
       child: Row(
         children: [
-          const SizedBox(width: 12),
-          Icon(icon, color: iconColor, size: 24),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               widget.item.label,
@@ -287,25 +306,39 @@ class _SidebarItemState extends State<_SidebarItem> {
                     : theme.colorScheme.onSurface,
                 fontWeight: widget.isSelected
                     ? FontWeight.w600
-                    : FontWeight.normal,
+                    : FontWeight.w500,
+                fontSize: 14,
+                letterSpacing: 0.2,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           if (widget.item.badgeCount != null && widget.item.badgeCount! > 0)
             Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              margin: const EdgeInsets.only(right: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: theme.colorScheme.error,
-                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.error,
+                    theme.colorScheme.error.withAlpha(220),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.error.withAlpha(60),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Text(
                 widget.item.badgeCount! > 99 ? '99+' : '${widget.item.badgeCount}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

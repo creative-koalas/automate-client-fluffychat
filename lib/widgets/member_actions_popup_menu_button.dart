@@ -37,17 +37,34 @@ void showMemberActionsPopupMenu({
   final action = await showMenu<_MemberActions>(
     context: context,
     position: position,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
     items: <PopupMenuEntry<_MemberActions>>[
       PopupMenuItem(
         value: _MemberActions.info,
         child: Row(
           spacing: 12.0,
           children: [
-            Avatar(
-              name: displayname,
-              mxContent: user.avatarUrl,
-              presenceUserId: user.id,
-              presenceBackgroundColor: theme.colorScheme.surfaceContainer,
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primary.withAlpha(80),
+                    theme.colorScheme.tertiary.withAlpha(60),
+                  ],
+                ),
+              ),
+              child: Avatar(
+                name: displayname,
+                mxContent: user.avatarUrl,
+                presenceUserId: user.id,
+                presenceBackgroundColor: theme.colorScheme.surfaceContainer,
+              ),
             ),
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -58,7 +75,9 @@ void showMemberActionsPopupMenu({
                   child: Text(
                     displayname,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.labelLarge,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -68,7 +87,10 @@ void showMemberActionsPopupMenu({
                   child: Text(
                     user.id,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 10),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -84,9 +106,23 @@ void showMemberActionsPopupMenu({
           value: _MemberActions.mention,
           child: Row(
             children: [
-              const Icon(Icons.alternate_email_outlined),
-              const SizedBox(width: 18),
-              Text(L10n.of(context).mention),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.alternate_email_rounded,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                L10n.of(context).mention,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
             ],
           ),
         ),
@@ -95,9 +131,23 @@ void showMemberActionsPopupMenu({
           value: _MemberActions.approve,
           child: Row(
             children: [
-              const Icon(Icons.how_to_reg_outlined),
-              const SizedBox(width: 18),
-              Text(L10n.of(context).approve),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.how_to_reg_rounded,
+                  size: 18,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                L10n.of(context).approve,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
             ],
           ),
         ),
@@ -106,20 +156,37 @@ void showMemberActionsPopupMenu({
         value: _MemberActions.setRole,
         child: Row(
           children: [
-            const Icon(Icons.admin_panel_settings_outlined),
-            const SizedBox(width: 18),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.tertiary.withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.admin_panel_settings_rounded,
+                size: 18,
+                color: theme.colorScheme.tertiary,
+              ),
+            ),
+            const SizedBox(width: 14),
             Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(L10n.of(context).chatPermissions),
+                Text(
+                  L10n.of(context).chatPermissions,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
                 Text(
                   user.powerLevel < 50
                       ? L10n.of(context).userLevel(user.powerLevel)
                       : user.powerLevel < 100
                           ? L10n.of(context).moderatorLevel(user.powerLevel)
                           : L10n.of(context).adminLevel(user.powerLevel),
-                  style: const TextStyle(fontSize: 10),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -131,14 +198,25 @@ void showMemberActionsPopupMenu({
           value: _MemberActions.kick,
           child: Row(
             children: [
-              Icon(
-                Icons.person_remove_outlined,
-                color: theme.colorScheme.onErrorContainer,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withAlpha(80),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.person_remove_rounded,
+                  size: 18,
+                  color: theme.colorScheme.error,
+                ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 14),
               Text(
                 L10n.of(context).kickFromChat,
-                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -148,14 +226,25 @@ void showMemberActionsPopupMenu({
           value: _MemberActions.ban,
           child: Row(
             children: [
-              Icon(
-                Icons.block_outlined,
-                color: theme.colorScheme.onErrorContainer,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withAlpha(80),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.block_rounded,
+                  size: 18,
+                  color: theme.colorScheme.error,
+                ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 14),
               Text(
                 L10n.of(context).banFromChat,
-                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -165,9 +254,23 @@ void showMemberActionsPopupMenu({
           value: _MemberActions.unban,
           child: Row(
             children: [
-              const Icon(Icons.warning),
-              const SizedBox(width: 18),
-              Text(L10n.of(context).unbanFromChat),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.warning_rounded,
+                  size: 18,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                L10n.of(context).unbanFromChat,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
             ],
           ),
         ),
@@ -176,14 +279,25 @@ void showMemberActionsPopupMenu({
           value: _MemberActions.report,
           child: Row(
             children: [
-              Icon(
-                Icons.gavel_outlined,
-                color: theme.colorScheme.onErrorContainer,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withAlpha(80),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.gavel_rounded,
+                  size: 18,
+                  color: theme.colorScheme.error,
+                ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 14),
               Text(
                 L10n.of(context).reportUser,
-                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),

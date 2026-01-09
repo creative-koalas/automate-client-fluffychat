@@ -158,40 +158,50 @@ class TeamPageView extends StatelessWidget {
     final l10n = L10n.of(context);
 
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
+        color: theme.colorScheme.surfaceContainerHigh.withAlpha(120),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: TabBar(
         controller: controller._tabController,
-        labelColor: theme.colorScheme.primary,
+        labelColor: theme.colorScheme.onPrimary,
         unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
         labelStyle: const TextStyle(
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontSize: 13,
+          letterSpacing: 0.2,
         ),
         unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w500,
-          fontSize: 14,
+          fontSize: 13,
         ),
-        indicatorSize: TabBarIndicatorSize.label,
-        indicatorWeight: 3,
-        indicatorColor: theme.colorScheme.primary,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: theme.colorScheme.primary,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.primary.withAlpha(60),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         dividerColor: Colors.transparent,
+        splashBorderRadius: BorderRadius.circular(10),
         tabs: [
           Tab(
+            height: 40,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   controller._tabController.index == 0
-                      ? Icons.people
-                      : Icons.people_outline,
-                  size: 20,
+                      ? Icons.people_rounded
+                      : Icons.people_outline_rounded,
+                  size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(l10n.employeesTab),
@@ -199,14 +209,15 @@ class TeamPageView extends StatelessWidget {
             ),
           ),
           Tab(
+            height: 40,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   controller._tabController.index == 1
-                      ? Icons.person_add
-                      : Icons.person_add_outlined,
-                  size: 20,
+                      ? Icons.person_add_rounded
+                      : Icons.person_add_alt_outlined,
+                  size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(l10n.recruitTab),
@@ -214,14 +225,15 @@ class TeamPageView extends StatelessWidget {
             ),
           ),
           Tab(
+            height: 40,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   controller._tabController.index == 2
-                      ? Icons.school
+                      ? Icons.school_rounded
                       : Icons.school_outlined,
-                  size: 20,
+                  size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(l10n.trainingTab),

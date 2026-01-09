@@ -387,23 +387,72 @@ class EmployeesTabState extends State<EmployeesTab>
   /// 确认优化对话框
   Future<void> _confirmDeleteEmployee(Agent employee) async {
     final l10n = L10n.of(context);
+    final theme = Theme.of(context);
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.deleteEmployee),
-        content: Text(l10n.deleteEmployeeConfirm(employee.displayName)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withAlpha(60),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                color: theme.colorScheme.error,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Text(
+              l10n.deleteEmployee,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          l10n.deleteEmployeeConfirm(employee.displayName),
+          style: TextStyle(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.4,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Text(l10n.confirm),
+            child: Text(
+              l10n.cancel,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              l10n.confirm,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -477,21 +526,42 @@ class EmployeesTabState extends State<EmployeesTab>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: theme.colorScheme.error,
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withAlpha(40),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: theme.colorScheme.error,
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Text(
                   l10n.errorLoadingData,
-                  style: theme.textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                TextButton.icon(
+                const SizedBox(height: 12),
+                FilledButton.icon(
                   onPressed: _loadEmployees,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(l10n.tryAgain),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(
+                    l10n.tryAgain,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ],
             ),

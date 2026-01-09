@@ -206,45 +206,65 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
   /// 菜单选项 - 完全按照 ClientChooserButton 的方式
   List<PopupMenuEntry<Object>> _buildMenuItems(BuildContext context) {
+    final theme = Theme.of(context);
+
+    Widget buildMenuItem(IconData icon, String text, Color? iconColor) {
+      return Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (iconColor ?? theme.colorScheme.primary).withAlpha(20),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor ?? theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+
     return <PopupMenuEntry<Object>>[
       PopupMenuItem(
         value: _SettingsAction.newGroup,
-        child: Row(
-          children: [
-            const Icon(Icons.group_add_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).createGroup),
-          ],
+        child: buildMenuItem(
+          Icons.group_add_rounded,
+          L10n.of(context).createGroup,
+          theme.colorScheme.tertiary,
         ),
       ),
       PopupMenuItem(
         value: _SettingsAction.setStatus,
-        child: Row(
-          children: [
-            const Icon(Icons.edit_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).setStatus),
-          ],
+        child: buildMenuItem(
+          Icons.edit_rounded,
+          L10n.of(context).setStatus,
+          theme.colorScheme.secondary,
         ),
       ),
       PopupMenuItem(
         value: _SettingsAction.invite,
-        child: Row(
-          children: [
-            Icon(Icons.adaptive.share_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).inviteContact),
-          ],
+        child: buildMenuItem(
+          Icons.adaptive.share_rounded,
+          L10n.of(context).inviteContact,
+          theme.colorScheme.primary,
         ),
       ),
       PopupMenuItem(
         value: _SettingsAction.settings,
-        child: Row(
-          children: [
-            const Icon(Icons.settings_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).settings),
-          ],
+        child: buildMenuItem(
+          Icons.settings_rounded,
+          L10n.of(context).settings,
+          theme.colorScheme.onSurfaceVariant,
         ),
       ),
     ];
@@ -338,10 +358,31 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
         // 预构建头像组件，避免动画期间重复创建
         final avatar = RepaintBoundary(
-          child: Avatar(
-            mxContent: avatarUrl,
-            name: displayName,
-            size: 40,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primary.withAlpha(80),
+                  theme.colorScheme.tertiary.withAlpha(60),
+                ],
+              ),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.surface,
+              ),
+              child: Avatar(
+                mxContent: avatarUrl,
+                name: displayName,
+                size: 36,
+              ),
+            ),
           ),
         );
 
@@ -462,11 +503,27 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                           width: 8,
                           color: Colors.transparent,
                           child: Center(
-                            child: Container(
-                              width: _isDraggingDivider ? 3 : 1,
-                              color: _isDraggingDivider
-                                  ? theme.colorScheme.primary
-                                  : theme.dividerColor,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: _isDraggingDivider ? 4 : 1,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: _isDraggingDivider
+                                      ? [
+                                          theme.colorScheme.primary.withAlpha(100),
+                                          theme.colorScheme.primary,
+                                          theme.colorScheme.primary.withAlpha(100),
+                                        ]
+                                      : [
+                                          theme.dividerColor.withAlpha(60),
+                                          theme.dividerColor,
+                                          theme.dividerColor.withAlpha(60),
+                                        ],
+                                ),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
                           ),
                         ),
