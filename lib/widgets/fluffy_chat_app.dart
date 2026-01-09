@@ -140,6 +140,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   int _resumeRetryCount = 0;  // Track resume retry attempts to avoid infinite loops
   static const int _maxResumeRetries = 3;  // Max retries on resume
   bool _blockedByForceUpdate = false;  // Track if blocked by force update
+  bool _isLoggingOut = false;  // 防止登出过程中重复触发一键登录
+  bool _pendingOneClickLogin = false;  // 延迟触发一键登录（等待 app 回到前台）
 
   // Sync error tracking
   StreamSubscription? _syncStatusSubscription;
@@ -187,26 +189,22 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}, onboardingCompleted=${auth.onboardingCompleted}');
 
     // 登出时重置状态
+    // 注意：这里只更新状态，不触发登录流程
+    // 登录流程由 _clearAllAuthStateAndRedirectToLogin 或 _forceLogout 统一处理
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
-      debugPrint('[AuthGate] User logged out, resetting state');
+      debugPrint('[AuthGate] User logged out via auth state change, updating UI state only');
 
       // 取消同步状态监听
       _syncStatusSubscription?.cancel();
       _syncStatusSubscription = null;
 
+      // 仅更新状态，不触发登录（避免重复触发）
       setState(() {
-        _state = _AuthState.needsLogin;
+        _state = _AuthState.checking;
         _hasTriedAuth = false;
         _hasRetriedMatrixLogin = false;
         _resumeRetryCount = 0;
       });
-
-      // 移动端：触发一键登录
-      if (PlatformInfos.isMobile) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _checkAuthStateSafe();
-        });
-      }
       return;
     }
 
@@ -219,6 +217,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           debugPrint('[AuthGate] User logged in with Matrix, updating state to authenticated');
           setState(() => _state = _AuthState.authenticated);
           _startAgreementCheckService();
+          // 启动同步状态监听，检测持续连接失败
+          _startSyncStatusMonitoring(matrix.client);
         }
       } catch (e) {
         debugPrint('[AuthGate] Could not check Matrix state: $e');
@@ -294,13 +294,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 当应用从后台恢复时
     if (state == AppLifecycleState.resumed) {
-      debugPrint('[AuthGate] App resumed from background, state=$_state, resumeRetryCount=$_resumeRetryCount');
-
-      // iOS CRITICAL FIX: Always close Aliyun auth page when resuming from background
-      // This prevents black screen caused by lingering auth page overlay
-      if (PlatformInfos.isMobile) {
-        OneClickLoginService.quitLoginPage();
-      }
+      debugPrint('[AuthGate] App resumed from background, state=$_state, pendingOneClickLogin=$_pendingOneClickLogin, hasTriedAuth=$_hasTriedAuth');
 
       // 应用恢复时检查更新（先检查 App 更新，再检查协议）
       AppUpdateService.onAppResumed();
@@ -309,18 +303,41 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         AgreementCheckService.onAppResumed();
       }
 
+      // 如果有延迟的一键登录请求，现在执行
+      if (_pendingOneClickLogin) {
+        debugPrint('[AuthGate] Executing pending one-click login after app resumed');
+        _pendingOneClickLogin = false;
+        // 稍微延迟一下确保 app 完全恢复
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _checkAuthStateSafe();
+        });
+        return;
+      }
+
+      // 如果在 checking 状态且已尝试过登录，说明一键登录授权页可能被系统关闭了
+      // 需要重新触发登录流程
+      if (_state == _AuthState.checking && _hasTriedAuth && PlatformInfos.isMobile) {
+        debugPrint('[AuthGate] Auth page might have been dismissed, retrying one-click login');
+        setState(() {
+          _hasTriedAuth = false;
+        });
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _checkAuthStateSafe();
+        });
+        return;
+      }
+
       // iOS FIX: Handle permission approval during auth check
       // When user slowly approves network permissions, SDK initialization may timeout
       // Auto-retry when app resumes after permission approval (with retry limit)
-      if ((_state == _AuthState.checking || _state == _AuthState.error) &&
-          _resumeRetryCount < _maxResumeRetries) {
-        debugPrint('[AuthGate] In $_state state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)');
+      if (_state == _AuthState.error && _resumeRetryCount < _maxResumeRetries) {
+        debugPrint('[AuthGate] In error state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)');
         _resumeRetryCount++;
 
         setState(() {
           _hasTriedAuth = false;
           _hasRetriedMatrixLogin = false;
-          _state = _AuthState.checking;  // Keep in checking state, don't flash error UI
+          _state = _AuthState.checking;
         });
 
         // Wait a bit for network to be fully ready
@@ -329,7 +346,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         });
       } else if (_resumeRetryCount >= _maxResumeRetries && _state == _AuthState.error) {
         debugPrint('[AuthGate] Max resume retries reached, showing persistent error');
-        // Stay in error state to show the error message
       }
     }
   }
@@ -406,6 +422,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           await WindowService.switchToMainWindow();
         }
         setState(() => _state = _AuthState.authenticated);
+
+        // 启动同步状态监听，检测持续连接失败
+        _startSyncStatusMonitoring(matrix.client);
+
+        // 启动协议检查后台服务
+        _startAgreementCheckService();
         return;
       }
 
@@ -468,6 +490,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     try {
       debugPrint('[AuthGate] Starting one-click login...');
+
+      // 先关闭可能存在的授权页，避免 "授权页已存在" 错误
+      await OneClickLoginService.quitLoginPage();
 
       // Perform the complete one-click login flow
       final loginToken = await OneClickLoginService.performOneClickLogin(
@@ -891,35 +916,34 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   /// 启动同步状态监听，检测持续连接失败
   void _startSyncStatusMonitoring(Client client) {
-    // 取消之前的订阅
-    _syncStatusSubscription?.cancel();
-    _consecutiveSyncErrors = 0;
+    // 如果已经在监听同一个 client，不要重复启动
+    if (_syncStatusSubscription != null) {
+      debugPrint('[AuthGate] Sync status monitoring already active, skipping');
+      return;
+    }
 
     debugPrint('[AuthGate] Starting sync status monitoring');
+    _consecutiveSyncErrors = 0;
 
     _syncStatusSubscription = client.onSyncStatus.stream.listen((status) {
       if (!mounted) return;
 
       if (status.status == SyncStatus.error) {
         _consecutiveSyncErrors++;
-        debugPrint('[AuthGate] Sync error #$_consecutiveSyncErrors: ${status.error}');
 
-        // 检查是否是连接超时或网络错误
-        final errorStr = status.error?.toString() ?? '';
-        final isConnectionError = errorStr.contains('SocketException') ||
-            errorStr.contains('Connection') ||
-            errorStr.contains('timeout') ||
-            errorStr.contains('TimeoutException') ||
-            errorStr.contains('Network') ||
-            errorStr.contains('Failed host lookup');
+        // 获取错误信息：SdkError 有 exception 属性
+        final error = status.error;
+        final errorStr = (error?.exception?.toString() ?? error?.toString() ?? '').toLowerCase();
+        debugPrint('[AuthGate] Sync error #$_consecutiveSyncErrors: $errorStr');
 
-        if (isConnectionError && _consecutiveSyncErrors >= _maxConsecutiveSyncErrors) {
+        // 连续同步失败达到阈值时登出
+        // 包括：网络错误、连接超时、HTTP错误等
+        if (_consecutiveSyncErrors >= _maxConsecutiveSyncErrors) {
           debugPrint('[AuthGate] Max consecutive sync errors reached ($_consecutiveSyncErrors), logging out user');
           _handlePersistentConnectionFailure();
         }
-      } else if (status.status == SyncStatus.finished ||
-                 status.status == SyncStatus.processing) {
-        // 同步成功，重置计数器
+      } else if (status.status == SyncStatus.finished) {
+        // 只有 finished 才表示同步真正完成，重置计数器
         if (_consecutiveSyncErrors > 0) {
           debugPrint('[AuthGate] Sync recovered, resetting error counter');
           _consecutiveSyncErrors = 0;
@@ -953,6 +977,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   /// 强制登出（协议未接受时调用）
   Future<void> _forceLogout() async {
+    // 防止重复调用
+    if (_isLoggingOut) {
+      debugPrint('[AuthGate] Already logging out, skipping duplicate call');
+      return;
+    }
+    _isLoggingOut = true;
+
     debugPrint('[AuthGate] Force logout triggered - agreement not accepted');
 
     // 停止后台检查服务
@@ -977,10 +1008,20 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         }
       } catch (e) {
         debugPrint('[AuthGate] Matrix client logout error: $e');
+        // 网络失败时强制清除本地状态
+        try {
+          await client.clear();
+          debugPrint('[AuthGate] Matrix client local state cleared');
+        } catch (clearError) {
+          debugPrint('[AuthGate] Matrix client clear error: $clearError');
+        }
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      _isLoggingOut = false;
+      return;
+    }
 
     // PC端：切换回登录小窗口
     if (PlatformInfos.isDesktop) {
@@ -989,23 +1030,39 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 重置 AuthGate 状态
     setState(() {
-      _state = _AuthState.needsLogin;
+      _state = _AuthState.checking;
       _hasTriedAuth = false;  // 允许一键登录重新触发
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
     });
 
-    // 路由跳转由 Matrix.onLoginStateChanged 自动处理
-    // 移动端：跳转到 / 后触发一键登录
+    // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
     if (PlatformInfos.isMobile) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _checkAuthStateSafe();
-      });
+      debugPrint('[AuthGate] Force logout complete, setting pending one-click login flag');
+      _pendingOneClickLogin = true;
+      // 如果 app 已经在前台，立即触发
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        debugPrint('[AuthGate] App is in foreground, triggering one-click login immediately');
+        _pendingOneClickLogin = false;
+        await _checkAuthStateSafe();
+      }
+    } else {
+      debugPrint('[AuthGate] Force logout complete, redirecting to login page');
+      PsygoApp.router.go('/login-signup');
     }
+
+    _isLoggingOut = false;
   }
 
   /// 清除所有认证状态并跳转到登录页（Token 失效时调用）
   Future<void> _clearAllAuthStateAndRedirectToLogin() async {
+    // 防止重复调用
+    if (_isLoggingOut) {
+      debugPrint('[AuthGate] Already logging out, skipping duplicate call');
+      return;
+    }
+    _isLoggingOut = true;
+
     debugPrint('[AuthGate] Clearing all auth state and redirecting to login...');
 
     // 停止后台检查服务
@@ -1030,6 +1087,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
             debugPrint('[AuthGate] Matrix client logged out');
           } catch (e) {
             debugPrint('[AuthGate] Matrix logout error: $e');
+            // 网络失败时强制清除本地状态
+            try {
+              await client.clear();
+              debugPrint('[AuthGate] Matrix client local state cleared');
+            } catch (clearError) {
+              debugPrint('[AuthGate] Matrix client clear error: $clearError');
+            }
           }
         }
       }
@@ -1037,7 +1101,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Could not access Matrix: $e');
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      _isLoggingOut = false;
+      return;
+    }
 
     // PC端：切换到登录小窗口
     if (PlatformInfos.isDesktop) {
@@ -1046,23 +1113,30 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 重置 AuthGate 状态（允许自动一键登录重试）
     setState(() {
-      _state = _AuthState.needsLogin;
+      _state = _AuthState.checking;
       _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
     });
 
-    // 移动端：触发一键登录
+    // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
+    // 这是因为在后台触发一键登录可能导致授权页无法正确显示
     // PC端/Web端：跳转到登录页
     if (PlatformInfos.isMobile) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _checkAuthStateSafe();
-      });
+      debugPrint('[AuthGate] Auth state cleared, setting pending one-click login flag');
+      _pendingOneClickLogin = true;
+      // 如果 app 已经在前台，立即触发
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        debugPrint('[AuthGate] App is in foreground, triggering one-click login immediately');
+        _pendingOneClickLogin = false;
+        await _checkAuthStateSafe();
+      }
     } else {
+      debugPrint('[AuthGate] Auth state cleared, redirecting to login page');
       PsygoApp.router.go('/login-signup');
     }
 
-    debugPrint('[AuthGate] Auth state cleared, redirected to login page');
+    _isLoggingOut = false;
   }
 
   /// Navigate to onboarding page for new users.
@@ -1108,6 +1182,18 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return _buildErrorScreen();
 
       case _AuthState.needsLogin:
+        // 被强制更新阻止时显示提示
+        if (_blockedByForceUpdate) {
+          return _buildForceUpdateBlockedScreen();
+        }
+        // 移动端：需要登录时显示加载界面，等待一键登录 SDK 弹出
+        // 这样可以避免短暂显示聊天列表后再弹出登录页
+        if (PlatformInfos.isMobile) {
+          return _buildLoadingScreen('正在准备登录...');
+        }
+        // PC端/Web端：显示登录页面
+        return widget.child ?? const SizedBox.shrink();
+
       case _AuthState.authenticated:
         // 被强制更新阻止时显示提示
         if (_blockedByForceUpdate) {
