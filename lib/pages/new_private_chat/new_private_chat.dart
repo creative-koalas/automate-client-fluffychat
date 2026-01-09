@@ -104,5 +104,13 @@ class NewPrivateChatController extends State<NewPrivateChat> {
       );
 
   @override
+  void dispose() {
+    _searchCoolDown?.cancel();
+    controller.dispose();
+    textFieldFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => NewPrivateChatView(this);
 }

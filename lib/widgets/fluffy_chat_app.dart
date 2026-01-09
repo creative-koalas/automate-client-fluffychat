@@ -148,6 +148,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   String? _invitationCodeError;
   bool _submittingInvitation = false;
 
+  // 保存 auth 引用，避免在 dispose 中访问 context
+  PsygoAuthState? _authState;
+
   // Aliyun SDK secret key
   // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
   static const _secretKey = String.fromEnvironment(
@@ -159,11 +162,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _invitationCodeController.dispose();
-    // 移除认证状态监听
-    try {
-      final auth = context.read<PsygoAuthState>();
-      auth.removeListener(_onAuthStateChanged);
-    } catch (_) {}
+    // 移除认证状态监听（使用保存的引用，避免访问 context）
+    _authState?.removeListener(_onAuthStateChanged);
+    _authState = null;
     // 停止后台检查服务
     AppUpdateService.stopBackgroundCheck();
     AgreementCheckService.stopBackgroundCheck();
@@ -210,10 +211,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // 监听认证状态变化
+    // 监听认证状态变化（保存引用以便在 dispose 中使用）
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<PsygoAuthState>();
-      auth.addListener(_onAuthStateChanged);
+      if (!mounted) return;
+      _authState = context.read<PsygoAuthState>();
+      _authState?.addListener(_onAuthStateChanged);
     });
 
     // iOS FIX: Delay auth check to give system services time to initialize
@@ -772,6 +774,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
 
+  // 路由重定向重试计数，防止无限递归
+  int _redirectRetryCount = 0;
+  static const int _maxRedirectRetries = 5;
+
   void _redirectToLoginPage() {
     // Mobile only: Stay in AuthGate, don't redirect to /login-signup
     // AuthGate will handle one-click login automatically
@@ -783,12 +789,24 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // Web and Desktop: redirect to /login-signup for manual login options
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
       final navKey = PsygoApp.router.routerDelegate.navigatorKey;
       final ctx = navKey.currentContext;
       if (ctx == null) {
+        // 防止无限递归：限制重试次数
+        _redirectRetryCount++;
+        if (_redirectRetryCount >= _maxRedirectRetries) {
+          debugPrint('[AuthGate] Max redirect retries reached, giving up');
+          _redirectRetryCount = 0;
+          return;
+        }
         WidgetsBinding.instance.addPostFrameCallback((_) => _redirectToLoginPage());
         return;
       }
+
+      // 重置重试计数
+      _redirectRetryCount = 0;
 
       final router = GoRouter.of(ctx);
       if (router.routerDelegate.currentConfiguration.fullPath != '/login-signup') {

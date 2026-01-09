@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/config/app_config.dart';
-import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/app_update_test.dart';
