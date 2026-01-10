@@ -7,11 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
-import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/layouts/desktop_layout.dart';
 import '../../widgets/matrix.dart';
@@ -117,30 +114,26 @@ class SettingsController extends State<Settings> {
     try {
       debugPrint('[Settings] Account deletion successful, cleaning up...');
 
-      // 1. 先跳转到登录页（避免 context 失效）
-      PsygoApp.router.go('/login-signup');
-
-      // 2. PC端：切换回登录小窗口
-      if (PlatformInfos.isDesktop) {
-        await WindowService.switchToLoginWindow();
-      }
-
-      // 3. 清除 Automate 认证状态
-      await auth.markLoggedOut();
-      debugPrint('[Settings] Automate auth cleared');
-
-      // 4. 清理 Matrix 客户端（本地清理，不调用服务端 API）
+      // 1. 先清理 Matrix 客户端（本地清理，不调用服务端 API，因为账号已删除）
       final clients = List.from(matrix.widget.clients);
       for (final client in clients) {
         try {
-          if (client.isLogged()) {
-            await client.dispose();
-            debugPrint('[Settings] Matrix client disposed');
-          }
+          await client.dispose();
+          debugPrint('[Settings] Matrix client disposed');
         } catch (e) {
           debugPrint('[Settings] Matrix client cleanup error: $e');
         }
       }
+      // 清空客户端列表
+      matrix.widget.clients.clear();
+
+      // 2. 清除 Automate 认证状态
+      // AuthGate 会监听到状态变化，自动处理：
+      // - 切换窗口大小（PC端）
+      // - 跳转到登录页
+      // - 触发一键登录（移动端）
+      // 注意：Matrix 客户端已经被清理，AuthGate 不会重复操作
+      await auth.markLoggedOut();
 
       debugPrint('[Settings] Account deletion cleanup completed');
     } catch (e) {
