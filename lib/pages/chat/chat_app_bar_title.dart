@@ -156,10 +156,13 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                     fontSize: 16,
                   ),
                 ),
-                // 如果是员工，显示工作状态；否则显示原有的在线状态
-                _employee != null
-                    ? _buildEmployeeWorkStatus(context, _employee!)
-                    : _buildPresenceStatus(context, room),
+                // 私聊：显示员工工作状态或在线状态
+                // 群聊：不显示状态
+                room.directChatMatrixID != null
+                    ? (_employee != null
+                        ? _buildEmployeeWorkStatus(context, _employee!)
+                        : _buildPresenceStatus(context, room))
+                    : const SizedBox.shrink(),
               ],
             ),
           ),

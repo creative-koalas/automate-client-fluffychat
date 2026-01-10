@@ -7,11 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
-import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/layouts/desktop_layout.dart';
 import '../../widgets/matrix.dart';
@@ -281,41 +278,18 @@ class SettingsController extends State<Settings> {
     }
 
     // 在 context 失效前获取需要的引用
-    final matrix = Matrix.of(context);
     final auth = context.read<PsygoAuthState>();
 
     try {
       debugPrint('[Settings] Starting logout...');
 
-      // 1. 清除 Automate 认证状态
+      // 清除 Automate 认证状态
+      // AuthGate 会监听到状态变化，自动处理：
+      // - 退出 Matrix 客户端
+      // - 清除缓存
+      // - 切换窗口大小
+      // - 跳转到登录页
       await auth.markLoggedOut();
-      debugPrint('[Settings] Automate auth cleared');
-
-      // 2. 退出所有 Matrix 客户端
-      // 注意：client.logout() 会触发 onLoginStateChanged，自动执行：
-      // - 清除图片缓存 (MxcImage.clearCache)
-      // - 清除用户缓存 (DesktopLayout.clearUserCache)
-      // - 从 store 移除 clientName
-      // - 导航到登录页
-      final clients = List.from(matrix.widget.clients);
-      for (final client in clients) {
-        try {
-          if (client.isLogged()) {
-            await client.logout();
-            debugPrint('[Settings] Matrix client logged out');
-          }
-        } catch (e) {
-          debugPrint('[Settings] Matrix client logout error: $e');
-        }
-      }
-
-      // 3. 先跳转到登录页（避免在小窗口渲染大布局导致溢出）
-      PsygoApp.router.go('/login-signup');
-
-      // 4. PC端：切换回登录小窗口
-      if (PlatformInfos.isDesktop) {
-        await WindowService.switchToLoginWindow();
-      }
 
       debugPrint('[Settings] Logout completed');
     } catch (e) {

@@ -188,30 +188,18 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     final auth = context.read<PsygoAuthState>();
     debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}, onboardingCompleted=${auth.onboardingCompleted}');
 
-    // 登出时重置状态
-    // 注意：这里只更新状态，不触发登录流程
-    // 登录流程由 _clearAllAuthStateAndRedirectToLogin 或 _forceLogout 统一处理
+    // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
-      debugPrint('[AuthGate] User logged out via auth state change, updating UI state only');
+      debugPrint('[AuthGate] User logged out via auth state change, clearing all auth state');
 
       // 取消同步状态监听
       _syncStatusSubscription?.cancel();
       _syncStatusSubscription = null;
 
-      // 更新状态
-      setState(() {
-        _state = _AuthState.checking;
-        _hasTriedAuth = false;
-        _hasRetriedMatrixLogin = false;
-        _resumeRetryCount = 0;
+      // 清除所有认证状态（包括 Matrix）并跳转到登录页
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _clearAllAuthStateAndRedirectToLogin();
       });
-
-      // 移动端：触发一键登录
-      if (PlatformInfos.isMobile) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _checkAuthStateSafe();
-        });
-      }
       return;
     }
 
@@ -226,6 +214,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           _startAgreementCheckService();
           // 启动同步状态监听，检测持续连接失败
           _startSyncStatusMonitoring(matrix.client);
+        } else {
+          // Matrix 还没登录完成，稍后再检查
+          debugPrint('[AuthGate] Psygo logged in but Matrix not yet, will check again');
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) _onAuthStateChanged();
+          });
         }
       } catch (e) {
         debugPrint('[AuthGate] Could not check Matrix state: $e');
@@ -472,6 +466,32 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 3. No valid token -> need to authenticate
     debugPrint('[AuthGate] No valid token, need authentication');
+
+    // 如果 Matrix 还在登录状态，先登出（避免无效的同步循环）
+    try {
+      final matrix = Matrix.of(context);
+      // 复制列表避免并发修改错误
+      final clients = List.from(matrix.widget.clients);
+      for (final client in clients) {
+        if (client.isLogged()) {
+          debugPrint('[AuthGate] Logging out stale Matrix client');
+          try {
+            // 先尝试正常登出
+            await client.logout();
+          } catch (e) {
+            debugPrint('[AuthGate] Matrix logout error: $e');
+            // 网络失败时强制清除本地状态
+            try {
+              await client.clear();
+            } catch (clearError) {
+              debugPrint('[AuthGate] Matrix clear error: $clearError');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuthGate] Could not access Matrix: $e');
+    }
 
     // On web or desktop, redirect to login page (one-click login SDK not supported)
     // One-click login SDK only works on mobile (Android/iOS)
@@ -1118,9 +1138,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       await WindowService.switchToLoginWindow();
     }
 
-    // 重置 AuthGate 状态（允许自动一键登录重试）
+    // 重置 AuthGate 状态
     setState(() {
-      _state = _AuthState.checking;
+      // PC端/Web端：设置为 needsLogin，显示登录页面
+      // 移动端：设置为 checking，等待一键登录
+      _state = PlatformInfos.isMobile ? _AuthState.checking : _AuthState.needsLogin;
       _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
@@ -1160,16 +1182,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<PsygoAuthState>();
-
-    // If logged out externally (e.g., 401 error), clear all auth state including Matrix
-    if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // 清除所有认证状态（包括 Matrix）并跳转到登录页
-        // 这确保了 401 错误时 Matrix 也会被正确登出
-        _clearAllAuthStateAndRedirectToLogin();
-      });
-    }
+    // watch auth state 以便在状态变化时重建 UI
+    // 实际的登出逻辑在 _onAuthStateChanged 中处理
+    context.watch<PsygoAuthState>();
 
     switch (_state) {
       case _AuthState.checking:

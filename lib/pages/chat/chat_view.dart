@@ -15,6 +15,7 @@ import 'package:psygo/pages/chat/chat_app_bar_title.dart';
 import 'package:psygo/pages/chat/chat_event_list.dart';
 import 'package:psygo/pages/chat/pinned_events.dart';
 import 'package:psygo/pages/chat/reply_display.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/account_config.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/chat_settings_popup_menu.dart';
@@ -417,6 +418,7 @@ class ChatView extends StatelessWidget {
                                           ReplyDisplay(controller),
                                           ChatInputRow(controller),
                                           ChatEmojiPicker(controller),
+                                          _AiContentDisclaimer(room: controller.room),
                                         ],
                                       ),
                               ),
@@ -438,6 +440,40 @@ class ChatView extends StatelessWidget {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// AI 内容免责声明
+/// 只要聊天中有员工就显示
+class _AiContentDisclaimer extends StatelessWidget {
+  final Room room;
+
+  const _AiContentDisclaimer({required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    // 检查房间成员中是否有员工
+    final hasEmployee = room.getParticipants().any((user) {
+      return AgentService.instance.getAgentByMatrixUserId(user.id) != null;
+    });
+
+    if (!hasEmployee) {
+      return const SizedBox.shrink();
+    }
+
+    // 有员工，显示 AI 提示
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        L10n.of(context).aiContentDisclaimer,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.outline,
         ),
       ),
     );
