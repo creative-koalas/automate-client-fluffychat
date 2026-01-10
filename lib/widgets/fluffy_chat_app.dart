@@ -198,13 +198,20 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       _syncStatusSubscription?.cancel();
       _syncStatusSubscription = null;
 
-      // 仅更新状态，不触发登录（避免重复触发）
+      // 更新状态
       setState(() {
         _state = _AuthState.checking;
         _hasTriedAuth = false;
         _hasRetriedMatrixLogin = false;
         _resumeRetryCount = 0;
       });
+
+      // 移动端：触发一键登录
+      if (PlatformInfos.isMobile) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _checkAuthStateSafe();
+        });
+      }
       return;
     }
 
