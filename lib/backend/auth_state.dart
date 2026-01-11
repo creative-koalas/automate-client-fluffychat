@@ -46,8 +46,9 @@ class PsygoAuthState extends ChangeNotifier {
   String? get matrixDeviceId => _matrixDeviceId;
 
   /// Check if token is expired
+  /// Returns false if expiresAt is null (let server validate)
   bool get isTokenExpired {
-    if (_expiresAt == null) return true;
+    if (_expiresAt == null) return false;
     return DateTime.now().isAfter(_expiresAt!);
   }
 
