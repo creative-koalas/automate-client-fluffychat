@@ -9,12 +9,14 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/agent.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat/chat_app_bar_list_tile.dart';
 import 'package:psygo/pages/chat/chat_app_bar_title.dart';
 import 'package:psygo/pages/chat/chat_event_list.dart';
 import 'package:psygo/pages/chat/pinned_events.dart';
 import 'package:psygo/pages/chat/reply_display.dart';
+import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/account_config.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
@@ -352,76 +354,82 @@ class ChatView extends StatelessWidget {
                             )
                           else if (controller.room.canSendDefaultMessages &&
                               controller.room.membership == Membership.join)
-                            Container(
-                              margin: PlatformInfos.isDesktop
-                                  ? EdgeInsets.symmetric(
-                                      vertical: bottomSheetPadding,
-                                      horizontal: 60.0,  // PC 端水平间隔（约为居中时的一半）
-                                    )
-                                  : EdgeInsets.all(bottomSheetPadding),
-                              constraints: PlatformInfos.isDesktop
-                                  ? null  // PC 端不限制宽度，动态适应
-                                  : const BoxConstraints(
-                                      maxWidth: FluffyThemes.maxTimelineWidth,
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  margin: PlatformInfos.isDesktop
+                                      ? EdgeInsets.symmetric(
+                                          vertical: bottomSheetPadding,
+                                          horizontal: 60.0,  // PC 端水平间隔（约为居中时的一半）
+                                        )
+                                      : EdgeInsets.all(bottomSheetPadding),
+                                  constraints: PlatformInfos.isDesktop
+                                      ? null  // PC 端不限制宽度，动态适应
+                                      : const BoxConstraints(
+                                          maxWidth: FluffyThemes.maxTimelineWidth,
+                                        ),
+                                  alignment: PlatformInfos.isDesktop
+                                      ? null  // PC 端不居中
+                                      : Alignment.center,
+                                  child: Material(
+                                    clipBehavior: Clip.hardEdge,
+                                    color: controller.selectedEvents.isNotEmpty
+                                        ? theme.colorScheme.tertiaryContainer
+                                        : theme.colorScheme.surfaceContainerHigh,
+                                    borderRadius: const BorderRadius.all(
+                                      Radius.circular(24),
                                     ),
-                              alignment: PlatformInfos.isDesktop
-                                  ? null  // PC 端不居中
-                                  : Alignment.center,
-                              child: Material(
-                                clipBehavior: Clip.hardEdge,
-                                color: controller.selectedEvents.isNotEmpty
-                                    ? theme.colorScheme.tertiaryContainer
-                                    : theme.colorScheme.surfaceContainerHigh,
-                                borderRadius: const BorderRadius.all(
-                                  Radius.circular(24),
+                                    child: controller.room.isAbandonedDMRoom == true
+                                        ? Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              TextButton.icon(
+                                                style: TextButton.styleFrom(
+                                                  padding: const EdgeInsets.all(
+                                                    16,
+                                                  ),
+                                                  foregroundColor:
+                                                      theme.colorScheme.error,
+                                                ),
+                                                icon: const Icon(
+                                                  Icons.archive_outlined,
+                                                ),
+                                                onPressed: controller.leaveChat,
+                                                label: Text(
+                                                  L10n.of(context).declineInvitation,
+                                                ),
+                                              ),
+                                              TextButton.icon(
+                                                style: TextButton.styleFrom(
+                                                  padding: const EdgeInsets.all(
+                                                    16,
+                                                  ),
+                                                ),
+                                                icon: const Icon(
+                                                  Icons.forum_outlined,
+                                                ),
+                                                onPressed: controller.recreateChat,
+                                                label: Text(
+                                                  L10n.of(context).reopenChat,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              ReplyDisplay(controller),
+                                              ChatInputRow(controller),
+                                              ChatEmojiPicker(controller),
+                                            ],
+                                          ),
+                                  ),
                                 ),
-                                child: controller.room.isAbandonedDMRoom == true
-                                    ? Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          TextButton.icon(
-                                            style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.all(
-                                                16,
-                                              ),
-                                              foregroundColor:
-                                                  theme.colorScheme.error,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.archive_outlined,
-                                            ),
-                                            onPressed: controller.leaveChat,
-                                            label: Text(
-                                              L10n.of(context).declineInvitation,
-                                            ),
-                                          ),
-                                          TextButton.icon(
-                                            style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.all(
-                                                16,
-                                              ),
-                                            ),
-                                            icon: const Icon(
-                                              Icons.forum_outlined,
-                                            ),
-                                            onPressed: controller.recreateChat,
-                                            label: Text(
-                                              L10n.of(context).reopenChat,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          ReplyDisplay(controller),
-                                          ChatInputRow(controller),
-                                          ChatEmojiPicker(controller),
-                                          _AiContentDisclaimer(room: controller.room),
-                                        ],
-                                      ),
-                              ),
+                                // AI 内容免责声明（在输入框容器外面）
+                                _AiContentDisclaimer(room: controller.room),
+                              ],
                             ),
                         ],
                       ),
@@ -448,19 +456,67 @@ class ChatView extends StatelessWidget {
 
 /// AI 内容免责声明
 /// 只要聊天中有员工就显示
-class _AiContentDisclaimer extends StatelessWidget {
+class _AiContentDisclaimer extends StatefulWidget {
   final Room room;
 
   const _AiContentDisclaimer({required this.room});
 
   @override
-  Widget build(BuildContext context) {
-    // 检查房间成员中是否有员工
-    final hasEmployee = room.getParticipants().any((user) {
-      return AgentService.instance.getAgentByMatrixUserId(user.id) != null;
-    });
+  State<_AiContentDisclaimer> createState() => _AiContentDisclaimerState();
+}
 
-    if (!hasEmployee) {
+class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
+  /// 员工信息（如果对方是员工）
+  Agent? _employee;
+
+  /// Agent 仓库
+  final AgentRepository _repository = AgentRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _initEmployeeStatus();
+  }
+
+  @override
+  void dispose() {
+    _repository.dispose();
+    super.dispose();
+  }
+
+  /// 初始化员工状态
+  void _initEmployeeStatus() {
+    final directChatMatrixID = widget.room.directChatMatrixID;
+
+    if (directChatMatrixID == null) return;
+
+    // 从缓存中快速查找（用于立即显示）
+    final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+    if (cachedEmployee != null) {
+      setState(() => _employee = cachedEmployee);
+    } else {
+      // 缓存没有，直接调用 API 获取
+      _fetchAndCheckEmployee(directChatMatrixID);
+    }
+  }
+
+  /// 获取并检查是否是员工
+  Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
+    try {
+      final page = await _repository.getUserAgents(limit: 50);
+      final agent = page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
+      if (mounted && agent != null) {
+        setState(() => _employee = agent);
+      }
+    } catch (_) {
+      // 出错时不显示
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 没有员工，不显示
+    if (_employee == null) {
       return const SizedBox.shrink();
     }
 
