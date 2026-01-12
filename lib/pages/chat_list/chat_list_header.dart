@@ -76,6 +76,21 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor:
           isDesktop ? theme.scaffoldBackgroundColor : Colors.transparent,
       automaticallyImplyLeading: false,
+      flexibleSpace: isDesktop
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.04),
+                    theme.scaffoldBackgroundColor,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.03),
+                  ],
+                ),
+              ),
+            )
+          : null,
       title: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -92,14 +107,50 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
                 duration: FluffyThemes.animationDuration,
                 curve: FluffyThemes.animationCurve,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: controller.isSearchMode
+                        ? [
+                            theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                            theme.colorScheme.surfaceContainerHigh,
+                          ]
+                        : [
+                            theme.colorScheme.surfaceContainerHigh,
+                            theme.colorScheme.surfaceContainer.withValues(alpha: 0.8),
+                          ],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
                   border: controller.isSearchMode
                       ? Border.all(
-                          color: theme.colorScheme.primary.withAlpha(60),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.25),
                           width: 1.5,
                         )
-                      : null,
+                      : Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                  boxShadow: controller.isSearchMode
+                      ? [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 3),
+                          ),
+                          BoxShadow(
+                            color: theme.colorScheme.shadow.withAlpha(8),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: theme.colorScheme.shadow.withAlpha(4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
                 child: TextField(
                   controller: controller.searchController,

@@ -70,17 +70,48 @@ class ChatListItem extends StatelessWidget {
     final chatItem = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: 12,
-        vertical: 2,
+        vertical: 3,
       ),
       child: AnimatedContainer(
         duration: FluffyThemes.animationDuration,
         curve: FluffyThemes.animationCurve,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: backgroundColor ?? Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          gradient: activeChat
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.18),
+                    theme.colorScheme.tertiaryContainer.withValues(alpha: 0.12),
+                  ],
+                )
+              : null,
+          border: activeChat
+              ? Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  width: 1.5,
+                )
+              : null,
+          boxShadow: activeChat
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 3),
+                  ),
+                  BoxShadow(
+                    color: theme.colorScheme.shadow.withAlpha(10),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Material(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           clipBehavior: Clip.hardEdge,
           color: Colors.transparent,
           child: FutureBuilder(
