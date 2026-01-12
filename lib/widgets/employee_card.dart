@@ -125,39 +125,70 @@ class _EmployeeCardState extends State<EmployeeCard>
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        gradient: isOnboarding
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.orange.withValues(alpha: 0.05 + glowOpacity * 0.1),
+                  theme.colorScheme.surfaceContainerLow,
+                  Colors.orange.withValues(alpha: 0.03 + glowOpacity * 0.08),
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.05),
+                  theme.colorScheme.surfaceContainerLow,
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.03),
+                ],
+              ),
         boxShadow: isOnboarding
             ? [
                 BoxShadow(
-                  color: Colors.orange.withValues(alpha: glowOpacity),
-                  blurRadius: 16,
-                  spreadRadius: 2,
+                  color: Colors.orange.withValues(alpha: glowOpacity * 0.6),
+                  blurRadius: 24,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withAlpha(10),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : [
                 BoxShadow(
-                  color: theme.colorScheme.shadow.withAlpha(8),
-                  blurRadius: 8,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withAlpha(6),
+                  blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
       ),
       child: Card(
         elevation: 0,
-        color: cardColor,
+        color: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(
             color: borderColor,
-            width: 1,
+            width: 1.5,
           ),
         ),
         child: InkWell(
           onTap: widget.onTap,
           onLongPress: widget.onLongPress,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(18),
             child: Row(
               children: [
                 // 头像 + 状态指示器
@@ -220,54 +251,78 @@ class _EmployeeCardState extends State<EmployeeCard>
     final isOnboarding = !widget.employee.isReady;
 
     return SizedBox(
-      width: isOnboarding ? 48 : 44,
-      height: isOnboarding ? 48 : 44,
+      width: 56,
+      height: 56,
       child: Stack(
         children: [
-          // 入职中状态时头像有圆环动画
-          if (isOnboarding)
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.orange.withValues(
-                          alpha: 0.3 + _pulseAnimation.value * 0.4,
-                        ),
-                        width: 2,
-                      ),
+          // 装饰环（总是显示，增加层次感）
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isOnboarding
+                          ? [
+                              Colors.orange.withValues(alpha: 0.3 + _pulseAnimation.value * 0.3),
+                              Colors.deepOrange.withValues(alpha: 0.2 + _pulseAnimation.value * 0.2),
+                            ]
+                          : [
+                              theme.colorScheme.primary.withValues(alpha: 0.15),
+                              theme.colorScheme.secondary.withValues(alpha: 0.1),
+                            ],
                     ),
-                  );
-                },
+                  ),
+                );
+              },
+            ),
+          ),
+          // 内层白色环
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(2.5),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.surface,
+                ),
               ),
             ),
-          Positioned(
-            left: isOnboarding ? 2 : 0,
-            top: isOnboarding ? 2 : 0,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-              ),
-              child: widget.employee.avatarUrl != null &&
-                      widget.employee.avatarUrl!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Opacity(
-                        opacity: isOnboarding ? 0.7 : 1.0,
-                        child: Image.network(
-                          widget.employee.avatarUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
+          ),
+          // 头像
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      spreadRadius: -2,
+                    ),
+                  ],
+                ),
+                child: widget.employee.avatarUrl != null &&
+                        widget.employee.avatarUrl!.isNotEmpty
+                    ? ClipOval(
+                        child: Opacity(
+                          opacity: isOnboarding ? 0.75 : 1.0,
+                          child: Image.network(
+                            widget.employee.avatarUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
+                          ),
                         ),
-                      ),
-                    )
-                  : _buildAvatarFallback(theme),
+                      )
+                    : _buildAvatarFallback(theme),
+              ),
             ),
           ),
         ],
@@ -388,37 +443,57 @@ class _EmployeeCardState extends State<EmployeeCard>
       );
     }
 
-    // 就绪状态
+    // 就绪状态 - 使用 Material 3 的 Chip 样式
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            Colors.green.withValues(alpha: 0.15),
-            Colors.green.withValues(alpha: 0.1),
+            Colors.green.withValues(alpha: 0.18),
+            Colors.teal.withValues(alpha: 0.12),
           ],
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.green.withValues(alpha: 0.2),
-          width: 1,
+          color: Colors.green.withValues(alpha: 0.25),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.check_circle_rounded,
-            size: 14,
-            color: Colors.green.shade600,
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.green.shade500,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withValues(alpha: 0.4),
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 8),
           Text(
             l10n.employeeReady,
             style: theme.textTheme.labelSmall?.copyWith(
               color: Colors.green.shade700,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              letterSpacing: 0.3,
             ),
           ),
         ],
