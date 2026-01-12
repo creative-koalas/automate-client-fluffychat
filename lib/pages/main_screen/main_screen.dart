@@ -101,18 +101,37 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.colorScheme.surface.withValues(alpha: 0.95),
+              theme.colorScheme.surface,
+            ],
+          ),
+          border: Border(
+            top: BorderSide(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.shadow.withAlpha(8),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
+              color: theme.colorScheme.primary.withValues(alpha: 0.04),
+              blurRadius: 20,
+              spreadRadius: -5,
+              offset: const Offset(0, -8),
+            ),
+            BoxShadow(
+              color: theme.colorScheme.shadow.withAlpha(12),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -168,14 +187,37 @@ class _NavItem extends StatelessWidget {
         duration: FluffyThemes.animationDuration,
         curve: FluffyThemes.animationCurve,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 20 : 16,
-          vertical: 8,
+          horizontal: isSelected ? 24 : 16,
+          vertical: isSelected ? 12 : 10,
         ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primaryContainer.withAlpha(180)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          gradient: isSelected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+                  ],
+                )
+              : null,
+          borderRadius: BorderRadius.circular(24),
+          border: isSelected
+              ? Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  width: 1.5,
+                )
+              : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
