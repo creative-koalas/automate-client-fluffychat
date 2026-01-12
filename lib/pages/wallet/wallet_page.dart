@@ -230,19 +230,64 @@ class _WalletPageState extends State<WalletPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: widget.showBackButton,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                const Color(0xFFE8F5E9).withValues(alpha: 0.3),
+              ],
+            ),
+          ),
+        ),
         iconTheme: const IconThemeData(
           color: Colors.black, // 返回按钮固定为黑色
         ),
-        title: Text(
-          l10n.walletTitle,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-            color: Colors.black, // 标题固定为黑色
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _primaryGreen,
+                    Color(0xFF66BB6A),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryGreen.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              l10n.walletTitle,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                color: Colors.black,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
         ),
         centerTitle: true,
         elevation: 0,
@@ -267,7 +312,7 @@ class _WalletPageState extends State<WalletPage> {
   Widget _buildBalanceCard(L10n l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -275,14 +320,25 @@ class _WalletPageState extends State<WalletPage> {
           colors: [
             Color(0xFFE8F5E9),
             Color(0xFFC8E6C9),
+            Color(0xFFB2DFDB),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _primaryGreen.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: _primaryGreen.withAlpha(30),
+            color: _primaryGreen.withValues(alpha: 0.15),
+            blurRadius: 24,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
-            offset: const Offset(0, 6),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -444,13 +500,30 @@ class _WalletPageState extends State<WalletPage> {
   Widget _buildRechargeCard(L10n l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            Colors.grey[50]!.withValues(alpha: 0.5),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.grey.withValues(alpha: 0.1),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: _primaryGreen.withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
