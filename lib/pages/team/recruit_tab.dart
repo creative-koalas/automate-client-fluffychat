@@ -208,25 +208,57 @@ class RecruitTabState extends State<RecruitTab>
       ),
       floatingActionButton: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.tertiary,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withAlpha(40),
-              blurRadius: 16,
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 12,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: FloatingActionButton.extended(
-          onPressed: _onCustomHire,
-          icon: const Icon(Icons.add_rounded),
-          label: Text(
-            l10n.customHire,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _onCustomHire,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.add_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.customHire,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
