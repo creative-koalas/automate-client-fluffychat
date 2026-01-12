@@ -72,116 +72,147 @@ class _EmployeeCardState extends State<EmployeeCard>
     final l10n = L10n.of(context);
     final isOnboarding = !widget.employee.isReady;
 
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
-      builder: (context, child) {
-        // 入职中状态时有微妙的发光效果
-        final glowOpacity = isOnboarding ? _pulseAnimation.value * 0.3 : 0.0;
+    // 将动画部分分离，只在需要时才使用 AnimatedBuilder
+    if (isOnboarding) {
+      return AnimatedBuilder(
+        animation: _pulseAnimation,
+        builder: (context, child) {
+          // 入职中状态时有微妙的发光效果
+          final glowOpacity = _pulseAnimation.value * 0.3;
+          final cardColor = Color.lerp(
+            theme.colorScheme.surfaceContainerLow,
+            Colors.orange.withValues(alpha: 0.08),
+            _pulseAnimation.value * 0.3,
+          );
+          final borderColor = Color.lerp(
+            theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+            Colors.orange.withValues(alpha: 0.4),
+            _pulseAnimation.value * 0.5,
+          )!;
 
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: isOnboarding
-                ? [
-                    BoxShadow(
-                      color: Colors.orange.withValues(alpha: glowOpacity),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: theme.colorScheme.shadow.withAlpha(8),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+          return _buildCardContainer(
+            context,
+            theme,
+            l10n,
+            isOnboarding: true,
+            glowOpacity: glowOpacity,
+            cardColor: cardColor,
+            borderColor: borderColor,
+          );
+        },
+      );
+    }
+
+    // 非入职状态：静态渲染，无需动画
+    return _buildCardContainer(
+      context,
+      theme,
+      l10n,
+      isOnboarding: false,
+      cardColor: theme.colorScheme.surfaceContainerLow,
+      borderColor: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+    );
+  }
+
+  Widget _buildCardContainer(
+    BuildContext context,
+    ThemeData theme,
+    L10n l10n, {
+    required bool isOnboarding,
+    double glowOpacity = 0.0,
+    required Color? cardColor,
+    required Color borderColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isOnboarding
+            ? [
+                BoxShadow(
+                  color: Colors.orange.withValues(alpha: glowOpacity),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withAlpha(8),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Card(
+        elevation: 0,
+        color: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: borderColor,
+            width: 1,
           ),
-          child: Card(
-            elevation: 0,
-            color: isOnboarding
-                ? Color.lerp(
-                    theme.colorScheme.surfaceContainerLow,
-                    Colors.orange.withValues(alpha: 0.08),
-                    _pulseAnimation.value * 0.3,
-                  )
-                : theme.colorScheme.surfaceContainerLow,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: isOnboarding
-                    ? Color.lerp(
-                        theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
-                        Colors.orange.withValues(alpha: 0.4),
-                        _pulseAnimation.value * 0.5,
-                      )!
-                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
-                width: 1,
-              ),
-            ),
-            child: InkWell(
-              onTap: widget.onTap,
-              onLongPress: widget.onLongPress,
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    // 头像 + 状态指示器
-                    _buildAvatar(context, theme),
-                    const SizedBox(width: 12),
+        ),
+        child: InkWell(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // 头像 + 状态指示器
+                _buildAvatar(context, theme),
+                const SizedBox(width: 12),
 
-                    // 员工信息
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
+                // 员工信息
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 名称
+                      Text(
+                        widget.employee.displayName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: isOnboarding
+                              ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
+                              : null,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+
+                      // 工作状态
+                      Row(
                         children: [
-                          // 名称
-                          Text(
-                            widget.employee.displayName,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isOnboarding
-                                  ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
-                                  : null,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-
-                          // 工作状态
-                          Row(
-                            children: [
-                              _buildWorkStatusDot(theme),
-                              if (widget.employee.isReady) const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  _getWorkStatusText(l10n),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          _buildWorkStatusDot(theme),
+                          if (widget.employee.isReady) const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              _getWorkStatusText(l10n),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-
-                    // 就绪状态徽章
-                    _buildStatusBadge(context, theme, l10n),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+
+                // 就绪状态徽章
+                _buildStatusBadge(context, theme, l10n),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

@@ -743,7 +743,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
         setState(() {
           _state = _AuthState.error;
-          _errorMessage = 'Matrix 服务器连接失败\n\n可能原因：\n- Matrix 服务器未启动或无法访问\n- 网络连接问题\n\n请确保网络连接正常后重试';
+          _errorMessage = '无法连接到聊天服务\n\n请检查网络连接后重试';
         });
         return;
       }
