@@ -512,7 +512,7 @@ class Message extends StatelessWidget {
                                                     ),
                                                     constraints: BoxConstraints(
                                                       maxWidth: PlatformInfos.isDesktop
-                                                          ? FluffyThemes.columnWidth * 2.5
+                                                          ? FluffyThemes.columnWidth * 1.8
                                                           : FluffyThemes.columnWidth * 1.5,
                                                     ),
                                                     child: Column(
