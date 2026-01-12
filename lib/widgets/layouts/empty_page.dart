@@ -24,16 +24,17 @@ class EmptyPage extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
+              theme.colorScheme.primaryContainer.withValues(alpha: 0.04),
               theme.colorScheme.surface,
-              theme.colorScheme.surfaceContainerLowest,
+              theme.colorScheme.secondaryContainer.withValues(alpha: 0.03),
             ],
           ),
         ),
         child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.85, end: 1.0),
+          tween: Tween(begin: 0.8, end: 1.0),
           duration: FluffyThemes.animationDurationSlow,
           curve: FluffyThemes.animationCurveBounce,
           builder: (context, value, child) => Opacity(
@@ -44,30 +45,75 @@ class EmptyPage extends StatelessWidget {
             ),
           ),
           child: Container(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  theme.colorScheme.surfaceContainerHigh.withAlpha(80),
-                  theme.colorScheme.surfaceContainerHigh.withAlpha(40),
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.08),
+                  theme.colorScheme.tertiaryContainer.withValues(alpha: 0.04),
                   Colors.transparent,
                 ],
-                stops: const [0.3, 0.7, 1.0],
+                stops: const [0.2, 0.5, 0.8, 1.0],
               ),
             ),
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: theme.colorScheme.surfaceContainerHigh.withAlpha(100),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primary.withValues(alpha: 0.08),
+                    theme.colorScheme.tertiary.withValues(alpha: 0.05),
+                  ],
+                ),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    blurRadius: 32,
+                    spreadRadius: 4,
+                  ),
+                  BoxShadow(
+                    color: theme.colorScheme.shadow.withAlpha(15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              child: Image.asset(
-                'assets/logo_transparent.png',
-                color: theme.colorScheme.primary.withAlpha(50),
-                width: width,
-                height: width,
-                filterQuality: FilterQuality.medium,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.15),
+                      theme.colorScheme.surfaceContainer.withValues(alpha: 0.1),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                      blurRadius: 16,
+                      spreadRadius: -2,
+                    ),
+                  ],
+                ),
+                child: Image.asset(
+                  'assets/logo_transparent.png',
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  width: width,
+                  height: width,
+                  filterQuality: FilterQuality.medium,
+                ),
               ),
             ),
           ),

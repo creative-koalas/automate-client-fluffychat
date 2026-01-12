@@ -157,38 +157,91 @@ class _EmptyStateState extends State<EmptyState>
 
   Widget _buildIconContainer(ThemeData theme) {
     return Container(
-      width: 120,
-      height: 120,
+      width: 140,
+      height: 140,
       decoration: BoxDecoration(
+        shape: BoxShape.circle,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primaryContainer.withAlpha(100),
-            theme.colorScheme.primaryContainer.withAlpha(40),
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+            theme.colorScheme.secondaryContainer.withValues(alpha: 0.1),
+            theme.colorScheme.tertiaryContainer.withValues(alpha: 0.08),
           ],
         ),
-        shape: BoxShape.circle,
         boxShadow: [
+          // 主阴影 - 色彩强调
           BoxShadow(
-            color: theme.colorScheme.primary.withAlpha(25),
-            blurRadius: 32,
-            spreadRadius: 8,
+            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+            blurRadius: 40,
+            spreadRadius: 4,
+            offset: const Offset(0, 12),
+          ),
+          // 次级阴影 - 深度感
+          BoxShadow(
+            color: theme.colorScheme.shadow.withAlpha(20),
+            blurRadius: 24,
+            spreadRadius: -4,
+            offset: const Offset(0, 8),
+          ),
+          // 顶部高光
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: Center(
+        // 装饰环
         child: Container(
-          width: 80,
-          height: 80,
+          width: 112,
+          height: 112,
           decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withAlpha(120),
             shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primary.withValues(alpha: 0.08),
+                theme.colorScheme.tertiary.withValues(alpha: 0.05),
+              ],
+            ),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+              width: 1.5,
+            ),
           ),
-          child: Icon(
-            widget.icon,
-            size: 40,
-            color: theme.colorScheme.primary,
+          child: Center(
+            // 内层图标容器
+            child: Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.2),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                widget.icon,
+                size: 48,
+                color: theme.colorScheme.primary,
+              ),
+            ),
           ),
         ),
       ),
