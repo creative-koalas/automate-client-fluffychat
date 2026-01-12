@@ -21,25 +21,37 @@ class TemplateCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.08),
+            theme.colorScheme.surfaceContainerLow,
+            theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withAlpha(8),
+            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            spreadRadius: -2,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: theme.colorScheme.shadow.withAlpha(10),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Card(
-        elevation: 0,
-        color: theme.colorScheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
-            width: 1,
-          ),
-        ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
@@ -91,36 +103,62 @@ class TemplateCard extends StatelessWidget {
 
   Widget _buildAvatar(ThemeData theme) {
     return Container(
-      width: 72,
-      height: 72,
+      width: 80,
+      height: 80,
       decoration: BoxDecoration(
+        shape: BoxShape.circle,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primaryContainer,
-            theme.colorScheme.primaryContainer.withAlpha(180),
+            theme.colorScheme.primary.withValues(alpha: 0.2),
+            theme.colorScheme.tertiary.withValues(alpha: 0.15),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: template.avatarUrl != null && template.avatarUrl!.isNotEmpty
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                template.avatarUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
+      child: Center(
+        child: Container(
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: theme.colorScheme.surface,
+          ),
+          child: Center(
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    spreadRadius: -2,
+                  ),
+                ],
               ),
-            )
-          : _buildAvatarFallback(theme),
+              child: template.avatarUrl != null && template.avatarUrl!.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        template.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
+                      ),
+                    )
+                  : _buildAvatarFallback(theme),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
