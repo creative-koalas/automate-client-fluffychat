@@ -196,108 +196,309 @@ class SettingsView extends StatelessWidget {
                       );
                     },
                   ),
+
+                  const SizedBox(height: 8),
+
+                  // 账号管理卡片
                   if (accountManageUrl != null)
-                    ListTile(
-                      leading: const Icon(Icons.account_circle_outlined),
-                      title: Text(L10n.of(context).manageAccount),
-                      trailing: const Icon(Icons.open_in_new_outlined),
-                      onTap: () => launchUrlString(
-                        accountManageUrl,
-                        mode: LaunchMode.inAppBrowserView,
-                      ),
-                    ),
-                  Divider(color: theme.dividerColor),
-                  ListTile(
-                    leading: const Icon(Icons.format_paint_outlined),
-                    title: Text(L10n.of(context).changeTheme),
-                    onTap: () => context.go('/rooms/settings/style'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.notifications_outlined),
-                    title: Text(L10n.of(context).notifications),
-                    onTap: () => context.go('/rooms/settings/notifications'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.forum_outlined),
-                    title: Text(L10n.of(context).chat),
-                    onTap: () => context.go('/rooms/settings/chat'),
-                  ),
-                  Divider(color: theme.dividerColor),
-                  ListTile(
-                    leading: const Icon(Icons.feedback_outlined),
-                    title: const Text('意见反馈'),
-                    onTap: controller.submitFeedbackAction,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.privacy_tip_outlined),
-                    title: const Text('隐私政策'),
-                    onTap: () => launchUrlString(
-                      AppConfig.privacyUrl.toString(),
-                      mode: LaunchMode.inAppBrowserView,
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.info_outline_rounded),
-                    title: Text(L10n.of(context).about),
-                    onTap: () => PlatformInfos.showDialog(context),
-                  ),
-                  Builder(
-                    builder: (context) {
-                      final screenWidth = MediaQuery.of(context).size.width;
-                      final isDesktop = screenWidth > 600;
-                      return ListTile(
-                        leading: Icon(
-                          isDesktop
-                              ? Icons.downloading_rounded
-                              : Icons.system_update_outlined,
+                    _buildSettingsCard(
+                      theme,
+                      children: [
+                        _buildCardListTile(
+                          theme,
+                          icon: Icons.account_circle_outlined,
+                          title: Text(L10n.of(context).manageAccount),
+                          trailing: const Icon(Icons.open_in_new_outlined, size: 20),
+                          onTap: () => launchUrlString(
+                            accountManageUrl,
+                            mode: LaunchMode.inAppBrowserView,
+                          ),
                         ),
-                        title: const Text('检查更新'),
-                        onTap: () => _checkForUpdate(context),
-                      );
-                    },
-                  ),
-                  // 仅在调试模式下显示更新UI测试入口
-                  if (kDebugMode)
-                    ListTile(
-                      leading: const Icon(Icons.bug_report_outlined),
-                      title: const Text('测试更新弹窗'),
-                      subtitle: const Text('预览应用更新UI效果'),
-                      onTap: () => AppUpdateTest.showTestDialog(context),
+                      ],
                     ),
-                  Divider(color: theme.dividerColor),
-                  ListTile(
-                    leading: Icon(
-                      Icons.logout_outlined,
-                      color: theme.colorScheme.error,
-                    ),
-                    title: Text(
-                      L10n.of(context).logout,
-                      style: TextStyle(
-                        color: theme.colorScheme.error,
+
+                  const SizedBox(height: 12),
+
+                  // 偏好设置卡片
+                  _buildSettingsCard(
+                    theme,
+                    title: '偏好设置',
+                    children: [
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.palette_outlined,
+                        title: Text(L10n.of(context).changeTheme),
+                        onTap: () => context.go('/rooms/settings/style'),
                       ),
-                    ),
-                    onTap: controller.logoutAction,
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.delete_forever_outlined,
-                      color: theme.colorScheme.error,
-                    ),
-                    title: Text(
-                      '注销账号',
-                      style: TextStyle(
-                        color: theme.colorScheme.error,
+                      _buildDivider(theme),
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.notifications_outlined,
+                        title: Text(L10n.of(context).notifications),
+                        onTap: () => context.go('/rooms/settings/notifications'),
                       ),
-                    ),
-                    subtitle: const Text('永久删除账号及所有数据'),
-                    onTap: controller.deleteAccountAction,
+                      _buildDivider(theme),
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.forum_outlined,
+                        title: Text(L10n.of(context).chat),
+                        onTap: () => context.go('/rooms/settings/chat'),
+                      ),
+                    ],
                   ),
+
+                  const SizedBox(height: 12),
+
+                  // 关于应用卡片
+                  _buildSettingsCard(
+                    theme,
+                    title: '关于应用',
+                    children: [
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.feedback_outlined,
+                        title: const Text('意见反馈'),
+                        onTap: controller.submitFeedbackAction,
+                      ),
+                      _buildDivider(theme),
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.privacy_tip_outlined,
+                        title: const Text('隐私政策'),
+                        trailing: const Icon(Icons.open_in_new_outlined, size: 20),
+                        onTap: () => launchUrlString(
+                          AppConfig.privacyUrl.toString(),
+                          mode: LaunchMode.inAppBrowserView,
+                        ),
+                      ),
+                      _buildDivider(theme),
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.info_outline_rounded,
+                        title: Text(L10n.of(context).about),
+                        onTap: () => PlatformInfos.showDialog(context),
+                      ),
+                      _buildDivider(theme),
+                      Builder(
+                        builder: (context) {
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          final isDesktop = screenWidth > 600;
+                          return _buildCardListTile(
+                            theme,
+                            icon: isDesktop
+                                ? Icons.downloading_rounded
+                                : Icons.system_update_outlined,
+                            title: const Text('检查更新'),
+                            onTap: () => _checkForUpdate(context),
+                          );
+                        },
+                      ),
+                      if (kDebugMode) ...[
+                        _buildDivider(theme),
+                        _buildCardListTile(
+                          theme,
+                          icon: Icons.bug_report_outlined,
+                          title: const Text('测试更新弹窗'),
+                          subtitle: const Text('预览应用更新UI效果'),
+                          onTap: () => AppUpdateTest.showTestDialog(context),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // 危险操作卡片
+                  _buildSettingsCard(
+                    theme,
+                    title: '账号操作',
+                    isDanger: true,
+                    children: [
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.logout_outlined,
+                        iconColor: theme.colorScheme.error,
+                        title: Text(
+                          L10n.of(context).logout,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                        onTap: controller.logoutAction,
+                      ),
+                      _buildDivider(theme),
+                      _buildCardListTile(
+                        theme,
+                        icon: Icons.delete_forever_outlined,
+                        iconColor: theme.colorScheme.error,
+                        title: Text(
+                          '注销账号',
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                        subtitle: Text(
+                          '永久删除账号及所有数据',
+                          style: TextStyle(color: theme.colorScheme.error.withValues(alpha: 0.7)),
+                        ),
+                        onTap: controller.deleteAccountAction,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// 构建设置卡片容器
+  Widget _buildSettingsCard(
+    ThemeData theme, {
+    String? title,
+    required List<Widget> children,
+    bool isDanger = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDanger
+              ? [
+                  theme.colorScheme.errorContainer.withValues(alpha: 0.15),
+                  theme.colorScheme.errorContainer.withValues(alpha: 0.08),
+                ]
+              : [
+                  theme.colorScheme.surfaceContainerLow,
+                  theme.colorScheme.surface,
+                ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDanger
+              ? theme.colorScheme.error.withValues(alpha: 0.2)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDanger
+                ? theme.colorScheme.error.withValues(alpha: 0.05)
+                : theme.colorScheme.primary.withValues(alpha: 0.03),
+            blurRadius: 12,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isDanger
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  /// 构建卡片内的列表项
+  Widget _buildCardListTile(
+    ThemeData theme, {
+    required IconData icon,
+    Color? iconColor,
+    required Widget title,
+    Widget? subtitle,
+    Widget? trailing,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (iconColor ?? theme.colorScheme.primary)
+                      .withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 22,
+                  color: iconColor ?? theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DefaultTextStyle(
+                      style: theme.textTheme.bodyLarge!.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      child: title,
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      DefaultTextStyle(
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        child: subtitle,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                IconTheme(
+                  data: IconThemeData(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  child: trailing,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建分隔线
+  Widget _buildDivider(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 68),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1),
+      ),
     );
   }
 }
