@@ -113,10 +113,11 @@ class ChatDetailsView extends StatelessWidget {
                                         String avatarName = displayname;
                                         if (directChatMatrixID != null) {
                                           // 优先使用员工头像
-                                          final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
-                                          if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
-                                            avatarUrl = Uri.tryParse(agent.avatarUrl!);
-                                            avatarName = agent.displayName;
+                                          final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixID);
+                                          if (agentAvatarUri != null) {
+                                            final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+                                            avatarUrl = agentAvatarUri;
+                                            avatarName = agent!.displayName;
                                           } else {
                                             // 非员工或员工没有头像，使用 Matrix 用户头像
                                             final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);

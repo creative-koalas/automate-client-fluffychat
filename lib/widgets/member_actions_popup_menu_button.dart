@@ -20,12 +20,13 @@ void showMemberActionsPopupMenu({
   final isMe = user.room.client.userID == user.id;
 
   // 优先使用员工头像和名称
-  final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+  final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
   final Uri? avatarUrl;
   final String displayname;
-  if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
-    avatarUrl = Uri.tryParse(agent.avatarUrl!);
-    displayname = agent.displayName;
+  if (agentAvatarUri != null) {
+    final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+    avatarUrl = agentAvatarUri;
+    displayname = agent!.displayName;
   } else {
     avatarUrl = user.avatarUrl;
     displayname = user.calcDisplayname();

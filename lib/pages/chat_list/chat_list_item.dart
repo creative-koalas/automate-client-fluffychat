@@ -124,10 +124,11 @@ class ChatListItem extends StatelessWidget {
                               String avatarName = displayname;
                               if (directChatMatrixId != null) {
                                 // 优先使用员工头像（从后端 API 获取）
-                                final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
-                                if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
-                                  avatarUrl = Uri.tryParse(agent.avatarUrl!);
-                                  avatarName = agent.displayName;
+                                final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixId);
+                                if (agentAvatarUri != null) {
+                                  final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
+                                  avatarUrl = agentAvatarUri;
+                                  avatarName = agent!.displayName;
                                 } else {
                                   // 非员工或员工没有头像，使用 Matrix 用户头像
                                   final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);

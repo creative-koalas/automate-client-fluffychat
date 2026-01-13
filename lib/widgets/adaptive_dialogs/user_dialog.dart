@@ -44,12 +44,13 @@ class UserDialog extends StatelessWidget {
     final dmRoomId = client.getDirectChatFromUserId(profile.userId);
 
     // 优先使用员工头像和名称
-    final agent = AgentService.instance.getAgentByMatrixUserId(profile.userId);
+    final agentAvatarUri = AgentService.instance.getAgentAvatarUri(profile.userId);
     final Uri? avatar;
     final String displayname;
-    if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
-      avatar = Uri.tryParse(agent.avatarUrl!);
-      displayname = agent.displayName;
+    if (agentAvatarUri != null) {
+      final agent = AgentService.instance.getAgentByMatrixUserId(profile.userId);
+      avatar = agentAvatarUri;
+      displayname = agent!.displayName;
     } else {
       avatar = profile.avatarUrl;
       displayname = profile.displayName ??

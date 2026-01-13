@@ -352,11 +352,17 @@ class Message extends StatelessWidget {
                                         final user = snapshot.data ??
                                             event.senderFromMemoryOrFallback;
                                         // 优先使用员工头像
-                                        final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
-                                        final avatarUrl = (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty)
-                                            ? Uri.tryParse(agent.avatarUrl!)
-                                            : user.avatarUrl;
-                                        final displayName = agent?.displayName ?? user.calcDisplayname();
+                                        final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
+                                        final Uri? avatarUrl;
+                                        final String displayName;
+                                        if (agentAvatarUri != null) {
+                                          final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+                                          avatarUrl = agentAvatarUri;
+                                          displayName = agent!.displayName;
+                                        } else {
+                                          avatarUrl = user.avatarUrl;
+                                          displayName = user.calcDisplayname();
+                                        }
                                         return Avatar(
                                           mxContent: avatarUrl,
                                           name: displayName,
@@ -384,11 +390,17 @@ class Message extends StatelessWidget {
                                               final user = snapshot.data ??
                                                   event.senderFromMemoryOrFallback;
                                               // 优先使用员工头像
-                                              final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
-                                              final avatarUrl = (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty)
-                                                  ? Uri.tryParse(agent.avatarUrl!)
-                                                  : user.avatarUrl;
-                                              final displayName = agent?.displayName ?? user.calcDisplayname();
+                                              final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
+                                              final Uri? avatarUrl;
+                                              final String displayName;
+                                              if (agentAvatarUri != null) {
+                                                final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+                                                avatarUrl = agentAvatarUri;
+                                                displayName = agent!.displayName;
+                                              } else {
+                                                avatarUrl = user.avatarUrl;
+                                                displayName = user.calcDisplayname();
+                                              }
                                               return Avatar(
                                                 mxContent: avatarUrl,
                                                 name: displayName,
