@@ -12,6 +12,7 @@ import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
+import 'package:psygo/widgets/branded_progress_indicator.dart';
 
 class PhoneLoginPage extends StatefulWidget {
   const PhoneLoginPage({super.key});
@@ -1297,13 +1298,8 @@ class _GradientButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             alignment: Alignment.center,
             child: loading
-                ? const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
+                ? const BrandedProgressIndicator.small(
+                    backgroundColor: Colors.transparent,
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
