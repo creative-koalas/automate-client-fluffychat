@@ -436,13 +436,14 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         borderRadius: BorderRadius.circular(28),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        width: MediaQuery.of(context).size.width,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // 标题
             Row(
               children: [
@@ -596,6 +597,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
               ],
             ),
           ],
+        ),
         ),
       ),
     );
