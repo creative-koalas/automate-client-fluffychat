@@ -180,81 +180,89 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: FluffyThemes.animationDuration,
-        curve: FluffyThemes.animationCurve,
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 24 : 16,
-          vertical: isSelected ? 12 : 10,
-        ),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
-                  ],
-                )
-              : null,
+    return AnimatedContainer(
+      duration: FluffyThemes.animationDuration,
+      curve: FluffyThemes.animationCurve,
+      decoration: BoxDecoration(
+        gradient: isSelected
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+                ],
+              )
+            : null,
+        borderRadius: BorderRadius.circular(24),
+        border: isSelected
+            ? Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                width: 1.5,
+              )
+            : null,
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  blurRadius: 12,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(24),
-          border: isSelected
-              ? Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                  width: 1.5,
-                )
-              : null,
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 4),
+          splashColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+          highlightColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSelected ? 24 : 16,
+              vertical: isSelected ? 12 : 10,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: FluffyThemes.animationDuration,
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: animation,
+                    child: child,
                   ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: FluffyThemes.animationDuration,
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: animation,
-                child: child,
-              ),
-              child: Icon(
-                isSelected ? selectedIcon : icon,
-                key: ValueKey(isSelected),
-                size: 24,
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
+                  child: Icon(
+                    isSelected ? selectedIcon : icon,
+                    key: ValueKey(isSelected),
+                    size: 24,
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                AnimatedSize(
+                  duration: FluffyThemes.animationDuration,
+                  curve: FluffyThemes.animationCurve,
+                  child: isSelected
+                      ? Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
-            AnimatedSize(
-              duration: FluffyThemes.animationDuration,
-              curve: FluffyThemes.animationCurve,
-              child: isSelected
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
+          ),
         ),
       ),
     );

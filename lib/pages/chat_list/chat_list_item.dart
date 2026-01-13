@@ -128,8 +128,8 @@ class ChatListItem extends StatelessWidget {
               leading: HoverBuilder(
                 builder: (context, hovered) => AnimatedScale(
                   duration: FluffyThemes.animationDuration,
-                  curve: FluffyThemes.animationCurve,
-                  scale: hovered ? 1.1 : 1.0,
+                  curve: Curves.easeOutCubic,
+                  scale: hovered ? 1.05 : 1.0,
                   child: SizedBox(
                     width: Avatar.defaultSize,
                     height: Avatar.defaultSize,

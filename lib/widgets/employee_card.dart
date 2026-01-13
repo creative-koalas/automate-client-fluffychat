@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/widgets/branded_progress_indicator.dart';
 
 import '../models/agent.dart';
 
@@ -420,13 +421,8 @@ class _EmployeeCardState extends State<EmployeeCard>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.orange,
-                  ),
+                const BrandedProgressIndicator.small(
+                  backgroundColor: Colors.transparent,
                 ),
                 const SizedBox(width: 6),
                 Text(
