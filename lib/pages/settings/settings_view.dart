@@ -13,6 +13,7 @@ import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
+import 'package:psygo/widgets/branded_progress_indicator.dart';
 import '../../widgets/mxc_image_viewer.dart';
 import 'settings.dart';
 
@@ -37,7 +38,7 @@ class SettingsView extends StatelessWidget {
     // 如果客户端已经退出，显示空白或加载状态
     if (client == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: BrandedProgressIndicator()),
       );
     }
 
@@ -433,6 +434,8 @@ class SettingsView extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
+        splashColor: (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.15),
+        highlightColor: (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.08),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
@@ -443,6 +446,11 @@ class SettingsView extends StatelessWidget {
                   color: (iconColor ?? theme.colorScheme.primary)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: (iconColor ?? theme.colorScheme.primary)
+                        .withValues(alpha: 0.15),
+                    width: 1,
+                  ),
                 ),
                 child: Icon(
                   icon,
