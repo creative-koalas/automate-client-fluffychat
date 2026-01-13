@@ -121,11 +121,32 @@ class Avatar extends StatelessWidget {
                         ),
                       ),
                     )
-                  : Center(
-                      child: Icon(
-                        Icons.person_2_rounded,
-                        color: theme.colorScheme.tertiary,
-                        size: size / 1.5,
+                  : TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOut,
+                      builder: (context, opacity, child) => Opacity(
+                        opacity: opacity,
+                        child: child,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+                              theme.colorScheme.surfaceContainerHigh.withAlpha(80),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.person_2_rounded,
+                            color: theme.colorScheme.tertiary.withAlpha(150),
+                            size: size / 1.5,
+                          ),
+                        ),
                       ),
                     ),
             ),

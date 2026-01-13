@@ -138,14 +138,42 @@ class _MxcImageState extends State<MxcImage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryLoad());
   }
 
-  Widget placeholder(BuildContext context) =>
-      widget.placeholder?.call(context) ??
-      Container(
-        width: widget.width,
-        height: widget.height,
-        alignment: Alignment.center,
-        child: const CircularProgressIndicator.adaptive(strokeWidth: 2),
-      );
+  Widget placeholder(BuildContext context) {
+    if (widget.placeholder != null) {
+      return widget.placeholder!(context);
+    }
+
+    final theme = Theme.of(context);
+    return Container(
+      width: widget.width,
+      height: widget.height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.surfaceContainerHighest.withAlpha(60),
+            theme.colorScheme.surfaceContainer.withAlpha(40),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) => Opacity(
+          opacity: 0.4 + (value * 0.3),
+          child: child,
+        ),
+        child: Icon(
+          Icons.image_outlined,
+          size: min((widget.height ?? 64) / 2, 32),
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,8 +182,15 @@ class _MxcImageState extends State<MxcImage> {
 
     return AnimatedSwitcher(
       duration: FluffyThemes.animationDuration,
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: child,
+      ),
       child: hasData
           ? ClipRRect(
+              key: ValueKey('image_loaded_$data'),
               borderRadius: widget.borderRadius,
               child: Image.memory(
                 data,
@@ -182,7 +217,10 @@ class _MxcImageState extends State<MxcImage> {
                 },
               ),
             )
-          : placeholder(context),
+          : KeyedSubtree(
+              key: const ValueKey('image_loading'),
+              child: placeholder(context),
+            ),
     );
   }
 }
