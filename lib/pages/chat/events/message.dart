@@ -11,6 +11,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat/events/room_creation_state_event.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/file_description.dart';
@@ -350,9 +351,15 @@ class Message extends StatelessWidget {
                                       builder: (context, snapshot) {
                                         final user = snapshot.data ??
                                             event.senderFromMemoryOrFallback;
+                                        // 优先使用员工头像
+                                        final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+                                        final avatarUrl = (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty)
+                                            ? Uri.tryParse(agent.avatarUrl!)
+                                            : user.avatarUrl;
+                                        final displayName = agent?.displayName ?? user.calcDisplayname();
                                         return Avatar(
-                                          mxContent: user.avatarUrl,
-                                          name: user.calcDisplayname(),
+                                          mxContent: avatarUrl,
+                                          name: displayName,
                                           onTap: () =>
                                               showMemberActionsPopupMenu(
                                             context: context,
@@ -376,9 +383,15 @@ class Message extends StatelessWidget {
                                             builder: (context, snapshot) {
                                               final user = snapshot.data ??
                                                   event.senderFromMemoryOrFallback;
+                                              // 优先使用员工头像
+                                              final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+                                              final avatarUrl = (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty)
+                                                  ? Uri.tryParse(agent.avatarUrl!)
+                                                  : user.avatarUrl;
+                                              final displayName = agent?.displayName ?? user.calcDisplayname();
                                               return Avatar(
-                                                mxContent: user.avatarUrl,
-                                                name: user.calcDisplayname(),
+                                                mxContent: avatarUrl,
+                                                name: displayName,
                                                 onTap: () =>
                                                     showMemberActionsPopupMenu(
                                                   context: context,

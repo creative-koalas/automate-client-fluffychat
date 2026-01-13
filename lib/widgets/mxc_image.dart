@@ -77,6 +77,14 @@ class _MxcImageState extends State<MxcImage> {
         : _imageDataCache[cacheKey] = data;
   }
 
+  /// 检查是否是普通 HTTP/HTTPS URL（非 mxc://）
+  bool get _isHttpUrl {
+    final uri = widget.uri;
+    if (uri == null) return false;
+    final scheme = uri.scheme.toLowerCase();
+    return scheme == 'http' || scheme == 'https';
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     final client =
@@ -149,6 +157,31 @@ class _MxcImageState extends State<MxcImage> {
 
   @override
   Widget build(BuildContext context) {
+    // 普通 HTTP/HTTPS URL 直接使用 Image.network
+    if (_isHttpUrl) {
+      return ClipRRect(
+        borderRadius: widget.borderRadius,
+        child: Image.network(
+          widget.uri.toString(),
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          filterQuality: widget.isThumbnail
+              ? FilterQuality.low
+              : FilterQuality.medium,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return placeholder(context);
+          },
+          errorBuilder: (context, e, s) {
+            Logs().d('Unable to load network image', e, s);
+            return placeholder(context);
+          },
+        ),
+      );
+    }
+
+    // mxc:// URL 使用原来的逻辑
     final data = _imageData;
     final hasData = data != null && data.isNotEmpty;
 

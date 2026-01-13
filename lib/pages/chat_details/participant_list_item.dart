@@ -4,6 +4,7 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/member_actions_popup_menu_button.dart';
 import '../../widgets/avatar.dart';
 
@@ -15,6 +16,18 @@ class ParticipantListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // 优先使用员工头像和名称
+    final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+    final Uri? avatarUrl;
+    final String displayname;
+    if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
+      avatarUrl = Uri.tryParse(agent.avatarUrl!);
+      displayname = agent.displayName;
+    } else {
+      avatarUrl = user.avatarUrl;
+      displayname = user.calcDisplayname();
+    }
 
     final membershipBatch = switch (user.membership) {
       Membership.ban => L10n.of(context).banned,
@@ -36,7 +49,7 @@ class ParticipantListItem extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Text(
-              user.calcDisplayname(),
+              displayname,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -92,8 +105,8 @@ class ParticipantListItem extends StatelessWidget {
       leading: Opacity(
         opacity: user.membership == Membership.join ? 1 : 0.5,
         child: Avatar(
-          mxContent: user.avatarUrl,
-          name: user.calcDisplayname(),
+          mxContent: avatarUrl,
+          name: displayname,
           presenceUserId: user.stateKey,
         ),
       ),

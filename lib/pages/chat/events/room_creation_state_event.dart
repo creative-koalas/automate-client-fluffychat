@@ -4,6 +4,7 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -25,9 +26,17 @@ class RoomCreationStateEvent extends StatelessWidget {
     Uri? avatarUrl = event.room.avatar;
     String avatarName = roomName;
     if (directChatMatrixID != null) {
-      final user = event.room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
-      avatarUrl = user.avatarUrl;
-      avatarName = user.calcDisplayname();
+      // 优先使用员工头像
+      final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+      if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
+        avatarUrl = Uri.tryParse(agent.avatarUrl!);
+        avatarName = agent.displayName;
+      } else {
+        // 非员工或员工没有头像，使用 Matrix 用户头像
+        final user = event.room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+        avatarUrl = user.avatarUrl;
+        avatarName = user.calcDisplayname();
+      }
     }
 
     return Padding(

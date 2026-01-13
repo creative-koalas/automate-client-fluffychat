@@ -8,6 +8,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/unread_bubble.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/room_status_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -122,9 +123,17 @@ class ChatListItem extends StatelessWidget {
                               Uri? avatarUrl = room.avatar;
                               String avatarName = displayname;
                               if (directChatMatrixId != null) {
-                                final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
-                                avatarUrl = user.avatarUrl;
-                                avatarName = user.calcDisplayname();
+                                // 优先使用员工头像（从后端 API 获取）
+                                final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
+                                if (agent?.avatarUrl != null && agent!.avatarUrl!.isNotEmpty) {
+                                  avatarUrl = Uri.tryParse(agent.avatarUrl!);
+                                  avatarName = agent.displayName;
+                                } else {
+                                  // 非员工或员工没有头像，使用 Matrix 用户头像
+                                  final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
+                                  avatarUrl = user.avatarUrl;
+                                  avatarName = user.calcDisplayname();
+                                }
                               }
                               return Avatar(
                                 border: space == null

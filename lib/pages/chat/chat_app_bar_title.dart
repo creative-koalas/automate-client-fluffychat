@@ -177,6 +177,15 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
     // 如果是私聊，获取对方用户的头像
     if (directChatMatrixID != null) {
+      // 优先使用员工头像
+      if (_employee?.avatarUrl != null && _employee!.avatarUrl!.isNotEmpty) {
+        return Avatar(
+          mxContent: Uri.tryParse(_employee!.avatarUrl!),
+          name: _employee!.displayName,
+          size: 32,
+        );
+      }
+      // 非员工或员工没有头像，使用 Matrix 用户头像
       final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
       return Avatar(
         mxContent: user.avatarUrl,
