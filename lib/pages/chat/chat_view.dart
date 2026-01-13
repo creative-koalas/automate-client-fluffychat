@@ -359,11 +359,18 @@ class ChatView extends StatelessWidget {
                               children: [
                                 Container(
                                   margin: PlatformInfos.isDesktop
-                                      ? EdgeInsets.symmetric(
-                                          vertical: bottomSheetPadding,
-                                          horizontal: 60.0,  // PC 端水平间隔（约为居中时的一半）
+                                      ? EdgeInsets.only(
+                                          top: bottomSheetPadding,
+                                          left: 60.0,
+                                          right: 60.0,
+                                          bottom: 4,  // 减小底部间距
                                         )
-                                      : EdgeInsets.all(bottomSheetPadding),
+                                      : EdgeInsets.only(
+                                          top: bottomSheetPadding,
+                                          left: bottomSheetPadding,
+                                          right: bottomSheetPadding,
+                                          bottom: 4,  // 减小底部间距
+                                        ),
                                   constraints: PlatformInfos.isDesktop
                                       ? null  // PC 端不限制宽度，动态适应
                                       : const BoxConstraints(
@@ -372,63 +379,68 @@ class ChatView extends StatelessWidget {
                                   alignment: PlatformInfos.isDesktop
                                       ? null  // PC 端不居中
                                       : Alignment.center,
-                                  child: Material(
-                                    clipBehavior: Clip.hardEdge,
-                                    color: controller.selectedEvents.isNotEmpty
-                                        ? theme.colorScheme.tertiaryContainer
-                                        : theme.colorScheme.surfaceContainerHigh,
-                                    borderRadius: const BorderRadius.all(
-                                      Radius.circular(24),
-                                    ),
-                                    child: controller.room.isAbandonedDMRoom == true
-                                        ? Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceEvenly,
-                                            children: [
-                                              TextButton.icon(
-                                                style: TextButton.styleFrom(
-                                                  padding: const EdgeInsets.all(
-                                                    16,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Material(
+                                        clipBehavior: Clip.hardEdge,
+                                        color: controller.selectedEvents.isNotEmpty
+                                            ? theme.colorScheme.tertiaryContainer
+                                            : theme.colorScheme.surfaceContainerHigh,
+                                        borderRadius: const BorderRadius.all(
+                                          Radius.circular(24),
+                                        ),
+                                        child: controller.room.isAbandonedDMRoom == true
+                                            ? Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.spaceEvenly,
+                                                children: [
+                                                  TextButton.icon(
+                                                    style: TextButton.styleFrom(
+                                                      padding: const EdgeInsets.all(
+                                                        16,
+                                                      ),
+                                                      foregroundColor:
+                                                          theme.colorScheme.error,
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons.archive_outlined,
+                                                    ),
+                                                    onPressed: controller.leaveChat,
+                                                    label: Text(
+                                                      L10n.of(context).declineInvitation,
+                                                    ),
                                                   ),
-                                                  foregroundColor:
-                                                      theme.colorScheme.error,
-                                                ),
-                                                icon: const Icon(
-                                                  Icons.archive_outlined,
-                                                ),
-                                                onPressed: controller.leaveChat,
-                                                label: Text(
-                                                  L10n.of(context).declineInvitation,
-                                                ),
-                                              ),
-                                              TextButton.icon(
-                                                style: TextButton.styleFrom(
-                                                  padding: const EdgeInsets.all(
-                                                    16,
+                                                  TextButton.icon(
+                                                    style: TextButton.styleFrom(
+                                                      padding: const EdgeInsets.all(
+                                                        16,
+                                                      ),
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons.forum_outlined,
+                                                    ),
+                                                    onPressed: controller.recreateChat,
+                                                    label: Text(
+                                                      L10n.of(context).reopenChat,
+                                                    ),
                                                   ),
-                                                ),
-                                                icon: const Icon(
-                                                  Icons.forum_outlined,
-                                                ),
-                                                onPressed: controller.recreateChat,
-                                                label: Text(
-                                                  L10n.of(context).reopenChat,
-                                                ),
+                                                ],
+                                              )
+                                            : Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  ReplyDisplay(controller),
+                                                  ChatInputRow(controller),
+                                                  ChatEmojiPicker(controller),
+                                                ],
                                               ),
-                                            ],
-                                          )
-                                        : Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              ReplyDisplay(controller),
-                                              ChatInputRow(controller),
-                                              ChatEmojiPicker(controller),
-                                            ],
-                                          ),
+                                      ),
+                                      // AI 内容免责声明（在 Material 外面，但在 Container margin 里面）
+                                      _AiContentDisclaimer(room: controller.room),
+                                    ],
                                   ),
                                 ),
-                                // AI 内容免责声明（在输入框容器外面）
-                                _AiContentDisclaimer(room: controller.room),
                               ],
                             ),
                         ],
@@ -523,13 +535,13 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
     // 有员工，显示 AI 提示
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Text(
         L10n.of(context).aiContentDisclaimer,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: 11,
-          color: Theme.of(context).colorScheme.outline,
+          fontSize: 10,
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
         ),
       ),
     );
