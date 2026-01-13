@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'custom_network_image.dart';
+
 /// DiceBear 头像风格
 enum DiceBearStyle {
   avataaars,
@@ -200,7 +202,7 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(widget.size * 0.2 - 2),
-                  child: Image.network(
+                  child: CustomNetworkImage(
                     _currentAvatarUrl,
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {

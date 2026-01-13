@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import '../../widgets/custom_network_image.dart';
 import 'chatbot_message_renderer.dart';
 import 'onboarding_chatbot.dart';
 
@@ -638,7 +639,7 @@ class _QuickTaskCard extends StatelessWidget {
     final isNetworkImage = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
 
     if (isNetworkImage) {
-      return Image.network(
+      return CustomNetworkImage(
         imageUrl,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildImagePlaceholder(isDark),
@@ -961,7 +962,7 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
     final isNetworkImage = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
 
     if (isNetworkImage) {
-      return Image.network(
+      return CustomNetworkImage(
         imageUrl,
         fit: BoxFit.cover,
         width: double.infinity,

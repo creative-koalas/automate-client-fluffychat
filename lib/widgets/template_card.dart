@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/agent_template.dart';
+import 'custom_network_image.dart';
 
 /// 模板卡片组件
 /// 用于招聘中心展示可雇佣的 Agent 模板
@@ -92,7 +93,7 @@ class TemplateCard extends StatelessWidget {
       child: template.avatarUrl != null && template.avatarUrl!.isNotEmpty
           ? ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
+              child: CustomNetworkImage(
                 template.avatarUrl!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),

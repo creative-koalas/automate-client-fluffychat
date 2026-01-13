@@ -6,6 +6,7 @@ import '../models/agent.dart';
 import '../models/plugin.dart';
 import '../repositories/agent_repository.dart';
 import '../repositories/plugin_repository.dart';
+import 'custom_network_image.dart';
 
 /// 培训详情 Sheet（支持底部弹窗和居中对话框两种模式）
 /// 展示插件详情和可培训的员工列表
@@ -271,7 +272,7 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
             child: widget.plugin.iconUrl.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
+                    child: CustomNetworkImage(
                       widget.plugin.iconUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _buildIconFallback(theme),
@@ -546,7 +547,7 @@ class _TrainingDetailSheetState extends State<TrainingDetailSheet> {
       child: employee.avatarUrl != null && employee.avatarUrl!.isNotEmpty
           ? ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
+              child: CustomNetworkImage(
                 employee.avatarUrl!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _buildAvatarFallback(theme, employee),

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../models/agent.dart';
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
+import 'custom_network_image.dart';
 
 /// 员工详情 Sheet（支持底部弹窗和居中对话框两种模式）
 /// 展示员工详细信息，提供开始聊天、管理技能等操作
@@ -200,7 +201,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
                       employee.avatarUrl!.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: Image.network(
+                      child: CustomNetworkImage(
                         employee.avatarUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) =>

@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
 import 'config.dart';
+import '../utils/custom_http_client.dart';
 
 /// API 响应包装
 class ApiResponse<T> {
@@ -66,7 +67,7 @@ class PsygoApiClient {
 
   PsygoApiClient({
     http.Client? httpClient,
-  }) : _httpClient = httpClient ?? http.Client();
+  }) : _httpClient = httpClient ?? CustomHttpClient.createHTTPClient();
 
   /// GET 请求
   Future<ApiResponse<T>> get<T>(

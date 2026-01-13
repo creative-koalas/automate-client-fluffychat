@@ -10,6 +10,7 @@ import 'package:psygo/config/themes.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/widgets/matrix.dart';
+import 'custom_network_image.dart';
 
 class MxcImage extends StatefulWidget {
   /// 清除所有图片缓存（退出登录时调用）
@@ -157,18 +158,15 @@ class _MxcImageState extends State<MxcImage> {
 
   @override
   Widget build(BuildContext context) {
-    // 普通 HTTP/HTTPS URL 直接使用 Image.network
+    // 普通 HTTP/HTTPS URL 使用 CustomNetworkImage（包含 ISRG X1 证书）
     if (_isHttpUrl) {
       return ClipRRect(
         borderRadius: widget.borderRadius,
-        child: Image.network(
+        child: CustomNetworkImage(
           widget.uri.toString(),
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
-          filterQuality: widget.isThumbnail
-              ? FilterQuality.low
-              : FilterQuality.medium,
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return placeholder(context);
