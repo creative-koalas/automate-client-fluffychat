@@ -51,32 +51,44 @@ class _SkeletonCardState extends State<SkeletonCard>
       animation: _animation,
       builder: (context, child) {
         final shimmerColor = isDark
-            ? Colors.white.withAlpha((20 * _animation.value).toInt())
-            : Colors.white.withAlpha((60 * _animation.value).toInt());
+            ? Colors.white.withAlpha((25 * _animation.value).toInt())
+            : Colors.white.withAlpha((80 * _animation.value).toInt());
 
         return Container(
           height: widget.height,
           width: widget.width,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerLow,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.surfaceContainerLow,
+                theme.colorScheme.surfaceContainer.withAlpha(200),
+              ],
+            ),
             borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withAlpha(50),
+              width: 1,
+            ),
           ),
           child: Stack(
             children: [
-              // 闪光效果
+              // 闪光效果 - 增强
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
                   child: ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
-                      begin: Alignment(-1.0 + 2 * _animation.value, 0),
-                      end: Alignment(0 + 2 * _animation.value, 0),
+                      begin: Alignment(-1.0 + 2.5 * _animation.value, -0.5),
+                      end: Alignment(-0.3 + 2.5 * _animation.value, 0.5),
                       colors: [
                         Colors.transparent,
                         shimmerColor,
+                        shimmerColor.withAlpha(((shimmerColor.a * 255.0 * 0.6).round()).clamp(0, 255)),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.5, 1.0],
+                      stops: const [0.0, 0.3, 0.6, 1.0],
                     ).createShader(bounds),
                     blendMode: BlendMode.srcATop,
                     child: Container(color: theme.colorScheme.surfaceContainerLow),
@@ -194,9 +206,24 @@ class _SkeletonGridItemState extends State<SkeletonGridItem>
         return Container(
           height: widget.height,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest
-                .withValues(alpha: _animation.value),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.6 + _animation.value * 0.2),
+                theme.colorScheme.surfaceContainer
+                    .withValues(alpha: 0.4 + _animation.value * 0.2),
+              ],
+            ),
             borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.shadow.withAlpha((5 * _animation.value).toInt()),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
