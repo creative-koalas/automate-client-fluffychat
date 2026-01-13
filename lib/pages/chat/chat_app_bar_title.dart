@@ -179,10 +179,11 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     if (directChatMatrixID != null) {
       // 优先使用员工头像
       final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixID);
-      if (agentAvatarUri != null && _employee != null) {
+      if (agentAvatarUri != null) {
+        final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
         return Avatar(
           mxContent: agentAvatarUri,
-          name: _employee!.displayName,
+          name: agent!.displayName,
           size: 32,
         );
       }

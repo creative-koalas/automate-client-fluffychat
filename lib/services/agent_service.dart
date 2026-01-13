@@ -117,12 +117,15 @@ class AgentService {
     if (agent?.avatarUrl == null || agent!.avatarUrl!.isEmpty) {
       return null;
     }
-    final uri = Uri.tryParse(agent.avatarUrl!);
-    // 验证 URI 是否有效（必须有 scheme 和 host）
-    if (uri != null && uri.hasScheme && uri.host.isNotEmpty) {
+    try {
+      final uri = Uri.parse(agent.avatarUrl!);
+      // 只要能解析成功就返回，让 MxcImage 组件处理
       return uri;
+    } catch (e) {
+      // 解析失败，返回 null
+      debugPrint('[AgentService] Invalid avatar URL: ${agent.avatarUrl}');
+      return null;
     }
-    return null;
   }
 
   /// 获取员工头像和显示名称（用于 Avatar 组件）
