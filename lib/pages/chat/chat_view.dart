@@ -332,9 +332,50 @@ class ChatView extends StatelessWidget {
                       child: Column(
                         children: <Widget>[
                           Expanded(
-                            child: GestureDetector(
-                              onTap: controller.clearSingleSelectedEvent,
-                              child: ChatEventList(controller: controller),
+                            child: Stack(
+                              children: [
+                                GestureDetector(
+                                  onTap: controller.clearSingleSelectedEvent,
+                                  child: ChatEventList(controller: controller),
+                                ),
+                                // Scroll to last read position button
+                                if (controller.readMarkerEventId.isNotEmpty)
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Material(
+                                      color: theme.colorScheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: InkWell(
+                                        onTap: controller.scrollToReadMarker,
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.arrow_upward,
+                                                size: 16,
+                                                color: theme.colorScheme.onPrimaryContainer,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              const Text(
+                                                '新消息',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           if (controller.showScrollDownButton)

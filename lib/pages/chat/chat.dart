@@ -164,6 +164,12 @@ class ChatController extends State<ChatPageWithRoom>
   bool get showScrollDownButton =>
       _scrolledUp || timeline?.allowNewEvent == false;
 
+  /// Scroll to the read marker position ("读到此处")
+  void scrollToReadMarker() {
+    if (readMarkerEventId.isEmpty) return;
+    scrollToEventId(readMarkerEventId, highlightEvent: false);
+  }
+
   bool get selectMode => selectedEvents.isNotEmpty;
 
   final int _loadHistoryCount = 100;

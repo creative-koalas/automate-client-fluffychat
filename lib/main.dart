@@ -28,10 +28,9 @@ void main() async {
     final exception = details.exception;
     final stack = details.stack?.toString() ?? '';
 
-    // 忽略 swipe_to_action 包的 setState 错误
+    // 忽略 swipe_to_action 包的 setState 错误（静默处理）
     if (exception.toString().contains('Null check operator used on a null value') &&
         stack.contains('SwipeableState')) {
-      debugPrint('[ErrorHandler] Suppressed swipe_to_action setState error');
       return;
     }
 
