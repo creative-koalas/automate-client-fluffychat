@@ -19,6 +19,23 @@ class UnreadBubble extends StatelessWidget {
             : 12.0
         : 0.0;
 
+    // Calculate bubble width based on digit count (from dev/pc)
+    final double bubbleWidth;
+    if (!hasNotifications && !unread && !room.hasNewMessages) {
+      bubbleWidth = 0;
+    } else if (!hasNotifications) {
+      bubbleWidth = 12.0; // Dot indicator
+    } else {
+      final digitCount = room.notificationCount.toString().length;
+      if (digitCount == 1) {
+        bubbleWidth = 22.0;
+      } else if (digitCount == 2) {
+        bubbleWidth = 30.0;
+      } else {
+        bubbleWidth = 38.0; // 3+ digits
+      }
+    }
+
     final isHighlight = room.highlightCount > 0;
     final bubbleColor = isHighlight
         ? theme.colorScheme.error
@@ -30,16 +47,9 @@ class UnreadBubble extends StatelessWidget {
       duration: FluffyThemes.animationDuration,
       curve: FluffyThemes.animationCurve,
       alignment: Alignment.center,
-      padding: EdgeInsets.symmetric(horizontal: hasNotifications ? 8 : 0),
+      padding: EdgeInsets.symmetric(horizontal: hasNotifications ? 6 : 0),
       height: unreadBubbleSize,
-      constraints: hasNotifications
-          ? BoxConstraints(minWidth: unreadBubbleSize)
-          : null,
-      width: !hasNotifications && !unread && !room.hasNewMessages
-          ? 0
-          : hasNotifications
-              ? null
-              : unreadBubbleSize,
+      width: bubbleWidth,
       decoration: BoxDecoration(
         gradient: hasNotifications
             ? LinearGradient(

@@ -110,6 +110,34 @@ class AgentService {
     return getAgentByMatrixUserId(matrixUserId) != null;
   }
 
+  /// 安全地获取员工头像 URI
+  /// 返回 null 如果不是员工、没有头像或头像 URL 无效
+  Uri? getAgentAvatarUri(String? matrixUserId) {
+    final agent = getAgentByMatrixUserId(matrixUserId);
+    if (agent?.avatarUrl == null || agent!.avatarUrl!.isEmpty) {
+      return null;
+    }
+    try {
+      final uri = Uri.parse(agent.avatarUrl!);
+      // 只要能解析成功就返回，让 MxcImage 组件处理
+      return uri;
+    } catch (e) {
+      // 解析失败，返回 null
+      debugPrint('[AgentService] Invalid avatar URL: ${agent.avatarUrl}');
+      return null;
+    }
+  }
+
+  /// 获取员工头像和显示名称（用于 Avatar 组件）
+  /// 返回 (avatarUri, displayName)，如果不是员工或头像无效则返回 (null, null)
+  (Uri?, String?) getAgentAvatarAndName(String? matrixUserId) {
+    final agent = getAgentByMatrixUserId(matrixUserId);
+    if (agent == null) return (null, null);
+
+    final avatarUri = getAgentAvatarUri(matrixUserId);
+    return (avatarUri, agent.displayName);
+  }
+
   /// 更新单个员工信息（用于局部更新）
   void updateAgent(Agent agent) {
     final index = _agents.indexWhere((a) => a.agentId == agent.agentId);

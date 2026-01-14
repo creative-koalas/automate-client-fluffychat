@@ -165,10 +165,13 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  // 如果是员工，显示工作状态；否则显示原有的在线状态
-                  _employee != null
-                      ? _buildEmployeeWorkStatus(context, _employee!)
-                      : _buildPresenceStatus(context, room),
+                  // 私聊：显示员工工作状态或在线状态
+                  // 群聊：不显示状态
+                  room.directChatMatrixID != null
+                      ? (_employee != null
+                          ? _buildEmployeeWorkStatus(context, _employee!)
+                          : _buildPresenceStatus(context, room))
+                      : const SizedBox.shrink(),
                 ],
               ),
             ),
@@ -184,6 +187,17 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
     // 如果是私聊，获取对方用户的头像
     if (directChatMatrixID != null) {
+      // 优先使用员工头像
+      final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixID);
+      if (agentAvatarUri != null) {
+        final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+        return Avatar(
+          mxContent: agentAvatarUri,
+          name: agent!.displayName,
+          size: 32,
+        );
+      }
+      // 非员工或员工没有头像，使用 Matrix 用户头像
       final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
       return Avatar(
         mxContent: user.avatarUrl,

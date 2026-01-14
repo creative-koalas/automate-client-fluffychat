@@ -42,22 +42,23 @@ class ReplyContent extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       borderRadius: borderRadius,
+      clipBehavior: Clip.hardEdge,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Container(
             width: 5,
-            height: fontSize * 2 + 16,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppConfig.borderRadius),
               color: color,
             ),
           ),
           const SizedBox(width: 6),
-          Flexible(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 FutureBuilder<User?>(
                   initialData: displayEvent.senderFromMemoryOrFallback,

@@ -10,6 +10,7 @@ import 'package:psygo/config/themes.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/widgets/matrix.dart';
+import 'custom_network_image.dart';
 
 class MxcImage extends StatefulWidget {
   /// 清除所有图片缓存（退出登录时调用）
@@ -75,6 +76,14 @@ class _MxcImageState extends State<MxcImage> {
     cacheKey == null
         ? _imageDataNoCache = data
         : _imageDataCache[cacheKey] = data;
+  }
+
+  /// 检查是否是普通 HTTP/HTTPS URL（非 mxc://）
+  bool get _isHttpUrl {
+    final uri = widget.uri;
+    if (uri == null) return false;
+    final scheme = uri.scheme.toLowerCase();
+    return scheme == 'http' || scheme == 'https';
   }
 
   Future<void> _load() async {
@@ -177,6 +186,28 @@ class _MxcImageState extends State<MxcImage> {
 
   @override
   Widget build(BuildContext context) {
+    // 普通 HTTP/HTTPS URL 使用 CustomNetworkImage（包含 ISRG X1 证书）
+    if (_isHttpUrl) {
+      return ClipRRect(
+        borderRadius: widget.borderRadius,
+        child: CustomNetworkImage(
+          widget.uri.toString(),
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return placeholder(context);
+          },
+          errorBuilder: (context, e, s) {
+            Logs().d('Unable to load network image', e, s);
+            return placeholder(context);
+          },
+        ),
+      );
+    }
+
+    // mxc:// URL 使用原来的逻辑
     final data = _imageData;
     final hasData = data != null && data.isNotEmpty;
 

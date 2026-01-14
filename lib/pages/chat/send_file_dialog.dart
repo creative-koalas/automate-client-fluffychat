@@ -361,10 +361,12 @@ class SendFileDialogState extends State<SendFileDialog> {
                           ),
                           maxLines: 1,
                           maxLength: 255,
-                          buildCounter: (context,
-                                  {required currentLength,
-                                  required isFocused,
-                                  maxLength}) =>
+                          buildCounter: (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) =>
                               null,
                         ),
                         const SizedBox(height: 12),

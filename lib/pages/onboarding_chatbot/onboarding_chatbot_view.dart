@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import '../../widgets/custom_network_image.dart';
 import 'chatbot_message_renderer.dart';
 import 'onboarding_chatbot.dart';
 
@@ -638,7 +639,7 @@ class _QuickTaskCard extends StatelessWidget {
     final isNetworkImage = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
 
     if (isNetworkImage) {
-      return Image.network(
+      return CustomNetworkImage(
         imageUrl,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildImagePlaceholder(isDark),
@@ -961,7 +962,7 @@ class _QuickTaskDetailSheetState extends State<_QuickTaskDetailSheet> {
     final isNetworkImage = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
 
     if (isNetworkImage) {
-      return Image.network(
+      return CustomNetworkImage(
         imageUrl,
         fit: BoxFit.cover,
         width: double.infinity,
@@ -1517,7 +1518,7 @@ class _FinishingOverlayState extends State<_FinishingOverlay>
                                 color: Colors.white.withValues(
                                   // Fade text in slightly if we want, or keep it solid (it's "moving" from the list)
                                   // Keeping it solid is better for the "extraction" illusion
-                                  alpha: 1.0 
+                                  alpha: 1.0,
                                 ),
                                 fontWeight: FontWeight.bold,
                                 height: 1.4,
@@ -1525,7 +1526,7 @@ class _FinishingOverlayState extends State<_FinishingOverlay>
                                 shadows: [
                                   BoxShadow(
                                     color: widget.theme.colorScheme.primary.withValues(
-                                      alpha: 0.6 * entryProgress // Glow fades in as it centers
+                                      alpha: 0.6 * entryProgress, // Glow fades in as it centers
                                     ),
                                     blurRadius: 25 * _glowAnimation.value,
                                     spreadRadius: 2,

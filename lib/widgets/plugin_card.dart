@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
 
 import '../models/plugin.dart';
+import 'custom_network_image.dart';
 
 /// 插件卡片组件
 /// 用于培训市场展示可安装的插件
@@ -161,7 +162,7 @@ class PluginCard extends StatelessWidget {
               ),
               child: plugin.iconUrl.isNotEmpty
                   ? ClipOval(
-                      child: Image.network(
+                      child: CustomNetworkImage(
                         plugin.iconUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _buildIconFallback(theme),

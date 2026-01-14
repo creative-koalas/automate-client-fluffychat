@@ -3920,5 +3920,7 @@
     "trialRemainingMinutes": "剩余 {minutes}分钟",
     "@trialRemainingMinutes": {},
     "trialHint": "到期后员工将被删除，但聊天记录会保留",
-    "@trialHint": {}
+    "@trialHint": {},
+    "aiContentDisclaimer": "内容由AI生成，请仔细甄别",
+    "@aiContentDisclaimer": {}
 }

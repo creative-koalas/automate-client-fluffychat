@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -41,12 +42,24 @@ class UserDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final client = Matrix.of(context).client;
     final dmRoomId = client.getDirectChatFromUserId(profile.userId);
-    final displayname = profile.displayName ??
-        profile.userId.localpart ??
-        L10n.of(context).user;
+
+    // 优先使用员工头像和名称
+    final agentAvatarUri = AgentService.instance.getAgentAvatarUri(profile.userId);
+    final Uri? avatar;
+    final String displayname;
+    if (agentAvatarUri != null) {
+      final agent = AgentService.instance.getAgentByMatrixUserId(profile.userId);
+      avatar = agentAvatarUri;
+      displayname = agent!.displayName;
+    } else {
+      avatar = profile.avatarUrl;
+      displayname = profile.displayName ??
+          profile.userId.localpart ??
+          L10n.of(context).user;
+    }
+
     var copied = false;
     final theme = Theme.of(context);
-    final avatar = profile.avatarUrl;
     return AlertDialog.adaptive(
       title: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 256),
@@ -82,7 +95,7 @@ class UserDialog extends StatelessWidget {
                       onTap: avatar != null
                           ? () => showDialog(
                                 context: context,
-                                builder: (_) => MxcImageViewer(avatar),
+                                builder: (_) => MxcImageViewer(avatar!),
                               )
                           : null,
                     ),

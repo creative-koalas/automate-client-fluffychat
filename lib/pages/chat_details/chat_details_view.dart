@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/pages/chat_details/participant_list_item.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -199,9 +200,18 @@ class ChatDetailsView extends StatelessWidget {
                                         Uri? avatarUrl = room.avatar;
                                         String avatarName = displayname;
                                         if (directChatMatrixID != null) {
-                                          final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
-                                          avatarUrl = user.avatarUrl;
-                                          avatarName = user.calcDisplayname();
+                                          // 优先使用员工头像
+                                          final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixID);
+                                          if (agentAvatarUri != null) {
+                                            final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+                                            avatarUrl = agentAvatarUri;
+                                            avatarName = agent!.displayName;
+                                          } else {
+                                            // 非员工或员工没有头像，使用 Matrix 用户头像
+                                            final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+                                            avatarUrl = user.avatarUrl;
+                                            avatarName = user.calcDisplayname();
+                                          }
                                         }
                                         return Avatar(
                                           mxContent: avatarUrl,

@@ -7,11 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/l10n/l10n.dart';
-import 'package:psygo/utils/platform_infos.dart';
-import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
-import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/layouts/desktop_layout.dart';
 import '../../widgets/matrix.dart';
@@ -117,30 +114,26 @@ class SettingsController extends State<Settings> {
     try {
       debugPrint('[Settings] Account deletion successful, cleaning up...');
 
-      // 1. 先跳转到登录页（避免 context 失效）
-      PsygoApp.router.go('/login-signup');
-
-      // 2. PC端：切换回登录小窗口
-      if (PlatformInfos.isDesktop) {
-        await WindowService.switchToLoginWindow();
-      }
-
-      // 3. 清除 Automate 认证状态
-      await auth.markLoggedOut();
-      debugPrint('[Settings] Automate auth cleared');
-
-      // 4. 清理 Matrix 客户端（本地清理，不调用服务端 API）
+      // 1. 先清理 Matrix 客户端（本地清理，不调用服务端 API，因为账号已删除）
       final clients = List.from(matrix.widget.clients);
       for (final client in clients) {
         try {
-          if (client.isLogged()) {
-            await client.dispose();
-            debugPrint('[Settings] Matrix client disposed');
-          }
+          await client.dispose();
+          debugPrint('[Settings] Matrix client disposed');
         } catch (e) {
           debugPrint('[Settings] Matrix client cleanup error: $e');
         }
       }
+      // 清空客户端列表
+      matrix.widget.clients.clear();
+
+      // 2. 清除 Automate 认证状态
+      // AuthGate 会监听到状态变化，自动处理：
+      // - 切换窗口大小（PC端）
+      // - 跳转到登录页
+      // - 触发一键登录（移动端）
+      // 注意：Matrix 客户端已经被清理，AuthGate 不会重复操作
+      await auth.markLoggedOut();
 
       debugPrint('[Settings] Account deletion cleanup completed');
     } catch (e) {
@@ -204,9 +197,9 @@ class SettingsController extends State<Settings> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle_outline,
-                      color: const Color(0xFF4CAF50),
+                      color: Color(0xFF4CAF50),
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -281,41 +274,18 @@ class SettingsController extends State<Settings> {
     }
 
     // 在 context 失效前获取需要的引用
-    final matrix = Matrix.of(context);
     final auth = context.read<PsygoAuthState>();
 
     try {
       debugPrint('[Settings] Starting logout...');
 
-      // 1. 清除 Automate 认证状态
+      // 清除 Automate 认证状态
+      // AuthGate 会监听到状态变化，自动处理：
+      // - 退出 Matrix 客户端
+      // - 清除缓存
+      // - 切换窗口大小
+      // - 跳转到登录页
       await auth.markLoggedOut();
-      debugPrint('[Settings] Automate auth cleared');
-
-      // 2. 退出所有 Matrix 客户端
-      // 注意：client.logout() 会触发 onLoginStateChanged，自动执行：
-      // - 清除图片缓存 (MxcImage.clearCache)
-      // - 清除用户缓存 (DesktopLayout.clearUserCache)
-      // - 从 store 移除 clientName
-      // - 导航到登录页
-      final clients = List.from(matrix.widget.clients);
-      for (final client in clients) {
-        try {
-          if (client.isLogged()) {
-            await client.logout();
-            debugPrint('[Settings] Matrix client logged out');
-          }
-        } catch (e) {
-          debugPrint('[Settings] Matrix client logout error: $e');
-        }
-      }
-
-      // 3. 先跳转到登录页（避免在小窗口渲染大布局导致溢出）
-      PsygoApp.router.go('/login-signup');
-
-      // 4. PC端：切换回登录小窗口
-      if (PlatformInfos.isDesktop) {
-        await WindowService.switchToLoginWindow();
-      }
 
       debugPrint('[Settings] Logout completed');
     } catch (e) {
@@ -466,166 +436,182 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         borderRadius: BorderRadius.circular(28),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        width: MediaQuery.of(context).size.width,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 标题
-            Row(
-              children: [
-                Icon(
-                  Icons.feedback_outlined,
-                  color: theme.colorScheme.primary,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '意见反馈',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Icon(
+                    Icons.feedback_outlined,
+                    color: theme.colorScheme.primary,
+                    size: 28,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // 反馈类型选择
-            Text(
-              '反馈类型',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _categories.map((cat) {
-                final isSelected = _selectedCategory == cat['value'];
-                return ChoiceChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        cat['icon'] as IconData,
-                        size: 16,
-                        color: isSelected
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurface,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(cat['label'] as String),
-                    ],
-                  ),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _selectedCategory = cat['value'] as String);
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // 反馈内容
-            Text(
-              '反馈内容',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _contentController,
-              maxLines: 4,
-              maxLength: 500,
-              decoration: InputDecoration(
-                hintText: '请详细描述您的问题或建议...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 回复邮箱（可选）
-            Text(
-              '回复邮箱（可选）',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                hintText: '方便我们回复您',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 按钮
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '意见反馈',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Text(
-                      '取消',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // 可滚动内容区域
+              Flexible(
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 反馈类型选择
+                        Text(
+                          '反馈类型',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _categories.map((cat) {
+                            final isSelected = _selectedCategory == cat['value'];
+                            return ChoiceChip(
+                              label: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    cat['icon'] as IconData,
+                                    size: 16,
+                                    color: isSelected
+                                        ? theme.colorScheme.onPrimary
+                                        : theme.colorScheme.onSurface,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(cat['label'] as String),
+                                ],
+                              ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() => _selectedCategory = cat['value'] as String);
+                                }
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 反馈内容
+                        Text(
+                          '反馈内容',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _contentController,
+                          maxLines: 4,
+                          maxLength: 500,
+                          decoration: InputDecoration(
+                            hintText: '请详细描述您的问题或建议...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 回复邮箱（可选）
+                        Text(
+                          '回复邮箱（可选）',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            hintText: '方便我们回复您',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      if (_contentController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('请输入反馈内容')),
-                        );
-                        return;
-                      }
-                      Navigator.of(context).pop({
-                        'content': _contentController.text.trim(),
-                        'category': _selectedCategory,
-                        'reply_email': _emailController.text.trim(),
-                      });
-                    },
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: theme.colorScheme.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(height: 24),
+
+              // 按钮（固定在底部）
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        '取消',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      '提交',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        if (_contentController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('请输入反馈内容')),
+                          );
+                          return;
+                        }
+                        Navigator.of(context).pop({
+                          'content': _contentController.text.trim(),
+                          'category': _selectedCategory,
+                          'reply_email': _emailController.text.trim(),
+                        });
+                      },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: theme.colorScheme.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '提交',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

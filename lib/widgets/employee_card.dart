@@ -4,6 +4,7 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
 
 import '../models/agent.dart';
+import 'custom_network_image.dart';
 
 /// 员工卡片组件
 /// 显示员工头像、名称、状态徽章、工作状态
@@ -315,7 +316,7 @@ class _EmployeeCardState extends State<EmployeeCard>
                     ? ClipOval(
                         child: Opacity(
                           opacity: isOnboarding ? 0.75 : 1.0,
-                          child: Image.network(
+                          child: CustomNetworkImage(
                             widget.employee.avatarUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),

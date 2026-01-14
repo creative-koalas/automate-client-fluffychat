@@ -394,6 +394,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       voipPlugin = null;
       return;
     }
+    // 如果没有可用的 client，跳过 VoIP 插件创建
+    if (clientOrNull == null) {
+      voipPlugin = null;
+      return;
+    }
     voipPlugin = VoipPlugin(this);
   }
 

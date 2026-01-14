@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 
-import '../models/agent_template.dart';
 import '../models/plugin.dart';
 import '../repositories/agent_template_repository.dart';
 import '../repositories/plugin_repository.dart';
+import 'custom_network_image.dart';
 import 'dicebear_avatar_picker.dart';
 
 /// 定制招聘向导（三步）
@@ -830,7 +830,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                   child: plugin.iconUrl.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
+                          child: CustomNetworkImage(
                             plugin.iconUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildPluginIconFallback(theme),
@@ -965,8 +965,9 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           color: theme.colorScheme.secondaryContainer,
         ),
         const SizedBox(height: 16),
-        ...(pluginsToConfig.map((plugin) =>
-            _buildPluginConfigForm(plugin, theme, l10n))),
+        ...(pluginsToConfig.map(
+          (plugin) => _buildPluginConfigForm(plugin, theme, l10n),
+        )),
       ],
     );
   }
@@ -1309,9 +1310,11 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     // snake_case to Title Case
     return name
         .split('_')
-        .map((word) => word.isNotEmpty
-            ? '${word[0].toUpperCase()}${word.substring(1)}'
-            : '')
+        .map(
+          (word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1)}'
+              : '',
+        )
         .join(' ');
   }
 

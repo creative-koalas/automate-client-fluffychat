@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/permission_slider_dialog.dart';
 import 'adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'adaptive_dialogs/show_text_input_dialog.dart';
@@ -16,8 +17,20 @@ void showMemberActionsPopupMenu({
   void Function()? onMention,
 }) async {
   final theme = Theme.of(context);
-  final displayname = user.calcDisplayname();
   final isMe = user.room.client.userID == user.id;
+
+  // 优先使用员工头像和名称
+  final agentAvatarUri = AgentService.instance.getAgentAvatarUri(user.id);
+  final Uri? avatarUrl;
+  final String displayname;
+  if (agentAvatarUri != null) {
+    final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
+    avatarUrl = agentAvatarUri;
+    displayname = agent!.displayName;
+  } else {
+    avatarUrl = user.avatarUrl;
+    displayname = user.calcDisplayname();
+  }
 
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
@@ -61,7 +74,7 @@ void showMemberActionsPopupMenu({
               ),
               child: Avatar(
                 name: displayname,
-                mxContent: user.avatarUrl,
+                mxContent: avatarUrl,
                 presenceUserId: user.id,
                 presenceBackgroundColor: theme.colorScheme.surfaceContainer,
               ),

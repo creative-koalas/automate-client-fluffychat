@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:matrix/matrix.dart';
-
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
-import '../../config/themes.dart';
 import 'chat.dart';
 import 'events/reply_content.dart';
 
@@ -17,11 +14,14 @@ class ReplyDisplay extends StatelessWidget {
     final theme = Theme.of(context);
     final isReply = controller.replyEvent != null;
     final isEdit = controller.editEvent != null;
+    final isVisible = isEdit || isReply;
 
-    return AnimatedContainer(
-      duration: FluffyThemes.animationDuration,
-      curve: FluffyThemes.animationCurve,
-      height: isEdit || isReply ? 60 : 0,
+    if (!isVisible) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      height: 60,
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,

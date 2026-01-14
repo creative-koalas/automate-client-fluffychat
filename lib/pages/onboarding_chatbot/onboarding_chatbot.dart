@@ -64,7 +64,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         text: '好的，我明白了，正在为您安排...',
         isUser: false,
         timestamp: DateTime.now(),
-      ));
+      ),);
     });
     _scrollToBottom();
 
@@ -646,7 +646,7 @@ class OnboardingChatbotController extends State<OnboardingChatbot> {
         .map((msg) => {
               'role': msg.isUser ? 'user' : 'assistant',
               'content': msg.text,
-            })
+            },)
         .toList();
   }
 

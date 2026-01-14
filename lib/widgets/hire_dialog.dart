@@ -4,6 +4,7 @@ import 'package:psygo/l10n/l10n.dart';
 
 import '../models/agent_template.dart';
 import '../repositories/agent_template_repository.dart';
+import 'custom_network_image.dart';
 
 /// 雇佣对话框
 /// 用户点击模板后弹出，输入员工名称并确认雇佣
@@ -398,7 +399,7 @@ class _HireDialogState extends State<HireDialog> {
                     widget.template.avatarUrl!.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
+                    child: CustomNetworkImage(
                       widget.template.avatarUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
