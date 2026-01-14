@@ -442,6 +442,7 @@ class ChatController extends State<ChatPageWithRoom>
 
       if (!mounted) return;
     } catch (e, s) {
+      if (!mounted) return;
       ErrorReporter(context, 'Unable to load timeline').onErrorCallback(e, s);
       rethrow;
     }
@@ -524,6 +525,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (scrollUpBannerEventId != null) return;
 
     if (eventId == null &&
+        !room.isUnread &&
         !room.hasNewMessages &&
         room.notificationCount == 0) {
       return;
@@ -531,7 +533,9 @@ class ChatController extends State<ChatPageWithRoom>
 
     // Do not send read markers when app is not in foreground
     if (kIsWeb && !Matrix.of(context).webHasFocus) return;
+    // Only check app lifecycle state on mobile, desktop doesn't need this check
     if (!kIsWeb &&
+        !PlatformInfos.isDesktop &&
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
       return;
     }
