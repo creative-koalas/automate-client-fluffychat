@@ -39,6 +39,11 @@ extension ClientDownloadContentExtension on Client {
           )
         : await mxc.getDownloadUri(this);
 
+    // 检查转换后的 HTTP URI 是否有效，无效时返回空数据
+    if (httpUri.host.isEmpty) {
+      return Uint8List(0);
+    }
+
     final response = await httpClient.get(
       httpUri,
       headers:

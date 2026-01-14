@@ -93,7 +93,8 @@ class _MxcImageState extends State<MxcImage> {
     final uri = widget.uri;
     final event = widget.event;
 
-    if (uri != null) {
+    // 检查 client 和 URI 是否有效
+    if (uri != null && uri.host.isNotEmpty && client.homeserver != null) {
       final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
       final width = widget.width;
       final realWidth = width == null ? null : width * devicePixelRatio;
@@ -109,9 +110,12 @@ class _MxcImageState extends State<MxcImage> {
         animated: widget.animated,
       );
       if (!mounted) return;
-      setState(() {
-        _imageData = remoteData;
-      });
+      // 只有下载到有效数据时才更新状态
+      if (remoteData.isNotEmpty) {
+        setState(() {
+          _imageData = remoteData;
+        });
+      }
     }
 
     if (event != null) {

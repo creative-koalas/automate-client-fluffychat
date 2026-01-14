@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/utils/string_color.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/presence_builder.dart';
@@ -61,14 +62,10 @@ class Avatar extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: borderRadius,
             boxShadow: showShadow
-                ? [
-                    BoxShadow(
-                      color: (avatarColor ?? theme.colorScheme.primary)
-                          .withAlpha(40),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
+                ? FluffyThemes.shadow(
+                    context,
+                    elevation: FluffyThemes.elevationSm,
+                  )
                 : null,
           ),
           child: Material(
@@ -85,7 +82,7 @@ class Avatar extends StatelessWidget {
               borderRadius: borderRadius,
               key: ValueKey(mxContent.toString()),
               cacheKey: '${mxContent}_$size',
-              uri: mxContent,
+              uri: noPic ? null : mxContent,
               fit: BoxFit.cover,
               width: size,
               height: size,
@@ -114,7 +111,7 @@ class Avatar extends StatelessWidget {
                           shadows: [
                             Shadow(
                               color: Colors.black.withAlpha(30),
-                              blurRadius: 2,
+                              blurRadius: FluffyThemes.elevationSm,
                               offset: const Offset(0, 1),
                             ),
                           ],
@@ -123,8 +120,8 @@ class Avatar extends StatelessWidget {
                     )
                   : TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOut,
+                      duration: FluffyThemes.durationSlow,
+                      curve: FluffyThemes.curveSharp,
                       builder: (context, opacity, child) => Opacity(
                         opacity: opacity,
                         child: child,
@@ -170,20 +167,28 @@ class Avatar extends StatelessWidget {
               return Positioned(
                 bottom: -3,
                 right: -3,
-                child: Container(
-                  width: 16,
-                  height: 16,
+                child: AnimatedContainer(
+                  duration: FluffyThemes.durationFast,
+                  curve: FluffyThemes.curveBounce,
+                  width: FluffyThemes.iconSizeXs,
+                  height: FluffyThemes.iconSizeXs,
                   decoration: BoxDecoration(
                     color: presenceBackgroundColor ?? theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
+                    boxShadow: FluffyThemes.shadow(
+                      context,
+                      elevation: FluffyThemes.elevationXs,
+                    ),
                   ),
                   alignment: Alignment.center,
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
                       color: dotColor,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
                       border: Border.all(
                         width: 1,
                         color: theme.colorScheme.surface,

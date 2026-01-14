@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
-import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/unread_bubble.dart';
 import 'package:psygo/services/agent_service.dart';
@@ -70,155 +69,171 @@ class ChatListItem extends StatelessWidget {
 
     final chatItem = Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 3,
+        horizontal: FluffyThemes.spacing12,
+        vertical: FluffyThemes.spacing4,
       ),
-      child: AnimatedContainer(
-        duration: FluffyThemes.animationDuration,
-        curve: FluffyThemes.animationCurve,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: activeChat
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.18),
-                    theme.colorScheme.tertiaryContainer.withValues(alpha: 0.12),
-                  ],
-                )
-              : null,
-          border: activeChat
-              ? Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                  width: 1.5,
-                )
-              : null,
-          boxShadow: activeChat
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 3),
+      child: HoverBuilder(
+        builder: (context, isHovered) => AnimatedContainer(
+          duration: FluffyThemes.durationFast,
+          curve: FluffyThemes.curveStandard,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(FluffyThemes.radiusLg),
+            gradient: activeChat
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+                      theme.colorScheme.secondaryContainer.withValues(alpha: 0.18),
+                      theme.colorScheme.tertiaryContainer.withValues(alpha: 0.12),
+                    ],
+                  )
+                : isHovered
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                          theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                        ],
+                      )
+                    : null,
+            border: activeChat
+                ? Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                    width: 1.5,
+                  )
+                : isHovered
+                    ? Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                        width: 1,
+                      )
+                    : null,
+            boxShadow: activeChat
+                ? FluffyThemes.layeredShadow(context, elevation: FluffyThemes.elevationMd)
+                : isHovered
+                    ? FluffyThemes.shadow(context, elevation: FluffyThemes.elevationSm)
+                    : null,
+          ),
+          child: Material(
+            borderRadius: BorderRadius.circular(FluffyThemes.radiusLg),
+            clipBehavior: Clip.hardEdge,
+            color: Colors.transparent,
+            child: FutureBuilder(
+              future: room.loadHeroUsers(),
+              builder: (context, snapshot) => HoverBuilder(
+                builder: (context, listTileHovered) => ListTile(
+                  visualDensity: const VisualDensity(vertical: 0),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: FluffyThemes.spacing12,
+                    vertical: FluffyThemes.spacing4,
                   ),
-                  BoxShadow(
-                    color: theme.colorScheme.shadow.withAlpha(10),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Material(
-          borderRadius: BorderRadius.circular(18),
-          clipBehavior: Clip.hardEdge,
-          color: Colors.transparent,
-          child: FutureBuilder(
-            future: room.loadHeroUsers(),
-            builder: (context, snapshot) => HoverBuilder(
-              builder: (context, listTileHovered) => ListTile(
-                visualDensity: const VisualDensity(vertical: 0),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
               // 移动端用长按，PC端用右键（Listener处理）
               onLongPress: isDesktop ? null : () => onLongPress?.call(context),
               leading: HoverBuilder(
                 builder: (context, hovered) => AnimatedScale(
-                  duration: FluffyThemes.animationDuration,
-                  curve: Curves.easeOutCubic,
-                  scale: hovered ? 1.05 : 1.0,
-                  child: SizedBox(
-                    width: Avatar.defaultSize,
-                    height: Avatar.defaultSize,
-                    child: Stack(
-                      children: [
-                        if (space != null)
+                  duration: FluffyThemes.durationFast,
+                  curve: FluffyThemes.curveBounce,
+                  scale: hovered ? 1.08 : 1.0,
+                  child: AnimatedContainer(
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
+                      boxShadow: hovered
+                          ? FluffyThemes.shadow(context, elevation: FluffyThemes.elevationSm)
+                          : null,
+                    ),
+                    child: SizedBox(
+                      width: Avatar.defaultSize,
+                      height: Avatar.defaultSize,
+                      child: Stack(
+                        children: [
+                          if (space != null)
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              child: Avatar(
+                                border: BorderSide(
+                                  width: 2,
+                                  color: backgroundColor ??
+                                      theme.colorScheme.surface,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  FluffyThemes.radiusMd,
+                                ),
+                                mxContent: space.avatar,
+                                size: Avatar.defaultSize * 0.75,
+                                name: space.getLocalizedDisplayname(),
+                                onTap: () => onLongPress?.call(context),
+                              ),
+                            ),
                           Positioned(
-                            top: 0,
-                            left: 0,
-                            child: Avatar(
-                              border: BorderSide(
-                                width: 2,
-                                color: backgroundColor ??
-                                    theme.colorScheme.surface,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppConfig.borderRadius / 4,
-                              ),
-                              mxContent: space.avatar,
-                              size: Avatar.defaultSize * 0.75,
-                              name: space.getLocalizedDisplayname(),
-                              onTap: () => onLongPress?.call(context),
+                            bottom: 0,
+                            right: 0,
+                            child: Builder(
+                              builder: (context) {
+                                // 私聊时显示对方用户的头像
+                                Uri? avatarUrl = room.avatar;
+                                String avatarName = displayname;
+                                if (directChatMatrixId != null) {
+                                  // 优先使用员工头像（从后端 API 获取）
+                                  final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixId);
+                                  if (agentAvatarUri != null) {
+                                    final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
+                                    avatarUrl = agentAvatarUri;
+                                    avatarName = agent!.displayName;
+                                  } else {
+                                    // 非员工或员工没有头像，使用 Matrix 用户头像
+                                    final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
+                                    avatarUrl = user.avatarUrl;
+                                    avatarName = user.calcDisplayname();
+                                  }
+                                }
+                                return Avatar(
+                                  border: space == null
+                                      ? null
+                                      : BorderSide(
+                                          width: 2,
+                                          color: backgroundColor ??
+                                              theme.colorScheme.surface,
+                                        ),
+                                  borderRadius: null,
+                                  mxContent: avatarUrl,
+                                  size: space != null
+                                      ? Avatar.defaultSize * 0.75
+                                      : Avatar.defaultSize,
+                                  name: avatarName,
+                                  presenceUserId: directChatMatrixId,
+                                  presenceBackgroundColor: backgroundColor,
+                                  onTap: () => onLongPress?.call(context),
+                                );
+                              },
                             ),
                           ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Builder(
-                            builder: (context) {
-                              // 私聊时显示对方用户的头像
-                              Uri? avatarUrl = room.avatar;
-                              String avatarName = displayname;
-                              if (directChatMatrixId != null) {
-                                // 优先使用员工头像（从后端 API 获取）
-                                final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixId);
-                                if (agentAvatarUri != null) {
-                                  final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
-                                  avatarUrl = agentAvatarUri;
-                                  avatarName = agent!.displayName;
-                                } else {
-                                  // 非员工或员工没有头像，使用 Matrix 用户头像
-                                  final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
-                                  avatarUrl = user.avatarUrl;
-                                  avatarName = user.calcDisplayname();
-                                }
-                              }
-                              return Avatar(
-                                border: space == null
-                                    ? null
-                                    : BorderSide(
-                                        width: 2,
-                                        color: backgroundColor ??
-                                            theme.colorScheme.surface,
-                                      ),
-                                borderRadius: null,
-                                mxContent: avatarUrl,
-                                size: space != null
-                                    ? Avatar.defaultSize * 0.75
-                                    : Avatar.defaultSize,
-                                name: avatarName,
-                                presenceUserId: directChatMatrixId,
-                                presenceBackgroundColor: backgroundColor,
-                                onTap: () => onLongPress?.call(context),
-                              );
-                            },
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () => onLongPress?.call(context),
-                            child: AnimatedScale(
-                              duration: FluffyThemes.animationDuration,
-                              curve: FluffyThemes.animationCurve,
-                              scale: listTileHovered ? 1.0 : 0.0,
-                              child: Material(
-                                color: backgroundColor,
-                                borderRadius: BorderRadius.circular(16),
-                                child: const Icon(
-                                  Icons.arrow_drop_down_circle_outlined,
-                                  size: 18,
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: () => onLongPress?.call(context),
+                              child: AnimatedScale(
+                                duration: FluffyThemes.durationFast,
+                                curve: FluffyThemes.curveBounce,
+                                scale: listTileHovered ? 1.0 : 0.0,
+                                child: Material(
+                                  color: backgroundColor,
+                                  borderRadius: BorderRadius.circular(FluffyThemes.radiusLg),
+                                  elevation: FluffyThemes.elevationSm,
+                                  child: const Icon(
+                                    Icons.arrow_drop_down_circle_outlined,
+                                    size: FluffyThemes.iconSizeSm,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -278,24 +293,37 @@ class ChatListItem extends StatelessWidget {
                   if (typingText.isEmpty &&
                       ownMessage &&
                       room.lastEvent?.status.isSending == true) ...[
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                    SizedBox(
+                      width: FluffyThemes.iconSizeXs,
+                      height: FluffyThemes.iconSizeXs,
+                      child: CircularProgressIndicator.adaptive(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: FluffyThemes.spacing4),
                   ],
                   AnimatedSize(
                     clipBehavior: Clip.hardEdge,
-                    duration: FluffyThemes.animationDuration,
-                    curve: FluffyThemes.animationCurve,
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
                     child: typingText.isNotEmpty
                         ? Padding(
-                            padding: const EdgeInsets.only(right: 4.0),
-                            child: Icon(
-                              Icons.edit_outlined,
-                              color: theme.colorScheme.secondary,
-                              size: 16,
+                            padding: const EdgeInsets.only(right: FluffyThemes.spacing4),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: FluffyThemes.durationNormal,
+                              curve: FluffyThemes.curveBounce,
+                              builder: (context, value, child) => Transform.scale(
+                                scale: value,
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  color: theme.colorScheme.secondary,
+                                  size: FluffyThemes.iconSizeXs,
+                                ),
+                              ),
                             ),
                           )
                         : room.lastEvent?.relationshipType ==
@@ -306,25 +334,25 @@ class ChatListItem extends StatelessWidget {
                                     color: theme.colorScheme.outline,
                                   ),
                                   borderRadius: BorderRadius.circular(
-                                    AppConfig.borderRadius,
+                                    FluffyThemes.radiusSm,
                                   ),
                                 ),
                                 padding:
-                                    const EdgeInsets.symmetric(horizontal: 8.0),
-                                margin: const EdgeInsets.only(right: 4.0),
+                                    const EdgeInsets.symmetric(horizontal: FluffyThemes.spacing8),
+                                margin: const EdgeInsets.only(right: FluffyThemes.spacing4),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.message_outlined,
-                                      size: 12,
+                                      size: FluffyThemes.fontSizeSm,
                                       color: theme.colorScheme.outline,
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: FluffyThemes.spacing4),
                                     Text(
                                       L10n.of(context).thread,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: FluffyThemes.fontSizeSm,
                                         color: theme.colorScheme.outline,
                                       ),
                                     ),
@@ -431,6 +459,7 @@ class ChatListItem extends StatelessWidget {
                       icon: const Icon(Icons.delete_outlined),
                       onPressed: onForget,
                     ),
+                ),
               ),
             ),
           ),
