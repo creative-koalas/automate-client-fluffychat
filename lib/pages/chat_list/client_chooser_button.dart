@@ -90,46 +90,21 @@ class ClientChooserButton extends StatelessWidget {
     return FutureBuilder<Profile>(
       key: ValueKey(client.userID),
       future: client.isLogged() ? client.fetchOwnProfile() : null,
-      builder: (context, snapshot) => Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary.withAlpha(60),
-              theme.colorScheme.tertiary.withAlpha(40),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withAlpha(20),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(2),
-        child: Material(
-          clipBehavior: Clip.hardEdge,
-          borderRadius: BorderRadius.circular(99),
-          color: theme.colorScheme.surface,
-          child: PopupMenuButton<Object>(
-            popUpAnimationStyle: FluffyThemes.isColumnMode(context)
-                ? AnimationStyle.noAnimation
-                : null, // https://github.com/flutter/flutter/issues/167180
-            onSelected: (o) => _clientSelected(o, context),
-            itemBuilder: _bundleMenuItems,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: Avatar(
-                mxContent: snapshot.data?.avatarUrl,
-                name: snapshot.data?.displayName ?? client.userID?.localpart,
-                size: 32,
-              ),
+      builder: (context, snapshot) => Material(
+        clipBehavior: Clip.hardEdge,
+        borderRadius: BorderRadius.circular(99),
+        color: Colors.transparent,
+        child: PopupMenuButton<Object>(
+          popUpAnimationStyle: FluffyThemes.isColumnMode(context)
+              ? AnimationStyle.noAnimation
+              : null, // https://github.com/flutter/flutter/issues/167180
+          onSelected: (o) => _clientSelected(o, context),
+          itemBuilder: _bundleMenuItems,
+          child: Center(
+            child: Avatar(
+              mxContent: snapshot.data?.avatarUrl,
+              name: snapshot.data?.displayName ?? client.userID?.localpart,
+              size: 32,
             ),
           ),
         ),
