@@ -41,8 +41,8 @@ class _MainScreenState extends State<MainScreen> {
       if (_pageController.hasClients) {
         _pageController.animateToPage(
           _currentPage,
-          duration: FluffyThemes.animationDuration,
-          curve: FluffyThemes.animationCurve,
+          duration: FluffyThemes.durationFast,
+          curve: FluffyThemes.curveStandard,
         );
       }
     }
@@ -115,23 +115,17 @@ class _MainScreenState extends State<MainScreen> {
               width: 1,
             ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withValues(alpha: 0.04),
-              blurRadius: 20,
-              spreadRadius: -5,
-              offset: const Offset(0, -8),
-            ),
-            BoxShadow(
-              color: theme.colorScheme.shadow.withAlpha(12),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          boxShadow: FluffyThemes.layeredShadow(
+            context,
+            elevation: FluffyThemes.elevationLg,
+          ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: FluffyThemes.spacing20,
+              vertical: FluffyThemes.spacing8,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -181,8 +175,8 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: FluffyThemes.animationDuration,
-      curve: FluffyThemes.animationCurve,
+      duration: FluffyThemes.durationFast,
+      curve: FluffyThemes.curveBounce,
       decoration: BoxDecoration(
         gradient: isSelected
             ? LinearGradient(
@@ -194,7 +188,7 @@ class _NavItem extends StatelessWidget {
                 ],
               )
             : null,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
         border: isSelected
             ? Border.all(
                 color: theme.colorScheme.primary.withValues(alpha: 0.2),
@@ -202,34 +196,30 @@ class _NavItem extends StatelessWidget {
               )
             : null,
         boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                  blurRadius: 12,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 4),
-                ),
-              ]
+            ? FluffyThemes.layeredShadow(
+                context,
+                elevation: FluffyThemes.elevationMd,
+              )
             : null,
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
           splashColor: theme.colorScheme.primary.withValues(alpha: 0.15),
           highlightColor: theme.colorScheme.primary.withValues(alpha: 0.08),
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: isSelected ? 24 : 16,
-              vertical: isSelected ? 12 : 10,
+              horizontal: isSelected ? FluffyThemes.spacing24 : FluffyThemes.spacing16,
+              vertical: isSelected ? FluffyThemes.spacing12 : FluffyThemes.spacing8,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 AnimatedSwitcher(
-                  duration: FluffyThemes.animationDuration,
+                  duration: FluffyThemes.durationFast,
                   transitionBuilder: (child, animation) => ScaleTransition(
                     scale: animation,
                     child: child,
@@ -237,22 +227,22 @@ class _NavItem extends StatelessWidget {
                   child: Icon(
                     isSelected ? selectedIcon : icon,
                     key: ValueKey(isSelected),
-                    size: 24,
+                    size: FluffyThemes.iconSizeMd,
                     color: isSelected
                         ? theme.colorScheme.primary
                         : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 AnimatedSize(
-                  duration: FluffyThemes.animationDuration,
-                  curve: FluffyThemes.animationCurve,
+                  duration: FluffyThemes.durationFast,
+                  curve: FluffyThemes.curveStandard,
                   child: isSelected
                       ? Padding(
-                          padding: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.only(left: FluffyThemes.spacing8),
                           child: Text(
                             label,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: FluffyThemes.fontSizeMd,
                               fontWeight: FontWeight.w600,
                               color: theme.colorScheme.primary,
                             ),
