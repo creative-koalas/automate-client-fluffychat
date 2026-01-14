@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:psygo/config/themes.dart';
+
 /// Enhanced FilledButton with better tactile feedback and animations
 class EnhancedFilledButton extends StatefulWidget {
   final VoidCallback? onPressed;
@@ -46,18 +48,25 @@ class _EnhancedFilledButtonState extends State<EnhancedFilledButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
+  late Animation<double> _elevationAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
+      duration: FluffyThemes.durationInstant,
     );
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      CurvedAnimation(parent: _controller, curve: FluffyThemes.curveSharp),
+    );
+
+    _elevationAnimation = Tween<double>(
+      begin: FluffyThemes.elevationLg,
+      end: FluffyThemes.elevationSm,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: FluffyThemes.curveSharp),
     );
   }
 
@@ -69,25 +78,22 @@ class _EnhancedFilledButtonState extends State<EnhancedFilledButton>
 
   void _onTapDown(TapDownDetails details) {
     if (widget.onPressed != null) {
-      setState(() => _isPressed = true);
       _controller.forward();
     }
   }
 
   void _onTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
     _controller.reverse();
   }
 
   void _onTapCancel() {
-    setState(() => _isPressed = false);
     _controller.reverse();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderRadius = widget.borderRadius ?? BorderRadius.circular(12);
+    final borderRadius = widget.borderRadius ?? BorderRadius.circular(FluffyThemes.radiusMd);
     final backgroundColor =
         widget.backgroundColor ?? theme.colorScheme.primary;
     final foregroundColor =
@@ -98,68 +104,67 @@ class _EnhancedFilledButtonState extends State<EnhancedFilledButton>
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
-        animation: _scaleAnimation,
+        animation: _controller,
         builder: (context, child) => Transform.scale(
           scale: _scaleAnimation.value,
-          child: child,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: widget.useGradient
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      backgroundColor,
-                      backgroundColor.withValues(alpha: 0.85),
-                    ],
-                  )
-                : null,
-            borderRadius: borderRadius,
-            boxShadow: [
-              BoxShadow(
-                color: backgroundColor.withValues(alpha: 0.3),
-                blurRadius: _isPressed ? 8 : 16,
-                offset: Offset(0, _isPressed ? 2 : 6),
-              ),
-            ],
-          ),
-          child: Material(
-            color: widget.useGradient ? Colors.transparent : backgroundColor,
-            borderRadius: borderRadius,
-            child: InkWell(
-              onTap: widget.onPressed,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: widget.useGradient
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        backgroundColor,
+                        backgroundColor.withValues(alpha: 0.85),
+                      ],
+                    )
+                  : null,
               borderRadius: borderRadius,
-              splashColor: foregroundColor.withValues(alpha: 0.15),
-              highlightColor: foregroundColor.withValues(alpha: 0.08),
-              child: Container(
-                padding: widget.padding ??
-                    const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 14,
-                    ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (widget.icon != null) ...[
-                      Icon(
-                        widget.icon,
-                        color: foregroundColor,
-                        size: 20,
+              boxShadow: [
+                BoxShadow(
+                  color: backgroundColor.withValues(alpha: 0.3),
+                  blurRadius: _elevationAnimation.value * 2,
+                  offset: Offset(0, _elevationAnimation.value / 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: widget.useGradient ? Colors.transparent : backgroundColor,
+              borderRadius: borderRadius,
+              child: InkWell(
+                onTap: widget.onPressed,
+                borderRadius: borderRadius,
+                splashColor: foregroundColor.withValues(alpha: 0.15),
+                highlightColor: foregroundColor.withValues(alpha: 0.08),
+                child: Container(
+                  padding: widget.padding ??
+                      const EdgeInsets.symmetric(
+                        horizontal: FluffyThemes.spacing24,
+                        vertical: FluffyThemes.spacing12,
                       ),
-                      const SizedBox(width: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (widget.icon != null) ...[
+                        Icon(
+                          widget.icon,
+                          color: foregroundColor,
+                          size: FluffyThemes.iconSizeSm,
+                        ),
+                        const SizedBox(width: FluffyThemes.spacing8),
+                      ],
+                      DefaultTextStyle(
+                        style: TextStyle(
+                          color: foregroundColor,
+                          fontSize: FluffyThemes.fontSizeLg,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                        child: widget.child,
+                      ),
                     ],
-                    DefaultTextStyle(
-                      style: TextStyle(
-                        color: foregroundColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
-                      ),
-                      child: widget.child,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

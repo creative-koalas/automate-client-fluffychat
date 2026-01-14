@@ -134,8 +134,8 @@ class Message extends StatelessWidget {
         ownMessage ? MainAxisAlignment.end : MainAxisAlignment.start;
 
     final displayEvent = event.getDisplayEvent(timeline);
-    const roundedCorner = Radius.circular(AppConfig.borderRadius);
-    const borderRadius = BorderRadius.all(roundedCorner);
+    final roundedCorner = Radius.circular(FluffyThemes.radiusLg);
+    final borderRadius = BorderRadius.all(roundedCorner);
     final noBubble = ({
               MessageTypes.Video,
               MessageTypes.Image,
@@ -218,10 +218,10 @@ class Message extends StatelessWidget {
             maxWidth: FluffyThemes.maxTimelineWidth,
           ),
           padding: EdgeInsets.only(
-            top: 8.0,
-            bottom: 8.0,
-            left: PlatformInfos.isDesktop ? 0.0 : 8.0,
-            right: 8.0,
+            top: FluffyThemes.spacing8,
+            bottom: FluffyThemes.spacing8,
+            left: PlatformInfos.isDesktop ? 0.0 : FluffyThemes.spacing8,
+            right: FluffyThemes.spacing8,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -232,24 +232,25 @@ class Message extends StatelessWidget {
               if ((displayTime || selected) && !PlatformInfos.isDesktop)
                 Padding(
                   padding: displayTime
-                      ? const EdgeInsets.symmetric(vertical: 8.0)
+                      ? const EdgeInsets.symmetric(vertical: FluffyThemes.spacing8)
                       : EdgeInsets.zero,
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
+                      padding: const EdgeInsets.only(top: FluffyThemes.spacing4),
                       child: Material(
                         borderRadius:
-                            BorderRadius.circular(AppConfig.borderRadius * 2),
+                            BorderRadius.circular(FluffyThemes.radiusXl),
                         color: theme.colorScheme.surface.withAlpha(128),
+                        elevation: FluffyThemes.elevationXs,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8.0,
-                            vertical: 2.0,
+                            horizontal: FluffyThemes.spacing8,
+                            vertical: FluffyThemes.spacing2,
                           ),
                           child: Text(
                             event.originServerTs.localizedTime(context),
                             style: TextStyle(
-                              fontSize: 12 * AppSettings.fontSizeFactor.value,
+                              fontSize: FluffyThemes.fontSizeSm * AppSettings.fontSizeFactor.value,
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.secondary,
                             ),
@@ -268,8 +269,8 @@ class Message extends StatelessWidget {
                     });
                   }
                   return AnimatedSize(
-                    duration: FluffyThemes.animationDuration,
-                    curve: FluffyThemes.animationCurve,
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
                     clipBehavior: Clip.none,
                     alignment: ownMessage
                         ? Alignment.bottomRight
@@ -286,7 +287,7 @@ class Message extends StatelessWidget {
                                 right: 0,
                                 child: Material(
                                   borderRadius: BorderRadius.circular(
-                                    AppConfig.borderRadius / 2,
+                                    FluffyThemes.radiusMd,
                                   ),
                                   // PC 端选择模式下，选择高亮在外层显示
                                   color: (longPressSelect && PlatformInfos.isDesktop)
@@ -508,15 +509,21 @@ class Message extends StatelessWidget {
                                                       ? 0.5
                                                       : 1,
                                               duration: FluffyThemes
-                                                  .animationDuration,
+                                                  .durationFast,
                                               curve:
-                                                  FluffyThemes.animationCurve,
+                                                  FluffyThemes.curveStandard,
                                               child: Container(
                                                 decoration: BoxDecoration(
                                                   color: noBubble
                                                       ? Colors.transparent
                                                       : color,
                                                   borderRadius: borderRadius,
+                                                  boxShadow: noBubble || !ownMessage
+                                                      ? null
+                                                      : FluffyThemes.shadow(
+                                                          context,
+                                                          elevation: FluffyThemes.elevationSm,
+                                                        ),
                                                 ),
                                                 clipBehavior: Clip.antiAlias,
                                                 child: BubbleBackground(
@@ -532,7 +539,7 @@ class Message extends StatelessWidget {
                                                     decoration: BoxDecoration(
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                        AppConfig.borderRadius,
+                                                        FluffyThemes.radiusLg,
                                                       ),
                                                     ),
                                                     constraints: BoxConstraints(
