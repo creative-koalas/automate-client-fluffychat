@@ -44,7 +44,7 @@ class MxcImage extends StatefulWidget {
     this.isThumbnail = true,
     this.animated = false,
     this.animationDuration = FluffyThemes.animationDuration,
-    this.retryDuration = const Duration(seconds: 2),
+    this.retryDuration = const Duration(milliseconds: 500),
     this.animationCurve = FluffyThemes.animationCurve,
     this.thumbnailMethod = ThumbnailMethod.scale,
     this.cacheKey,

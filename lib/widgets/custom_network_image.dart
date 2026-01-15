@@ -9,6 +9,9 @@ import '../utils/custom_http_client.dart';
 /// 使用 CustomHttpClient（包含 ISRG X1 证书）加载图片，
 /// 解决 Win10 上 Let's Encrypt SSL 证书验证失败的问题
 class CustomNetworkImage extends StatefulWidget {
+  /// 清除所有图片缓存（退出登录时调用）
+  static void clearCache() => _CustomNetworkImageState.clearCache();
+
   final String url;
   final BoxFit? fit;
   final double? width;
@@ -31,6 +34,12 @@ class CustomNetworkImage extends StatefulWidget {
 }
 
 class _CustomNetworkImageState extends State<CustomNetworkImage> {
+  /// 静态内存缓存，URL -> 图片数据
+  static final Map<String, Uint8List> _cache = {};
+
+  /// 清除缓存（退出登录时调用）
+  static void clearCache() => _cache.clear();
+
   Uint8List? _imageData;
   bool _isLoading = true;
   Object? _error;
@@ -39,14 +48,31 @@ class _CustomNetworkImageState extends State<CustomNetworkImage> {
   @override
   void initState() {
     super.initState();
-    _loadImage();
+    // 先检查缓存
+    final cached = _cache[widget.url];
+    if (cached != null) {
+      _imageData = cached;
+      _isLoading = false;
+    } else {
+      _loadImage();
+    }
   }
 
   @override
   void didUpdateWidget(CustomNetworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.url != widget.url) {
-      _loadImage();
+      // URL 变了，先检查缓存
+      final cached = _cache[widget.url];
+      if (cached != null) {
+        setState(() {
+          _imageData = cached;
+          _isLoading = false;
+          _error = null;
+        });
+      } else {
+        _loadImage();
+      }
     }
   }
 
@@ -68,8 +94,10 @@ class _CustomNetworkImageState extends State<CustomNetworkImage> {
         if (!mounted) return;
 
         if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          _cache[widget.url] = bytes; // 存入缓存
           setState(() {
-            _imageData = response.bodyBytes;
+            _imageData = bytes;
             _isLoading = false;
           });
         } else {
