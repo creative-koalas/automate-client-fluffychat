@@ -4,6 +4,7 @@ library;
 
 import '../core/api_client.dart';
 import '../models/agent.dart';
+import '../models/agent_style.dart';
 
 /// Agent 数据仓库
 class AgentRepository {
@@ -70,6 +71,50 @@ class AgentRepository {
     await _apiClient.delete<void>(
       '/api/agents/$agentId',
       queryParameters: {'confirm': confirm.toString()},
+    );
+  }
+
+  /// 获取可用的沟通和汇报风格列表
+  ///
+  /// 返回 [AvailableStyles] 包含所有可选风格
+  Future<AvailableStyles> getAvailableStyles() async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/api/agents/styles',
+      fromJsonT: (data) => data as Map<String, dynamic>,
+    );
+
+    if (response.data == null) {
+      throw Exception('Failed to load available styles');
+    }
+
+    return AvailableStyles.fromJson(response.data!);
+  }
+
+  /// 更新 Agent 的沟通和汇报风格
+  ///
+  /// [agentId] Agent ID
+  /// [communicationStyle] 沟通风格 key（可选）
+  /// [reportStyle] 汇报风格 key（可选）
+  Future<void> updateAgentStyle(
+    String agentId, {
+    String? communicationStyle,
+    String? reportStyle,
+  }) async {
+    final body = <String, dynamic>{};
+    if (communicationStyle != null) {
+      body['communication_style'] = communicationStyle;
+    }
+    if (reportStyle != null) {
+      body['report_style'] = reportStyle;
+    }
+
+    if (body.isEmpty) {
+      throw ArgumentError('At least one style must be provided');
+    }
+
+    await _apiClient.put<void>(
+      '/api/agents/$agentId/style',
+      body: body,
     );
   }
 

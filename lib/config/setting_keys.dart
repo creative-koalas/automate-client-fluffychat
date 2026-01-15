@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:matrix/matrix_api_lite/utils/logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 enum AppSettings<T> {
@@ -146,10 +147,10 @@ extension AppSettingsBoolExtension on AppSettings<bool> {
 
 extension AppSettingsStringExtension on AppSettings<String> {
   String get value {
-    // applicationName 不从本地存储读取，直接使用默认值
-    // 避免旧版本缓存的 "Automate" 覆盖 "Psygo"
+    // applicationName 从环境变量读取，不从本地存储读取
+    // 支持多环境数据库隔离（Psygo_dev / Psygo_test / Psygo）
     if (this == AppSettings.applicationName) {
-      return defaultValue;
+      return PsygoConfig.appName;
     }
     final value = Result(() => AppSettings.store.getString(key));
     final error = value.asError;

@@ -105,7 +105,7 @@ class TeamPageView extends StatelessWidget {
           children: [
             // Team icon with gradient background
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -115,19 +115,19 @@ class TeamPageView extends StatelessWidget {
                     theme.colorScheme.tertiary,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: const Icon(
                 Icons.groups_rounded,
                 color: Colors.white,
-                size: 24,
+                size: 18,
               ),
             ),
             const SizedBox(width: 14),

@@ -62,6 +62,7 @@ web/Imaging.wasm
 .pub-cache/
 .pub/
 /build/
+/dist/
 
 # Flutter generated files (machine-specific)
 **/local.properties

@@ -5,7 +5,9 @@ import 'package:psygo/widgets/matrix.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/agent.dart';
+import '../models/agent_style.dart';
 import '../models/plugin.dart';
+import '../repositories/agent_repository.dart';
 import '../repositories/plugin_repository.dart';
 import 'custom_network_image.dart';
 
@@ -29,20 +31,30 @@ class EmployeeDetailSheet extends StatefulWidget {
 
 class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
   final PluginRepository _pluginRepository = PluginRepository();
+  final AgentRepository _agentRepository = AgentRepository();
 
   List<AgentPlugin> _plugins = [];
   bool _isLoadingPlugins = true;
   bool _isStartingChat = false;
 
+  // 风格相关
+  AvailableStyles? _availableStyles;
+  bool _isLoadingStyles = true;
+  String? _selectedCommunicationStyle;
+  String? _selectedReportStyle;
+  bool _isUpdatingStyle = false;
+
   @override
   void initState() {
     super.initState();
     _loadPlugins();
+    _loadStyles();
   }
 
   @override
   void dispose() {
     _pluginRepository.dispose();
+    _agentRepository.dispose();
     super.dispose();
   }
 
@@ -64,6 +76,70 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoadingPlugins = false);
+      }
+    }
+  }
+
+  Future<void> _loadStyles() async {
+    try {
+      final styles = await _agentRepository.getAvailableStyles();
+      if (mounted) {
+        setState(() {
+          _availableStyles = styles;
+          _isLoadingStyles = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingStyles = false);
+      }
+    }
+  }
+
+  Future<void> _updateStyle({
+    String? communicationStyle,
+    String? reportStyle,
+  }) async {
+    if (_isUpdatingStyle) return;
+
+    setState(() => _isUpdatingStyle = true);
+
+    try {
+      await _agentRepository.updateAgentStyle(
+        widget.employee.agentId,
+        communicationStyle: communicationStyle,
+        reportStyle: reportStyle,
+      );
+
+      if (mounted) {
+        setState(() {
+          if (communicationStyle != null) {
+            _selectedCommunicationStyle = communicationStyle;
+          }
+          if (reportStyle != null) {
+            _selectedReportStyle = reportStyle;
+          }
+          _isUpdatingStyle = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(L10n.of(context).styleUpdated),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUpdatingStyle = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${L10n.of(context).updateFailed}: $e'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -343,6 +419,38 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
           ),
         ),
         _buildSkillsList(theme, l10n),
+      ],
+
+      // 沟通和汇报风格设置
+      if (employee.isReady && _availableStyles != null) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiaryContainer.withAlpha(80),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.tune_rounded,
+                  size: 16,
+                  color: theme.colorScheme.tertiary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                l10n.workStyle,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildStyleSelectors(theme, l10n),
       ],
 
       // 优化按钮（删除）
@@ -733,5 +841,137 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       Navigator.of(context).pop(); // 关闭 sheet
       widget.onDelete?.call();
     }
+  }
+
+  Widget _buildStyleSelectors(ThemeData theme, L10n l10n) {
+    if (_availableStyles == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 沟通风格
+          Text(
+            l10n.communicationStyle,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._availableStyles!.communicationStyles.map((style) {
+            final isSelected = _selectedCommunicationStyle == style.key;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: _isUpdatingStyle
+                    ? null
+                    : () => _updateStyle(communicationStyle: style.key),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primaryContainer.withAlpha(100)
+                        : theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      if (isSelected)
+                        Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                      if (isSelected) const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          style.title,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isSelected
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          // 汇报风格
+          Text(
+            l10n.reportStyle,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._availableStyles!.reportStyles.map((style) {
+            final isSelected = _selectedReportStyle == style.key;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: _isUpdatingStyle
+                    ? null
+                    : () => _updateStyle(reportStyle: style.key),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primaryContainer.withAlpha(100)
+                        : theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      if (isSelected)
+                        Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                      if (isSelected) const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          style.title,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isSelected
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 }

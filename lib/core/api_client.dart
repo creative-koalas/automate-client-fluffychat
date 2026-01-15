@@ -110,6 +110,27 @@ class PsygoApiClient {
     return _handleResponse<T>(response, fromJsonT);
   }
 
+  /// PUT 请求
+  Future<ApiResponse<T>> put<T>(
+    String path, {
+    Map<String, dynamic>? body,
+    T Function(dynamic)? fromJsonT,
+    bool requiresAuth = true,
+  }) async {
+    final uri = Uri.parse(PsygoConfig.baseUrl + path);
+    final headers = await _buildHeaders(requiresAuth);
+
+    final response = await _httpClient
+        .put(
+          uri,
+          headers: headers,
+          body: body != null ? jsonEncode(body) : null,
+        )
+        .timeout(PsygoConfig.receiveTimeout);
+
+    return _handleResponse<T>(response, fromJsonT);
+  }
+
   /// DELETE 请求
   Future<ApiResponse<T>> delete<T>(
     String path, {
