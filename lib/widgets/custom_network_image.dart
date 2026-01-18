@@ -51,10 +51,17 @@ class _CustomNetworkImageState extends State<CustomNetworkImage> {
     // 先检查缓存
     final cached = _cache[widget.url];
     if (cached != null) {
+      // 缓存命中，直接使用缓存数据
+      // 在 initState 中可以直接赋值，因为 build() 会在之后立即调用
       _imageData = cached;
       _isLoading = false;
+      _error = null;
     } else {
-      _loadImage();
+      // 缓存未命中，需要加载
+      // 使用 addPostFrameCallback 确保在第一帧渲染后再开始网络请求
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadImage();
+      });
     }
   }
 

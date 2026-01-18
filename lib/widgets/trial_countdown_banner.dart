@@ -27,13 +27,14 @@ class TrialCountdownBanner extends StatefulWidget {
 class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
   Timer? _timer;
   Timer? _refreshTimer;
-  Duration _remaining = Duration.zero;
-  bool _isExpired = false;
+  late Duration _remaining;
+  late bool _isExpired;
 
   @override
   void initState() {
     super.initState();
-    _calculateRemaining();
+    // 直接计算初始值，不调用 setState()
+    _initializeRemaining();
     _startTimer();
   }
 
@@ -52,6 +53,27 @@ class _TrialCountdownBannerState extends State<TrialCountdownBanner> {
     super.dispose();
   }
 
+  /// 初始化剩余时间（用于 initState，不调用 setState）
+  void _initializeRemaining() {
+    try {
+      final expiresAt = DateTime.parse(widget.expiresAt);
+      final now = DateTime.now();
+      final remaining = expiresAt.difference(now);
+
+      if (remaining.isNegative) {
+        _remaining = Duration.zero;
+        _isExpired = true;
+      } else {
+        _remaining = remaining;
+        _isExpired = false;
+      }
+    } catch (_) {
+      _remaining = Duration.zero;
+      _isExpired = true;
+    }
+  }
+
+  /// 计算并更新剩余时间（用于 didUpdateWidget，调用 setState）
   void _calculateRemaining() {
     try {
       final expiresAt = DateTime.parse(widget.expiresAt);

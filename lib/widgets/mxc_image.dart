@@ -151,6 +151,26 @@ class _MxcImageState extends State<MxcImage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryLoad());
   }
 
+  @override
+  void didUpdateWidget(MxcImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当关键属性变化时，重新加载图片
+    if (oldWidget.uri != widget.uri ||
+        oldWidget.event != widget.event ||
+        oldWidget.cacheKey != widget.cacheKey) {
+      // 清除当前图片数据，触发重新加载
+      if (mounted) {
+        setState(() {
+          if (widget.cacheKey == null) {
+            _imageDataNoCache = null;
+          }
+          // 注意：不清除 _imageDataCache，因为它是静态缓存
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _tryLoad());
+      }
+    }
+  }
+
   Widget placeholder(BuildContext context) {
     if (widget.placeholder != null) {
       return widget.placeholder!(context);
