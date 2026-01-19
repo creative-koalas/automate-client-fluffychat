@@ -1,19 +1,26 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:xdg_status_notifier_item/xdg_status_notifier_item.dart';
+import 'package:path/path.dart' as path;
 import 'package:psygo/utils/platform_infos.dart';
 
 /// 窗口管理服务 - 用于 PC 端窗口样式切换和系统托盘
-class WindowService with TrayListener {
+class WindowService {
   WindowService._();
-
-  static final WindowService _instance = WindowService._();
-  static WindowService get instance => _instance;
 
   static bool _trayInitialized = false;
   static _CloseInterceptor? _closeInterceptor;
+  static final SystemTray _systemTray = SystemTray();
+  static const String _trayEventLeftUp = 'leftMouseUp';
+  static const String _trayEventLeftDoubleClick = 'leftMouseDblClk';
+  static const String _trayEventRightUp = 'rightMouseUp';
+  static StatusNotifierItemClient? _linuxTrayClient;
+  static DateTime? _lastLinuxActivateAt;
+  static const Duration _linuxDoubleClickThreshold =
+      Duration(milliseconds: 400);
 
   static const Size loginWindowSize = Size(420, 580);
   static const Size mainWindowSize = Size(1280, 720);
@@ -25,6 +32,13 @@ class WindowService with TrayListener {
     if (!PlatformInfos.isDesktop || _trayInitialized) return;
 
     try {
+      if (Platform.isLinux) {
+        await _initLinuxTray();
+        _trayInitialized = true;
+        debugPrint('[WindowService] System tray initialized');
+        return;
+      }
+
       // 设置托盘图标
       String iconPath;
       if (Platform.isWindows) {
@@ -37,39 +51,49 @@ class WindowService with TrayListener {
 
       if (Platform.isLinux) {
         try {
-          await trayManager.setIcon(iconPath);
+          await _systemTray.initSystemTray(
+            title: 'Psygo',
+            iconPath: iconPath,
+            toolTip: 'Psygo',
+          );
         } catch (_) {
           iconPath = 'assets/logo_opaque.png';
-          await trayManager.setIcon(iconPath);
+          await _systemTray.initSystemTray(
+            title: 'Psygo',
+            iconPath: iconPath,
+            toolTip: 'Psygo',
+          );
         }
       } else {
-        await trayManager.setIcon(iconPath);
-      }
-
-      // Linux 的 tray_manager 插件没有实现 setToolTip，只在 Windows/macOS 上调用
-      if (!Platform.isLinux) {
-        await trayManager.setToolTip('Psygo');
+        await _systemTray.initSystemTray(
+          title: 'Psygo',
+          iconPath: iconPath,
+          toolTip: 'Psygo',
+        );
       }
 
       // 设置托盘菜单
-      await trayManager.setContextMenu(
-        Menu(
-          items: [
-            MenuItem(
-              key: 'show',
-              label: '显示窗口',
-            ),
-            MenuItem.separator(),
-            MenuItem(
-              key: 'exit',
-              label: '退出',
-            ),
-          ],
+      await _systemTray.setContextMenu([
+        MenuItem(
+          label: '显示窗口',
+          onClicked: () => showWindow(),
         ),
-      );
+        MenuSeparator(),
+        MenuItem(
+          label: '退出',
+          onClicked: () => exitApp(),
+        ),
+      ]);
 
-      // 添加托盘事件监听
-      trayManager.addListener(_instance);
+      _systemTray.registerSystemTrayEventHandler((eventName) {
+        if (eventName == _trayEventLeftDoubleClick) {
+          showWindow();
+        } else if (eventName == _trayEventRightUp) {
+          _systemTray.popUpContextMenu();
+        } else if (eventName == _trayEventLeftUp && !Platform.isWindows) {
+          showWindow();
+        }
+      });
       _trayInitialized = true;
       debugPrint('[WindowService] System tray initialized');
     } catch (e) {
@@ -81,37 +105,56 @@ class WindowService with TrayListener {
   static Future<void> destroySystemTray() async {
     if (!PlatformInfos.isDesktop || !_trayInitialized) return;
 
-    trayManager.removeListener(_instance);
-    await trayManager.destroy();
+    if (Platform.isLinux) {
+      await _linuxTrayClient?.close();
+      _linuxTrayClient = null;
+      _trayInitialized = false;
+      return;
+    }
+
+    await _systemTray.setSystemTrayInfo(iconPath: '');
     _trayInitialized = false;
   }
 
-  // TrayListener 回调
-  @override
-  void onTrayIconMouseDown() {
-    debugPrint('[WindowService] onTrayIconMouseDown');
-    // 点击托盘图标显示窗口（仅 Windows 有效，Linux AppIndicator 不支持）
-    showWindow();
+  static Future<void> _initLinuxTray() async {
+    final iconPath = _linuxTrayIconPath();
+    final menu = DBusMenuItem(
+      children: [
+        DBusMenuItem(label: '显示窗口', onClicked: () async => showWindow()),
+        DBusMenuItem.separator(),
+        DBusMenuItem(label: '退出', onClicked: () async => exitApp()),
+      ],
+    );
+
+    _linuxTrayClient = StatusNotifierItemClient(
+      id: 'psygo',
+      iconName: iconPath,
+      menu: menu,
+      onActivate: (_, __) async => _handleLinuxActivate(),
+    );
+    await _linuxTrayClient!.connect();
   }
 
-  @override
-  void onTrayIconRightMouseDown() {
-    debugPrint('[WindowService] onTrayIconRightMouseDown');
-    // 右键显示菜单（仅 Windows 需要，Linux AppIndicator 自动显示菜单）
-    trayManager.popUpContextMenu();
+  static String _linuxTrayIconPath() {
+    const assetPath = 'assets/logo_opaque.png';
+    final resolved = path.joinAll([
+      path.dirname(Platform.resolvedExecutable),
+      'data/flutter_assets',
+      assetPath,
+    ]);
+    return File(resolved).existsSync() ? resolved : 'psygo';
   }
 
-  @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
-    debugPrint('[WindowService] onTrayMenuItemClick: ${menuItem.key}');
-    switch (menuItem.key) {
-      case 'show':
-        showWindow();
-        break;
-      case 'exit':
-        exitApp();
-        break;
+  static void _handleLinuxActivate() {
+    final now = DateTime.now();
+    final lastClick = _lastLinuxActivateAt;
+    if (lastClick != null &&
+        now.difference(lastClick) <= _linuxDoubleClickThreshold) {
+      _lastLinuxActivateAt = null;
+      showWindow();
+      return;
     }
+    _lastLinuxActivateAt = now;
   }
 
   /// 显示窗口

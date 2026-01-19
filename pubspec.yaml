@@ -92,7 +92,8 @@ dependencies:
   wakelock_plus: ^1.3.3
   webrtc_interface: ^1.3.0
   window_manager: ^0.5.1
-  tray_manager: ^0.2.3  # 系统托盘支持
+  system_tray: ^0.1.1  # 系统托盘支持
+  xdg_status_notifier_item: ^0.0.1  # Linux 托盘点击事件
   connectivity_plus: ^7.0.0
 
 dev_dependencies:
@@ -111,6 +112,11 @@ dev_dependencies:
 import_sorter:
   ignored_files: # Optional, defaults to []
     - \/lib\/l10n
+
+dependency_overrides:
+  # Local patch to use ayatana-appindicator when appindicator3 is unavailable.
+  system_tray:
+    path: third_party/system_tray
 
 flutter_native_splash:
   color: "#ffffff"
