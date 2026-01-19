@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path/path.dart' as path_lib;
+import 'package:path_provider/path_provider.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
@@ -36,6 +41,121 @@ class SendFileDialogState extends State<SendFileDialog> {
   static const int minSizeToCompress = 20 * 1000;
 
   final TextEditingController _labelTextController = TextEditingController();
+
+  String _fileDisplayName(XFile file) {
+    if (file.name.isNotEmpty) {
+      return file.name;
+    }
+    if (file.path.isNotEmpty) {
+      return path_lib.basename(file.path);
+    }
+    return '未命名文件';
+  }
+
+  Future<void> _openFilePreview(BuildContext context, XFile file) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(widget.outerContext);
+    if (PlatformInfos.isWeb) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Web 暂不支持预览文件')),
+      );
+      return;
+    }
+
+    var path = file.path;
+    if (path.isEmpty) {
+      final bytes = await file.readAsBytes();
+      final tempDir = await getTemporaryDirectory();
+      final fileName = _fileDisplayName(file).trim().isEmpty
+          ? 'attachment'
+          : _fileDisplayName(file).trim();
+      final tempPath = path_lib.join(
+        tempDir.path,
+        '${DateTime.now().millisecondsSinceEpoch}_$fileName',
+      );
+      await File(tempPath).writeAsBytes(bytes, flush: true);
+      path = tempPath;
+    }
+
+    try {
+      final result = await OpenFile.open(path);
+      if (result.type != ResultType.done) {
+        final message = result.message.isNotEmpty ? result.message : '无法打开文件';
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('无法打开文件')),
+      );
+    }
+  }
+
+  Widget _buildFilePreviewItem(BuildContext context, XFile file) {
+    final theme = Theme.of(context);
+    final fileName = _fileDisplayName(file);
+    return Material(
+      color: theme.colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _openFilePreview(context, file),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.insert_drive_file_outlined,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    FutureBuilder<int>(
+                      future: file.length(),
+                      builder: (context, snapshot) {
+                        final subtitle = snapshot.hasData
+                            ? '${snapshot.data!.sizeString} · 点击打开'
+                            : '点击打开查看文件';
+                        return Text(
+                          subtitle,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.open_in_new,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _send() async {
     final scaffoldMessenger = ScaffoldMessenger.of(widget.outerContext);
@@ -174,7 +294,11 @@ class SendFileDialogState extends State<SendFileDialog> {
         .toSet()
         .singleOrNull;
 
-    if (uniqueFileType == 'image') {
+    final isImage = uniqueFileType == 'image';
+    final labelTitle = isImage ? '图片名称' : '文件名称';
+    final labelHint = isImage ? '(可选) 输入图片名称...' : '(可选) 输入文件名称...';
+
+    if (isImage) {
       if (widget.files.length == 1) {
         sendStr = L10n.of(context).sendImage;
       } else {
@@ -253,7 +377,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // 图片预览
-                        if (uniqueFileType == 'image')
+                        if (isImage)
                           Center(
                             child: Stack(
                               children: [
@@ -335,10 +459,28 @@ class SendFileDialogState extends State<SendFileDialog> {
                               ],
                             ),
                           ),
+                        if (!isImage)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '文件预览',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              for (var i = 0; i < widget.files.length; i++) ...[
+                                _buildFilePreviewItem(context, widget.files[i]),
+                                if (i != widget.files.length - 1)
+                                  const SizedBox(height: 8),
+                              ],
+                            ],
+                          ),
                         const SizedBox(height: 12),
                         // 图片名称输入框
                         Text(
-                          '图片名称',
+                          labelTitle,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -347,7 +489,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                         TextField(
                           controller: _labelTextController,
                           decoration: InputDecoration(
-                            hintText: '(可选) 输入图片名称...',
+                            hintText: labelHint,
                             filled: true,
                             fillColor: theme.colorScheme.surfaceContainerHighest,
                             border: OutlineInputBorder(
