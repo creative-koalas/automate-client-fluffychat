@@ -48,26 +48,83 @@ class ChatSearchView extends StatelessWidget {
             if (FluffyThemes.isThreeColumnMode(context))
               const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
-              child: TextField(
-                controller: controller.searchController,
-                onSubmitted: (_) => controller.restartSearch(),
-                autofocus: true,
-                enabled: controller.tabController.index == 0,
-                decoration: InputDecoration(
-                  hintText: L10n.of(context).search,
-                  prefixIcon: const Icon(Icons.search_outlined),
-                  filled: true,
-                  fillColor: theme.colorScheme.secondaryContainer,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(99),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withAlpha(15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: controller.searchController,
+                  onSubmitted: (_) => controller.restartSearch(),
+                  autofocus: true,
+                  enabled: controller.tabController.index == 0,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 15,
                   ),
-                  hintStyle: TextStyle(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.normal,
+                  decoration: InputDecoration(
+                    hintText: L10n.of(context).search,
+                    prefixIcon: Container(
+                      margin: const EdgeInsets.only(left: 12, right: 8),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 22,
+                      ),
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 46,
+                      minHeight: 46,
+                    ),
+                    suffixIcon: controller.searchController.text.isNotEmpty
+                        ? IconButton(
+                            onPressed: () {
+                              controller.searchController.clear();
+                              controller.restartSearch();
+                            },
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest.withAlpha(180),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.outline.withAlpha(30),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.primary.withAlpha(100),
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant.withAlpha(150),
+                      fontWeight: FontWeight.normal,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),

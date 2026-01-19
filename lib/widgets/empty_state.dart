@@ -157,30 +157,93 @@ class _EmptyStateState extends State<EmptyState>
 
   Widget _buildIconContainer(ThemeData theme) {
     return Container(
-      width: 100,
-      height: 100,
+      width: 140,
+      height: 140,
       decoration: BoxDecoration(
+        shape: BoxShape.circle,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-            theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+            theme.colorScheme.secondaryContainer.withValues(alpha: 0.1),
+            theme.colorScheme.tertiaryContainer.withValues(alpha: 0.08),
           ],
         ),
-        shape: BoxShape.circle,
         boxShadow: [
+          // 主阴影 - 色彩强调
           BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 5,
+            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+            blurRadius: 40,
+            spreadRadius: 4,
+            offset: const Offset(0, 12),
+          ),
+          // 次级阴影 - 深度感
+          BoxShadow(
+            color: theme.colorScheme.shadow.withAlpha(20),
+            blurRadius: 24,
+            spreadRadius: -4,
+            offset: const Offset(0, 8),
+          ),
+          // 顶部高光
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: Icon(
-        widget.icon,
-        size: 48,
-        color: theme.colorScheme.primary.withValues(alpha: 0.8),
+      child: Center(
+        // 装饰环
+        child: Container(
+          width: 112,
+          height: 112,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primary.withValues(alpha: 0.08),
+                theme.colorScheme.tertiary.withValues(alpha: 0.05),
+              ],
+            ),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+              width: 1.5,
+            ),
+          ),
+          child: Center(
+            // 内层图标容器
+            child: Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.2),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                widget.icon,
+                size: 48,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -198,15 +261,18 @@ class _EmptyStateState extends State<EmptyState>
       },
       child: FilledButton.icon(
         onPressed: widget.onAction,
-        icon: const Icon(Icons.add),
-        label: Text(widget.actionLabel!),
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: Text(
+          widget.actionLabel!,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 12,
+            horizontal: 28,
+            vertical: 14,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),

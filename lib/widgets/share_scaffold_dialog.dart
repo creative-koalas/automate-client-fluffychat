@@ -87,29 +87,68 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
             scrolledUnderElevation: 0,
             backgroundColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            title: TextField(
-              controller: _filterController,
-              onChanged: (_) => setState(() {}),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: theme.colorScheme.secondaryContainer,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(99),
+            title: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withAlpha(12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _filterController,
+                onChanged: (_) => setState(() {}),
+                textInputAction: TextInputAction.search,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 15,
                 ),
-                contentPadding: EdgeInsets.zero,
-                hintText: L10n.of(context).search,
-                hintStyle: TextStyle(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.normal,
-                ),
-                floatingLabelBehavior: FloatingLabelBehavior.never,
-                prefixIcon: IconButton(
-                  onPressed: () {},
-                  icon: Icon(
-                    Icons.search_outlined,
-                    color: theme.colorScheme.onPrimaryContainer,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withAlpha(200),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.outline.withAlpha(30),
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary.withAlpha(80),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  hintText: L10n.of(context).search,
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant.withAlpha(150),
+                    fontWeight: FontWeight.normal,
+                    fontSize: 15,
+                  ),
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
+                  prefixIcon: Container(
+                    margin: const EdgeInsets.only(left: 12, right: 8),
+                    child: Icon(
+                      Icons.search_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 22,
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 46,
+                    minHeight: 46,
                   ),
                 ),
               ),
@@ -173,14 +212,40 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
         curve: FluffyThemes.animationCurve,
         child: selectedRoomId == null
             ? const SizedBox.shrink()
-            : Material(
-                elevation: 8,
-                shadowColor: theme.appBarTheme.shadowColor,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: _forwardAction,
-                    child: Text(L10n.of(context).forward),
+            : Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withAlpha(15),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: FilledButton.icon(
+                      onPressed: _forwardAction,
+                      icon: const Icon(Icons.send_rounded, size: 20),
+                      label: Text(
+                        L10n.of(context).forward,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

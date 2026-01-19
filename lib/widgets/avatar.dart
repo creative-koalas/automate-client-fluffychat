@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:matrix/matrix.dart';
 
+import 'package:psygo/config/themes.dart';
 import 'package:psygo/utils/string_color.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/presence_builder.dart';
@@ -11,7 +12,7 @@ class Avatar extends StatelessWidget {
   final String? name;
   final double size;
   final void Function()? onTap;
-  static const double defaultSize = 44;
+  static const double defaultSize = 48;
   final Client? client;
   final String? presenceUserId;
   final Color? presenceBackgroundColor;
@@ -20,6 +21,7 @@ class Avatar extends StatelessWidget {
   final BorderSide? border;
   final Color? backgroundColor;
   final Color? textColor;
+  final bool showShadow;
 
   const Avatar({
     this.mxContent,
@@ -34,6 +36,7 @@ class Avatar extends StatelessWidget {
     this.icon,
     this.backgroundColor,
     this.textColor,
+    this.showShadow = false,
     super.key,
   });
 
@@ -50,11 +53,21 @@ class Avatar extends StatelessWidget {
         mxContent.toString() == 'null';
     final borderRadius = this.borderRadius ?? BorderRadius.circular(size / 2);
     final presenceUserId = this.presenceUserId;
+    final avatarColor = backgroundColor ?? name?.lightColorAvatar;
     final container = Stack(
       children: [
-        SizedBox(
+        Container(
           width: size,
           height: size,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow: showShadow
+                ? FluffyThemes.shadow(
+                    context,
+                    elevation: FluffyThemes.elevationSm,
+                  )
+                : null,
+          ),
           child: Material(
             color: theme.brightness == Brightness.light
                 ? Colors.white
@@ -69,14 +82,22 @@ class Avatar extends StatelessWidget {
               borderRadius: borderRadius,
               key: ValueKey(mxContent.toString()),
               cacheKey: '${mxContent}_$size',
-              uri: mxContent,
+              uri: noPic ? null : mxContent,
               fit: BoxFit.cover,
               width: size,
               height: size,
               placeholder: (_) => noPic
                   ? Container(
                       decoration: BoxDecoration(
-                        color: backgroundColor ?? name?.lightColorAvatar,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            avatarColor ?? theme.colorScheme.primary,
+                            (avatarColor ?? theme.colorScheme.primary)
+                                .withAlpha(200),
+                          ],
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -85,16 +106,44 @@ class Avatar extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'RobotoMono',
                           color: textColor ?? Colors.white,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: (size / 2.5).roundToDouble(),
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withAlpha(30),
+                              blurRadius: FluffyThemes.elevationSm,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                       ),
                     )
-                  : Center(
-                      child: Icon(
-                        Icons.person_2,
-                        color: theme.colorScheme.tertiary,
-                        size: size / 1.5,
+                  : TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: FluffyThemes.durationSlow,
+                      curve: FluffyThemes.curveSharp,
+                      builder: (context, opacity, child) => Opacity(
+                        opacity: opacity,
+                        child: child,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+                              theme.colorScheme.surfaceContainerHigh.withAlpha(80),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.person_2_rounded,
+                            color: theme.colorScheme.tertiary.withAlpha(150),
+                            size: size / 1.5,
+                          ),
+                        ),
                       ),
                     ),
             ),
@@ -118,20 +167,28 @@ class Avatar extends StatelessWidget {
               return Positioned(
                 bottom: -3,
                 right: -3,
-                child: Container(
-                  width: 16,
-                  height: 16,
+                child: AnimatedContainer(
+                  duration: FluffyThemes.durationFast,
+                  curve: FluffyThemes.curveBounce,
+                  width: FluffyThemes.iconSizeXs,
+                  height: FluffyThemes.iconSizeXs,
                   decoration: BoxDecoration(
                     color: presenceBackgroundColor ?? theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
+                    boxShadow: FluffyThemes.shadow(
+                      context,
+                      elevation: FluffyThemes.elevationXs,
+                    ),
                   ),
                   alignment: Alignment.center,
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
                       color: dotColor,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
                       border: Border.all(
                         width: 1,
                         color: theme.colorScheme.surface,

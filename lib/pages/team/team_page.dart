@@ -85,26 +85,60 @@ class TeamPageView extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface,
-        surfaceTintColor: theme.colorScheme.surface,
-        automaticallyImplyLeading: false, // Remove back arrow
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: false,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primaryContainer.withValues(alpha: 0.08),
+                theme.colorScheme.surface,
+                theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+              ],
+            ),
+          ),
+        ),
         title: Row(
           children: [
-            // Team icon
-            Icon(
-              Icons.groups,
-              color: theme.colorScheme.primary,
-              size: 28,
+            // Team icon with gradient background
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.tertiary,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.groups_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             // Title text
             Text(
               l10n.teamPageTitle,
               style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                fontSize: 24,
                 color: theme.colorScheme.onSurface,
-                letterSpacing: -0.5,
+                letterSpacing: -0.6,
               ),
             ),
           ],
@@ -112,25 +146,32 @@ class TeamPageView extends StatelessWidget {
         centerTitle: false,
         elevation: 0,
         actions: [
-          // Wallet button
-          IconButton(
-            icon: Icon(
-              Icons.account_balance_wallet_outlined,
-              color: theme.colorScheme.onSurfaceVariant,
+          // Wallet button with badge style
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
             ),
-            tooltip: l10n.walletTitle,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const WalletPage(),
-                ),
-              );
-            },
+            child: IconButton(
+              icon: Icon(
+                Icons.account_balance_wallet_rounded,
+                color: theme.colorScheme.primary,
+                size: 22,
+              ),
+              tooltip: l10n.walletTitle,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const WalletPage(),
+                  ),
+                );
+              },
+            ),
           ),
-          const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
+          preferredSize: const Size.fromHeight(56),
           child: _buildTabBar(context, theme),
         ),
       ),
@@ -158,40 +199,74 @@ class TeamPageView extends StatelessWidget {
     final l10n = L10n.of(context);
 
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4),
+            theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+          ],
         ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: TabBar(
         controller: controller._tabController,
-        labelColor: theme.colorScheme.primary,
+        labelColor: Colors.white,
         unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
         labelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          fontSize: 13.5,
+          letterSpacing: 0.3,
         ),
         unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
         ),
-        indicatorSize: TabBarIndicatorSize.label,
-        indicatorWeight: 3,
-        indicatorColor: theme.colorScheme.primary,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.tertiary,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.4),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         dividerColor: Colors.transparent,
+        splashBorderRadius: BorderRadius.circular(12),
         tabs: [
           Tab(
+            height: 40,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   controller._tabController.index == 0
-                      ? Icons.people
-                      : Icons.people_outline,
-                  size: 20,
+                      ? Icons.people_rounded
+                      : Icons.people_outline_rounded,
+                  size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(l10n.employeesTab),
@@ -199,14 +274,15 @@ class TeamPageView extends StatelessWidget {
             ),
           ),
           Tab(
+            height: 40,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   controller._tabController.index == 1
-                      ? Icons.person_add
-                      : Icons.person_add_outlined,
-                  size: 20,
+                      ? Icons.person_add_rounded
+                      : Icons.person_add_alt_outlined,
+                  size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(l10n.recruitTab),
@@ -214,14 +290,15 @@ class TeamPageView extends StatelessWidget {
             ),
           ),
           Tab(
+            height: 40,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   controller._tabController.index == 2
-                      ? Icons.school
+                      ? Icons.school_rounded
                       : Icons.school_outlined,
-                  size: 20,
+                  size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(l10n.trainingTab),

@@ -51,7 +51,8 @@ class LoginView extends StatelessWidget {
                   tag: 'info-logo',
                   child: Image.asset('assets/banner_transparent.png'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+                // 用户名输入框
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: TextField(
@@ -65,15 +66,43 @@ class LoginView extends StatelessWidget {
                     autofillHints:
                         controller.loading ? null : [AutofillHints.username],
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.account_box_outlined),
+                      prefixIcon: Icon(
+                        Icons.person_rounded,
+                        color: theme.colorScheme.primary,
+                      ),
                       errorText: controller.usernameError,
-                      errorStyle: const TextStyle(color: Colors.orange),
+                      errorStyle: TextStyle(color: theme.colorScheme.error),
                       hintText: '@username:domain',
                       labelText: L10n.of(context).emailOrUsername,
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant.withAlpha(60),
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
+                // 密码输入框
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: TextField(
@@ -86,38 +115,94 @@ class LoginView extends StatelessWidget {
                     obscureText: !controller.showPassword,
                     onSubmitted: (_) => controller.login(),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_outlined),
+                      prefixIcon: Icon(
+                        Icons.lock_rounded,
+                        color: theme.colorScheme.primary,
+                      ),
                       errorText: controller.passwordError,
-                      errorStyle: const TextStyle(color: Colors.orange),
+                      errorStyle: TextStyle(color: theme.colorScheme.error),
                       suffixIcon: IconButton(
                         onPressed: controller.toggleShowPassword,
                         icon: Icon(
                           controller.showPassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: Colors.black,
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       hintText: '******',
                       labelText: L10n.of(context).password,
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant.withAlpha(60),
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+                // 登录按钮
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: controller.loading ? null : controller.login,
+                      child: controller.loading
+                          ? SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.login_rounded, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  L10n.of(context).login,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
-                    onPressed: controller.loading ? null : controller.login,
-                    child: controller.loading
-                        ? const LinearProgressIndicator()
-                        : Text(L10n.of(context).login),
                   ),
                 ),
                 const SizedBox(height: 16),
+                // 忘记密码
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: TextButton(
@@ -125,12 +210,18 @@ class LoginView extends StatelessWidget {
                         ? () {}
                         : controller.passwordForgotten,
                     style: TextButton.styleFrom(
-                      foregroundColor: theme.colorScheme.error,
+                      foregroundColor: theme.colorScheme.onSurfaceVariant,
                     ),
-                    child: Text(L10n.of(context).passwordForgotten),
+                    child: Text(
+                      L10n.of(context).passwordForgotten,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           );

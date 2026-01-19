@@ -11,6 +11,45 @@ class ChatListView extends StatelessWidget {
 
   const ChatListView(this.controller, {super.key});
 
+  Widget _buildEnhancedFAB(BuildContext context, L10n l10n) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primaryContainer,
+            theme.colorScheme.secondaryContainer,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: () => context.go('/rooms/newprivatechat'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: theme.colorScheme.onPrimaryContainer,
+        elevation: 0,
+        icon: const Icon(Icons.add_rounded),
+        label: Text(
+          l10n.chat,
+          overflow: TextOverflow.fade,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -34,14 +73,7 @@ class ChatListView extends StatelessWidget {
               child: Scaffold(
                 body: ChatListViewBody(controller),
                 floatingActionButton: !controller.isSearchMode
-                    ? FloatingActionButton.extended(
-                        onPressed: () => context.go('/rooms/newprivatechat'),
-                        icon: const Icon(Icons.add_outlined),
-                        label: Text(
-                          l10n.chat,
-                          overflow: TextOverflow.fade,
-                        ),
-                      )
+                    ? _buildEnhancedFAB(context, l10n)
                     : const SizedBox.shrink(),
                 // Bottom navigation is now handled by MainScreen
               ),

@@ -503,13 +503,23 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
 
-    onRoomKeyRequestSub.values.map((s) => s.cancel());
-    onKeyVerificationRequestSub.values.map((s) => s.cancel());
-    onLoginStateChanged.values.map((s) => s.cancel());
-    onNotification.values.map((s) => s.cancel());
+    // 修复：使用 forEach 而不是 map，因为 map 是惰性的不会立即执行
+    for (final sub in onRoomKeyRequestSub.values) {
+      sub.cancel();
+    }
+    for (final sub in onKeyVerificationRequestSub.values) {
+      sub.cancel();
+    }
+    for (final sub in onLoginStateChanged.values) {
+      sub.cancel();
+    }
+    for (final sub in onNotification.values) {
+      sub.cancel();
+    }
     client.httpClient.close();
     onFocusSub?.cancel();
     onBlurSub?.cancel();
+    voiceMessageEventId.dispose();
 
     linuxNotifications?.close();
 

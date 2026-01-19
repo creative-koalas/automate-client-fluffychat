@@ -230,19 +230,64 @@ class _WalletPageState extends State<WalletPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: widget.showBackButton,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                const Color(0xFFE8F5E9).withValues(alpha: 0.3),
+              ],
+            ),
+          ),
+        ),
         iconTheme: const IconThemeData(
           color: Colors.black, // 返回按钮固定为黑色
         ),
-        title: Text(
-          l10n.walletTitle,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-            color: Colors.black, // 标题固定为黑色
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _primaryGreen,
+                    Color(0xFF66BB6A),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryGreen.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              l10n.walletTitle,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                color: Colors.black,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
         ),
         centerTitle: true,
         elevation: 0,
@@ -267,10 +312,35 @@ class _WalletPageState extends State<WalletPage> {
   Widget _buildBalanceCard(L10n l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: _lightGreen,
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE8F5E9),
+            Color(0xFFC8E6C9),
+            Color(0xFFB2DFDB),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _primaryGreen.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryGreen.withValues(alpha: 0.15),
+            blurRadius: 24,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,41 +352,57 @@ class _WalletPageState extends State<WalletPage> {
               Row(
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
                       color: _primaryGreen,
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primaryGreen.withAlpha(120),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Text(
                     l10n.walletBalance,
                     style: TextStyle(
                       color: Colors.grey[700],
                       fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
               GestureDetector(
                 onTap: _loadUserBalance,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.refresh,
-                      size: 14,
-                      color: _primaryGreen,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      l10n.walletRefresh,
-                      style: const TextStyle(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.refresh_rounded,
+                        size: 16,
                         color: _primaryGreen,
-                        fontSize: 13,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n.walletRefresh,
+                        style: const TextStyle(
+                          color: _primaryGreen,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -348,18 +434,20 @@ class _WalletPageState extends State<WalletPage> {
                         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                         (Match m) => '${m[1]},',
                       ),
-                  style: const TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey[900],
                     height: 1,
+                    letterSpacing: -1,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 Text(
                   l10n.walletCreditsUnit,
                   style: TextStyle(
                     fontSize: 18,
+                    fontWeight: FontWeight.w500,
                     color: Colors.grey[700],
                   ),
                 ),
@@ -412,15 +500,32 @@ class _WalletPageState extends State<WalletPage> {
   Widget _buildRechargeCard(L10n l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            Colors.grey[50]!.withValues(alpha: 0.5),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.grey.withValues(alpha: 0.1),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: _primaryGreen.withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -487,26 +592,37 @@ class _WalletPageState extends State<WalletPage> {
               return Expanded(
                 child: GestureDetector(
                   onTap: () => _onPresetTap(index),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
                     margin: EdgeInsets.only(
-                      right: index < _presetAmounts.length - 1 ? 8 : 0,
+                      right: index < _presetAmounts.length - 1 ? 10 : 0,
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isSelected ? _primaryGreen : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
+                      color: isSelected ? _primaryGreen : Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? _primaryGreen : Colors.grey[300]!,
-                        width: 1,
+                        color: isSelected ? _primaryGreen : Colors.grey[200]!,
+                        width: isSelected ? 2 : 1,
                       ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: _primaryGreen.withAlpha(60),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Center(
                       child: Text(
                         amount < 1 ? '¥${amount.toStringAsFixed(2)}' : '¥${amount.toInt()}',
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -529,10 +645,14 @@ class _WalletPageState extends State<WalletPage> {
 
           // 自定义金额输入（带 +/- 按钮）
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.grey[200]!,
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
@@ -601,16 +721,25 @@ class _WalletPageState extends State<WalletPage> {
                 backgroundColor: _primaryGreen,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 0,
+                shadowColor: _primaryGreen.withAlpha(80),
               ),
-              child: Text(
-                '${l10n.walletRechargeNow} ¥${_customAmount < 1 ? _customAmount.toStringAsFixed(2) : _customAmount.toInt()}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.bolt_rounded, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${l10n.walletRechargeNow} ¥${_customAmount < 1 ? _customAmount.toStringAsFixed(2) : _customAmount.toInt()}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -626,21 +755,31 @@ class _WalletPageState extends State<WalletPage> {
   }) {
     return GestureDetector(
       onTap: enabled ? onTap : null,
-      child: Container(
-        width: 40,
-        height: 40,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          color: enabled ? Colors.white : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.grey[300]!,
+            color: enabled ? Colors.grey[300]! : Colors.grey[200]!,
             width: 1,
           ),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(8),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Icon(
           icon,
-          size: 20,
-          color: enabled ? Colors.grey[700] : Colors.grey[400],
+          size: 22,
+          color: enabled ? _primaryGreen : Colors.grey[400],
         ),
       ),
     );

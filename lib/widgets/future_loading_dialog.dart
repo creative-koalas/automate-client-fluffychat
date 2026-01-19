@@ -7,6 +7,7 @@ import 'package:async/async.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
+import 'package:psygo/widgets/branded_progress_indicator.dart';
 
 /// Displays a loading dialog which reacts to the given [future]. The dialog
 /// will be dismissed and the value will be returned when the future completes.
@@ -98,40 +99,91 @@ class LoadingDialogState<T> extends State<LoadingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final exception = this.exception;
     final titleLabel = exception != null
         ? exception.toLocalizedString(context, widget.exceptionContext)
         : widget.title ?? L10n.of(context).loadingPleaseWait;
 
     return AlertDialog.adaptive(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       title: exception == null
           ? null
-          : Icon(
-              Icons.error_outline_outlined,
-              color: Theme.of(context).colorScheme.error,
-              size: 48,
+          : Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.errorContainer.withAlpha(80),
+                    theme.colorScheme.errorContainer.withAlpha(50),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.error.withAlpha(50),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                color: theme.colorScheme.error,
+                size: 40,
+              ),
             ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 256),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        constraints: const BoxConstraints(maxWidth: 280),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             if (exception == null) ...[
-              StreamBuilder(
-                stream: widget.onProgressStream,
-                builder: (context, snapshot) =>
-                    CircularProgressIndicator.adaptive(
-                  value: snapshot.data,
+              // 加载动画容器
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primaryContainer.withAlpha(60),
+                      theme.colorScheme.secondaryContainer.withAlpha(40),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withAlpha(30),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: StreamBuilder(
+                  stream: widget.onProgressStream,
+                  builder: (context, snapshot) => BrandedProgressIndicator(
+                    value: snapshot.data,
+                  ),
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(height: 20),
             ],
-            Expanded(
-              child: Text(
-                titleLabel,
-                maxLines: 4,
-                textAlign: exception == null ? TextAlign.left : null,
-                overflow: TextOverflow.ellipsis,
+            Text(
+              titleLabel,
+              maxLines: 4,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: exception == null ? 15 : 14,
+                fontWeight: exception == null ? FontWeight.w500 : FontWeight.normal,
+                color: exception == null
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.error,
               ),
             ),
           ],
@@ -147,7 +199,13 @@ class LoadingDialogState<T> extends State<LoadingDialog> {
                     stackTrace,
                   ),
                 ),
-                child: Text(widget.backLabel ?? L10n.of(context).close),
+                child: Text(
+                  widget.backLabel ?? L10n.of(context).close,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
               ),
             ],
     );

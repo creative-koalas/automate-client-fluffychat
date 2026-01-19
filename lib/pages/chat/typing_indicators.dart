@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -82,11 +81,16 @@ class TypingIndicators extends StatelessWidget {
                 const SizedBox(width: 8),
                 Material(
                   color: theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: const BorderRadius.all(
-                    Radius.circular(AppConfig.borderRadius),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withAlpha(30),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                     child: typingUsers.isEmpty ? null : const _TypingDots(),
                   ),
                 ),

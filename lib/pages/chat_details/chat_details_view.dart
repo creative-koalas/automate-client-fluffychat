@@ -56,34 +56,75 @@ class ChatDetailsView extends StatelessWidget {
           MatrixLocals(L10n.of(context)),
         );
         return Scaffold(
+          backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.95),
           appBar: AppBar(
             leading: controller.widget.embeddedCloseButton ??
                 const Center(child: BackButton()),
-            elevation: theme.appBarTheme.elevation,
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.04),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.03),
+                  ],
+                ),
+              ),
+            ),
             actions: <Widget>[
               if (room.canonicalAlias.isNotEmpty)
-                IconButton(
-                  tooltip: L10n.of(context).share,
-                  icon: const Icon(Icons.qr_code_rounded),
-                  onPressed: () => showQrCodeViewer(
-                    context,
-                    room.canonicalAlias,
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    tooltip: L10n.of(context).share,
+                    icon: Icon(
+                      Icons.qr_code_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    onPressed: () => showQrCodeViewer(
+                      context,
+                      room.canonicalAlias,
+                    ),
                   ),
                 )
               else if (directChatMatrixID != null)
-                IconButton(
-                  tooltip: L10n.of(context).share,
-                  icon: const Icon(Icons.qr_code_rounded),
-                  onPressed: () => showQrCodeViewer(
-                    context,
-                    directChatMatrixID,
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    tooltip: L10n.of(context).share,
+                    icon: Icon(
+                      Icons.qr_code_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    onPressed: () => showQrCodeViewer(
+                      context,
+                      directChatMatrixID,
+                    ),
                   ),
                 ),
               if (controller.widget.embeddedCloseButton == null)
                 ChatSettingsPopupMenu(room, false),
             ],
-            title: Text(L10n.of(context).chatDetails),
-            backgroundColor: theme.appBarTheme.backgroundColor,
+            title: Text(
+              L10n.of(context).chatDetails,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                letterSpacing: -0.3,
+              ),
+            ),
           ),
           body: MaxWidthBody(
             child: ListView.builder(
@@ -94,13 +135,60 @@ class ChatDetailsView extends StatelessWidget {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(32.0),
-                              child: Stack(
-                                children: [
-                                  Hero(
+                        Container(
+                          margin: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                theme.colorScheme.primaryContainer.withValues(alpha: 0.08),
+                                theme.colorScheme.surfaceContainerLow,
+                                theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                                blurRadius: 16,
+                                spreadRadius: -4,
+                                offset: const Offset(0, 6),
+                              ),
+                              BoxShadow(
+                                color: theme.colorScheme.shadow.withAlpha(8),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      theme.colorScheme.primary.withValues(alpha: 0.15),
+                                      theme.colorScheme.tertiary.withValues(alpha: 0.1),
+                                    ],
+                                  ),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: theme.colorScheme.surface,
+                                  ),
+                                  child: Hero(
                                     tag:
                                         controller.widget.embeddedCloseButton !=
                                                 null
@@ -140,9 +228,9 @@ class ChatDetailsView extends StatelessWidget {
                                       },
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -213,6 +301,7 @@ class ChatDetailsView extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
                         if (room.canChangeStateEvent(EventTypes.RoomTopic) ||
                             room.topic.isNotEmpty) ...[
                           Divider(color: theme.dividerColor),

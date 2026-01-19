@@ -16,45 +16,65 @@ class ClientChooserButton extends StatelessWidget {
   const ClientChooserButton(this.controller, {super.key});
 
   List<PopupMenuEntry<Object>> _bundleMenuItems(BuildContext context) {
+    final theme = Theme.of(context);
+
+    Widget buildMenuItem(IconData icon, String text, Color? iconColor) {
+      return Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (iconColor ?? theme.colorScheme.primary).withAlpha(20),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor ?? theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+
     return <PopupMenuEntry<Object>>[
       PopupMenuItem(
         value: SettingsAction.newGroup,
-        child: Row(
-          children: [
-            const Icon(Icons.group_add_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).createGroup),
-          ],
+        child: buildMenuItem(
+          Icons.group_add_rounded,
+          L10n.of(context).createGroup,
+          theme.colorScheme.tertiary,
         ),
       ),
       PopupMenuItem(
         value: SettingsAction.setStatus,
-        child: Row(
-          children: [
-            const Icon(Icons.edit_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).setStatus),
-          ],
+        child: buildMenuItem(
+          Icons.edit_rounded,
+          L10n.of(context).setStatus,
+          theme.colorScheme.secondary,
         ),
       ),
       PopupMenuItem(
         value: SettingsAction.invite,
-        child: Row(
-          children: [
-            Icon(Icons.adaptive.share_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).inviteContact),
-          ],
+        child: buildMenuItem(
+          Icons.adaptive.share_rounded,
+          L10n.of(context).inviteContact,
+          theme.colorScheme.primary,
         ),
       ),
       PopupMenuItem(
         value: SettingsAction.settings,
-        child: Row(
-          children: [
-            const Icon(Icons.settings_outlined),
-            const SizedBox(width: 18),
-            Text(L10n.of(context).settings),
-          ],
+        child: buildMenuItem(
+          Icons.settings_rounded,
+          L10n.of(context).settings,
+          theme.colorScheme.onSurfaceVariant,
         ),
       ),
     ];

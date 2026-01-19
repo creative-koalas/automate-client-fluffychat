@@ -335,42 +335,31 @@ class ChatInputRow extends StatelessWidget {
                 ),
               ),
             ),
-            Container(
-              height: height,
-              width: height,
-              alignment: Alignment.center,
-              child:
-                  // 禁用语音消息功能，始终显示发送按钮
-                  // PlatformInfos.platformCanRecord &&
-                  //         controller.sendController.text.isEmpty
-                  //     ? IconButton(
-                  //         tooltip: L10n.of(context).voiceMessage,
-                  //         onPressed: () =>
-                  //             ScaffoldMessenger.of(context).showSnackBar(
-                  //           SnackBar(
-                  //             content: Text(
-                  //               L10n.of(context)
-                  //                   .longPressToRecordVoiceMessage,
-                  //             ),
-                  //           ),
-                  //         ),
-                  //         onLongPress: () => recordingViewModel
-                  //             .startRecording(controller.room),
-                  //         style: IconButton.styleFrom(
-                  //           backgroundColor: theme.bubbleColor,
-                  //           foregroundColor: theme.onBubbleColor,
-                  //         ),
-                  //         icon: const Icon(Icons.mic_none_outlined),
-                  //       )
-                  //     :
-                  IconButton(
-                tooltip: L10n.of(context).send,
-                onPressed: controller.send,
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.bubbleColor,
-                  foregroundColor: theme.onBubbleColor,
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: AnimatedContainer(
+                duration: FluffyThemes.animationDuration,
+                curve: FluffyThemes.animationCurve,
+                height: height,
+                width: height,
+                alignment: Alignment.center,
+                child: AnimatedScale(
+                  duration: FluffyThemes.animationDuration,
+                  curve: FluffyThemes.animationCurveBounce,
+                  scale: controller.sendController.text.isNotEmpty ? 1.0 : 0.9,
+                  child: IconButton(
+                    tooltip: L10n.of(context).send,
+                    onPressed: controller.send,
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.bubbleColor,
+                      foregroundColor: theme.onBubbleColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.send_rounded, size: 22),
+                  ),
                 ),
-                icon: const Icon(Icons.send_outlined),
               ),
             ),
           ],

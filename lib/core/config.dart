@@ -4,6 +4,9 @@ library;
 /// Psygo 配置
 /// 所有环境相关配置通过 --dart-define-from-file=env.json 注入
 class PsygoConfig {
+  /// 应用名称（用于数据库隔离）
+  static const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'Psygo');
+
   /// K8s Namespace
   static const String k8sNamespace = String.fromEnvironment('K8S_NAMESPACE', defaultValue: 'dev');
 

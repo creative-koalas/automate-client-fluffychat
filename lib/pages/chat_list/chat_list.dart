@@ -383,7 +383,13 @@ class ChatListController extends State<ChatList>
     _intentDataStreamSubscription?.cancel();
     _intentFileStreamSubscription?.cancel();
     _intentUriStreamSubscription?.cancel();
+    _coolDown?.cancel();
     scrollController.removeListener(_onScroll);
+    scrollController.dispose();
+    scrolledToTop.dispose();
+    _clientStream.close();
+    searchController.dispose();
+    searchFocusNode.dispose();
     super.dispose();
   }
 

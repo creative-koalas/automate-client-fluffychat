@@ -293,13 +293,34 @@ class ChatView extends StatelessWidget {
                       controller.selectedEvents.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.only(bottom: 56.0),
-                      child: FloatingActionButton(
-                        onPressed: controller.scrollDown,
-                        heroTag: null,
-                        mini: true,
-                        backgroundColor: theme.colorScheme.surface,
-                        foregroundColor: theme.colorScheme.onSurface,
-                        child: const Icon(Icons.arrow_downward_outlined),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              theme.colorScheme.primaryContainer,
+                              theme.colorScheme.secondaryContainer,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: FloatingActionButton(
+                          onPressed: controller.scrollDown,
+                          heroTag: null,
+                          mini: true,
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: theme.colorScheme.primary,
+                          elevation: 0,
+                          child: const Icon(Icons.arrow_downward_rounded, size: 20),
+                        ),
                       ),
                     )
                   : null,

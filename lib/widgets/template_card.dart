@@ -20,55 +20,82 @@ class TemplateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-          width: 1,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.08),
+            theme.colorScheme.surfaceContainerLow,
+            theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+          ],
         ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            spreadRadius: -2,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: theme.colorScheme.shadow.withAlpha(10),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 头像
-              _buildAvatar(theme),
-              const SizedBox(height: 12),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 头像
+                _buildAvatar(theme),
+                const SizedBox(height: 16),
 
-              // 名称
-              Text(
-                template.name,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+                // 名称
+                Text(
+                  template.name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
+                const SizedBox(height: 6),
 
-              // 副标题
-              Text(
-                template.subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                // 副标题
+                Text(
+                  template.subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
-              // 技能标签
-              _buildSkillTags(theme),
-            ],
+                // 技能标签
+                _buildSkillTags(theme),
+              ],
+            ),
           ),
         ),
       ),
@@ -77,37 +104,70 @@ class TemplateCard extends StatelessWidget {
 
   Widget _buildAvatar(ThemeData theme) {
     return Container(
-      width: 64,
-      height: 64,
+      width: 80,
+      height: 80,
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.2),
+            theme.colorScheme.tertiary.withValues(alpha: 0.15),
+          ],
+        ),
       ),
-      child: template.avatarUrl != null && template.avatarUrl!.isNotEmpty
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: CustomNetworkImage(
-                template.avatarUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
+      child: Center(
+        child: Container(
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: theme.colorScheme.surface,
+          ),
+          child: Center(
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    spreadRadius: -2,
+                  ),
+                ],
               ),
-            )
-          : _buildAvatarFallback(theme),
+              child: template.avatarUrl != null && template.avatarUrl!.isNotEmpty
+                  ? ClipOval(
+                      child: CustomNetworkImage(
+                        template.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildAvatarFallback(theme),
+                      ),
+                    )
+                  : _buildAvatarFallback(theme),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildAvatarFallback(ThemeData theme) {
     return Center(
       child: Icon(
-        Icons.smart_toy_outlined,
-        size: 32,
+        Icons.smart_toy_rounded,
+        size: 36,
         color: theme.colorScheme.primary,
       ),
     );
@@ -124,8 +184,8 @@ class TemplateCard extends StatelessWidget {
 
     return Wrap(
       alignment: WrapAlignment.center,
-      spacing: 6,
-      runSpacing: 4,
+      spacing: 8,
+      runSpacing: 6,
       children: [
         ...displayTags.map((tag) => _buildTagChip(theme, tag)),
         if (hasMore)
@@ -140,12 +200,12 @@ class TemplateCard extends StatelessWidget {
 
   Widget _buildTagChip(ThemeData theme, String label, {bool isMore = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: isMore
-            ? theme.colorScheme.surfaceContainerHighest
-            : theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
+            ? theme.colorScheme.surfaceContainerHighest.withAlpha(180)
+            : theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         label,
@@ -153,7 +213,8 @@ class TemplateCard extends StatelessWidget {
           color: isMore
               ? theme.colorScheme.onSurfaceVariant
               : theme.colorScheme.primary,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
         ),
       ),
     );

@@ -76,6 +76,21 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor:
           isDesktop ? theme.scaffoldBackgroundColor : Colors.transparent,
       automaticallyImplyLeading: false,
+      flexibleSpace: isDesktop
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.04),
+                    theme.scaffoldBackgroundColor,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.03),
+                  ],
+                ),
+              ),
+            )
+          : null,
       title: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -88,84 +103,147 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
               final hide = client.onSync.value != null &&
                   status.status != SyncStatus.error &&
                   client.prevBatch != null;
-              return TextField(
-                controller: controller.searchController,
-                focusNode: controller.searchFocusNode,
-                textInputAction: TextInputAction.search,
-                onChanged: (text) => controller.onSearchEnter(
-                  text,
-                  globalSearch: globalSearch,
+              return AnimatedContainer(
+                duration: FluffyThemes.animationDuration,
+                curve: FluffyThemes.animationCurve,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: controller.isSearchMode
+                        ? [
+                            theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                            theme.colorScheme.surfaceContainerHigh,
+                          ]
+                        : [
+                            theme.colorScheme.surfaceContainerHigh,
+                            theme.colorScheme.surfaceContainer.withValues(alpha: 0.8),
+                          ],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  border: controller.isSearchMode
+                      ? Border.all(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                          width: 1.5,
+                        )
+                      : Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                  boxShadow: controller.isSearchMode
+                      ? [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 3),
+                          ),
+                          BoxShadow(
+                            color: theme.colorScheme.shadow.withAlpha(8),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: theme.colorScheme.shadow.withAlpha(4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: theme.colorScheme.secondaryContainer,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(99),
+                child: TextField(
+                  controller: controller.searchController,
+                  focusNode: controller.searchFocusNode,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (text) => controller.onSearchEnter(
+                    text,
+                    globalSearch: globalSearch,
                   ),
-                  contentPadding: EdgeInsets.zero,
-                  hintText: hide
-                      ? L10n.of(context).searchChatsRooms
-                      : status.calcLocalizedString(context),
-                  hintStyle: TextStyle(
-                    color: status.error != null
-                        ? Colors.orange
-                        : theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.normal,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: theme.colorScheme.onSurface,
                   ),
-                  prefixIcon: hide
-                      ? controller.isSearchMode
-                          ? IconButton(
-                              tooltip: L10n.of(context).cancel,
-                              icon: const Icon(Icons.close_outlined),
-                              onPressed: controller.cancelSearch,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            )
-                          : IconButton(
-                              onPressed: controller.startSearch,
-                              icon: Icon(
-                                Icons.search_outlined,
-                                color: theme.colorScheme.onPrimaryContainer,
+                  decoration: InputDecoration(
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 14,
+                    ),
+                    hintText: hide
+                        ? L10n.of(context).searchChatsRooms
+                        : status.calcLocalizedString(context),
+                    hintStyle: TextStyle(
+                      color: status.error != null
+                          ? Colors.orange
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 15,
+                    ),
+                    prefixIcon: hide
+                        ? AnimatedSwitcher(
+                            duration: FluffyThemes.animationDuration,
+                            transitionBuilder: (child, animation) =>
+                                ScaleTransition(scale: animation, child: child),
+                            child: controller.isSearchMode
+                                ? IconButton(
+                                    key: const ValueKey('close'),
+                                    tooltip: L10n.of(context).cancel,
+                                    icon: const Icon(Icons.arrow_back_rounded),
+                                    onPressed: controller.cancelSearch,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  )
+                                : IconButton(
+                                    key: const ValueKey('search'),
+                                    onPressed: controller.startSearch,
+                                    icon: Icon(
+                                      Icons.search_rounded,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: status.progress,
+                                valueColor: status.error != null
+                                    ? const AlwaysStoppedAnimation<Color>(
+                                        Colors.orange,
+                                      )
+                                    : AlwaysStoppedAnimation<Color>(
+                                        theme.colorScheme.primary,
+                                      ),
                               ),
-                            )
-                      : Container(
-                          margin: const EdgeInsets.all(12),
-                          width: 8,
-                          height: 8,
-                          child: Center(
-                            child: CircularProgressIndicator.adaptive(
-                              strokeWidth: 2,
-                              value: status.progress,
-                              valueColor: status.error != null
-                                  ? const AlwaysStoppedAnimation<Color>(
-                                      Colors.orange,
-                                    )
-                                  : null,
                             ),
                           ),
-                        ),
-                  // PC端头像功能已移至左侧边栏，这里不再显示
-                  suffixIcon: controller.isSearchMode && globalSearch
-                      ? controller.isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(
-                                vertical: 10.0,
-                                horizontal: 12,
-                              ),
-                              child: SizedBox.square(
-                                dimension: 24,
-                                child: CircularProgressIndicator.adaptive(
-                                  strokeWidth: 2,
+                    suffixIcon: controller.isSearchMode && globalSearch
+                        ? controller.isSearching
+                            ? Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: theme.colorScheme.primary,
+                                  ),
                                 ),
+                              )
+                            : null
+                        : isDesktop
+                            ? null
+                            : SizedBox(
+                                width: 0,
+                                child: ClientChooserButton(controller),
                               ),
-                            )
-                          : null
-                      : isDesktop
-                          ? null // PC端不显示头像
-                          : SizedBox(
-                              width: 0,
-                              child: ClientChooserButton(controller),
-                            ), // 移动端保留头像，使用原有布局
+                  ),
                 ),
               );
             },

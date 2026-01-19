@@ -52,19 +52,37 @@ class LoginScaffold extends StatelessWidget {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Material(
-                  borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-                  clipBehavior: Clip.hardEdge,
-                  elevation: theme.appBarTheme.scrolledUnderElevation ?? 4,
-                  shadowColor: theme.appBarTheme.shadowColor,
-                  child: ConstrainedBox(
-                    constraints: isMobileMode
-                        ? const BoxConstraints()
-                        : const BoxConstraints(maxWidth: 480, maxHeight: 640),
-                    child: Scaffold(
-                      key: const Key('LoginScaffold'),
-                      appBar: appBar,
-                      body: SafeArea(child: body),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withAlpha(15),
+                        blurRadius: 32,
+                        offset: const Offset(0, 8),
+                        spreadRadius: 4,
+                      ),
+                      BoxShadow(
+                        color: theme.colorScheme.shadow.withAlpha(20),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    borderRadius: BorderRadius.circular(24),
+                    clipBehavior: Clip.hardEdge,
+                    elevation: 0,
+                    color: theme.colorScheme.surface,
+                    child: ConstrainedBox(
+                      constraints: isMobileMode
+                          ? const BoxConstraints()
+                          : const BoxConstraints(maxWidth: 480, maxHeight: 680),
+                      child: Scaffold(
+                        key: const Key('LoginScaffold'),
+                        appBar: appBar,
+                        body: SafeArea(child: body),
+                      ),
                     ),
                   ),
                 ),
@@ -85,7 +103,27 @@ class _PrivacyButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final shadowTextStyle = TextStyle(color: theme.colorScheme.secondary);
+
+    Widget buildButton(String text, VoidCallback onPressed) {
+      return TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 64,
       child: Padding(
@@ -93,33 +131,48 @@ class _PrivacyButtons extends StatelessWidget {
         child: Row(
           mainAxisAlignment: mainAxisAlignment,
           children: [
-            TextButton(
-              onPressed: () => launchUrlString(AppConfig.website),
-              child: Text(
-                L10n.of(context).website,
-                style: shadowTextStyle,
+            buildButton(
+              L10n.of(context).website,
+              () => launchUrlString(AppConfig.website),
+            ),
+            Container(
+              width: 4,
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outline.withAlpha(60),
+                shape: BoxShape.circle,
               ),
             ),
-            TextButton(
-              onPressed: () => launchUrlString(AppConfig.supportUrl),
-              child: Text(
-                L10n.of(context).help,
-                style: shadowTextStyle,
+            buildButton(
+              L10n.of(context).help,
+              () => launchUrlString(AppConfig.supportUrl),
+            ),
+            Container(
+              width: 4,
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outline.withAlpha(60),
+                shape: BoxShape.circle,
               ),
             ),
-            TextButton(
-              onPressed: () => launchUrl(AppConfig.privacyUrl),
-              child: Text(
-                L10n.of(context).privacy,
-                style: shadowTextStyle,
+            buildButton(
+              L10n.of(context).privacy,
+              () => launchUrl(AppConfig.privacyUrl),
+            ),
+            Container(
+              width: 4,
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outline.withAlpha(60),
+                shape: BoxShape.circle,
               ),
             ),
-            TextButton(
-              onPressed: () => PlatformInfos.showDialog(context),
-              child: Text(
-                L10n.of(context).about,
-                style: shadowTextStyle,
-              ),
+            buildButton(
+              L10n.of(context).about,
+              () => PlatformInfos.showDialog(context),
             ),
           ],
         ),

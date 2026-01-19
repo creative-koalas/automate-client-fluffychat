@@ -129,19 +129,24 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
   Widget _buildSuccessCard(L10n l10n) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+      padding: const EdgeInsets.fromLTRB(28, 48, 28, 36),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
           color: _emeraldLight,
-          width: 1.5,
+          width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: _emeraldGreen.withValues(alpha: 0.08),
-            blurRadius: 40,
-            offset: const Offset(0, 8),
+            color: _emeraldGreen.withValues(alpha: 0.12),
+            blurRadius: 48,
+            offset: const Offset(0, 12),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -156,10 +161,10 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
           const Text(
             '充值成功',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
               color: _emeraldGreen,
-              letterSpacing: 1,
+              letterSpacing: 1.5,
             ),
           ),
           const SizedBox(height: 32),
@@ -318,25 +323,32 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
   Widget _buildDoneButton() {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 56,
       child: ElevatedButton(
         onPressed: () => Navigator.of(context).pop(true),
         style: ElevatedButton.styleFrom(
           backgroundColor: _emeraldGreen,
           foregroundColor: Colors.white,
           elevation: 0,
-          shadowColor: _emeraldGreen.withValues(alpha: 0.3),
+          shadowColor: _emeraldGreen.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: const Text(
-          '完成',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline_rounded, size: 20),
+            SizedBox(width: 8),
+            Text(
+              '完成',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
       ),
     );

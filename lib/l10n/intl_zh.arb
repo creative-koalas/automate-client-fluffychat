@@ -3922,5 +3922,15 @@
     "trialHint": "到期后员工将被删除，但聊天记录会保留",
     "@trialHint": {},
     "aiContentDisclaimer": "内容由AI生成，请仔细甄别",
-    "@aiContentDisclaimer": {}
+    "@aiContentDisclaimer": {},
+    "styleUpdated": "风格更新成功",
+    "@styleUpdated": {},
+    "updateFailed": "更新失败",
+    "@updateFailed": {},
+    "workStyle": "工作风格",
+    "@workStyle": {},
+    "communicationStyle": "沟通风格",
+    "@communicationStyle": {},
+    "reportStyle": "汇报风格",
+    "@reportStyle": {}
 }
