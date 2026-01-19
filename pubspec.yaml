@@ -122,8 +122,8 @@ flutter_launcher_icons:
   ios: false
   macos:
     generate: true
-    image_path: "assets/logo_opaque_white_bg.png"
-  image_path: "assets/logo_opaque_white_bg.png"
+    image_path: "assets/logo.png"
+  image_path: "assets/logo.png"
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/logo.png"
 

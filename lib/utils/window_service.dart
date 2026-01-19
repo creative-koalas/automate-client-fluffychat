@@ -29,11 +29,22 @@ class WindowService with TrayListener {
       String iconPath;
       if (Platform.isWindows) {
         iconPath = 'assets/logo.ico';
+      } else if (Platform.isLinux) {
+        iconPath = 'assets/logo.ico';
       } else {
         iconPath = 'assets/logo_opaque.png';
       }
 
-      await trayManager.setIcon(iconPath);
+      if (Platform.isLinux) {
+        try {
+          await trayManager.setIcon(iconPath);
+        } catch (_) {
+          iconPath = 'assets/logo_opaque.png';
+          await trayManager.setIcon(iconPath);
+        }
+      } else {
+        await trayManager.setIcon(iconPath);
+      }
 
       // Linux 的 tray_manager 插件没有实现 setToolTip，只在 Windows/macOS 上调用
       if (!Platform.isLinux) {
