@@ -217,16 +217,21 @@ abstract class ClientManager {
     }
 
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final iconUri =
+        Platform.isWindows ? WindowsImage.getAssetUri('assets/logo.png') : null;
 
     await flutterLocalNotificationsPlugin.initialize(
-      const InitializationSettings(
-        android: AndroidInitializationSettings('notifications_icon'),
-        iOS: DarwinInitializationSettings(),
-        windows: WindowsInitializationSettings(
-        appName: 'Psygo',
-        appUserModelId: 'com.psygo.app',
-        guid:'8af2f2bb-4f08-4ac1-824e-977080f91d42',
-      ),
+      InitializationSettings(
+        android: const AndroidInitializationSettings('notifications_icon'),
+        iOS: const DarwinInitializationSettings(),
+        windows: Platform.isWindows
+            ? WindowsInitializationSettings(
+                appName: AppSettings.applicationName.value,
+                appUserModelId: 'com.psygo.app',
+                guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
+                iconPath: iconUri!.toFilePath(),
+              )
+            : null,
       ),
     );
 
@@ -234,14 +239,25 @@ abstract class ClientManager {
       0,
       title,
       body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
+      NotificationDetails(
+        android: const AndroidNotificationDetails(
           'error_message',
           'Error Messages',
           importance: Importance.high,
           priority: Priority.max,
         ),
-        iOS: DarwinNotificationDetails(sound: 'notification.caf'),
+        iOS: const DarwinNotificationDetails(sound: 'notification.caf'),
+        windows: Platform.isWindows
+            ? WindowsNotificationDetails(
+                images: [
+                  WindowsImage(
+                    iconUri!,
+                    altText: AppSettings.applicationName.value,
+                    placement: WindowsImagePlacement.appLogoOverride,
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }
