@@ -142,6 +142,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _blockedByForceUpdate = false;  // Track if blocked by force update
   bool _isLoggingOut = false;  // 防止登出过程中重复触发一键登录
   bool _pendingOneClickLogin = false;  // 延迟触发一键登录（等待 app 回到前台）
+  bool _forceManualLogin = false;  // 一键登录预取号失败后，直接进入手动登录入口
 
   // Sync error tracking
   StreamSubscription? _syncStatusSubscription;
@@ -188,6 +189,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     final auth = context.read<PsygoAuthState>();
     debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}, onboardingCompleted=${auth.onboardingCompleted}');
+
+    if (auth.isLoggedIn && _forceManualLogin) {
+      _forceManualLogin = false;
+    }
 
     // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
@@ -306,6 +311,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         AgreementCheckService.onAppResumed();
       }
 
+      if (_forceManualLogin) {
+        debugPrint('[AuthGate] Manual login mode active, skipping auto one-click retry');
+        return;
+      }
+
       // 如果有延迟的一键登录请求，现在执行
       if (_pendingOneClickLogin) {
         debugPrint('[AuthGate] Executing pending one-click login after app resumed');
@@ -354,6 +364,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Future<void> _checkAuthStateSafe() async {
+    if (_forceManualLogin) {
+      debugPrint('[AuthGate] Manual login mode active, skipping auth check');
+      return;
+    }
+
     try {
       await _checkAuthState();
     } catch (e, s) {
@@ -378,6 +393,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Future<void> _checkAuthState() async {
+    if (_forceManualLogin) {
+      debugPrint('[AuthGate] Manual login mode active, skipping auth check');
+      return;
+    }
+
     final auth = context.read<PsygoAuthState>();
     final api = context.read<PsygoApiClient>();
 
@@ -606,6 +626,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // Check if user cancelled
       final errorStr = e.toString();
+      if (errorStr.contains('预取号失败')) {
+        debugPrint('[AuthGate] Pre-login failed, redirecting to manual login');
+        _forceManualLogin = true;
+        setState(() => _state = _AuthState.needsLogin);
+        _redirectToManualLoginPage();
+        return;
+      }
+
       if (errorStr.contains('USER_CANCEL') || errorStr.contains('用户取消')) {
         // User cancelled, redirect to login page for other options
         _redirectToLoginPage();
@@ -890,6 +918,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final router = GoRouter.of(ctx);
       if (router.routerDelegate.currentConfiguration.fullPath != '/login-signup') {
         router.go('/login-signup');
+      }
+    });
+  }
+
+  void _redirectToManualLoginPage() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (PsygoApp.router.routerDelegate.currentConfiguration.fullPath != '/login-signup') {
+        PsygoApp.router.go('/login-signup');
       }
     });
   }
@@ -1229,6 +1266,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // 移动端：需要登录时显示加载界面，等待一键登录 SDK 弹出
         // 这样可以避免短暂显示聊天列表后再弹出登录页
         if (PlatformInfos.isMobile) {
+          if (_forceManualLogin) {
+            return widget.child ?? const SizedBox.shrink();
+          }
           return _buildLoadingScreen('正在准备登录...');
         }
         // PC端/Web端：显示登录页面
