@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:emoji_picker_flutter/locales/default_emoji_set_locale.dart';
 import 'package:matrix/matrix.dart';
+import 'package:path/path.dart' as path_lib;
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
@@ -25,6 +26,8 @@ class ChatInputRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasPendingAttachments =
+        PlatformInfos.isDesktop && controller.hasPendingAttachments;
 
     const height = 48.0;
 
@@ -300,43 +303,54 @@ class ChatInputRow extends StatelessWidget {
                   actions: <Type, Action<Intent>>{
                     PasteTextIntent: _PasteFilesAction(controller),
                   },
-                  child: InputBar(
-                    room: controller.room,
-                    minLines: 1,
-                    maxLines: 8,
-                    autofocus: !PlatformInfos.isMobile,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: AppSettings.sendOnEnter.value == true &&
-                            PlatformInfos.isMobile
-                        ? TextInputAction.send
-                        : null,
-                    onSubmitted: controller.onInputBarSubmitted,
-                    onSubmitImage: controller.sendImageFromClipBoard,
-                    focusNode: controller.inputFocus,
-                    controller: controller.sendController,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.only(
-                        left: 6.0,
-                        right: 6.0,
-                        bottom: 6.0,
-                        top: 3.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasPendingAttachments)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: _PendingAttachmentsBar(controller),
+                        ),
+                      InputBar(
+                        room: controller.room,
+                        minLines: 1,
+                        maxLines: 8,
+                        autofocus: !PlatformInfos.isMobile,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: AppSettings.sendOnEnter.value == true &&
+                                PlatformInfos.isMobile
+                            ? TextInputAction.send
+                            : null,
+                        onSubmitted: controller.onInputBarSubmitted,
+                        onContentInserted:
+                            controller.handleKeyboardInsertedContent,
+                        focusNode: controller.inputFocus,
+                        controller: controller.sendController,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.only(
+                            left: 6.0,
+                            right: 6.0,
+                            bottom: 6.0,
+                            top: 3.0,
+                          ),
+                          counter: const SizedBox.shrink(),
+                          hintText: L10n.of(context).writeAMessage,
+                          hintMaxLines: 1,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          filled: false,
+                        ),
+                        onChanged: controller.onInputBarChanged,
+                        suggestionEmojis: getDefaultEmojiLocale(
+                          AppSettings.emojiSuggestionLocale.value.isNotEmpty
+                              ? Locale(AppSettings.emojiSuggestionLocale.value)
+                              : Localizations.localeOf(context),
+                        ).fold(
+                          [],
+                          (emojis, category) => emojis..addAll(category.emoji),
+                        ),
                       ),
-                      counter: const SizedBox.shrink(),
-                      hintText: L10n.of(context).writeAMessage,
-                      hintMaxLines: 1,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      filled: false,
-                    ),
-                    onChanged: controller.onInputBarChanged,
-                    suggestionEmojis: getDefaultEmojiLocale(
-                      AppSettings.emojiSuggestionLocale.value.isNotEmpty
-                          ? Locale(AppSettings.emojiSuggestionLocale.value)
-                          : Localizations.localeOf(context),
-                    ).fold(
-                      [],
-                      (emojis, category) => emojis..addAll(category.emoji),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -352,7 +366,10 @@ class ChatInputRow extends StatelessWidget {
                 child: AnimatedScale(
                   duration: FluffyThemes.animationDuration,
                   curve: FluffyThemes.animationCurveBounce,
-                  scale: controller.sendController.text.isNotEmpty ? 1.0 : 0.9,
+                  scale: controller.sendController.text.isNotEmpty ||
+                          hasPendingAttachments
+                      ? 1.0
+                      : 0.9,
                   child: IconButton(
                     tooltip: L10n.of(context).send,
                     onPressed: controller.send,
@@ -371,6 +388,179 @@ class ChatInputRow extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _PendingAttachmentsBar extends StatelessWidget {
+  final ChatController controller;
+
+  const _PendingAttachmentsBar(this.controller);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final attachments = controller.pendingAttachments;
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (controller.hasCompressiblePendingAttachments)
+            Row(
+              children: [
+                Text(
+                  'Compress media',
+                  style: theme.textTheme.labelSmall,
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: controller.pendingAttachmentsCompress,
+                  onChanged: controller.setPendingAttachmentsCompress,
+                ),
+              ],
+            ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 180),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: attachments.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              itemBuilder: (context, index) => _PendingAttachmentItem(
+                controller: controller,
+                attachment: attachments[index],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingAttachmentItem extends StatelessWidget {
+  final ChatController controller;
+  final PendingAttachment attachment;
+
+  const _PendingAttachmentItem({
+    required this.controller,
+    required this.attachment,
+  });
+
+  String _displayName() {
+    if (attachment.file.name.isNotEmpty) {
+      return attachment.file.name;
+    }
+    if (attachment.file.path.isNotEmpty) {
+      return path_lib.basename(attachment.file.path);
+    }
+    return 'attachment';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 36,
+              child: Focus(
+                onFocusChange: (hasFocus) {
+                  if (!hasFocus) {
+                    controller.reorderPendingAttachment(
+                      attachment,
+                      attachment.orderController.text,
+                    );
+                  }
+                },
+                child: TextField(
+                  controller: attachment.orderController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onTap: () {
+                    attachment.orderController.selection = TextSelection(
+                      baseOffset: 0,
+                      extentOffset: attachment.orderController.text.length,
+                    );
+                  },
+                  onSubmitted: (value) =>
+                      controller.reorderPendingAttachment(attachment, value),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.insert_drive_file_outlined,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _displayName(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: attachment.captionController,
+                    decoration: InputDecoration(
+                      hintText: 'Caption (optional)',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    maxLines: 1,
+                    textInputAction: TextInputAction.done,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 18),
+              color: theme.colorScheme.onSurfaceVariant,
+              onPressed: () => controller.removePendingAttachment(attachment),
+              tooltip: L10n.of(context).remove,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

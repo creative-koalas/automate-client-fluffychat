@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-
+import 'package:psygo/utils/resize_video.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,7 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
+import 'package:mime/mime.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'package:universal_html/html.dart' as html;
 
@@ -95,6 +97,25 @@ class ChatPageWithRoom extends StatefulWidget {
   ChatController createState() => ChatController();
 }
 
+class PendingAttachment {
+  PendingAttachment({
+    required this.id,
+    required this.file,
+    String? caption,
+  }) : captionController = TextEditingController(text: caption ?? ''),
+       orderController = TextEditingController();
+
+  final String id;
+  final XFile file;
+  final TextEditingController captionController;
+  final TextEditingController orderController;
+
+  void dispose() {
+    captionController.dispose();
+    orderController.dispose();
+  }
+}
+
 class ChatController extends State<ChatPageWithRoom>
     with WidgetsBindingObserver {
   Room get room => sendingClient.getRoomById(roomId) ?? widget.room;
@@ -127,6 +148,11 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() => dragging = false);
     if (details.files.isEmpty) return;
 
+    if (PlatformInfos.isDesktop) {
+      addPendingAttachments(details.files);
+      return;
+    }
+
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
@@ -148,6 +174,10 @@ class ChatController extends State<ChatPageWithRoom>
     }
     if (files.isEmpty) {
       return false;
+    }
+    if (PlatformInfos.isDesktop) {
+      addPendingAttachments(files);
+      return true;
     }
     await showAdaptiveDialog(
       context: context,
@@ -660,10 +690,128 @@ class ChatController extends State<ChatPageWithRoom>
     timeline = null;
     inputFocus.removeListener(_inputFocusListener);
     onFocusSub?.cancel();
+    _disposePendingAttachments();
     super.dispose();
   }
 
   TextEditingController sendController = TextEditingController();
+  final List<PendingAttachment> _pendingAttachments = [];
+  int _pendingAttachmentSerial = 0;
+  bool pendingAttachmentsCompress = true;
+
+  List<PendingAttachment> get pendingAttachments =>
+      List.unmodifiable(_pendingAttachments);
+  bool get hasPendingAttachments => _pendingAttachments.isNotEmpty;
+  bool get hasCompressiblePendingAttachments =>
+      _pendingAttachments.any(_isCompressibleAttachment);
+
+  bool _isCompressibleAttachment(PendingAttachment attachment) {
+    final path = attachment.file.path.isNotEmpty
+        ? attachment.file.path
+        : attachment.file.name;
+    final mimeType = attachment.file.mimeType ?? lookupMimeType(path);
+    if (mimeType == null) return false;
+    return mimeType.startsWith('image') || mimeType.startsWith('video');
+  }
+
+  void _syncPendingAttachmentOrderControllers() {
+    for (var i = 0; i < _pendingAttachments.length; i++) {
+      _pendingAttachments[i].orderController.text = '${i + 1}';
+    }
+  }
+
+  void _disposePendingAttachments() {
+    for (final attachment in _pendingAttachments) {
+      attachment.dispose();
+    }
+    _pendingAttachments.clear();
+  }
+
+  void addPendingAttachments(List<XFile> files) {
+    if (!PlatformInfos.isDesktop || files.isEmpty) return;
+    setState(() {
+      for (final file in files) {
+        _pendingAttachments.add(
+          PendingAttachment(
+            id: 'pending_${_pendingAttachmentSerial++}',
+            file: file,
+          ),
+        );
+      }
+      _syncPendingAttachmentOrderControllers();
+    });
+  }
+
+  void removePendingAttachment(PendingAttachment attachment) {
+    if (!_pendingAttachments.contains(attachment)) return;
+    setState(() {
+      _pendingAttachments.remove(attachment);
+      _syncPendingAttachmentOrderControllers();
+    });
+    attachment.dispose();
+  }
+
+  void reorderPendingAttachment(
+    PendingAttachment attachment,
+    String? rawIndex,
+  ) {
+    final currentIndex = _pendingAttachments.indexOf(attachment);
+    if (currentIndex == -1) return;
+    final parsedIndex = int.tryParse(rawIndex ?? '');
+    if (parsedIndex == null) {
+      setState(() => _syncPendingAttachmentOrderControllers());
+      return;
+    }
+    final clamped = parsedIndex
+        .clamp(1, _pendingAttachments.length) as int;
+    final newIndex = clamped - 1;
+    if (newIndex == currentIndex) {
+      setState(() => _syncPendingAttachmentOrderControllers());
+      return;
+    }
+    setState(() {
+      _pendingAttachments.removeAt(currentIndex);
+      _pendingAttachments.insert(newIndex, attachment);
+      _syncPendingAttachmentOrderControllers();
+    });
+  }
+
+  void setPendingAttachmentsCompress(bool value) {
+    if (pendingAttachmentsCompress == value) return;
+    setState(() => pendingAttachmentsCompress = value);
+  }
+
+  void handleKeyboardInsertedContent(KeyboardInsertedContent content) {
+    final data = content.data;
+    if (data == null) return;
+    if (PlatformInfos.isDesktop) {
+      final name = _fileNameFromInsertedContent(content.uri);
+      addPendingAttachments(
+        [XFile.fromData(data, name: name, mimeType: content.mimeType)],
+      );
+      return;
+    }
+    final file = MatrixFile(
+      mimeType: content.mimeType,
+      bytes: data,
+      name: _fileNameFromInsertedContent(content.uri),
+    );
+    room.sendFileEvent(
+      file,
+      shrinkImageMaxDimension: 1600,
+    );
+  }
+
+  String _fileNameFromInsertedContent(String uri) {
+    if (uri.isEmpty) return 'attachment';
+    final sanitized = uri.replaceAll('\\', '/');
+    final parts = sanitized.split('/');
+    for (var i = parts.length - 1; i >= 0; i--) {
+      final part = parts[i].trim();
+      if (part.isNotEmpty) return part;
+    }
+    return 'attachment';
+  }
 
   void setSendingClient(Client c) {
     // first cancel typing with the old sending client
@@ -692,7 +840,19 @@ class ChatController extends State<ChatPageWithRoom>
       });
 
   Future<void> send() async {
-    if (sendController.text.trim().isEmpty) return;
+    final trimmedText = sendController.text.trim();
+    final hasPending = PlatformInfos.isDesktop && _pendingAttachments.isNotEmpty;
+    if (!hasPending && trimmedText.isEmpty) return;
+
+    if (hasPending) {
+      final sent = await _sendPendingAttachments();
+      if (!sent) return;
+    }
+
+    if (trimmedText.isEmpty) {
+      return;
+    }
+
     _storeInputTimeoutTimer?.cancel();
     final prefs = Matrix.of(context).store;
     prefs.remove('draft_$roomId');
@@ -735,6 +895,160 @@ class ChatController extends State<ChatPageWithRoom>
     });
   }
 
+  static const int _minSizeToCompress = 20 * 1000;
+
+  Future<bool> _sendPendingAttachments() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
+
+    try {
+      if (!room.otherPartyCanReceiveMessages) {
+        throw OtherPartyCanNotReceiveMessages();
+      }
+
+      _showLoadingSnackBar(scaffoldMessenger, l10n.prepareSendingAttachment);
+      final clientConfig = await room.client.getConfig();
+      final maxUploadSize = clientConfig.mUploadSize ?? 100 * 1000 * 1000;
+
+      final attachments = List<PendingAttachment>.from(_pendingAttachments);
+      for (var i = 0; i < attachments.length; i++) {
+        final attachment = attachments[i];
+        final xfile = attachment.file;
+        final length = await xfile.length();
+        final mimeType = xfile.mimeType ??
+            lookupMimeType(xfile.path.isNotEmpty ? xfile.path : xfile.name);
+
+        if (length > maxUploadSize) {
+          throw FileTooBigMatrixException(length, maxUploadSize);
+        }
+
+        MatrixFile file;
+        MatrixImageFile? thumbnail;
+
+        if (PlatformInfos.isMobile &&
+            mimeType != null &&
+            mimeType.startsWith('video')) {
+          _showLoadingSnackBar(scaffoldMessenger, l10n.generatingVideoThumbnail);
+          thumbnail = await xfile.getVideoThumbnail();
+          _showLoadingSnackBar(scaffoldMessenger, l10n.compressVideo);
+          file = await xfile.getVideoInfo(
+            compress: length > _minSizeToCompress && pendingAttachmentsCompress,
+          );
+        } else {
+          file = MatrixFile(
+            bytes: await xfile.readAsBytes(),
+            name: xfile.name,
+            mimeType: mimeType,
+          ).detectFileType;
+        }
+
+        if (file.bytes.length > maxUploadSize) {
+          throw FileTooBigMatrixException(length, maxUploadSize);
+        }
+
+        if (attachments.length > 1) {
+          _showLoadingSnackBar(
+            scaffoldMessenger,
+            l10n.sendingAttachmentCountOfCount(i + 1, attachments.length),
+          );
+        }
+
+        final caption = attachment.captionController.text.trim();
+        try {
+          await room.sendFileEvent(
+            file,
+            thumbnail: thumbnail,
+            shrinkImageMaxDimension: pendingAttachmentsCompress ? 1600 : null,
+            extraContent: caption.isEmpty ? null : {'body': caption},
+            threadRootEventId: activeThreadId,
+            threadLastEventId: threadLastEventId,
+          );
+        } on MatrixException catch (e) {
+          final retryAfterMs = e.retryAfterMs;
+          if (e.error != MatrixError.M_LIMIT_EXCEEDED || retryAfterMs == null) {
+            rethrow;
+          }
+          final retryAfterDuration =
+              Duration(milliseconds: retryAfterMs + 1000);
+
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                l10n.serverLimitReached(retryAfterDuration.inSeconds),
+              ),
+            ),
+          );
+          await Future.delayed(retryAfterDuration);
+
+          _showLoadingSnackBar(scaffoldMessenger, l10n.sendingAttachment);
+
+          await room.sendFileEvent(
+            file,
+            thumbnail: thumbnail,
+            shrinkImageMaxDimension: pendingAttachmentsCompress ? 1600 : null,
+            extraContent: caption.isEmpty ? null : {'body': caption},
+            threadRootEventId: activeThreadId,
+            threadLastEventId: threadLastEventId,
+          );
+        }
+
+        removePendingAttachment(attachment);
+      }
+
+      scaffoldMessenger.clearSnackBars();
+      return true;
+    } catch (e) {
+      scaffoldMessenger.clearSnackBars();
+      _showAttachmentError(scaffoldMessenger, e);
+      return false;
+    }
+  }
+
+  void _showLoadingSnackBar(
+    ScaffoldMessengerState scaffoldMessenger,
+    String title,
+  ) {
+    scaffoldMessenger.clearSnackBars();
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(minutes: 5),
+        dismissDirection: DismissDirection.none,
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator.adaptive(
+                strokeWidth: 2,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(title),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAttachmentError(
+    ScaffoldMessengerState scaffoldMessenger,
+    Object error,
+  ) {
+    final theme = Theme.of(context);
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        backgroundColor: theme.colorScheme.errorContainer,
+        closeIconColor: theme.colorScheme.onErrorContainer,
+        content: Text(
+          error.toLocalizedString(context),
+          style: TextStyle(color: theme.colorScheme.onErrorContainer),
+        ),
+        duration: const Duration(seconds: 30),
+        showCloseIcon: true,
+      ),
+    );
+  }
+
   void sendFileAction({FileSelectorType type = FileSelectorType.any}) async {
     final files = await selectFiles(
       context,
@@ -742,6 +1056,10 @@ class ChatController extends State<ChatPageWithRoom>
       type: type,
     );
     if (files.isEmpty) return;
+    if (PlatformInfos.isDesktop) {
+      addPendingAttachments(files);
+      return;
+    }
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
@@ -756,6 +1074,12 @@ class ChatController extends State<ChatPageWithRoom>
 
   void sendImageFromClipBoard(Uint8List? image) async {
     if (image == null) return;
+    if (PlatformInfos.isDesktop) {
+      addPendingAttachments(
+        [XFile.fromData(image, name: 'clipboard_image.png')],
+      );
+      return;
+    }
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
