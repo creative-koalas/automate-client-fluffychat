@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:animations/animations.dart';
 import 'package:emoji_picker_flutter/locales/default_emoji_set_locale.dart';
@@ -295,42 +296,47 @@ class ChatInputRow extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 0.0),
-                child: InputBar(
-                  room: controller.room,
-                  minLines: 1,
-                  maxLines: 8,
-                  autofocus: !PlatformInfos.isMobile,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: AppSettings.sendOnEnter.value == true &&
-                          PlatformInfos.isMobile
-                      ? TextInputAction.send
-                      : null,
-                  onSubmitted: controller.onInputBarSubmitted,
-                  onSubmitImage: controller.sendImageFromClipBoard,
-                  focusNode: controller.inputFocus,
-                  controller: controller.sendController,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.only(
-                      left: 6.0,
-                      right: 6.0,
-                      bottom: 6.0,
-                      top: 3.0,
+                child: Actions(
+                  actions: <Type, Action<Intent>>{
+                    PasteTextIntent: _PasteFilesAction(controller),
+                  },
+                  child: InputBar(
+                    room: controller.room,
+                    minLines: 1,
+                    maxLines: 8,
+                    autofocus: !PlatformInfos.isMobile,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: AppSettings.sendOnEnter.value == true &&
+                            PlatformInfos.isMobile
+                        ? TextInputAction.send
+                        : null,
+                    onSubmitted: controller.onInputBarSubmitted,
+                    onSubmitImage: controller.sendImageFromClipBoard,
+                    focusNode: controller.inputFocus,
+                    controller: controller.sendController,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.only(
+                        left: 6.0,
+                        right: 6.0,
+                        bottom: 6.0,
+                        top: 3.0,
+                      ),
+                      counter: const SizedBox.shrink(),
+                      hintText: L10n.of(context).writeAMessage,
+                      hintMaxLines: 1,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      filled: false,
                     ),
-                    counter: const SizedBox.shrink(),
-                    hintText: L10n.of(context).writeAMessage,
-                    hintMaxLines: 1,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    filled: false,
-                  ),
-                  onChanged: controller.onInputBarChanged,
-                  suggestionEmojis: getDefaultEmojiLocale(
-                    AppSettings.emojiSuggestionLocale.value.isNotEmpty
-                        ? Locale(AppSettings.emojiSuggestionLocale.value)
-                        : Localizations.localeOf(context),
-                  ).fold(
-                    [],
-                    (emojis, category) => emojis..addAll(category.emoji),
+                    onChanged: controller.onInputBarChanged,
+                    suggestionEmojis: getDefaultEmojiLocale(
+                      AppSettings.emojiSuggestionLocale.value.isNotEmpty
+                          ? Locale(AppSettings.emojiSuggestionLocale.value)
+                          : Localizations.localeOf(context),
+                    ).fold(
+                      [],
+                      (emojis, category) => emojis..addAll(category.emoji),
+                    ),
                   ),
                 ),
               ),
@@ -424,6 +430,34 @@ class _ChatAccountPicker extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _PasteFilesAction extends ContextAction<PasteTextIntent> {
+  _PasteFilesAction(this.controller);
+
+  final ChatController controller;
+
+  @override
+  Future<void> invoke(PasteTextIntent intent, [BuildContext? context]) async {
+    final Action<PasteTextIntent>? fallback = callingAction;
+    if (context != null) {
+      final handled = await controller.handlePasteFilesFromClipboard(context);
+      if (handled) {
+        return;
+      }
+    }
+    fallback?.invoke(intent);
+  }
+
+  @override
+  bool isEnabled(PasteTextIntent intent, [BuildContext? context]) {
+    return callingAction?.isEnabled(intent) ?? false;
+  }
+
+  @override
+  bool consumesKey(PasteTextIntent intent) {
+    return callingAction?.consumesKey(intent) ?? false;
   }
 }
 
@@ -570,4 +604,3 @@ Widget _buildAttachmentItem({
     ),
   );
 }
-

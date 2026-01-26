@@ -139,6 +139,96 @@ class ChatController extends State<ChatPageWithRoom>
     );
   }
 
+  Future<bool> handlePasteFilesFromClipboard(BuildContext context) async {
+    List<XFile> files;
+    try {
+      files = await _filesFromClipboard();
+    } catch (_) {
+      return false;
+    }
+    if (files.isEmpty) {
+      return false;
+    }
+    await showAdaptiveDialog(
+      context: context,
+      builder: (c) => SendFileDialog(
+        files: files,
+        room: room,
+        outerContext: context,
+        threadRootEventId: activeThreadId,
+        threadLastEventId: threadLastEventId,
+      ),
+    );
+    return true;
+  }
+
+  Future<List<XFile>> _filesFromClipboard() async {
+    ClipboardData? data;
+    try {
+      data = await Clipboard.getData(Clipboard.kTextPlain);
+    } catch (_) {
+      data = null;
+    }
+    var files = _filesFromClipboardText(data?.text);
+    if (files.isNotEmpty) {
+      return files;
+    }
+    ClipboardData? uriListData;
+    try {
+      uriListData = await Clipboard.getData('text/uri-list');
+    } catch (_) {
+      uriListData = null;
+    }
+    files = _filesFromClipboardText(uriListData?.text);
+    return files;
+  }
+
+  List<XFile> _filesFromClipboardText(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return [];
+    }
+    final files = <XFile>[];
+    final seen = <String>{};
+    for (final entry in raw.split(RegExp(r'[\r\n]+'))) {
+      final file = _fileFromClipboardEntry(entry);
+      if (file == null) continue;
+      if (seen.add(file.path)) {
+        files.add(file);
+      }
+    }
+    return files;
+  }
+
+  XFile? _fileFromClipboardEntry(String entry) {
+    final trimmed = entry.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) {
+      return null;
+    }
+
+    String? path;
+    if (trimmed.startsWith('file://')) {
+      final uri = Uri.tryParse(trimmed);
+      if (uri != null) {
+        path = uri.toFilePath(windows: Platform.isWindows);
+      }
+    } else if (Platform.isWindows) {
+      if (RegExp(r'^[a-zA-Z]:[\\\\/]').hasMatch(trimmed)) {
+        path = trimmed;
+      }
+    } else if (trimmed.startsWith('/')) {
+      path = trimmed;
+    }
+
+    if (path == null) {
+      return null;
+    }
+    final file = File(path);
+    if (!file.existsSync()) {
+      return null;
+    }
+    return XFile(file.path);
+  }
+
   bool get canSaveSelectedEvent =>
       selectedEvents.length == 1 &&
       {
