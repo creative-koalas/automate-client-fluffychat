@@ -2,7 +2,21 @@
 #define __Tray_H__
 
 #include <gtk/gtk.h>
+#if defined(APPINDICATOR_IS_AYATANA)
+#if defined(__has_include)
+#if __has_include(<libayatana-appindicator/app-indicator.h>)
+#include <libayatana-appindicator/app-indicator.h>
+#elif __has_include(<ayatana-appindicator/app-indicator.h>)
+#include <ayatana-appindicator/app-indicator.h>
+#else
+#include <libayatana-appindicator/app-indicator.h>
+#endif
+#else
+#include <libayatana-appindicator/app-indicator.h>
+#endif
+#else
 #include <libappindicator/app-indicator.h>
+#endif
 
 typedef AppIndicator* (*app_indicator_new_fun)(const gchar*,
                                                const gchar*,

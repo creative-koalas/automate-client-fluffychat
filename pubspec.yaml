@@ -92,7 +92,8 @@ dependencies:
   wakelock_plus: ^1.3.3
   webrtc_interface: ^1.3.0
   window_manager: ^0.5.1
-  system_tray: ^0.1.1  # 系统托盘支持
+  system_tray:
+    path: third_party/system_tray  # 系统托盘支持（本地补丁）
   xdg_status_notifier_item: ^0.0.1  # Linux 托盘点击事件
   connectivity_plus: ^7.0.0
 
@@ -112,11 +113,6 @@ dev_dependencies:
 import_sorter:
   ignored_files: # Optional, defaults to []
     - \/lib\/l10n
-
-dependency_overrides:
-  # Local patch to use ayatana-appindicator when appindicator3 is unavailable.
-  system_tray:
-    path: third_party/system_tray
 
 flutter_native_splash:
   color: "#ffffff"
@@ -156,4 +152,3 @@ flutter:
 # 1. Don't do it if you can avoid it or fix it upstream in a manageable time
 # 2. Always link an (upstream?) issue
 # 3. Explain how and when this can be removed (overrides must be temporarily)
-dependency_overrides:

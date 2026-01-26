@@ -18,9 +18,9 @@ class WindowService {
   static const String _trayEventLeftDoubleClick = 'leftMouseDblClk';
   static const String _trayEventRightUp = 'rightMouseUp';
   static StatusNotifierItemClient? _linuxTrayClient;
-  static DateTime? _lastLinuxActivateAt;
-  static const Duration _linuxDoubleClickThreshold =
-      Duration(milliseconds: 400);
+  static const Duration _linuxTrayLeftClickDelay = Duration(milliseconds: 80);
+  static int _linuxTrayShowToken = 0;
+  static bool? _isGnomeDesktopCache;
 
   static const Size loginWindowSize = Size(420, 580);
   static const Size mainWindowSize = Size(1280, 720);
@@ -118,7 +118,14 @@ class WindowService {
 
   static Future<void> _initLinuxTray() async {
     final iconPath = _linuxTrayIconPath();
+    final bool forceShowOnMenu = _isGnomeDesktop();
     final menu = DBusMenuItem(
+      onAboutToShow: () async {
+        if (forceShowOnMenu) {
+          _scheduleLinuxTrayShowWindow();
+        }
+        return false;
+      },
       children: [
         DBusMenuItem(label: '显示窗口', onClicked: () async => showWindow()),
         DBusMenuItem.separator(),
@@ -130,13 +137,25 @@ class WindowService {
       id: 'psygo',
       iconName: iconPath,
       menu: menu,
-      onActivate: (_, __) async => _handleLinuxActivate(),
+      onContextMenu: forceShowOnMenu
+          ? (_, __) async => _scheduleLinuxTrayShowWindow()
+          : null,
+      onActivate: (_, __) async {
+        if (forceShowOnMenu) {
+          _scheduleLinuxTrayShowWindow();
+          return;
+        }
+        _handleLinuxActivate();
+      },
+      onSecondaryActivate: forceShowOnMenu
+          ? (_, __) async => _scheduleLinuxTrayShowWindow()
+          : null,
     );
     await _linuxTrayClient!.connect();
   }
 
   static String _linuxTrayIconPath() {
-    const assetPath = 'assets/logo_opaque.png';
+    const assetPath = 'assets/logo.png';
     final resolved = path.joinAll([
       path.dirname(Platform.resolvedExecutable),
       'data/flutter_assets',
@@ -146,15 +165,33 @@ class WindowService {
   }
 
   static void _handleLinuxActivate() {
-    final now = DateTime.now();
-    final lastClick = _lastLinuxActivateAt;
-    if (lastClick != null &&
-        now.difference(lastClick) <= _linuxDoubleClickThreshold) {
-      _lastLinuxActivateAt = null;
-      showWindow();
-      return;
+    showWindow();
+  }
+
+  static void _scheduleLinuxTrayShowWindow() {
+    final int token = ++_linuxTrayShowToken;
+    Future.delayed(_linuxTrayLeftClickDelay, () async {
+      if (token != _linuxTrayShowToken) {
+        return;
+      }
+      await showWindow();
+    });
+  }
+
+  static bool _isGnomeDesktop() {
+    if (!Platform.isLinux) {
+      return false;
     }
-    _lastLinuxActivateAt = now;
+    if (_isGnomeDesktopCache != null) {
+      return _isGnomeDesktopCache!;
+    }
+    final env = [
+      Platform.environment['XDG_CURRENT_DESKTOP'],
+      Platform.environment['XDG_SESSION_DESKTOP'],
+      Platform.environment['DESKTOP_SESSION'],
+    ].whereType<String>().join(':').toLowerCase();
+    _isGnomeDesktopCache = env.contains('gnome');
+    return _isGnomeDesktopCache!;
   }
 
   /// 显示窗口

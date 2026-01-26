@@ -10,6 +10,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(APPINDICATOR QUIET IMPORTED_TARGET appindicator3-0.1)
 if(NOT APPINDICATOR_FOUND)
   pkg_check_modules(APPINDICATOR REQUIRED IMPORTED_TARGET ayatana-appindicator3-0.1)
+  set(APPINDICATOR_IS_AYATANA TRUE)
 endif()
 
 add_library(${PLUGIN_NAME} SHARED
@@ -26,6 +27,9 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::APPINDICATOR)
+if(APPINDICATOR_IS_AYATANA)
+  target_compile_definitions(${PLUGIN_NAME} PRIVATE APPINDICATOR_IS_AYATANA)
+endif()
 
 # List of absolute paths to libraries that should be bundled with the plugin
 set(system_tray_bundled_libraries
