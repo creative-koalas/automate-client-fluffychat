@@ -193,24 +193,25 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<List<XFile>> _filesFromClipboard() async {
-    ClipboardData? data;
-    try {
-      data = await Clipboard.getData(Clipboard.kTextPlain);
-    } catch (_) {
-      data = null;
+    for (final format in const [
+      Clipboard.kTextPlain,
+      'text/uri-list',
+      'x-special/gnome-copied-files',
+      'x-special/nautilus-clipboard',
+      'application/x-gtk-file-list',
+    ]) {
+      ClipboardData? data;
+      try {
+        data = await Clipboard.getData(format);
+      } catch (_) {
+        data = null;
+      }
+      final files = _filesFromClipboardText(data?.text);
+      if (files.isNotEmpty) {
+        return files;
+      }
     }
-    var files = _filesFromClipboardText(data?.text);
-    if (files.isNotEmpty) {
-      return files;
-    }
-    ClipboardData? uriListData;
-    try {
-      uriListData = await Clipboard.getData('text/uri-list');
-    } catch (_) {
-      uriListData = null;
-    }
-    files = _filesFromClipboardText(uriListData?.text);
-    return files;
+    return [];
   }
 
   List<XFile> _filesFromClipboardText(String? raw) {
