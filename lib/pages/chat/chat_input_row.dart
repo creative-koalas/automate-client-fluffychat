@@ -1,10 +1,16 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:animations/animations.dart';
 import 'package:emoji_picker_flutter/locales/default_emoji_set_locale.dart';
 import 'package:matrix/matrix.dart';
+import 'package:mime/mime.dart';
+import 'package:open_file/open_file.dart';
 import 'package:path/path.dart' as path_lib;
+import 'package:path_provider/path_provider.dart';
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
@@ -415,7 +421,7 @@ class _PendingAttachmentsBar extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Compress media',
+                  L10n.of(context).compress,
                   style: theme.textTheme.labelSmall,
                 ),
                 const SizedBox(width: 8),
@@ -460,6 +466,94 @@ class _PendingAttachmentItem extends StatelessWidget {
       return path_lib.basename(attachment.file.path);
     }
     return 'attachment';
+  }
+
+  bool _isImage() {
+    final path = attachment.file.path.isNotEmpty
+        ? attachment.file.path
+        : attachment.file.name;
+    final mimeType = attachment.file.mimeType ?? lookupMimeType(path);
+    return mimeType?.startsWith('image') ?? false;
+  }
+
+  Future<String> _ensurePreviewPath() async {
+    var path = attachment.file.path;
+    if (path.isNotEmpty) return path;
+
+    final bytes = await attachment.file.readAsBytes();
+    final tempDir = await getTemporaryDirectory();
+    final fileName = _displayName().trim().isEmpty ? 'attachment' : _displayName().trim();
+    final tempPath = path_lib.join(
+      tempDir.path,
+      '${DateTime.now().millisecondsSinceEpoch}_$fileName',
+    );
+    await File(tempPath).writeAsBytes(bytes, flush: true);
+    return tempPath;
+  }
+
+  Future<void> _openFilePreview(BuildContext context) async {
+    if (PlatformInfos.isWeb) return;
+    if (_isImage()) {
+      await showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              Center(
+                child: FutureBuilder<Uint8List>(
+                  future: attachment.file.readAsBytes(),
+                  builder: (context, snapshot) {
+                    final bytes = snapshot.data;
+                    if (bytes == null) {
+                      return const CircularProgressIndicator.adaptive();
+                    }
+                    return InteractiveViewer(
+                      minScale: 0.5,
+                      maxScale: 4.0,
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.contain,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  tooltip: L10n.of(context).close,
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
+    final path = await _ensurePreviewPath();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await OpenFile.open(path);
+      if (result.type != ResultType.done) {
+        final message = result.message.isNotEmpty
+            ? result.message
+            : L10n.of(context).open;
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text(L10n.of(context).open)),
+      );
+    }
   }
 
   @override
@@ -536,7 +630,7 @@ class _PendingAttachmentItem extends StatelessWidget {
                   TextField(
                     controller: attachment.captionController,
                     decoration: InputDecoration(
-                      hintText: 'Caption (optional)',
+                      hintText: L10n.of(context).optionalMessage,
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         vertical: 6,
@@ -551,6 +645,12 @@ class _PendingAttachmentItem extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18),
+              color: theme.colorScheme.onSurfaceVariant,
+              onPressed: () => _openFilePreview(context),
+              tooltip: L10n.of(context).open,
             ),
             IconButton(
               icon: const Icon(Icons.close, size: 18),
