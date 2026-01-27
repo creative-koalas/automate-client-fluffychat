@@ -139,10 +139,28 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _hasRetriedMatrixLogin = false;  // Track if we already retried Matrix login
   int _resumeRetryCount = 0;  // Track resume retry attempts to avoid infinite loops
   static const int _maxResumeRetries = 3;  // Max retries on resume
+  static const Set<String> _oneClickFallbackCodes = {
+    '600002', // Auth page failed to present
+    '600004', // Operator config fetch failed
+    '600005', // Device not secure
+    '600007', // No SIM detected
+    '600008', // Cellular network not available
+    '600009', // Unknown operator
+    '600010', // Unknown error
+    '600011', // Get token failed
+    '600012', // Pre-login failed
+    '600013', // Operator maintenance (unavailable)
+    '600014', // Operator maintenance (rate limit)
+    '600015', // Token request timeout
+    '600017', // App info decode failed
+    '600021', // Carrier changed
+    '600025', // Environment check failed
+    '600026', // Pre-login called while auth page open
+  };
   bool _blockedByForceUpdate = false;  // Track if blocked by force update
   bool _isLoggingOut = false;  // 防止登出过程中重复触发一键登录
   bool _pendingOneClickLogin = false;  // 延迟触发一键登录（等待 app 回到前台）
-  bool _forceManualLogin = false;  // 一键登录预取号失败后，直接进入手动登录入口
+  bool _forceManualLogin = false;  // 一键登录不可用时，直接进入手动登录入口
 
   // Sync error tracking
   StreamSubscription? _syncStatusSubscription;
@@ -626,8 +644,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // Check if user cancelled
       final errorStr = e.toString();
-      if (errorStr.contains('预取号失败')) {
-        debugPrint('[AuthGate] Pre-login failed, redirecting to manual login');
+      if (_shouldFallbackToManualLogin(errorStr)) {
+        debugPrint('[AuthGate] One-click login unavailable, redirecting to manual login');
         _forceManualLogin = true;
         setState(() => _state = _AuthState.needsLogin);
         _redirectToManualLoginPage();
@@ -654,6 +672,21 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         _errorMessage = _parseErrorMessage(errorStr);
       });
     }
+  }
+
+  bool _shouldFallbackToManualLogin(String errorStr) {
+    if (errorStr.contains('预取号失败')) {
+      return true;
+    }
+    if (errorStr.contains('蜂窝网络未开启') ||
+        errorStr.contains('未检测到sim卡') ||
+        errorStr.contains('未检测到SIM卡') ||
+        errorStr.contains('网络环境不支持')) {
+      return true;
+    }
+    final codeMatch = RegExp(r'code:\s*(\d{6})').firstMatch(errorStr);
+    final code = codeMatch?.group(1);
+    return code != null && _oneClickFallbackCodes.contains(code);
   }
 
   String _parseErrorMessage(String error) {
