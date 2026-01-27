@@ -211,7 +211,7 @@ class UnifiedCreateAgentResponse {
 
 /// 自定义创建 Agent 请求
 class CustomCreateAgentRequest {
-  final int userId;
+  final String userId;
   final String name;
   final String systemPrompt;
   final String llmProvider;

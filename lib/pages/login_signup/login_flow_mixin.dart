@@ -1,5 +1,5 @@
 /// 登录流程公共逻辑 Mixin
-/// 一键登录和验证码登录共用：邀请码弹窗、Matrix 登录、登录后跳转
+/// 一键登录和验证码登录共用：Matrix 登录、登录后跳转
 library;
 
 import 'package:flutter/material.dart';
@@ -25,103 +25,14 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
   /// 子类必须提供设置 loading 状态的方法
   void setLoading(bool loading);
 
-  /// 处理验证后的登录流程（公共逻辑）
-  /// [verifyResponse] - 验证手机号返回的结果
-  /// [onCancel] - 用户取消邀请码输入时的回调（可选）
-  /// 返回 true 表示流程继续，false 表示用户取消或出错
-  Future<bool> handlePostVerify({
-    required VerifyPhoneResponse verifyResponse,
-    VoidCallback? onCancel,
-  }) async {
-    if (!mounted) return false;
-
-    // 新用户需要输入邀请码
-    String? invitationCode;
-    if (verifyResponse.isNewUser) {
-      invitationCode = await showInvitationCodeDialog(verifyResponse.phone);
-      if (invitationCode == null) {
-        // 用户取消了
-        onCancel?.call();
-        setLoading(false);
-        return false;
-      }
-    }
-
-    debugPrint('=== 完成登录 ===');
-
-    // 循环重试邀请码，直到成功或用户取消
-    String? currentInvitationCode = invitationCode;
-    while (true) {
-      try {
-        final authResponse = await backend.completeLogin(
-          verifyResponse.pendingToken,
-          invitationCode: currentInvitationCode,
-        );
-        debugPrint('后端响应: onboardingCompleted=${authResponse.onboardingCompleted}');
-
-        if (!mounted) return false;
-
-        return await handlePostLogin(authResponse);
-      } catch (e) {
-        debugPrint('完成登录错误: $e');
-
-        // 如果是新用户且邀请码验证失败，重新显示邀请码对话框
-        if (verifyResponse.isNewUser && mounted) {
-          final errorMsg = _extractErrorMessage(e);
-          // 显示错误提示
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMsg),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-          // 重新显示邀请码对话框，让用户可以重试
-          final newInvitationCode = await showInvitationCodeDialog(verifyResponse.phone);
-          if (newInvitationCode != null && mounted) {
-            // 用户输入了新的邀请码，继续循环重试
-            currentInvitationCode = newInvitationCode;
-            continue;
-          } else {
-            // 用户取消了
-            onCancel?.call();
-            setLoading(false);
-            return false;
-          }
-        }
-
-        // 非新用户或其他错误，清除登录状态并显示错误
-        await _clearAuthState();
-        setLoginError(_extractErrorMessage(e));
-        setLoading(false);
-        return false;
-      }
-    }
-  }
-
   /// 处理登录成功后的跳转逻辑
   /// [authResponse] - 登录成功后的响应
   /// 返回 true 表示成功，false 表示出错
   Future<bool> handlePostLogin(AuthResponse authResponse) async {
     if (!mounted) return false;
 
-    if (authResponse.onboardingCompleted) {
-      // 已完成 onboarding，需要先登录 Matrix
-      debugPrint('=== 已完成 onboarding，尝试登录 Matrix ===');
-      return await loginMatrixAndRedirect();
-    } else {
-      // 需要先完成 onboarding
-      // PC端：切换到主窗口模式
-      if (PlatformInfos.isDesktop) {
-        await WindowService.switchToMainWindow();
-      }
-      // 窗口切换后 widget 可能已被卸载，使用全局 router 导航
-      if (mounted) {
-        setLoading(false);
-      }
-      // 使用全局 router，确保即使 widget 被卸载也能正常跳转
-      PsygoApp.router.go('/onboarding-chatbot');
-      return true;
-    }
+    debugPrint('=== 登录成功，尝试登录 Matrix ===');
+    return await loginMatrixAndRedirect();
   }
 
   /// 登录 Matrix 并跳转到主页
@@ -219,73 +130,6 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       }
       return false;
     }
-  }
-
-  /// 显示邀请码输入对话框
-  /// 返回邀请码，用户取消则返回 null
-  Future<String?> showInvitationCodeDialog(String maskedPhone) async {
-    final controller = TextEditingController();
-    String? errorText;
-
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('新用户注册'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '手机号：$maskedPhone',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('请输入邀请码完成注册'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: '邀请码',
-                  hintText: '请输入邀请码',
-                  prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  errorText: errorText,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                textCapitalization: TextCapitalization.characters,
-                onChanged: (_) {
-                  if (errorText != null) {
-                    setDialogState(() => errorText = null);
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(null),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final code = controller.text.trim();
-                if (code.isEmpty) {
-                  setDialogState(() => errorText = '请输入邀请码');
-                  return;
-                }
-                Navigator.of(context).pop(code);
-              },
-              child: const Text('确认'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   /// 清除登录状态（登录失败/退出登录时调用）

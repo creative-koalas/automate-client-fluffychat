@@ -26,12 +26,6 @@ class PsygoConfig {
     defaultValue: 'https://development-matrix.psygoai.com',
   );
 
-  /// Chatbot Backend URL
-  static const String chatbotBaseUrl = String.fromEnvironment(
-    'CHATBOT_BASE_URL',
-    defaultValue: 'https://development-api.psygoai.com/onboarding-chatbot',
-  );
-
   /// API 版本前缀
   static const String apiPrefix = '/api';
 

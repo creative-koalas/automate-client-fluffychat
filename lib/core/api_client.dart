@@ -197,7 +197,7 @@ class PsygoApiClient {
     }
 
     try {
-      final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/refresh');
+      final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/refresh-token');
       final response = await _httpClient.post(
         uri,
         headers: {'Content-Type': 'application/json'},
@@ -218,13 +218,18 @@ class PsygoApiClient {
       final data = json['data'] as Map<String, dynamic>;
       final newAccessToken = data['access_token'] as String;
       final expiresIn = data['expires_in'] as int;
+      final newRefreshToken = data['refresh_token'] as String?;
 
       // Update tokens
       final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-      await Future.wait([
+      final writes = <Future<void>>[
         _storage.write(key: _primaryKey, value: newAccessToken),
         _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
-      ]);
+      ];
+      if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+        writes.add(_storage.write(key: _refreshKey, value: newRefreshToken));
+      }
+      await Future.wait(writes);
 
       Logs().i('[AutomateApi] Access token refreshed successfully');
     } catch (e) {
