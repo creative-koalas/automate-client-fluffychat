@@ -421,7 +421,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         _buildSkillsList(theme, l10n),
       ],
 
-      // 沟通和汇报风格设置
+      // 沟通和汇报风格设置（临时隐藏）
+      /*
       if (employee.isReady && _availableStyles != null) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
@@ -452,6 +453,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         ),
         _buildStyleSelectors(theme, l10n),
       ],
+      */
 
       // 优化按钮（删除）
       Padding(
