@@ -476,6 +476,14 @@ class _PendingAttachmentItem extends StatelessWidget {
     return mimeType?.startsWith('image') ?? false;
   }
 
+  String _captionHint(BuildContext context) {
+    final l10n = L10n.of(context);
+    if (_isImage()) {
+      return l10n.optionalMessage;
+    }
+    return '(${l10n.optional}) ${l10n.fileName}...';
+  }
+
   Future<String> _ensurePreviewPath() async {
     var path = attachment.file.path;
     if (path.isNotEmpty) return path;
@@ -630,7 +638,7 @@ class _PendingAttachmentItem extends StatelessWidget {
                   TextField(
                     controller: attachment.captionController,
                     decoration: InputDecoration(
-                      hintText: L10n.of(context).optionalMessage,
+                      hintText: _captionHint(context),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         vertical: 6,
