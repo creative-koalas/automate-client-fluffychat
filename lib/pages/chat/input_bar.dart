@@ -23,6 +23,7 @@ class InputBar extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<Uint8List?>? onSubmitImage;
+  final ValueChanged<KeyboardInsertedContent>? onContentInserted;
   final FocusNode? focusNode;
   final TextEditingController? controller;
   final InputDecoration decoration;
@@ -38,6 +39,7 @@ class InputBar extends StatelessWidget {
     this.keyboardType,
     this.onSubmitted,
     this.onSubmitImage,
+    this.onContentInserted,
     this.focusNode,
     this.controller,
     required this.decoration,
@@ -403,8 +405,17 @@ class InputBar extends StatelessWidget {
         contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, textController),
         contentInsertionConfiguration: ContentInsertionConfiguration(
           onContentInserted: (KeyboardInsertedContent content) {
+            if (onContentInserted != null) {
+              onContentInserted!(content);
+              return;
+            }
             final data = content.data;
             if (data == null) return;
+
+            if (onSubmitImage != null) {
+              onSubmitImage!(data);
+              return;
+            }
 
             final file = MatrixFile(
               mimeType: content.mimeType,

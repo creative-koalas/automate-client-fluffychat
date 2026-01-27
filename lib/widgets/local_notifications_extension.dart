@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:image/image.dart';
 import 'package:matrix/matrix.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:window_manager/window_manager.dart';
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
@@ -76,7 +77,16 @@ extension LocalNotificationsExtension on MatrixState {
       if (kIsWeb && webHasFocus) return;
       if (PlatformInfos.isDesktop &&
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-        return;
+        try {
+          final isVisible = await windowManager.isVisible();
+          final isFocused = await windowManager.isFocused();
+          final isMinimized = await windowManager.isMinimized();
+          if (isVisible && isFocused && !isMinimized) {
+            return;
+          }
+        } catch (e, s) {
+          Logs().w('Unable to query window state for notification gating', e, s);
+        }
       }
       // 移动端：App 在前台且在当前房间时不显示通知
       if ((Platform.isAndroid || Platform.isIOS) &&
@@ -140,30 +150,34 @@ extension LocalNotificationsExtension on MatrixState {
       final hints = [NotificationHint.soundName('message-new-instant')];
 
       if (avatarUrl != null) {
-        const size = notificationAvatarDimension;
-        const thumbnailMethod = ThumbnailMethod.crop;
-        // Pre-cache so that we can later just set the thumbnail uri as icon:
-        final data = await client.downloadMxcCached(
-          avatarUrl,
-          width: size,
-          height: size,
-          thumbnailMethod: thumbnailMethod,
-          isThumbnail: true,
-          rounded: true,
-        );
-
-        final image = decodeImage(data);
-        if (image != null) {
-          final realData = image.getBytes(order: ChannelOrder.rgba);
-          hints.add(
-            NotificationHint.imageData(
-              image.width,
-              image.height,
-              realData,
-              hasAlpha: true,
-              channels: 4,
-            ),
+        try {
+          const size = notificationAvatarDimension;
+          const thumbnailMethod = ThumbnailMethod.crop;
+          // Pre-cache so that we can later just set the thumbnail uri as icon:
+          final data = await client.downloadMxcCached(
+            avatarUrl,
+            width: size,
+            height: size,
+            thumbnailMethod: thumbnailMethod,
+            isThumbnail: true,
+            rounded: true,
           );
+
+          final image = decodeImage(data);
+          if (image != null) {
+            final realData = image.getBytes(order: ChannelOrder.rgba);
+            hints.add(
+              NotificationHint.imageData(
+                image.width,
+                image.height,
+                realData,
+                hasAlpha: true,
+                channels: 4,
+              ),
+            );
+          }
+        } catch (e, s) {
+          Logs().w('Unable to load avatar for Linux notification', e, s);
         }
       }
       final notification = await linuxNotifications!.notify(
@@ -171,7 +185,7 @@ extension LocalNotificationsExtension on MatrixState {
         body: body,
         replacesId: linuxNotificationIds[roomId] ?? 0,
         appName: AppSettings.applicationName.value,
-        appIcon: 'automate',
+        appIcon: 'psygo',
         actions: [
           NotificationAction(
             'default',
@@ -185,6 +199,9 @@ extension LocalNotificationsExtension on MatrixState {
         hints: hints,
       );
       notification.action.then((actionStr) async {
+        if (actionStr == null || actionStr.isEmpty) {
+          return;
+        }
         if (actionStr == DesktopNotificationActions.seen.name) {
           event.room.setReadMarker(
             event.eventId,
