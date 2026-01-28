@@ -42,9 +42,9 @@ class WindowService {
       // 设置托盘图标
       String iconPath;
       if (Platform.isWindows) {
-        iconPath = 'assets/logo.ico';
+        iconPath = 'assets/app_icon.ico';
       } else if (Platform.isLinux) {
-        iconPath = 'assets/logo.ico';
+        iconPath = 'assets/app_icon.ico';
       } else {
         iconPath = 'assets/logo_opaque.png';
       }
