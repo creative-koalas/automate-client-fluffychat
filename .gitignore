@@ -63,6 +63,8 @@ web/Imaging.wasm
 .pub/
 /build/
 /dist/
+.flutter-sdk/
+.home/
 
 # Flutter generated files (machine-specific)
 **/local.properties
@@ -122,3 +124,5 @@ env.dev.json
 ios_build.sh
 android_build.sh
 build-linux.sh
+build-deb.sh
+env.refactor.json

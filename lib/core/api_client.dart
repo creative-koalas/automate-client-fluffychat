@@ -34,7 +34,7 @@ class ApiResponse<T> {
     return ApiResponse(
       code: json['code'] as int,
       data: fromJsonT != null && json['data'] != null ? fromJsonT(json['data']) : null,
-      message: json['msg'] as String? ?? '',
+      message: json['message'] as String? ?? '',
     );
   }
 }
@@ -207,7 +207,7 @@ class PsygoApiClient {
       // Parse response
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       if (json['code'] != 0) {
-        final errorMsg = json['msg'] as String? ?? 'Token refresh failed';
+        final errorMsg = json['message'] as String? ?? 'Token refresh failed';
         Logs().e('[AutomateApi] Token refresh failed: $errorMsg');
         // Clear tokens on refresh failure
         await _clearTokens();
@@ -266,8 +266,8 @@ class PsygoApiClient {
 
     // 处理业务错误
     if (!apiResponse.isSuccess) {
-      // Token 失效（code: 7）
-      if (apiResponse.code == 7) {
+      // Token 失效
+      if (apiResponse.code == 10002 || apiResponse.code == 10003) {
         Logs().w('[AutomateApi] Invalid token, clearing tokens');
         _clearTokens();
       }

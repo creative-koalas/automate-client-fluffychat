@@ -25,6 +25,7 @@ class PsygoApiClient {
 
   final PsygoAuthState auth;
   final Dio _dio;
+  static const Set<int> _unauthorizedCodes = {10002, 10003};
 
   /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
   Future<FusionAuthTokenResponse> getFusionAuthToken() async {
@@ -34,8 +35,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final code = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || code != 0) {
+      await _handleAuthError(code);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get fusion auth token',
+        data['message']?.toString() ?? 'Failed to get fusion auth token',
         statusCode: res.statusCode,
       );
     }
@@ -77,7 +79,7 @@ class PsygoApiClient {
       }
 
       if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+        errorMsg = responseData['message']?.toString() ?? errorMsg;
       }
       throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
     }
@@ -85,8 +87,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? '验证码发送失败',
+        data['message']?.toString() ?? '验证码发送失败',
         statusCode: res.statusCode,
       );
     }
@@ -117,8 +120,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? fallbackMessage,
+        data['message']?.toString() ?? fallbackMessage,
         statusCode: res.statusCode,
       );
     }
@@ -243,8 +247,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to create recharge order',
+        data['message']?.toString() ?? 'Failed to create recharge order',
         statusCode: res.statusCode,
       );
     }
@@ -268,8 +273,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get order status',
+        data['message']?.toString() ?? 'Failed to get order status',
         statusCode: res.statusCode,
       );
     }
@@ -297,7 +303,7 @@ class PsygoApiClient {
 
     final token = auth.primaryToken;
     final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/feedback/',
+      '${PsygoConfig.baseUrl}/api/feedback',
       data: {
         'user_id': userId,
         'content': content,
@@ -312,8 +318,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to submit feedback',
+        data['message']?.toString() ?? 'Failed to submit feedback',
         statusCode: res.statusCode,
       );
     }
@@ -335,8 +342,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get user info',
+        data['message']?.toString() ?? 'Failed to get user info',
         statusCode: res.statusCode,
       );
     }
@@ -373,8 +381,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to check app version',
+        data['message']?.toString() ?? 'Failed to check app version',
         statusCode: res.statusCode,
       );
     }
@@ -397,8 +406,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get quick start cards',
+        data['message']?.toString() ?? 'Failed to get quick start cards',
         statusCode: res.statusCode,
       );
     }
@@ -420,14 +430,15 @@ class PsygoApiClient {
   /// 返回用户协议和隐私政策的 URL
   Future<List<Agreement>> getAgreements() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/agreements/',
+      '${PsygoConfig.baseUrl}/api/agreements',
     );
 
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get agreements',
+        data['message']?.toString() ?? 'Failed to get agreements',
         statusCode: res.statusCode,
       );
     }
@@ -455,8 +466,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get agreement status',
+        data['message']?.toString() ?? 'Failed to get agreement status',
         statusCode: res.statusCode,
       );
     }
@@ -487,7 +499,7 @@ class PsygoApiClient {
       final responseData = e.response?.data;
       String errorMsg = '注销失败，请稍后重试';
       if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+        errorMsg = responseData['message']?.toString() ?? errorMsg;
       }
       throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
     }
@@ -495,11 +507,19 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? '注销失败',
+        data['message']?.toString() ?? '注销失败',
         statusCode: res.statusCode,
       );
     }
+  }
+
+  Future<void> _handleAuthError(int? code) async {
+    if (code == null || !_unauthorizedCodes.contains(code)) {
+      return;
+    }
+    await auth.markLoggedOut();
   }
 
 }

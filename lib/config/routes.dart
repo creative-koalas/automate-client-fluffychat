@@ -15,6 +15,7 @@ import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.
 import 'package:psygo/pages/chat_search/chat_search_page.dart';
 import 'package:psygo/pages/device_settings/device_settings.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker.dart';
+import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
 import 'package:psygo/pages/login_signup/phone_login_page.dart';
 import 'package:psygo/pages/main_screen/main_screen.dart';
 import 'package:psygo/pages/login/login.dart';
