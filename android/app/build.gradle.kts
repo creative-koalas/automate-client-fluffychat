@@ -84,6 +84,8 @@ android {
     val appIdSuffix = getDartDefine("APP_ID_SUFFIX") ?: ""
     // 从 dart-define 读取 app 名称
     val appName = getDartDefine("APP_NAME") ?: "Psygo"
+    val vivoAppId = getDartDefine("VIVO_APP_ID") ?: "106014439"
+    val vivoApiKey = getDartDefine("VIVO_API_KEY") ?: "dc64a38d94ecff572fc1122a1a753520"
 
     defaultConfig {
         applicationId = "com.creativekoalas.psygo$appIdSuffix"
@@ -94,6 +96,8 @@ android {
 
         // 注入 app 名称到 manifest
         manifestPlaceholders["appName"] = appName
+        manifestPlaceholders["VIVO_APP_ID"] = vivoAppId
+        manifestPlaceholders["VIVO_API_KEY"] = vivoApiKey
     }
 
     signingConfigs {

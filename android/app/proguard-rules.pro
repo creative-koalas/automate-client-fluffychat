@@ -67,8 +67,9 @@
 -dontwarn com.huawei.**
 -dontwarn org.bouncycastle.**
 
-# 小米/OPPO/vivo 厂商通道（暂未接入）
+# 小米/OPPO/vivo 厂商通道
 -dontwarn com.xiaomi.**
 -dontwarn com.coloros.**
+-keep class com.vivo.** { *; }
 -dontwarn com.vivo.**
 -dontwarn com.meizu.**

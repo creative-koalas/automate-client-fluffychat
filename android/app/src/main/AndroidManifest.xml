@@ -214,10 +214,10 @@
         <!-- VIVO 推送厂商通道 -->
         <meta-data
             android:name="com.vivo.push.api_key"
-            android:value="dc64a38d94ecff572fc1122a1a753520" />
+            android:value="${VIVO_API_KEY}" />
         <meta-data
             android:name="com.vivo.push.app_id"
-            android:value="106014439" />
+            android:value="${VIVO_APP_ID}" />
 
         <!-- 阿里云推送消息接收器 -->
         <receiver
