@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Automate" "\0"
-            VALUE "FileDescription", "Automate" "\0"
+            VALUE "CompanyName", "Psygo" "\0"
+            VALUE "FileDescription", "Psygo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "automate" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 Automate. All rights reserved." "\0"
-            VALUE "OriginalFilename", "automate.exe" "\0"
-            VALUE "ProductName", "Automate" "\0"
+            VALUE "InternalName", "Psygo" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 Psygo. All rights reserved." "\0"
+            VALUE "OriginalFilename", "Psygo.exe" "\0"
+            VALUE "ProductName", "Psygo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

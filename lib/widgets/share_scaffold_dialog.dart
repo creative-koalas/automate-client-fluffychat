@@ -42,6 +42,13 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
 
   String? selectedRoomId;
 
+  void _closeDialog() {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   void _toggleRoom(String roomId) {
     setState(() {
       selectedRoomId = roomId;
@@ -55,10 +62,9 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
         'Started forward action before room was selected. This should never happen.',
       );
     }
-    while (context.canPop()) {
-      context.pop();
-    }
-    context.go('/rooms/$roomId', extra: widget.items);
+    final router = GoRouter.of(context);
+    _closeDialog();
+    router.go('/rooms/$roomId', extra: widget.items);
   }
 
   @override
@@ -76,7 +82,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
     final filter = _filterController.text.trim().toLowerCase();
     return Scaffold(
       appBar: AppBar(
-        leading: Center(child: CloseButton(onPressed: context.pop)),
+        leading: Center(child: CloseButton(onPressed: _closeDialog)),
         title: Text(L10n.of(context).share),
       ),
       body: CustomScrollView(
