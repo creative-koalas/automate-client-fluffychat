@@ -575,7 +575,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // User clicked "其他方式登录" button, redirect to login page
       debugPrint('[AuthGate] User chose to switch login method');
       // SDK 已自动关闭授权页，无需手动关闭
-      _redirectToLoginPage();
+      _forceManualLogin = true;
+      setState(() => _state = _AuthState.needsLogin);
+      _redirectToManualLoginPage();
       return;
     } catch (e) {
       debugPrint('[AuthGate] One-click login error: $e');
@@ -584,6 +586,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // Check if user cancelled
       final errorStr = e.toString();
+      if (PlatformInfos.isMobile) {
+        debugPrint('[AuthGate] One-click login failed on mobile, redirecting to manual login');
+        _forceManualLogin = true;
+        setState(() => _state = _AuthState.needsLogin);
+        _redirectToManualLoginPage();
+        return;
+      }
+
       if (_shouldFallbackToManualLogin(errorStr)) {
         debugPrint('[AuthGate] One-click login unavailable, redirecting to manual login');
         _forceManualLogin = true;
@@ -593,7 +603,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       }
 
       if (errorStr.contains('USER_CANCEL') || errorStr.contains('用户取消')) {
-        // User cancelled, redirect to login page for other options
         _redirectToLoginPage();
         return;
       }
