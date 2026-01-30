@@ -14,6 +14,7 @@ import 'package:matrix/matrix.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:window_manager/window_manager.dart';
 
 
 import 'package:psygo/l10n/l10n.dart';
@@ -183,6 +184,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   final onRoomKeyRequestSub = <String, StreamSubscription>{};
   final onKeyVerificationRequestSub = <String, StreamSubscription>{};
   final onNotification = <String, StreamSubscription>{};
+  final onTimelineEventSub = <String, StreamSubscription<Event>>{};
+  final Set<String> _desktopNotifiedEventIds = <String>{};
+  static const int _desktopNotificationCacheLimit = 200;
   final onLoginStateChanged = <String, StreamSubscription<LoginState>>{};
   final onUiaRequest = <String, StreamSubscription<UiaRequest>>{};
   StreamSubscription<html.Event>? onFocusSub;
@@ -317,8 +321,21 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       // 移动端不订阅 Matrix SDK 的通知事件，由阿里云推送服务统一处理
       // 避免 Matrix SDK 本地通知和阿里云推送通知重复
       if (!PlatformInfos.isMobile) {
-        onNotification[name] ??=
-            c.onNotification.stream.listen(showLocalNotification);
+        onNotification[name] ??= c.onNotification.stream.listen((event) {
+          if (PlatformInfos.isDesktop && _isDesktopEventNotified(event)) {
+            return;
+          }
+          if (PlatformInfos.isDesktop) {
+            _trackDesktopNotifiedEvent(event);
+          }
+          showLocalNotification(event);
+        });
+        if (PlatformInfos.isDesktop) {
+          onTimelineEventSub[name] ??= c.onTimelineEvent.stream.listen((event) {
+            // ignore: discarded_futures
+            _handleDesktopBackgroundNotification(c, event);
+          });
+        }
       }
     });
   }
@@ -332,6 +349,51 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     onLoginStateChanged.remove(name);
     onNotification[name]?.cancel();
     onNotification.remove(name);
+    onTimelineEventSub[name]?.cancel();
+    onTimelineEventSub.remove(name);
+  }
+
+  static const Set<String> _desktopNotifyEventTypes = {
+    EventTypes.Message,
+    EventTypes.Sticker,
+    EventTypes.Encrypted,
+  };
+
+  bool _isDesktopEventNotified(Event event) {
+    final eventId = event.eventId;
+    return eventId != null && _desktopNotifiedEventIds.contains(eventId);
+  }
+
+  void _trackDesktopNotifiedEvent(Event event) {
+    final eventId = event.eventId;
+    if (eventId == null) return;
+    _desktopNotifiedEventIds.add(eventId);
+    while (_desktopNotifiedEventIds.length > _desktopNotificationCacheLimit) {
+      _desktopNotifiedEventIds.remove(_desktopNotifiedEventIds.first);
+    }
+  }
+
+  Future<void> _handleDesktopBackgroundNotification(Client c, Event event) async {
+    if (!PlatformInfos.isDesktop) return;
+    if (event.senderId == c.userID) return;
+    if (!_desktopNotifyEventTypes.contains(event.type)) return;
+    if (event.relationshipType == RelationshipTypes.edit) return;
+    if (!await _isDesktopInBackground()) return;
+    if (_isDesktopEventNotified(event)) return;
+    _trackDesktopNotifiedEvent(event);
+    showLocalNotification(event);
+  }
+
+  Future<bool> _isDesktopInBackground() async {
+    try {
+      final isVisible = await windowManager.isVisible();
+      final isFocused = await windowManager.isFocused();
+      final isMinimized = await windowManager.isMinimized();
+      return !(isVisible && isFocused && !isMinimized);
+    } catch (e, s) {
+      Logs().w('[Matrix] Unable to query window state for desktop notifications', e, s);
+      return true;
+    }
   }
 
   void initMatrix() {
@@ -447,12 +509,20 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   Future<void> _registerAliyunPushAfterLogin(Client c) async {
     try {
       Logs().i('[Matrix] Registering Aliyun Push after login for ${c.userID}');
+      if (kReleaseMode) {
+        // ignore: avoid_print
+        print('[PUSH_AUDIT] Matrix register after login start user=${c.userID}');
+      }
 
       // 确保 SDK 已初始化
       if (!AliyunPushService.instance.isInitialized) {
         final initSuccess = await AliyunPushService.instance.initialize();
         if (!initSuccess) {
           Logs().w('[Matrix] Aliyun Push SDK initialization failed');
+          if (kReleaseMode) {
+            // ignore: avoid_print
+            print('[PUSH_AUDIT] Matrix register after login abort: init failed');
+          }
           return;
         }
       }
@@ -460,12 +530,20 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       // 检查是否有 deviceId
       if (AliyunPushService.instance.deviceId == null) {
         Logs().w('[Matrix] Aliyun Push deviceId is null, cannot register');
+        if (kReleaseMode) {
+          // ignore: avoid_print
+          print('[PUSH_AUDIT] Matrix register after login abort: deviceId null');
+        }
         return;
       }
 
       final userID = c.userID;
       if (userID == null) {
         Logs().w('[Matrix] User ID is null, cannot register push');
+        if (kReleaseMode) {
+          // ignore: avoid_print
+          print('[PUSH_AUDIT] Matrix register after login abort: userId null');
+        }
         return;
       }
 
@@ -476,11 +554,23 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       final pushRegistered = await AliyunPushService.instance.registerPush(c);
       if (pushRegistered) {
         Logs().i('[Matrix] Push registration completed for $userID');
+        if (kReleaseMode) {
+          // ignore: avoid_print
+          print('[PUSH_AUDIT] Matrix register after login ok');
+        }
       } else {
         Logs().w('[Matrix] Push registration failed for $userID');
+        if (kReleaseMode) {
+          // ignore: avoid_print
+          print('[PUSH_AUDIT] Matrix register after login failed');
+        }
       }
     } catch (e, s) {
       Logs().e('[Matrix] Register Aliyun Push after login error', e, s);
+      if (kReleaseMode) {
+        // ignore: avoid_print
+        print('[PUSH_AUDIT] Matrix register after login exception $e');
+      }
     }
   }
 
@@ -514,6 +604,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       sub.cancel();
     }
     for (final sub in onNotification.values) {
+      sub.cancel();
+    }
+    for (final sub in onTimelineEventSub.values) {
       sub.cancel();
     }
     client.httpClient.close();
