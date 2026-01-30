@@ -116,7 +116,8 @@ class _CustomHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     if (CustomHttpClient._needsCustomCert) {
-      return CustomHttpClient.customHttpClient(ISRG_X1);
+      final certContext = CustomHttpClient._getSecurityContext(ISRG_X1);
+      return super.createHttpClient(certContext);
     }
     return super.createHttpClient(context);
   }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'auth_state.dart';
@@ -26,30 +25,6 @@ class PsygoApiClient {
   final PsygoAuthState auth;
   final Dio _dio;
   static const Set<int> _unauthorizedCodes = {10002, 10003};
-
-  /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
-  Future<FusionAuthTokenResponse> getFusionAuthToken() async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/fusion-token',
-    );
-    final data = res.data ?? {};
-    final code = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || code != 0) {
-      await _handleAuthError(code);
-      throw AutomateBackendException(
-        data['message']?.toString() ?? 'Failed to get fusion auth token',
-        statusCode: res.statusCode,
-      );
-    }
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      throw AutomateBackendException('Empty response data');
-    }
-    return FusionAuthTokenResponse(
-      verifyToken: respData['verify_token'] as String? ?? '',
-      schemeCode: respData['scheme_code'] as String? ?? '',
-    );
-  }
 
   /// 发送短信验证码
   Future<void> sendVerificationCode(String phone) async {
@@ -353,14 +328,39 @@ class PsygoApiClient {
     if (respData == null) {
       throw AutomateBackendException('Empty response data');
     }
+    final userData = respData;
 
-    // 服务端返回格式: {"code": 0, "data": {"user": {...}}}
-    final userData = respData['user'] as Map<String, dynamic>?;
-    if (userData == null) {
-      throw AutomateBackendException('Missing user data');
+    final balanceRes = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/users/$userId/balance',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final balanceData = balanceRes.data ?? {};
+    final balanceCode = balanceData['code'] as int? ?? -1;
+    if (balanceRes.statusCode != 200 || balanceCode != 0) {
+      await _handleAuthError(balanceCode);
+      throw AutomateBackendException(
+        balanceData['message']?.toString() ?? 'Failed to get user balance',
+        statusCode: balanceRes.statusCode,
+      );
     }
 
-    return UserInfo.fromJson(userData);
+    final balancePayload = balanceData['data'] as Map<String, dynamic>?;
+    if (balancePayload == null) {
+      throw AutomateBackendException('Empty balance data');
+    }
+    final balanceValue = balancePayload['balance'];
+    int? balance;
+    if (balanceValue is num) {
+      balance = balanceValue.toInt();
+    } else if (balanceValue != null) {
+      balance = int.tryParse(balanceValue.toString());
+    }
+    if (balance == null) {
+      throw AutomateBackendException('Invalid balance data');
+    }
+
+    return UserInfo.fromJson(userData, creditBalance: balance);
   }
 
   /// 检查应用版本更新
@@ -394,36 +394,6 @@ class PsygoApiClient {
     }
 
     return AppVersionResponse.fromJson(respData);
-  }
-
-  /// 获取快速开始卡片列表（公开接口，无需认证）
-  /// Onboarding 引导页使用
-  Future<List<Map<String, dynamic>>> getQuickStartCards() async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/quick-start-cards',
-    );
-
-    final data = res.data ?? {};
-    final respCode = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || respCode != 0) {
-      await _handleAuthError(respCode);
-      throw AutomateBackendException(
-        data['message']?.toString() ?? 'Failed to get quick start cards',
-        statusCode: res.statusCode,
-      );
-    }
-
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      return [];
-    }
-
-    final cards = respData['cards'] as List<dynamic>?;
-    if (cards == null) {
-      return [];
-    }
-
-    return cards.whereType<Map<String, dynamic>>().toList();
   }
 
   /// 获取所有激活的协议列表（公开接口，无需认证）
@@ -557,17 +527,6 @@ class AuthResponse {
       };
 }
 
-/// 融合认证 Token 响应
-class FusionAuthTokenResponse {
-  final String verifyToken;
-  final String schemeCode;
-
-  FusionAuthTokenResponse({
-    required this.verifyToken,
-    required this.schemeCode,
-  });
-}
-
 /// 充值订单创建请求
 class CreateRechargeOrderRequest {
   final String userId;
@@ -603,85 +562,101 @@ class RechargeOrderResponse {
       outTradeNo: json['out_trade_no'] as String? ?? '',
       orderString: json['order_string'] as String? ?? '',
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
-      creditsAmount: json['credits_amount'] as int? ?? 0,
+      creditsAmount: (json['credits_amount'] as num?)?.toInt() ?? 0,
     );
   }
 }
 
 /// 订单状态
 class PaymentOrder {
-  final int id;
   final String outTradeNo;
   final String? tradeNo;
-  final int userId;
-  final String productType;
+  final String userId;
   final double totalAmount;
   final int creditsAmount;
-  final String subject;
   final String status; // pending, paid, closed, refunded
   final String? tradeStatus;
   final String? notifyTime;
   final String createdAt;
+  final String updatedAt;
 
   PaymentOrder({
-    required this.id,
     required this.outTradeNo,
     this.tradeNo,
     required this.userId,
-    required this.productType,
     required this.totalAmount,
     required this.creditsAmount,
-    required this.subject,
     required this.status,
     this.tradeStatus,
     this.notifyTime,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   factory PaymentOrder.fromJson(Map<String, dynamic> json) {
     return PaymentOrder(
-      id: json['id'] as int? ?? 0,
       outTradeNo: json['out_trade_no'] as String? ?? '',
       tradeNo: json['trade_no'] as String?,
-      userId: json['user_id'] as int? ?? 0,
-      productType: json['product_type'] as String? ?? '',
+      userId: json['user_id'] as String? ?? '',
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
-      creditsAmount: json['credits_amount'] as int? ?? 0,
-      subject: json['subject'] as String? ?? '',
+      creditsAmount: (json['credits_amount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'pending',
       tradeStatus: json['trade_status'] as String?,
       notifyTime: json['notify_time'] as String?,
       createdAt: json['created_at'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
     );
   }
 }
 
 /// 用户信息（包含余额）
 class UserInfo {
-  final int id;
-  final String username;
+  final String id;
+  final String phone;
   final String? email;
-  final String? phone;
-  final int type;
-  final int creditBalance; // 积分余额（分）
+  final String? nickname;
+  final String status;
+  final String role;
+  final String tier;
+  final DateTime? invitationVerifiedAt;
+  final DateTime? lastLoginAt;
+  final DateTime? createdAt;
+  final int creditBalance; // 积分余额
 
   UserInfo({
     required this.id,
-    required this.username,
+    required this.phone,
     this.email,
-    this.phone,
-    required this.type,
+    this.nickname,
+    required this.status,
+    required this.role,
+    required this.tier,
+    this.invitationVerifiedAt,
+    this.lastLoginAt,
+    this.createdAt,
     required this.creditBalance,
   });
 
-  factory UserInfo.fromJson(Map<String, dynamic> json) {
+  factory UserInfo.fromJson(Map<String, dynamic> json, {int creditBalance = 0}) {
+    DateTime? parseTime(dynamic value) {
+      if (value == null) {
+        return null;
+      }
+      return DateTime.tryParse(value.toString());
+    }
+
     return UserInfo(
-      id: json['id'] as int? ?? 0,
-      username: json['username'] as String? ?? '',
+      id: json['id'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
       email: json['email'] as String?,
-      phone: json['phone'] as String?,
-      type: json['type'] as int? ?? 3,
-      creditBalance: json['credit_balance'] as int? ?? 0,
+      nickname: json['nickname'] as String?,
+      status: json['status'] as String? ?? '',
+      role: json['role'] as String? ?? '',
+      tier: json['tier'] as String? ?? '',
+      invitationVerifiedAt: parseTime(json['invitation_verified_at']),
+      lastLoginAt: parseTime(json['last_login_at']),
+      createdAt: parseTime(json['created_at']),
+      creditBalance: creditBalance,
     );
   }
 }
