@@ -7,12 +7,10 @@ class PsygoAuthState extends ChangeNotifier {
 
   final FlutterSecureStorage _storage;
 
-  static const _chatbotKey = 'automate_chatbot_token';
   static const _primaryKey = 'automate_primary_token';
   static const _refreshKey = 'automate_refresh_token';
   static const _expiresAtKey = 'automate_expires_at';
   static const _userIdKey = 'automate_user_id';
-  static const _userIdIntKey = 'automate_user_id_int';
   static const _onboardingCompletedKey = 'automate_onboarding_completed';
   static const _matrixAccessTokenKey = 'automate_matrix_access_token';
   static const _matrixUserIdKey = 'automate_matrix_user_id';
@@ -22,24 +20,20 @@ class PsygoAuthState extends ChangeNotifier {
   static const Duration _refreshThreshold = Duration(minutes: 5);
 
   bool _loggedIn = false;
-  String? _chatbotToken;
   String? _primaryToken;
   String? _refreshToken;
   DateTime? _expiresAt;
   String? _userId;
-  int? _userIdInt;
-  bool _onboardingCompleted = false;
+  bool _onboardingCompleted = true;
   String? _matrixAccessToken;
   String? _matrixUserId;
   String? _matrixDeviceId;
 
   bool get isLoggedIn => _loggedIn;
-  String? get chatbotToken => _chatbotToken;
   String? get primaryToken => _primaryToken;
   String? get refreshToken => _refreshToken;
   DateTime? get expiresAt => _expiresAt;
   String? get userId => _userId;
-  int? get userIdInt => _userIdInt;
   bool get onboardingCompleted => _onboardingCompleted;
   String? get matrixAccessToken => _matrixAccessToken;
   String? get matrixUserId => _matrixUserId;
@@ -66,30 +60,24 @@ class PsygoAuthState extends ChangeNotifier {
 
   Future<void> load() async {
     _primaryToken = await _storage.read(key: _primaryKey);
-    _chatbotToken = await _storage.read(key: _chatbotKey);
     _refreshToken = await _storage.read(key: _refreshKey);
     final expiresAtStr = await _storage.read(key: _expiresAtKey);
     _expiresAt = expiresAtStr != null
         ? DateTime.fromMillisecondsSinceEpoch(int.tryParse(expiresAtStr) ?? 0)
         : null;
     _userId = await _storage.read(key: _userIdKey);
-    final userIdIntStr = await _storage.read(key: _userIdIntKey);
-    _userIdInt = userIdIntStr != null ? int.tryParse(userIdIntStr) : null;
-    final onboardingStr = await _storage.read(key: _onboardingCompletedKey);
-    _onboardingCompleted = onboardingStr == 'true';
+    _onboardingCompleted = true;
     _matrixAccessToken = await _storage.read(key: _matrixAccessTokenKey);
     _matrixUserId = await _storage.read(key: _matrixUserIdKey);
     _matrixDeviceId = await _storage.read(key: _matrixDeviceIdKey);
-    _loggedIn = _primaryToken != null && _chatbotToken != null;
+    _loggedIn = _primaryToken != null;
     notifyListeners();
   }
 
   Future<void> save({
     required String primaryToken,
-    required String chatbotToken,
     required String userId,
-    required int userIdInt,
-    required bool onboardingCompleted,
+    bool onboardingCompleted = true,
     String? refreshToken,
     int? expiresIn,
     String? matrixAccessToken,
@@ -97,9 +85,7 @@ class PsygoAuthState extends ChangeNotifier {
     String? matrixDeviceId,
   }) async {
     _primaryToken = primaryToken;
-    _chatbotToken = chatbotToken;
     _userId = userId;
-    _userIdInt = userIdInt;
     _onboardingCompleted = onboardingCompleted;
     _loggedIn = true;
 
@@ -137,15 +123,13 @@ class PsygoAuthState extends ChangeNotifier {
     }
 
     await _storage.write(key: _primaryKey, value: primaryToken);
-    await _storage.write(key: _chatbotKey, value: chatbotToken);
     await _storage.write(key: _userIdKey, value: userId);
-    await _storage.write(key: _userIdIntKey, value: userIdInt.toString());
     await _storage.write(key: _onboardingCompletedKey, value: onboardingCompleted.toString());
     notifyListeners();
   }
 
   /// Update access token after refresh
-  Future<void> updateAccessToken(String accessToken, int expiresIn) async {
+  Future<void> updateAccessToken(String accessToken, int expiresIn, {String? refreshToken}) async {
     _primaryToken = accessToken;
     _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
     await _storage.write(key: _primaryKey, value: accessToken);
@@ -153,16 +137,18 @@ class PsygoAuthState extends ChangeNotifier {
       key: _expiresAtKey,
       value: _expiresAt!.millisecondsSinceEpoch.toString(),
     );
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      _refreshToken = refreshToken;
+      await _storage.write(key: _refreshKey, value: refreshToken);
+    }
     notifyListeners();
   }
 
   Future<void> markLoggedOut() async {
     _primaryToken = null;
-    _chatbotToken = null;
     _refreshToken = null;
     _expiresAt = null;
     _userId = null;
-    _userIdInt = null;
     _onboardingCompleted = false;
     _matrixAccessToken = null;
     _matrixUserId = null;
@@ -170,11 +156,9 @@ class PsygoAuthState extends ChangeNotifier {
     _loggedIn = false;
     await Future.wait([
       _storage.delete(key: _primaryKey),
-      _storage.delete(key: _chatbotKey),
       _storage.delete(key: _refreshKey),
       _storage.delete(key: _expiresAtKey),
       _storage.delete(key: _userIdKey),
-      _storage.delete(key: _userIdIntKey),
       _storage.delete(key: _onboardingCompletedKey),
       _storage.delete(key: _matrixAccessTokenKey),
       _storage.delete(key: _matrixUserIdKey),

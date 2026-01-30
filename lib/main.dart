@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/custom_http_client.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -52,6 +53,7 @@ void main() async {
   // To make sure that the parts of flutter needed are started up already, we need to ensure that the
   // widget bindings are initialized already.
   WidgetsFlutterBinding.ensureInitialized();
+  CustomHttpClient.applyHttpOverrides();
 
   // PC 端窗口初始化
   if (PlatformInfos.isDesktop) {

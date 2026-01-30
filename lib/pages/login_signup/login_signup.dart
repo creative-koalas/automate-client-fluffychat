@@ -102,7 +102,7 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
   }
 
   /// One-click login (Aliyun Official SDK)
-  /// 新流程：verifyPhone → (新用户弹邀请码) → completeLogin
+  /// 新流程：调用 /api/auth/one-click-login 直接完成登录
   void oneClickLogin() async {
     // Web platform doesn't support one-click login
     if (kIsWeb) {
@@ -135,35 +135,13 @@ class LoginSignupController extends State<LoginSignup> with WidgetsBindingObserv
         timeout: 10000,
       );
 
-      debugPrint('=== 第一步：验证手机号 ===');
-      final verifyResponse = await backend.verifyPhone(fusionToken);
-      debugPrint('验证结果: phone=${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
+      debugPrint('=== 调用后端一键登录 ===');
+      final authResponse = await backend.oneClickLogin(fusionToken);
 
       if (!mounted) return;
 
-      // 新用户需要先关闭授权页再弹邀请码框
-      if (verifyResponse.isNewUser) {
-        // CRITICAL iOS FIX: Set _isInAuthFlow = false BEFORE closing auth page
-        // When we close the auth page, iOS will trigger AppLifecycleState.resumed
-        // If _isInAuthFlow is still true, didChangeAppLifecycleState will close the page again
-        setState(() {
-          _isInAuthFlow = false;
-          loading = false;
-        });
+      final success = await handlePostLogin(authResponse);
 
-        // Now safe to close Aliyun auth page
-        await OneClickLoginService.quitLoginPage();
-      }
-
-      // 使用 mixin 的公共逻辑处理后续流程
-      final success = await handlePostVerify(
-        verifyResponse: verifyResponse,
-        onCancel: () {
-          _isInAuthFlow = false;
-        },
-      );
-
-      // 关闭授权页（老用户流程，授权页可能还在）
       _isInAuthFlow = false;
       if (success) {
         await OneClickLoginService.quitLoginPage();

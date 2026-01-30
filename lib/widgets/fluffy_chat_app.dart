@@ -126,7 +126,6 @@ enum _AuthState {
   authenticating, // Performing one-click login
   authenticated, // Successfully authenticated
   needsLogin,    // Needs login, show login page
-  waitingInvitationCode, // Waiting for invitation code input (new user)
   error,         // Error occurred
 }
 
@@ -167,15 +166,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   int _consecutiveSyncErrors = 0;
   static const int _maxConsecutiveSyncErrors = 5;  // 连续5次同步失败后登出
 
-  // Pending new user registration data
-  String? _pendingToken;
-  String? _pendingPhone;
-
-  // Invitation code input
-  final _invitationCodeController = TextEditingController();
-  String? _invitationCodeError;
-  bool _submittingInvitation = false;
-
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
 
@@ -189,7 +179,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _invitationCodeController.dispose();
     // 取消同步状态监听
     _syncStatusSubscription?.cancel();
     // 移除认证状态监听（使用保存的引用，避免访问 context）
@@ -206,7 +195,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (!mounted) return;
 
     final auth = context.read<PsygoAuthState>();
-    debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}, onboardingCompleted=${auth.onboardingCompleted}');
+    debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}');
 
     if (auth.isLoggedIn && _forceManualLogin) {
       _forceManualLogin = false;
@@ -228,7 +217,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 登录成功时更新状态
-    if (auth.isLoggedIn && auth.onboardingCompleted && _state != _AuthState.authenticated) {
+    if (auth.isLoggedIn && _state != _AuthState.authenticated) {
       // 检查 Matrix 是否也已登录
       try {
         final matrix = Matrix.of(context);
@@ -472,16 +461,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
 
-      // Automate logged in but Matrix not logged in
-      if (!auth.onboardingCompleted) {
-        // Need to complete onboarding first
-        debugPrint('[AuthGate] Onboarding not completed, navigating to onboarding');
-        _navigateToOnboardingThenAuthenticate();
-        return;
-      }
-
-      // Onboarding completed but Matrix not logged in - login Matrix
-      debugPrint('[AuthGate] Onboarding completed, logging into Matrix');
+      // Automate logged in but Matrix not logged in - login Matrix
+      debugPrint('[AuthGate] Automate logged in, logging into Matrix');
       await _loginMatrixAndProceed();
       return;
     }
@@ -498,7 +479,17 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         if (PlatformInfos.isDesktop) {
           await WindowService.switchToMainWindow();
         }
-        setState(() => _state = _AuthState.authenticated);
+        final matrix = Matrix.of(context);
+        final isMatrixLoggedIn = matrix.widget.clients.any((c) => c.isLogged());
+
+        if (isMatrixLoggedIn) {
+          setState(() => _state = _AuthState.authenticated);
+          _startAgreementCheckService();
+          _startSyncStatusMonitoring(matrix.client);
+          return;
+        }
+
+        await _loginMatrixAndProceed();
         return;
       }
       debugPrint('[AuthGate] Token refresh failed');
@@ -569,68 +560,17 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       debugPrint('[AuthGate] Got token from Aliyun, calling backend...');
 
-      // Step 1: Verify phone number
       final api = context.read<PsygoApiClient>();
-      final verifyResponse = await api.verifyPhone(loginToken);
-      debugPrint('[AuthGate] ===== Backend verifyPhone Response =====');
-      debugPrint('[AuthGate] Phone: ${verifyResponse.phone}');
-      debugPrint('[AuthGate] isNewUser: ${verifyResponse.isNewUser}');
-      debugPrint('[AuthGate] pendingToken: ${verifyResponse.pendingToken}');
-      debugPrint('[AuthGate] =========================================');
+      final authResponse = await api.oneClickLogin(loginToken);
+      debugPrint('[AuthGate] Backend oneClickLogin success, userId=${authResponse.userId}');
 
       if (!mounted) return;
 
-      // Step 2: New user needs invitation code
-      if (verifyResponse.isNewUser) {
-        debugPrint('[AuthGate] Backend says isNewUser=true, showing invitation code screen');
+      // CRITICAL iOS FIX: Change state BEFORE closing auth page to prevent auto-retry
+      setState(() => _state = _AuthState.authenticating);
 
-        // CRITICAL: Change state BEFORE closing auth page to prevent auto-retry
-        // When we close the auth page, iOS will trigger AppLifecycleState.resumed
-        // If state is still _AuthState.checking, auto-retry will trigger
-        _pendingToken = verifyResponse.pendingToken;
-        _pendingPhone = verifyResponse.phone;
-
-        setState(() => _state = _AuthState.waitingInvitationCode);
-
-        // Now safe to close Aliyun auth page
-        await OneClickLoginService.quitLoginPage();
-
-        debugPrint('[AuthGate] New user detected, showing invitation code screen');
-        return;
-      }
-
-      if (!mounted) return;
-
-      // Step 3: Complete login (old user, no invitation code needed)
-      debugPrint('[AuthGate] Backend says isNewUser=false, proceeding with login (no invitation code needed)');
-      final authResponse = await api.completeLogin(
-        verifyResponse.pendingToken,
-      );
-
-      debugPrint('[AuthGate] Backend completeLogin success, onboardingCompleted=${authResponse.onboardingCompleted}');
-
-      if (!mounted) return;
-
-      // Handle based on onboarding status
-      if (authResponse.onboardingCompleted) {
-        // Already completed onboarding, login to Matrix
-        // CRITICAL iOS FIX: Change state BEFORE closing auth page to prevent auto-retry
-        // When we close auth page, iOS triggers AppLifecycleState.resumed
-        // If state is still _checking, didChangeAppLifecycleState will trigger auto-retry
-        setState(() => _state = _AuthState.authenticating);
-
-        await OneClickLoginService.quitLoginPage();
-        await _loginMatrixAndProceed();
-      } else {
-        // Need to complete onboarding first
-        // CRITICAL iOS FIX: Change state BEFORE closing auth page
-        setState(() => _state = _AuthState.authenticating);
-
-        await OneClickLoginService.quitLoginPage();
-        // Important: Navigate BEFORE setting authenticated state to avoid
-        // GoRouter's redirect to /login-signup (which checks Matrix client)
-        _navigateToOnboardingThenAuthenticate();
-      }
+      await OneClickLoginService.quitLoginPage();
+      await _loginMatrixAndProceed();
     } on SwitchLoginMethodException {
       // User clicked "其他方式登录" button, redirect to login page
       debugPrint('[AuthGate] User chose to switch login method');
@@ -964,37 +904,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
-  /// Retry one-click login after canceling invitation code input
-  void _retryOneClickLogin() {
-    debugPrint('[AuthGate] User canceled invitation code, retrying one-click login');
-
-    // Clear invitation code state
-    _pendingToken = null;
-    _pendingPhone = null;
-    _invitationCodeController.clear();
-    _invitationCodeError = null;
-
-    // Reset auth attempt flags to allow one-click login again
-    _hasTriedAuth = false;
-    _hasRetriedMatrixLogin = false;
-
-    // Go back to checking state and retry
-    setState(() {
-      _state = _AuthState.checking;
-    });
-
-    _checkAuthStateSafe();
-  }
-
-  void _navigateToOnboarding() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navKey = PsygoApp.router.routerDelegate.navigatorKey;
-      final ctx = navKey.currentContext;
-      if (ctx == null) return;
-
-      GoRouter.of(ctx).go('/onboarding-chatbot');
-    });
-  }
 
   /// 启动协议检查后台服务
   Future<void> _startAgreementCheckService() async {
@@ -1256,18 +1165,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _isLoggingOut = false;
   }
 
-  /// Navigate to onboarding page for new users.
-  /// Sets authenticated state and navigates to onboarding.
-  void _navigateToOnboardingThenAuthenticate() async {
-    // PC端：切换到主窗口模式
-    if (PlatformInfos.isDesktop) {
-      await WindowService.switchToMainWindow();
-    }
-    setState(() => _state = _AuthState.authenticated);
-    _navigateToOnboarding();
-  }
-
-
   @override
   Widget build(BuildContext context) {
     // watch auth state 以便在状态变化时重建 UI
@@ -1284,9 +1181,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       case _AuthState.authenticating:
         return _buildLoadingScreen('正在登录...');
-
-      case _AuthState.waitingInvitationCode:
-        return _buildInvitationCodeScreen();
 
       case _AuthState.error:
         return _buildErrorScreen();
@@ -1683,141 +1577,4 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     );
   }
 
-  Widget _buildInvitationCodeScreen() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                isDark ? 'assets/logo_dark.png' : 'assets/logo.png',
-                width: 100,
-                height: 100,
-              ),
-              const SizedBox(height: 32),
-              Text(
-                '新用户注册',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '手机号：$_pendingPhone',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                '请输入邀请码完成注册',
-                style: theme.textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _invitationCodeController,
-                decoration: InputDecoration(
-                  labelText: '邀请码',
-                  hintText: '请输入邀请码',
-                  prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  errorText: _invitationCodeError,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                textCapitalization: TextCapitalization.characters,
-                enabled: !_submittingInvitation,
-                onChanged: (_) {
-                  if (_invitationCodeError != null) {
-                    setState(() => _invitationCodeError = null);
-                  }
-                },
-                onSubmitted: (_) => _submitInvitationCode(),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _submittingInvitation ? null : _retryOneClickLogin,
-                      child: const Text('取消'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _submittingInvitation ? null : _submitInvitationCode,
-                      child: _submittingInvitation
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('确认'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _submitInvitationCode() async {
-    final code = _invitationCodeController.text.trim();
-    if (code.isEmpty) {
-      setState(() => _invitationCodeError = '请输入邀请码');
-      return;
-    }
-
-    setState(() {
-      _submittingInvitation = true;
-      _invitationCodeError = null;
-    });
-
-    try {
-      debugPrint('[AuthGate] Completing registration with invitation code');
-      final api = context.read<PsygoApiClient>();
-      final authResponse = await api.completeLogin(
-        _pendingToken!,
-        invitationCode: code,
-      );
-
-      debugPrint('[AuthGate] Registration success, onboardingCompleted=${authResponse.onboardingCompleted}');
-
-      if (!mounted) return;
-
-      // CRITICAL: Reload auth state to ensure isLoggedIn is updated
-      // This prevents build() from thinking we're logged out and triggering re-auth
-      final auth = context.read<PsygoAuthState>();
-      await auth.load();
-      debugPrint('[AuthGate] Auth state reloaded after registration');
-
-      if (!mounted) return;
-
-      // Handle based on onboarding status
-      if (authResponse.onboardingCompleted) {
-        // Already completed onboarding, login to Matrix
-        await _loginMatrixAndProceed();
-      } else {
-        // Need to complete onboarding first
-        _navigateToOnboardingThenAuthenticate();
-      }
-    } catch (e) {
-      debugPrint('[AuthGate] Registration error: $e');
-      if (!mounted) return;
-      setState(() {
-        _submittingInvitation = false;
-        _invitationCodeError = e.toString();
-      });
-    }
-  }
 }

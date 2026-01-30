@@ -78,6 +78,12 @@ class CustomHttpClient {
             : http.Client(),
       );
 
+  /// 使用自定义证书配置全局 HttpOverrides（供 Image.network 使用）
+  static void applyHttpOverrides() {
+    if (!_needsCustomCert) return;
+    HttpOverrides.global = _CustomHttpOverrides();
+  }
+
   /// 为 Dio 创建自定义 HttpClientAdapter，支持 ISRG X1 证书
   /// 用于解决 Windows 10 旧版本缺少 Let's Encrypt 根证书的问题
   static HttpClientAdapter createDioAdapter() {
@@ -103,5 +109,16 @@ class CustomHttpClient {
     }
 
     return dio;
+  }
+}
+
+class _CustomHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    if (CustomHttpClient._needsCustomCert) {
+      final certContext = CustomHttpClient._getSecurityContext(ISRG_X1);
+      return super.createHttpClient(certContext);
+    }
+    return super.createHttpClient(context);
   }
 }

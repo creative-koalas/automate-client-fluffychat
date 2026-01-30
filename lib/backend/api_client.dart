@@ -1,17 +1,13 @@
-import 'dart:convert';
-import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
 import '../utils/custom_http_client.dart';
 
 class PsygoApiClient {
-  PsygoApiClient(this.auth, {Dio? dio, http.Client? httpClient})
-      : _dio = dio ?? CustomHttpClient.createDio(),
-        _http = httpClient ?? CustomHttpClient.createHTTPClient() {
+  PsygoApiClient(this.auth, {Dio? dio})
+      : _dio = dio ?? CustomHttpClient.createDio() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(
@@ -28,41 +24,14 @@ class PsygoApiClient {
 
   final PsygoAuthState auth;
   final Dio _dio;
-  final http.Client _http;
-
-  // Chatbot Backend URL（根据 K8S_NAMESPACE 动态计算端口）
-  // dev=30300, test=31300, prod=32300
-  static String get _chatbotBase => PsygoConfig.chatbotBaseUrl;
-
-  /// 获取融合认证 Token（供阿里云 SDK 初始化使用）
-  Future<FusionAuthTokenResponse> getFusionAuthToken() async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/fusion-token',
-    );
-    final data = res.data ?? {};
-    final code = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || code != 0) {
-      throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get fusion auth token',
-        statusCode: res.statusCode,
-      );
-    }
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      throw AutomateBackendException('Empty response data');
-    }
-    return FusionAuthTokenResponse(
-      verifyToken: respData['verify_token'] as String? ?? '',
-      schemeCode: respData['scheme_code'] as String? ?? '',
-    );
-  }
+  static const Set<int> _unauthorizedCodes = {10002, 10003};
 
   /// 发送短信验证码
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
     try {
       res = await _dio.post<Map<String, dynamic>>(
-        '${PsygoConfig.baseUrl}/api/auth/send-code',
+        '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
         data: {'phone': phone},
       );
     } on DioException catch (e) {
@@ -85,7 +54,7 @@ class PsygoApiClient {
       }
 
       if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+        errorMsg = responseData['message']?.toString() ?? errorMsg;
       }
       throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
     }
@@ -93,34 +62,42 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? '验证码发送失败',
+        data['message']?.toString() ?? '验证码发送失败',
         statusCode: res.statusCode,
       );
     }
   }
 
-  /// 手机号登录/注册
-  /// [fusionToken]: 融合认证一键登录时传入
-  /// [phone] + [code]: 验证码登录时传入
-  Future<AuthResponse> loginOrSignup(String phone, String code, {String? fusionToken}) async {
-    final body = <String, dynamic>{};
-    if (fusionToken != null && fusionToken.isNotEmpty) {
-      body['fusion_token'] = fusionToken;
-    } else {
-      body['phone'] = phone;
-      body['code'] = code;
-    }
-
+  /// 短信验证码登录
+  Future<AuthResponse> smsLogin(String phone, String code) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/phone-login',
-      data: body,
+      '${PsygoConfig.baseUrl}/api/auth/sms-login',
+      data: {'phone': phone, 'code': code},
     );
+    return _handleAuthResponse(res, '登录失败');
+  }
+
+  /// 一键登录（阿里云）
+  Future<AuthResponse> oneClickLogin(String accessToken) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/auth/one-click-login',
+      data: {'access_token': accessToken},
+    );
+    return _handleAuthResponse(res, '登录失败');
+  }
+
+  Future<AuthResponse> _handleAuthResponse(
+    Response<Map<String, dynamic>> res,
+    String fallbackMessage,
+  ) async {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Login failed',
+        data['message']?.toString() ?? fallbackMessage,
         statusCode: res.statusCode,
       );
     }
@@ -132,13 +109,10 @@ class PsygoApiClient {
 
     final authResponse = AuthResponse(
       token: respData['access_token'] as String? ?? '',
-      chatbotToken: respData['chatbot_token'] as String? ?? '',
       refreshToken: respData['refresh_token'] as String?,
       expiresIn: respData['expires_in'] as int?,
-      userId: respData['username'] as String? ?? '',
-      userIdInt: respData['user_id'] as int? ?? 0,
-      onboardingCompleted: respData['onboarding_completed'] as bool? ?? false,
-      isNewUser: respData['is_new_user'] as bool? ?? false,
+      userId: respData['user_id'] as String? ?? '',
+      phone: respData['phone'] as String? ?? '',
       matrixAccessToken: respData['matrix_access_token'] as String?,
       matrixUserId: respData['matrix_user_id'] as String?,
       matrixDeviceId: respData['matrix_device_id'] as String?,
@@ -146,151 +120,8 @@ class PsygoApiClient {
 
     await auth.save(
       primaryToken: authResponse.token,
-      chatbotToken: authResponse.chatbotToken,
       userId: authResponse.userId,
-      userIdInt: authResponse.userIdInt,
-      onboardingCompleted: authResponse.onboardingCompleted,
-      refreshToken: authResponse.refreshToken,
-      expiresIn: authResponse.expiresIn,
-      matrixAccessToken: authResponse.matrixAccessToken,
-      matrixUserId: authResponse.matrixUserId,
-      matrixDeviceId: authResponse.matrixDeviceId,
-    );
-    return authResponse;
-  }
-
-  /// 验证手机号 - 一键登录（新登录流程第一步）
-  /// 返回是否新用户 + pending_token
-  Future<VerifyPhoneResponse> verifyPhone(String fusionToken) async {
-    final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/auth/verify-phone',
-      data: {'fusion_token': fusionToken},
-    );
-    final data = res.data ?? {};
-    debugPrint('[API] verifyPhone raw response: $data');
-    final respCode = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || respCode != 0) {
-      throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Phone verification failed',
-        statusCode: res.statusCode,
-      );
-    }
-
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      throw AutomateBackendException('Empty response data');
-    }
-
-    debugPrint('[API] verifyPhone parsed data: phone=${respData['phone']}, is_new_user=${respData['is_new_user']}, pending_token=${respData['pending_token']}');
-
-    return VerifyPhoneResponse(
-      phone: respData['phone'] as String? ?? '',
-      isNewUser: respData['is_new_user'] as bool? ?? false,
-      pendingToken: respData['pending_token'] as String? ?? '',
-    );
-  }
-
-  /// 验证手机号 - 验证码登录（新登录流程第一步）
-  /// 返回是否新用户 + pending_token
-  Future<VerifyPhoneResponse> verifyPhoneCode(String phone, String code) async {
-    Response<Map<String, dynamic>> res;
-    try {
-      res = await _dio.post<Map<String, dynamic>>(
-        '${PsygoConfig.baseUrl}/api/auth/verify-phone-code',
-        data: {'phone': phone, 'code': code},
-      );
-    } on DioException catch (e) {
-      final responseData = e.response?.data;
-      String errorMsg = '验证失败，请稍后重试';
-      if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['msg']?.toString() ?? errorMsg;
-      }
-      throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
-    }
-
-    final data = res.data ?? {};
-    final respCode = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || respCode != 0) {
-      throw AutomateBackendException(
-        data['msg']?.toString() ?? '验证失败',
-        statusCode: res.statusCode,
-      );
-    }
-
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      throw AutomateBackendException('Empty response data');
-    }
-
-    return VerifyPhoneResponse(
-      phone: respData['phone'] as String? ?? '',
-      isNewUser: respData['is_new_user'] as bool? ?? false,
-      pendingToken: respData['pending_token'] as String? ?? '',
-    );
-  }
-
-  /// 完成登录/注册（新登录流程第二步）
-  /// 新用户需要传入邀请码
-  /// [agreeAgreements] 必须为 true，表示用户已同意所有协议
-  Future<AuthResponse> completeLogin(String pendingToken, {String? invitationCode, bool agreeAgreements = true}) async {
-    final body = <String, dynamic>{
-      'pending_token': pendingToken,
-      'agree_agreements': agreeAgreements,
-    };
-    if (invitationCode != null && invitationCode.isNotEmpty) {
-      body['invitation_code'] = invitationCode;
-    }
-
-    Response<Map<String, dynamic>> res;
-    try {
-      res = await _dio.post<Map<String, dynamic>>(
-        '${PsygoConfig.baseUrl}/api/auth/complete-login',
-        data: body,
-      );
-    } on DioException catch (e) {
-      // 处理 HTTP 错误状态码（如 400），提取服务器返回的错误信息
-      final responseData = e.response?.data;
-      String errorMsg = '登录失败，请稍后重试';
-      if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['msg']?.toString() ?? errorMsg;
-      }
-      throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
-    }
-
-    final data = res.data ?? {};
-    final respCode = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || respCode != 0) {
-      throw AutomateBackendException(
-        data['msg']?.toString() ?? '登录失败',
-        statusCode: res.statusCode,
-      );
-    }
-
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      throw AutomateBackendException('Empty response data');
-    }
-
-    final authResponse = AuthResponse(
-      token: respData['access_token'] as String? ?? '',
-      chatbotToken: respData['chatbot_token'] as String? ?? '',
-      refreshToken: respData['refresh_token'] as String?,
-      expiresIn: respData['expires_in'] as int?,
-      userId: respData['username'] as String? ?? '',
-      userIdInt: respData['user_id'] as int? ?? 0,
-      onboardingCompleted: respData['onboarding_completed'] as bool? ?? false,
-      isNewUser: respData['is_new_user'] as bool? ?? false,
-      matrixAccessToken: respData['matrix_access_token'] as String?,
-      matrixUserId: respData['matrix_user_id'] as String?,
-      matrixDeviceId: respData['matrix_device_id'] as String?,
-    );
-
-    await auth.save(
-      primaryToken: authResponse.token,
-      chatbotToken: authResponse.chatbotToken,
-      userId: authResponse.userId,
-      userIdInt: authResponse.userIdInt,
-      onboardingCompleted: authResponse.onboardingCompleted,
+      onboardingCompleted: true,
       refreshToken: authResponse.refreshToken,
       expiresIn: authResponse.expiresIn,
       matrixAccessToken: authResponse.matrixAccessToken,
@@ -310,7 +141,7 @@ class PsygoApiClient {
 
     try {
       final res = await _dio.post<Map<String, dynamic>>(
-        '${PsygoConfig.baseUrl}/api/auth/refresh',
+        '${PsygoConfig.baseUrl}/api/auth/refresh-token',
         data: {'refresh_token': refreshToken},
       );
 
@@ -329,6 +160,7 @@ class PsygoApiClient {
       }
 
       final newAccessToken = respData['access_token'] as String?;
+      final newRefreshToken = respData['refresh_token'] as String?;
       final newExpiresIn = respData['expires_in'] as int?;
 
       if (newAccessToken == null || newExpiresIn == null) {
@@ -336,7 +168,11 @@ class PsygoApiClient {
         return false;
       }
 
-      await auth.updateAccessToken(newAccessToken, newExpiresIn);
+      await auth.updateAccessToken(
+        newAccessToken,
+        newExpiresIn,
+        refreshToken: newRefreshToken,
+      );
       return true;
     } catch (e) {
       await auth.markLoggedOut();
@@ -366,131 +202,10 @@ class PsygoApiClient {
     return false;
   }
 
-  Future<Map<String, dynamic>> getSuggestions({
-    required List<Map<String, String>> history,
-    required String currentInput,
-    required int depth,
-    required int branchingFactor,
-    required Map<String, dynamic> anchoringSuggestions,
-  }) async {
-    final token = auth.chatbotToken;
-
-    // Performance metrics - start timing
-    final startTime = DateTime.now().millisecondsSinceEpoch;
-
-    // Truncate the history; take only the last two messages
-    final truncatedHistory = history.sublist(max(0, history.length - 2));
-    final res = await _dio.post<Map<String, dynamic>>(
-      '$_chatbotBase/api/generate-auto-completions',
-      data: {
-        'history': truncatedHistory,
-        'currentInput': currentInput,
-        'anchoringSuggestions': anchoringSuggestions,
-        'treeDepth': depth,
-        'branchingFactor': branchingFactor,
-      },
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-
-    // Performance metrics - calculate timing
-    final clientTotalMs = DateTime.now().millisecondsSinceEpoch - startTime;
-
-    final data = res.data ?? {};
-    if (res.statusCode != 200 || data['ok'] != true) {
-      throw AutomateBackendException(
-        data['error']?.toString() ?? 'Failed to get suggestions',
-        statusCode: res.statusCode,
-      );
-    }
-
-    // Extract server-side timings
-    final timings = data['_timings'] as Map<String, dynamic>?;
-    final serverTotalMs = timings?['total_ms'] as int?;
-    final llmMs = timings?['llm_ms'] as int?;
-    final dbMs = timings?['db_ms'] as int?;
-    final networkMs = serverTotalMs != null ? clientTotalMs - serverTotalMs : null;
-
-    // Print performance analysis
-    debugPrint('[auto-completion 耗时分析] {');
-    debugPrint('  client_total_ms: $clientTotalMs,  // 客户端感知的总耗时');
-    debugPrint('  server_total_ms: $serverTotalMs,  // 服务端处理耗时');
-    debugPrint('  network_ms: $networkMs,  // 网络往返耗时');
-    debugPrint('  llm_ms: $llmMs,  // DeepSeek API 耗时');
-    debugPrint('  db_ms: $dbMs,  // 数据库耗时');
-    debugPrint('}');
-
-    final suggestions = data['suggestions'];
-    if (suggestions is Map<String, dynamic>) return suggestions;
-    throw AutomateBackendException('Malformed suggestions payload', statusCode: res.statusCode);
-  }
-
-  Future<List<Map<String, String>>> fetchMessages() async {
-    final token = auth.chatbotToken;
-    final res = await _dio.get<Map<String, dynamic>>(
-      '$_chatbotBase/api/messages',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    final data = res.data ?? {};
-    if (res.statusCode != 200 || data['ok'] != true) {
-      throw AutomateBackendException(
-        data['error']?.toString() ?? 'Failed to fetch messages',
-        statusCode: res.statusCode,
-      );
-    }
-    final rawMessages = data['messages'];
-    if (rawMessages is List) {
-      return rawMessages
-          .whereType<Map<String, dynamic>>()
-          .map((m) => {
-                'role': m['role']?.toString() ?? '',
-                'content': m['content']?.toString() ?? '',
-              },)
-          .toList();
-    }
-    return [];
-  }
-
-  /// 完成新手引导并创建首个 Agent
-  /// [avatarUrl] 可选，Agent 头像 URL（如 DiceBear）
-  /// 返回创建的 Agent 信息（agent_id, matrix_user_id, pod_url）
-  Future<OnboardingResult> completeOnboarding({String? avatarUrl}) async {
-    final userIdInt = auth.userIdInt;
-    if (userIdInt == null || userIdInt == 0) {
-      throw AutomateBackendException('User ID not found');
-    }
-
-    final token = auth.primaryToken;
-    final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/users/$userIdInt/complete-onboarding',
-      data: avatarUrl != null ? {'avatar_url': avatarUrl} : null,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    final data = res.data ?? {};
-    final respCode = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || respCode != 0) {
-      throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to complete onboarding',
-        statusCode: res.statusCode,
-      );
-    }
-
-    // 更新本地状态
-    await auth.markOnboardingCompleted();
-
-    // 解析返回的 Agent 信息
-    final respData = data['data'] as Map<String, dynamic>?;
-    return OnboardingResult(
-      agentId: respData?['agent_id'] as String? ?? '',
-      matrixUserId: respData?['matrix_user_id'] as String? ?? '',
-      podUrl: respData?['pod_url'] as String? ?? '',
-      invitationExpired: respData?['invitation_expired'] as bool? ?? false,
-    );
-  }
-
   /// 创建充值订单
   Future<RechargeOrderResponse> createRechargeOrder(double amount) async {
-    final userIdInt = auth.userIdInt;
-    if (userIdInt == null || userIdInt == 0) {
+    final userId = auth.userId;
+    if (userId == null || userId.isEmpty) {
       throw AutomateBackendException('User ID not found');
     }
 
@@ -498,7 +213,7 @@ class PsygoApiClient {
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/payments/recharge/create',
       data: {
-        'user_id': userIdInt,
+        'user_id': userId,
         'total_amount': amount,
       },
       options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -507,8 +222,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to create recharge order',
+        data['message']?.toString() ?? 'Failed to create recharge order',
         statusCode: res.statusCode,
       );
     }
@@ -532,8 +248,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get order status',
+        data['message']?.toString() ?? 'Failed to get order status',
         statusCode: res.statusCode,
       );
     }
@@ -554,16 +271,16 @@ class PsygoApiClient {
     String? appVersion,
     String? deviceInfo,
   }) async {
-    final userIdInt = auth.userIdInt;
-    if (userIdInt == null || userIdInt == 0) {
+    final userId = auth.userId;
+    if (userId == null || userId.isEmpty) {
       throw AutomateBackendException('User ID not found');
     }
 
     final token = auth.primaryToken;
     final res = await _dio.post<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/feedback/',
+      '${PsygoConfig.baseUrl}/api/feedback',
       data: {
-        'user_id': userIdInt,
+        'user_id': userId,
         'content': content,
         if (replyEmail != null && replyEmail.isNotEmpty) 'reply_email': replyEmail,
         if (category != null && category.isNotEmpty) 'category': category,
@@ -576,8 +293,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to submit feedback',
+        data['message']?.toString() ?? 'Failed to submit feedback',
         statusCode: res.statusCode,
       );
     }
@@ -585,22 +303,23 @@ class PsygoApiClient {
 
   /// 获取用户信息（包含余额）
   Future<UserInfo> getUserInfo() async {
-    final userIdInt = auth.userIdInt;
-    if (userIdInt == null || userIdInt == 0) {
+    final userId = auth.userId;
+    if (userId == null || userId.isEmpty) {
       throw AutomateBackendException('User ID not found');
     }
 
     final token = auth.primaryToken;
     final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/users/$userIdInt',
+      '${PsygoConfig.baseUrl}/api/users/$userId',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
 
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get user info',
+        data['message']?.toString() ?? 'Failed to get user info',
         statusCode: res.statusCode,
       );
     }
@@ -609,14 +328,39 @@ class PsygoApiClient {
     if (respData == null) {
       throw AutomateBackendException('Empty response data');
     }
+    final userData = respData;
 
-    // 服务端返回格式: {"code": 0, "data": {"user": {...}}}
-    final userData = respData['user'] as Map<String, dynamic>?;
-    if (userData == null) {
-      throw AutomateBackendException('Missing user data');
+    final balanceRes = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/users/$userId/balance',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final balanceData = balanceRes.data ?? {};
+    final balanceCode = balanceData['code'] as int? ?? -1;
+    if (balanceRes.statusCode != 200 || balanceCode != 0) {
+      await _handleAuthError(balanceCode);
+      throw AutomateBackendException(
+        balanceData['message']?.toString() ?? 'Failed to get user balance',
+        statusCode: balanceRes.statusCode,
+      );
     }
 
-    return UserInfo.fromJson(userData);
+    final balancePayload = balanceData['data'] as Map<String, dynamic>?;
+    if (balancePayload == null) {
+      throw AutomateBackendException('Empty balance data');
+    }
+    final balanceValue = balancePayload['balance'];
+    int? balance;
+    if (balanceValue is num) {
+      balance = balanceValue.toInt();
+    } else if (balanceValue != null) {
+      balance = int.tryParse(balanceValue.toString());
+    }
+    if (balance == null) {
+      throw AutomateBackendException('Invalid balance data');
+    }
+
+    return UserInfo.fromJson(userData, creditBalance: balance);
   }
 
   /// 检查应用版本更新
@@ -637,8 +381,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to check app version',
+        data['message']?.toString() ?? 'Failed to check app version',
         statusCode: res.statusCode,
       );
     }
@@ -651,47 +396,19 @@ class PsygoApiClient {
     return AppVersionResponse.fromJson(respData);
   }
 
-  /// 获取快速开始卡片列表（公开接口，无需认证）
-  /// Onboarding 引导页使用
-  Future<List<Map<String, dynamic>>> getQuickStartCards() async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/quick-start-cards',
-    );
-
-    final data = res.data ?? {};
-    final respCode = data['code'] as int? ?? -1;
-    if (res.statusCode != 200 || respCode != 0) {
-      throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get quick start cards',
-        statusCode: res.statusCode,
-      );
-    }
-
-    final respData = data['data'] as Map<String, dynamic>?;
-    if (respData == null) {
-      return [];
-    }
-
-    final cards = respData['cards'] as List<dynamic>?;
-    if (cards == null) {
-      return [];
-    }
-
-    return cards.whereType<Map<String, dynamic>>().toList();
-  }
-
   /// 获取所有激活的协议列表（公开接口，无需认证）
   /// 返回用户协议和隐私政策的 URL
   Future<List<Agreement>> getAgreements() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '${PsygoConfig.baseUrl}/api/agreements/',
+      '${PsygoConfig.baseUrl}/api/agreements',
     );
 
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get agreements',
+        data['message']?.toString() ?? 'Failed to get agreements',
         statusCode: res.statusCode,
       );
     }
@@ -719,8 +436,9 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? 'Failed to get agreement status',
+        data['message']?.toString() ?? 'Failed to get agreement status',
         statusCode: res.statusCode,
       );
     }
@@ -751,7 +469,7 @@ class PsygoApiClient {
       final responseData = e.response?.data;
       String errorMsg = '注销失败，请稍后重试';
       if (responseData is Map<String, dynamic>) {
-        errorMsg = responseData['msg']?.toString() ?? errorMsg;
+        errorMsg = responseData['message']?.toString() ?? errorMsg;
       }
       throw AutomateBackendException(errorMsg, statusCode: e.response?.statusCode);
     }
@@ -759,152 +477,39 @@ class PsygoApiClient {
     final data = res.data ?? {};
     final respCode = data['code'] as int? ?? -1;
     if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['msg']?.toString() ?? '注销失败',
+        data['message']?.toString() ?? '注销失败',
         statusCode: res.statusCode,
       );
     }
   }
 
-  Stream<ChatStreamEvent> streamChatResponse(String message, {bool isQuickStart = false}) async* {
-    final token = auth.chatbotToken;
-    final url = Uri.parse('$_chatbotBase/api/submit-user-message');
-    final request = http.Request('POST', url);
-    request.headers['Content-Type'] = 'application/json';
-    request.headers['Authorization'] = 'Bearer $token';
-    request.body = jsonEncode({
-      'content': message,
-      if (isQuickStart) 'is_quick_start': true,
-    });
-
-    late final http.StreamedResponse response;
-    try {
-      response = await _http.send(request);
-    } catch (e) {
-      throw AutomateBackendException('无法连接到聊天服务: $e');
+  Future<void> _handleAuthError(int? code) async {
+    if (code == null || !_unauthorizedCodes.contains(code)) {
+      return;
     }
-
-    if (response.statusCode == 401) {
-      auth.markLoggedOut();
-      throw UnauthorizedException();
-    }
-    if (response.statusCode != 200) {
-      final body = await response.stream.bytesToString();
-      throw AutomateBackendException(
-        '聊天请求失败 (${response.statusCode}): $body',
-        statusCode: response.statusCode,
-      );
-    }
-
-    yield* _parseSseStream(response.stream);
+    await auth.markLoggedOut();
   }
 
-  Stream<ChatStreamEvent> _parseSseStream(Stream<List<int>> byteStream) async* {
-    final decoder = utf8.decoder;
-    var buffer = '';
-    await for (final chunk in byteStream.transform(decoder)) {
-      buffer += chunk;
-      int boundary;
-      while ((boundary = buffer.indexOf('\n\n')) != -1) {
-        final rawEvent = buffer.substring(0, boundary);
-        buffer = buffer.substring(boundary + 2);
-        final event = _decodeSseEvent(rawEvent);
-        if (event == null) continue;
-        switch (event.name) {
-          case 'assistant_message_delta':
-            final delta = _readDelta(event.data);
-            if (delta.isNotEmpty) yield ChatStreamEvent.delta(delta);
-            break;
-          case 'decision':
-            final shouldStop = _readDecision(event.data);
-            yield ChatStreamEvent.decision(shouldStop);
-            break;
-          case 'assistant_message':
-            final content = _readAssistantContent(event.data);
-            if (content.isNotEmpty) yield ChatStreamEvent.assistantMessage(content);
-            break;
-          case 'error':
-            throw AutomateBackendException(_readErrorFromEvent(event.data));
-          case 'done':
-            yield ChatStreamEvent.done();
-            return;
-        }
-      }
-    }
-  }
-
-  bool _readDecision(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return data['shouldStop'] == true;
-    }
-    return false;
-  }
-
-  _SseEvent? _decodeSseEvent(String rawEvent) {
-    String? name;
-    final dataBuffer = StringBuffer();
-    for (final line in rawEvent.split('\n')) {
-      if (line.startsWith('event:')) {
-        name = line.substring(6).trim();
-      } else if (line.startsWith('data:')) {
-        dataBuffer.write(line.substring(5).trim());
-      }
-    }
-    if (name == null) return null;
-    final dataString = dataBuffer.toString();
-    dynamic data;
-    if (dataString.isNotEmpty) {
-      try {
-        data = jsonDecode(dataString);
-      } catch (_) {
-        data = dataString;
-      }
-    }
-    return _SseEvent(name: name, data: data);
-  }
-
-  String _readDelta(dynamic data) {
-    if (data is Map<String, dynamic>) return data['delta']?.toString() ?? '';
-    return data?.toString() ?? '';
-  }
-
-  String _readAssistantContent(dynamic data) {
-    if (data is Map<String, dynamic>) return data['content']?.toString() ?? '';
-    return '';
-  }
-
-  String _readErrorFromEvent(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return data['message']?.toString() ??
-          data['error']?.toString() ??
-          'Unknown error';
-    }
-    return data?.toString() ?? 'Unknown error';
-  }
 }
 
 class AuthResponse {
   final String token;
-  final String chatbotToken;
   final String? refreshToken;
   final int? expiresIn;
   final String userId;
-  final int userIdInt;
-  final bool onboardingCompleted;
-  final bool isNewUser;
+  final String phone;
   final String? matrixAccessToken;
   final String? matrixUserId;
   final String? matrixDeviceId;
 
   AuthResponse({
     required this.token,
-    required this.chatbotToken,
     this.refreshToken,
     this.expiresIn,
     required this.userId,
-    required this.userIdInt,
-    required this.onboardingCompleted,
-    required this.isNewUser,
+    required this.phone,
     this.matrixAccessToken,
     this.matrixUserId,
     this.matrixDeviceId,
@@ -912,114 +517,19 @@ class AuthResponse {
 
   Map<String, dynamic> toJson() => {
         'token': token,
-        'chatbotToken': chatbotToken,
         'refreshToken': refreshToken,
         'expiresIn': expiresIn,
         'userId': userId,
-        'userIdInt': userIdInt,
-        'onboardingCompleted': onboardingCompleted,
-        'isNewUser': isNewUser,
+        'phone': phone,
         'matrixAccessToken': matrixAccessToken,
         'matrixUserId': matrixUserId,
         'matrixDeviceId': matrixDeviceId,
       };
 }
 
-/// 融合认证 Token 响应
-class FusionAuthTokenResponse {
-  final String verifyToken;
-  final String schemeCode;
-
-  FusionAuthTokenResponse({
-    required this.verifyToken,
-    required this.schemeCode,
-  });
-}
-
-/// 验证手机号响应
-class VerifyPhoneResponse {
-  final String phone;       // 脱敏手机号（138****1234）
-  final bool isNewUser;     // 是否新用户
-  final String pendingToken; // 待确认 token（5分钟有效）
-
-  VerifyPhoneResponse({
-    required this.phone,
-    required this.isNewUser,
-    required this.pendingToken,
-  });
-}
-
-/// 新手引导完成结果（包含创建的 Agent 信息）
-class OnboardingResult {
-  final String agentId;
-  final String matrixUserId;
-  final String podUrl;
-  final bool invitationExpired; // 邀请码是否已过期（过期则无 Agent 创建）
-
-  OnboardingResult({
-    required this.agentId,
-    required this.matrixUserId,
-    required this.podUrl,
-    this.invitationExpired = false,
-  });
-}
-
-class _SseEvent {
-  final String name;
-  final dynamic data;
-
-  _SseEvent({required this.name, required this.data});
-}
-
-/// SSE 事件类型枚举
-enum ChatStreamEventType {
-  /// 对话 LLM 的增量内容
-  delta,
-  /// 判断 LLM 的决策结果
-  decision,
-  /// 完整的 assistant 消息（流结束时）
-  assistantMessage,
-  /// 流结束
-  done,
-}
-
-/// 聊天流事件
-class ChatStreamEvent {
-  final ChatStreamEventType type;
-  /// delta 类型时为增量文本，assistantMessage 类型时为完整内容
-  final String? content;
-  /// decision 类型时为 true/false
-  final bool? shouldStop;
-
-  ChatStreamEvent._({
-    required this.type,
-    this.content,
-    this.shouldStop,
-  });
-
-  factory ChatStreamEvent.delta(String content) => ChatStreamEvent._(
-        type: ChatStreamEventType.delta,
-        content: content,
-      );
-
-  factory ChatStreamEvent.decision(bool shouldStop) => ChatStreamEvent._(
-        type: ChatStreamEventType.decision,
-        shouldStop: shouldStop,
-      );
-
-  factory ChatStreamEvent.assistantMessage(String content) => ChatStreamEvent._(
-        type: ChatStreamEventType.assistantMessage,
-        content: content,
-      );
-
-  factory ChatStreamEvent.done() => ChatStreamEvent._(
-        type: ChatStreamEventType.done,
-      );
-}
-
 /// 充值订单创建请求
 class CreateRechargeOrderRequest {
-  final int userId;
+  final String userId;
   final double totalAmount;
 
   CreateRechargeOrderRequest({
@@ -1052,85 +562,101 @@ class RechargeOrderResponse {
       outTradeNo: json['out_trade_no'] as String? ?? '',
       orderString: json['order_string'] as String? ?? '',
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
-      creditsAmount: json['credits_amount'] as int? ?? 0,
+      creditsAmount: (json['credits_amount'] as num?)?.toInt() ?? 0,
     );
   }
 }
 
 /// 订单状态
 class PaymentOrder {
-  final int id;
   final String outTradeNo;
   final String? tradeNo;
-  final int userId;
-  final String productType;
+  final String userId;
   final double totalAmount;
   final int creditsAmount;
-  final String subject;
   final String status; // pending, paid, closed, refunded
   final String? tradeStatus;
   final String? notifyTime;
   final String createdAt;
+  final String updatedAt;
 
   PaymentOrder({
-    required this.id,
     required this.outTradeNo,
     this.tradeNo,
     required this.userId,
-    required this.productType,
     required this.totalAmount,
     required this.creditsAmount,
-    required this.subject,
     required this.status,
     this.tradeStatus,
     this.notifyTime,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   factory PaymentOrder.fromJson(Map<String, dynamic> json) {
     return PaymentOrder(
-      id: json['id'] as int? ?? 0,
       outTradeNo: json['out_trade_no'] as String? ?? '',
       tradeNo: json['trade_no'] as String?,
-      userId: json['user_id'] as int? ?? 0,
-      productType: json['product_type'] as String? ?? '',
+      userId: json['user_id'] as String? ?? '',
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
-      creditsAmount: json['credits_amount'] as int? ?? 0,
-      subject: json['subject'] as String? ?? '',
+      creditsAmount: (json['credits_amount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'pending',
       tradeStatus: json['trade_status'] as String?,
       notifyTime: json['notify_time'] as String?,
       createdAt: json['created_at'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
     );
   }
 }
 
 /// 用户信息（包含余额）
 class UserInfo {
-  final int id;
-  final String username;
+  final String id;
+  final String phone;
   final String? email;
-  final String? phone;
-  final int type;
-  final int creditBalance; // 积分余额（分）
+  final String? nickname;
+  final String status;
+  final String role;
+  final String tier;
+  final DateTime? invitationVerifiedAt;
+  final DateTime? lastLoginAt;
+  final DateTime? createdAt;
+  final int creditBalance; // 积分余额
 
   UserInfo({
     required this.id,
-    required this.username,
+    required this.phone,
     this.email,
-    this.phone,
-    required this.type,
+    this.nickname,
+    required this.status,
+    required this.role,
+    required this.tier,
+    this.invitationVerifiedAt,
+    this.lastLoginAt,
+    this.createdAt,
     required this.creditBalance,
   });
 
-  factory UserInfo.fromJson(Map<String, dynamic> json) {
+  factory UserInfo.fromJson(Map<String, dynamic> json, {int creditBalance = 0}) {
+    DateTime? parseTime(dynamic value) {
+      if (value == null) {
+        return null;
+      }
+      return DateTime.tryParse(value.toString());
+    }
+
     return UserInfo(
-      id: json['id'] as int? ?? 0,
-      username: json['username'] as String? ?? '',
+      id: json['id'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
       email: json['email'] as String?,
-      phone: json['phone'] as String?,
-      type: json['type'] as int? ?? 3,
-      creditBalance: json['credit_balance'] as int? ?? 0,
+      nickname: json['nickname'] as String?,
+      status: json['status'] as String? ?? '',
+      role: json['role'] as String? ?? '',
+      tier: json['tier'] as String? ?? '',
+      invitationVerifiedAt: parseTime(json['invitation_verified_at']),
+      lastLoginAt: parseTime(json['last_login_at']),
+      createdAt: parseTime(json['created_at']),
+      creditBalance: creditBalance,
     );
   }
 }

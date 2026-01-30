@@ -17,7 +17,6 @@ import 'package:psygo/pages/device_settings/device_settings.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
 import 'package:psygo/pages/login_signup/phone_login_page.dart';
-import 'package:psygo/pages/onboarding_chatbot/onboarding_chatbot.dart';
 import 'package:psygo/pages/main_screen/main_screen.dart';
 import 'package:psygo/pages/login/login.dart';
 import 'package:psygo/pages/new_group/new_group.dart';
@@ -39,11 +38,6 @@ abstract class AppRoutes {
     BuildContext context,
     GoRouterState state,
   ) {
-    // If we are already going to the onboarding chatbot, don't redirect away
-    if (state.fullPath == '/onboarding-chatbot') {
-      return null;
-    }
-    
     return Matrix.of(context).widget.clients.any((client) => client.isLogged())
         ? '/rooms'
         : null;
@@ -86,15 +80,6 @@ abstract class AppRoutes {
         context,
         state,
         const PhoneLoginPage(),
-      ),
-      redirect: loggedInRedirect,
-    ),
-    GoRoute(
-      path: '/onboarding-chatbot',
-      pageBuilder: (context, state) => defaultPageBuilder(
-        context,
-        state,
-        const OnboardingChatbot(),
       ),
       redirect: loggedInRedirect,
     ),

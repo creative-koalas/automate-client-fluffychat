@@ -200,9 +200,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     });
   }
 
-  /// 验证码登录（两步流程）
-  /// 第一步：verifyPhoneCode → 返回 isNewUser + pendingToken
-  /// 第二步：handlePostVerify → 邀请码弹窗（新用户）+ completeLogin + Matrix 登录
+  /// 验证码登录
   void verifyAndLogin() async {
     if (!await _ensureEulaAccepted()) {
       return;
@@ -225,17 +223,14 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     });
 
     try {
-      debugPrint('=== 第一步：验证手机号 + 验证码 ===');
-      final verifyResponse = await backend.verifyPhoneCode(
+      debugPrint('=== 调用后端短信登录 ===');
+      final authResponse = await backend.smsLogin(
         phoneController.text,
         codeController.text,
       );
-      debugPrint('验证结果: phone=${verifyResponse.phone}, isNewUser=${verifyResponse.isNewUser}');
-
       if (!mounted) return;
 
-      // 使用 mixin 的公共逻辑处理后续流程
-      await handlePostVerify(verifyResponse: verifyResponse);
+      await handlePostLogin(authResponse);
     } catch (e) {
       debugPrint('验证码登录错误: $e');
       if (!mounted) return;
