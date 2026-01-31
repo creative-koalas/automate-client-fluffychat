@@ -46,6 +46,18 @@ class AliyunPushService {
     print('[PUSH_AUDIT] $message');
   }
 
+  String _mask(String? value, {int prefix = 4, int suffix = 4}) {
+    if (value == null || value.isEmpty) return 'null';
+    if (value.length <= prefix + suffix) return value;
+    return '${value.substring(0, prefix)}...${value.substring(value.length - suffix)}';
+  }
+
+  String _truncate(String? value, {int max = 200}) {
+    if (value == null || value.isEmpty) return '';
+    if (value.length <= max) return value;
+    return '${value.substring(0, max)}...';
+  }
+
   bool get _isAppResumed {
     final state = WidgetsBinding.instance.lifecycleState;
     return state == null || state == AppLifecycleState.resumed;
@@ -216,8 +228,8 @@ class AliyunPushService {
   Future<void> _fetchDeviceId() async {
     try {
       _deviceId = await _aliyunPush.getDeviceId();
-      Logs().i('[AliyunPush] Device ID: $_deviceId');
-      _audit('deviceId=$_deviceId');
+      Logs().i('[AliyunPush] Device ID: ${_mask(_deviceId)} (len=${_deviceId?.length ?? 0})');
+      _audit('deviceId=${_mask(_deviceId)}');
     } catch (e) {
       Logs().w('[AliyunPush] Failed to get device ID', e);
       _audit('deviceId fetch failed $e');
@@ -761,7 +773,10 @@ class AliyunPushService {
     }
 
     final pushKey = _generatePushKey();
-    _audit('register backend start user=$matrixUserID pushKey=$pushKey deviceId=$_deviceId');
+    Logs().i('[AliyunPush] Register pusher: baseUrl=${PsygoConfig.baseUrl}, apiUrl=${PsygoConfig.apiUrl}');
+    Logs().i('[AliyunPush] Register pusher: k8sNamespace=${PsygoConfig.k8sNamespace}, gateway=$_pushGatewayUrl');
+    Logs().i('[AliyunPush] Register payload: user=$matrixUserID deviceId=${_mask(_deviceId)} pushKey=${_mask(pushKey)} appId=$_appId platform=$_platform');
+    _audit('register backend start user=$matrixUserID pushKey=${_mask(pushKey)} deviceId=${_mask(_deviceId)}');
 
     try {
       final uri = Uri.parse('${PsygoConfig.baseUrl}/api/push/register');
@@ -780,12 +795,13 @@ class AliyunPushService {
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200) {
-        Logs().i('[AliyunPush] Pusher registered to backend: pushKey=$pushKey');
+        Logs().i('[AliyunPush] Pusher registered to backend: pushKey=${_mask(pushKey)}');
         _audit('register backend ok status=${response.statusCode}');
         return pushKey;
       } else {
-        Logs().e('[AliyunPush] Register pusher failed: ${json['error']}');
-        _audit('register backend failed status=${response.statusCode} error=${json['error']}');
+        final errorMsg = json['error']?.toString() ?? 'unknown';
+        Logs().e('[AliyunPush] Register pusher failed: status=${response.statusCode} error=$errorMsg body=${_truncate(response.body)}');
+        _audit('register backend failed status=${response.statusCode} error=$errorMsg');
         return null;
       }
     } catch (e, s) {
@@ -807,9 +823,12 @@ class AliyunPushService {
   /// Matrix 的 append=false 只删除相同 pushkey 的 pusher，无法清理 app_id 相同但 pushkey 不同的旧记录。
   Future<bool> registerPusherToSynapse(Client client, String pushKey) async {
     try {
-      _audit('register synapse start pushKey=$pushKey');
+      Logs().i('[AliyunPush] Register pusher to Synapse: homeserver=${PsygoConfig.matrixHomeserver}');
+      Logs().i('[AliyunPush] Register pusher to Synapse: pushKey=${_mask(pushKey)} appId=$_appId gateway=$_pushGatewayUrl');
+      _audit('register synapse start pushKey=${_mask(pushKey)}');
       // Step 1: 获取当前所有 pusher
       final existingPushers = await client.getPushers();
+      Logs().i('[AliyunPush] Existing pushers: ${existingPushers?.length ?? 0}');
 
       // Step 2: 删除同一 app_id 的旧 pusher
       for (final pusher in existingPushers ?? []) {
