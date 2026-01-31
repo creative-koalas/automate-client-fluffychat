@@ -1,0 +1,9 @@
+#ifndef PATH_PROVIDER_FOUNDATION_PATHPROVIDERPLUGIN_H
+#define PATH_PROVIDER_FOUNDATION_PATHPROVIDERPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface PathProviderPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* PATH_PROVIDER_FOUNDATION_PATHPROVIDERPLUGIN_H */

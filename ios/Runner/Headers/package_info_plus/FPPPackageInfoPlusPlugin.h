@@ -1,0 +1,9 @@
+#ifndef PACKAGE_INFO_PLUS_FPPPACKAGEINFOPLUSPLUGIN_H
+#define PACKAGE_INFO_PLUS_FPPPACKAGEINFOPLUSPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface FPPPackageInfoPlusPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* PACKAGE_INFO_PLUS_FPPPACKAGEINFOPLUSPLUGIN_H */
