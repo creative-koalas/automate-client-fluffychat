@@ -1,0 +1,9 @@
+#ifndef WEBVIEW_FLUTTER_WKWEBVIEW_WEBVIEWFLUTTERPLUGIN_H
+#define WEBVIEW_FLUTTER_WKWEBVIEW_WEBVIEWFLUTTERPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface WebViewFlutterPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* WEBVIEW_FLUTTER_WKWEBVIEW_WEBVIEWFLUTTERPLUGIN_H */
