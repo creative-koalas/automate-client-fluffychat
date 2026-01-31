@@ -1,0 +1,9 @@
+#ifndef FLUTTER_NATIVE_SPLASH_FLUTTERNATIVESPLASHPLUGIN_H
+#define FLUTTER_NATIVE_SPLASH_FLUTTERNATIVESPLASHPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface FlutterNativeSplashPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* FLUTTER_NATIVE_SPLASH_FLUTTERNATIVESPLASHPLUGIN_H */

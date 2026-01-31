@@ -1,0 +1,9 @@
+#ifndef PERMISSION_HANDLER_APPLE_PERMISSIONHANDLERPLUGIN_H
+#define PERMISSION_HANDLER_APPLE_PERMISSIONHANDLERPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface PermissionHandlerPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* PERMISSION_HANDLER_APPLE_PERMISSIONHANDLERPLUGIN_H */
