@@ -517,8 +517,18 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // SDK 授权页会直接弹出覆盖当前界面
     _errorMessage = null;
 
+    if (_secretKey.isEmpty) {
+      debugPrint('[AuthGate] Missing ALIYUN_SECRET_KEY, cannot start one-click login');
+      setState(() {
+        _state = _AuthState.error;
+        _errorMessage = '未配置 ALIYUN_SECRET_KEY，请检查 env.local.json';
+      });
+      return;
+    }
+
     try {
       debugPrint('[AuthGate] Starting one-click login...');
+      debugPrint('[AuthGate] Aliyun secret key length: ${_secretKey.length}');
 
       // 先关闭可能存在的授权页，避免 "授权页已存在" 错误
       await OneClickLoginService.quitLoginPage();
@@ -612,15 +622,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
 
-      // If we still have retry attempts, stay in checking state (don't show error)
-      // Will be automatically retried when app resumes
-      if (_resumeRetryCount < _maxResumeRetries) {
-        debugPrint('[AuthGate] Login error but retries available ($_resumeRetryCount/$_maxResumeRetries), staying in checking state');
-        // Keep state as checking, will be retried
-        return;
-      }
-
-      // No more retries, show error
       setState(() {
         _state = _AuthState.error;
         _errorMessage = _parseErrorMessage(errorStr);
@@ -638,6 +639,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
     if (error.contains('预取号失败')) {
       return '网络环境不支持一键登录\n\n可能原因：\n- 未连接到运营商网络\n- 网络权限被拒绝\n\n请检查网络设置或使用其他登录方式';
+    }
+    if (error.contains('环境检查失败')) {
+      return '当前环境不支持一键登录\n\n请检查：\n- 是否插入 SIM 卡\n- 是否使用运营商网络\n- 是否允许网络权限\n\n如仍无法使用，请联系管理员确认阿里云配置';
     }
     if (error.contains('SDK初始化失败')) {
       return '初始化失败\n\n请检查：\n- 网络连接是否正常\n- 是否允许了网络权限\n\n如需修改权限，请点击"打开设置"';

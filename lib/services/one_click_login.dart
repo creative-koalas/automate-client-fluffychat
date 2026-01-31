@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
@@ -17,9 +19,15 @@ class OneClickLoginService {
       debugPrint('OneClickLogin: Initializing SDK...');
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('initSdk', {
         'secretKey': secretKey,
-      });
+      }).timeout(const Duration(seconds: 5));
       debugPrint('OneClickLogin: SDK init result: $result');
       return Map<String, dynamic>.from(result ?? {});
+    } on TimeoutException {
+      debugPrint('OneClickLogin: SDK init timed out');
+      return {
+        'code': 'TIMEOUT',
+        'msg': 'SDK初始化超时',
+      };
     } on PlatformException catch (e) {
       debugPrint('OneClickLogin: SDK init failed: ${e.message}');
       return {
@@ -37,9 +45,15 @@ class OneClickLoginService {
       debugPrint('OneClickLogin: Starting pre-login (accelerate)...');
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('accelerateLogin', {
         'timeout': timeout,
-      });
+      }).timeout(Duration(milliseconds: timeout + 2000));
       debugPrint('OneClickLogin: Pre-login result: $result');
       return Map<String, dynamic>.from(result ?? {});
+    } on TimeoutException {
+      debugPrint('OneClickLogin: Pre-login timed out');
+      return {
+        'code': 'TIMEOUT',
+        'msg': '预取号超时',
+      };
     } on PlatformException catch (e) {
       debugPrint('OneClickLogin: Pre-login failed: ${e.code} - ${e.message}');
       return {
@@ -53,9 +67,17 @@ class OneClickLoginService {
   static Future<Map<String, dynamic>> checkEnvAvailable() async {
     try {
       debugPrint('OneClickLogin: Checking environment...');
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('checkEnvAvailable');
+      final result = await _channel
+          .invokeMethod<Map<dynamic, dynamic>>('checkEnvAvailable')
+          .timeout(const Duration(seconds: 5));
       debugPrint('OneClickLogin: Environment check result: $result');
       return Map<String, dynamic>.from(result ?? {});
+    } on TimeoutException {
+      debugPrint('OneClickLogin: Environment check timed out');
+      return {
+        'code': 'TIMEOUT',
+        'msg': '环境检查超时',
+      };
     } on PlatformException catch (e) {
       debugPrint('OneClickLogin: Environment check failed: ${e.message}');
       return {
@@ -88,8 +110,13 @@ class OneClickLoginService {
   /// 关闭授权页
   static Future<bool> quitLoginPage() async {
     try {
-      final result = await _channel.invokeMethod<bool>('quitLoginPage');
+      final result = await _channel
+          .invokeMethod<bool>('quitLoginPage')
+          .timeout(const Duration(seconds: 2));
       return result ?? false;
+    } on TimeoutException {
+      debugPrint('OneClickLogin: Quit page timed out');
+      return false;
     } on PlatformException catch (e) {
       debugPrint('OneClickLogin: Quit page failed: ${e.message}');
       return false;
@@ -106,15 +133,25 @@ class OneClickLoginService {
     // 1. 初始化 SDK
     debugPrint('OneClickLogin: Step 1 - Initializing SDK...');
     final initResult = await initSdk(secretKey);
-    if (initResult['code'] != '600000') {
-      throw Exception('SDK初始化失败: ${initResult['msg']}');
+    final initCode = initResult['code']?.toString();
+    if (initCode != '600000') {
+      throw Exception('SDK初始化失败($initCode): ${initResult['msg']}');
+    }
+
+    // 1.5 环境检查（可选但有助于定位网络/运营商问题）
+    debugPrint('OneClickLogin: Step 1.5 - Checking environment...');
+    final envResult = await checkEnvAvailable();
+    final envCode = envResult['code']?.toString();
+    if (envCode != '600000') {
+      throw Exception('环境检查失败($envCode): ${envResult['msg']}');
     }
 
     // 2. 预取号（关键步骤！）
     debugPrint('OneClickLogin: Step 2 - Pre-login (accelerate)...');
     final accelerateResult = await accelerateLogin(timeout: timeout);
-    if (accelerateResult['code'] != '600000') {
-      throw Exception('预取号失败: ${accelerateResult['msg']}');
+    final accelerateCode = accelerateResult['code']?.toString();
+    if (accelerateCode != '600000') {
+      throw Exception('预取号失败($accelerateCode): ${accelerateResult['msg']}');
     }
     debugPrint('OneClickLogin: Pre-login success, vendor: ${accelerateResult['vendor']}');
 
@@ -122,7 +159,7 @@ class OneClickLoginService {
     debugPrint('OneClickLogin: Step 3 - Performing login (show auth page)...');
     final loginResult = await oneClickLogin(timeout: timeout);
 
-    final code = loginResult['code'];
+    final code = loginResult['code']?.toString();
     if (code == '600000') {
       final token = loginResult['token'] as String?;
       if (token != null && token.isNotEmpty) {
@@ -137,7 +174,7 @@ class OneClickLoginService {
       throw SwitchLoginMethodException();
     }
 
-    throw Exception('一键登录失败: ${loginResult['msg']} (code: $code)');
+    throw Exception('一键登录失败($code): ${loginResult['msg']}');
   }
 }
 

@@ -41,10 +41,6 @@ target 'Runner' do
   # 阿里云一键登录 SDK
   pod 'ATAuthSDK', :path => 'Runner/Frameworks'
 
-  # From package https://pub.dev/packages/receive_sharing_intent
-  target 'Psygo Share' do
-    inherit! :search_paths
-  end
 end
 
 post_install do |installer|
@@ -60,7 +56,7 @@ post_install do |installer|
       config.build_settings['ENABLE_BITCODE'] = 'NO'
 
       # see https://github.com/flutter-webrtc/flutter-webrtc/issues/1054
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
       config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = 'arm64 i386'
 
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
@@ -73,6 +69,17 @@ post_install do |installer|
       config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
       unless config.build_settings['OTHER_LDFLAGS'].include?('-ObjC')
         config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+      end
+
+      # Flutter 3.38+ uses "Flutter" framework; replace legacy "Flutter-ObjC" if present.
+      other_ldflags = config.build_settings['OTHER_LDFLAGS']
+      case other_ldflags
+      when Array
+        config.build_settings['OTHER_LDFLAGS'] = other_ldflags.map do |flag|
+          flag == 'Flutter-ObjC' ? 'Flutter' : flag
+        end
+      when String
+        config.build_settings['OTHER_LDFLAGS'] = other_ldflags.gsub('Flutter-ObjC', 'Flutter')
       end
     end
   end
