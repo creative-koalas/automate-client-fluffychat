@@ -460,38 +460,41 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       // 优化按钮（删除）
       Padding(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-        child: OutlinedButton.icon(
-          onPressed: widget.isDeleting ? null : () => _confirmDelete(context),
-          icon: widget.isDeleting
-              ? SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: widget.isDeleting ? null : () => _confirmDelete(context),
+            icon: widget.isDeleting
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.error,
+                    ),
+                  )
+                : Icon(
+                    Icons.delete_outline_rounded,
                     color: theme.colorScheme.error,
+                    size: 18,
                   ),
-                )
-              : Icon(
-                  Icons.delete_outline_rounded,
-                  color: theme.colorScheme.error,
-                  size: 18,
-                ),
-          label: Text(
-            widget.isDeleting
-                ? '${l10n.deleteEmployee}...'
-                : l10n.deleteEmployee,
-            style: TextStyle(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.w600,
+            label: Text(
+              widget.isDeleting
+                  ? '${l10n.deleteEmployee}...'
+                  : l10n.deleteEmployee,
+              style: TextStyle(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            side: BorderSide(
-              color: theme.colorScheme.error.withAlpha(60),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              side: BorderSide(
+                color: theme.colorScheme.error.withAlpha(80),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
         ),

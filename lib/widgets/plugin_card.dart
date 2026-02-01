@@ -33,7 +33,7 @@ class PluginCard extends StatelessWidget {
             theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
           ],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
           width: 1.5,
@@ -54,10 +54,10 @@ class PluginCard extends StatelessWidget {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           splashColor: theme.colorScheme.primary.withAlpha(20),
           highlightColor: theme.colorScheme.primary.withAlpha(10),
           child: Padding(
