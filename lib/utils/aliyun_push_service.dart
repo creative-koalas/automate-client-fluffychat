@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
+import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/core/config.dart';
 
@@ -617,13 +618,15 @@ class AliyunPushService {
     int badge = 0,
   }) async {
     // Android 通知详情
-    const androidDetails = AndroidNotificationDetails(
-      'matrix_messages', // channel id
-      '消息通知', // channel name
+    final androidDetails = AndroidNotificationDetails(
+      AppConfig.pushNotificationsChannelId,
+      '消息通知',
       channelDescription: 'Matrix 消息通知',
       importance: Importance.high,
       priority: Priority.high,
       icon: 'notifications_icon',
+      category: AndroidNotificationCategory.message,
+      styleInformation: BigTextStyleInformation(body),
     );
 
     // iOS 通知详情
