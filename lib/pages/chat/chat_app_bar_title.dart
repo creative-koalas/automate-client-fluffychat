@@ -223,24 +223,11 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
 
-    final status = employee.computedWorkStatus;
-    String statusText;
-    Color dotColor;
-
-    switch (status) {
-      case 'working':
-        statusText = '💼 ${l10n.employeeWorking}';
-        dotColor = Colors.green;
-        break;
-      case 'idle_long':
-        statusText = '😴 ${l10n.employeeSleeping}';
-        dotColor = Colors.blue;
-        break;
-      default: // idle
-        statusText = '🐟 ${l10n.employeeSlacking}';
-        dotColor = Colors.orange;
-        break;
-    }
+    final isWorking = employee.isWorking;
+    final statusText = isWorking
+        ? '💼 ${l10n.employeeWorking}'
+        : '😴 ${l10n.employeeSleeping}';
+    final dotColor = isWorking ? Colors.green : Colors.blue;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

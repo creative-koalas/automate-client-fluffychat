@@ -3,11 +3,11 @@ library;
 import 'agent_template.dart';
 
 class HireResult {
-  final UnifiedCreateAgentResponse response;
+  final Future<UnifiedCreateAgentResponse> responseFuture;
   final String displayName;
 
   const HireResult({
-    required this.response,
+    required this.responseFuture,
     required this.displayName,
   });
 }

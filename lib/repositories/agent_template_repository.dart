@@ -73,14 +73,10 @@ class AgentTemplateRepository {
         templateId: templateId,
         userRules: userRules,
       ).toJson(),
-      fromJsonT: (data) => data as Map<String, dynamic>,
+      fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
 
-    if (response.data == null) {
-      throw ApiException(-1, 'Invalid response: empty data');
-    }
-
-    return UnifiedCreateAgentResponse.fromJson(response.data!);
+    return _buildCreateResponse(response);
   }
 
   /// 定制创建 Agent（无模板）
@@ -102,14 +98,10 @@ class AgentTemplateRepository {
         systemPrompt: systemPrompt,
         // 不指定 templateId，后端会创建空白 Agent
       ).toJson(),
-      fromJsonT: (data) => data as Map<String, dynamic>,
+      fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
 
-    if (response.data == null) {
-      throw ApiException(-1, 'Invalid response: empty data');
-    }
-
-    return UnifiedCreateAgentResponse.fromJson(response.data!);
+    return _buildCreateResponse(response);
   }
 
   /// 定制创建 Agent（带插件）
@@ -136,11 +128,22 @@ class AgentTemplateRepository {
         plugins: plugins,
         avatarUrl: avatarUrl,
       ).toJson(),
-      fromJsonT: (data) => data as Map<String, dynamic>,
+      fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
 
+    return _buildCreateResponse(response);
+  }
+
+  UnifiedCreateAgentResponse _buildCreateResponse(
+    ApiResponse<Map<String, dynamic>> response,
+  ) {
     if (response.data == null) {
-      throw ApiException(-1, 'Invalid response: empty data');
+      return UnifiedCreateAgentResponse(
+        message: response.message,
+        agentId: '',
+        matrixUserId: '',
+        pluginsCount: 0,
+      );
     }
 
     return UnifiedCreateAgentResponse.fromJson(response.data!);

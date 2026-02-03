@@ -199,11 +199,16 @@ class UnifiedCreateAgentResponse {
   });
 
   factory UnifiedCreateAgentResponse.fromJson(Map<String, dynamic> json) {
+    final agentIdValue = json['agent_id'];
+    final matrixUserIdValue = json['matrix_user_id'];
+    final pluginsCountValue = json['plugins_count'];
     return UnifiedCreateAgentResponse(
       message: json['message'] as String? ?? '',
-      agentId: json['agent_id'] as String? ?? '',
-      matrixUserId: json['matrix_user_id'] as String? ?? '',
-      pluginsCount: json['plugins_count'] as int? ?? 0,
+      agentId: agentIdValue?.toString() ?? '',
+      matrixUserId: matrixUserIdValue?.toString() ?? '',
+      pluginsCount: pluginsCountValue is int
+          ? pluginsCountValue
+          : int.tryParse(pluginsCountValue?.toString() ?? '') ?? 0,
       podUrl: json['pod_url'] as String?,
     );
   }

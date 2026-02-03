@@ -424,19 +424,8 @@ class _EmployeeCardState extends State<EmployeeCard>
       return const SizedBox.shrink();
     }
 
-    // 根据计算后的 work_status 判断状态
-    Color dotColor;
-    switch (widget.employee.computedWorkStatus) {
-      case 'working':
-        dotColor = Colors.green;  // 工作中 - 绿色
-        break;
-      case 'idle_long':
-        dotColor = Colors.blue;   // 睡觉中 - 蓝色
-        break;
-      case 'idle':
-      default:
-        dotColor = Colors.orange; // 摸鱼中 - 橙色
-    }
+    // 根据 loop 状态判断工作/休息
+    final dotColor = widget.employee.isWorking ? Colors.green : Colors.blue;
 
     return Container(
       width: 12,
@@ -461,16 +450,10 @@ class _EmployeeCardState extends State<EmployeeCard>
       return l10n.employeeOnboarding;
     }
 
-    // 根据计算后的 work_status 判断状态，添加 emoji
-    switch (widget.employee.computedWorkStatus) {
-      case 'working':
-        return '💼 ${l10n.employeeWorking}';   // 工作中
-      case 'idle_long':
-        return '😴 ${l10n.employeeSleeping}';  // 睡觉中
-      case 'idle':
-      default:
-        return '🐟 ${l10n.employeeSlacking}';  // 摸鱼中
-    }
+    // 根据 loop 状态判断工作/休息，添加 emoji
+    return widget.employee.isWorking
+        ? '💼 ${l10n.employeeWorking}'
+        : '😴 ${l10n.employeeSleeping}';
   }
 
   Widget _buildStatusBadge(BuildContext context, ThemeData theme, L10n l10n) {

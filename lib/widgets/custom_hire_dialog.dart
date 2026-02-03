@@ -295,6 +295,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   /// 提交创建
   Future<void> _onSubmit() async {
+    if (_isSubmitting) return;
     final invitationCode = _invitationCodeController.text.trim();
 
     if (invitationCode.isEmpty) {
@@ -309,36 +310,27 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       _error = null;
     });
 
-    try {
-      // 构建插件配置列表
-      final plugins = _selectedPlugins.map((name) {
-        return PluginConfig(
-          pluginName: name,
-          config: _collectPluginConfig(name),
-        );
-      }).toList();
-
-      // 调用创建接口（服务端会注入默认 system prompt）
-      final response = await widget.repository.createCustomAgentWithPlugins(
-        name: _nameController.text.trim(),
-        plugins: plugins.isNotEmpty ? plugins : null,
-        invitationCode: invitationCode,
-        avatarUrl: _avatarUrl,
+    // 构建插件配置列表
+    final plugins = _selectedPlugins.map((name) {
+      return PluginConfig(
+        pluginName: name,
+        config: _collectPluginConfig(name),
       );
+    }).toList();
 
-      if (mounted) {
-        Navigator.of(context).pop(HireResult(
-          response: response,
-          displayName: _nameController.text.trim(),
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _isSubmitting = false;
-        });
-      }
+    // 调用创建接口（异步），先返回 UI 结果让入职动画接管
+    final responseFuture = widget.repository.createCustomAgentWithPlugins(
+      name: _nameController.text.trim(),
+      plugins: plugins.isNotEmpty ? plugins : null,
+      invitationCode: invitationCode,
+      avatarUrl: _avatarUrl,
+    );
+
+    if (mounted) {
+      Navigator.of(context).pop(HireResult(
+        responseFuture: responseFuture,
+        displayName: _nameController.text.trim(),
+      ));
     }
   }
 

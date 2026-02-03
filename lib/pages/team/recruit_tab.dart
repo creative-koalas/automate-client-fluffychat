@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
@@ -7,6 +9,7 @@ import '../../repositories/agent_repository.dart';
 import '../../repositories/agent_template_repository.dart';
 import '../../services/agent_service.dart';
 import '../../utils/retry_helper.dart';
+import '../../utils/localized_exception_extension.dart';
 import '../../widgets/custom_hire_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/hire_success_dialog.dart';
@@ -44,6 +47,10 @@ class RecruitTabState extends State<RecruitTab>
   bool _isLoading = true;
   String? _error;
   int _employeeCount = 0; // 用于判断是否是第一位员工
+  Timer? _postHirePollingTimer;
+  int _postHirePollingAttempts = 0;
+  static const int _maxPostHirePollingAttempts = 8;
+  static const Duration _postHirePollingInterval = Duration(seconds: 5);
 
   @override
   bool get wantKeepAlive => true;
@@ -57,6 +64,7 @@ class RecruitTabState extends State<RecruitTab>
 
   @override
   void dispose() {
+    _stopPostHirePolling();
     _repository.dispose();
     _agentRepository.dispose();
     super.dispose();
@@ -153,48 +161,83 @@ class RecruitTabState extends State<RecruitTab>
   }
 
   void _handleHireResult(HireResult? result) {
-    if (result != null && mounted) {
-      final response = result.response;
+    if (result == null || !mounted) return;
+
+    final isFirstEmployee = _employeeCount == 0;
+    setState(() {
+      _employeeCount++;
+    });
+
+    final displayName = result.displayName.trim();
+    final employeeName = displayName.isNotEmpty ? displayName : 'Employee';
+
+    _triggerPostHireRefresh();
+
+    // 先显示成功反馈，入职动画会处理后续流程
+    showHireSuccessDialog(
+      context: context,
+      employeeName: employeeName,
+      isFirstEmployee: isFirstEmployee,
+      onViewEmployee: () {
+        widget.onEmployeeHired?.call();
+      },
+      onContinueHiring: () {
+        // 留在当前页面，不做任何操作
+      },
+    );
+
+    unawaited(_finalizeHire(result));
+  }
+
+  void _triggerPostHireRefresh() {
+    widget.onRefreshEmployees?.call();
+    unawaited(AgentService.instance.refresh());
+    _startPostHirePolling();
+  }
+
+  void _startPostHirePolling() {
+    _stopPostHirePolling();
+    _postHirePollingAttempts = 0;
+    _postHirePollingTimer = Timer.periodic(_postHirePollingInterval, (_) {
+      if (!mounted) {
+        _stopPostHirePolling();
+        return;
+      }
+      _postHirePollingAttempts++;
+      widget.onRefreshEmployees?.call();
+      if (_postHirePollingAttempts >= _maxPostHirePollingAttempts) {
+        _stopPostHirePolling();
+      }
+    });
+  }
+
+  void _stopPostHirePolling() {
+    _postHirePollingTimer?.cancel();
+    _postHirePollingTimer = null;
+  }
+
+  Future<void> _finalizeHire(HireResult result) async {
+    try {
+      await result.responseFuture;
+      if (!mounted) return;
+      _stopPostHirePolling();
       // 自动刷新员工列表（后台刷新，用户切回时能看到新员工）
       widget.onRefreshEmployees?.call();
-
       // 刷新 AgentService 缓存（聊天界面状态显示依赖此缓存）
       AgentService.instance.refresh();
-
-      // 判断是否是第一位员工
-      final isFirstEmployee = _employeeCount == 0;
-
-      // 雇佣后更新员工计数
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _employeeCount++;
-      });
-
-      String employeeName = result.displayName.trim();
-      if (employeeName.isEmpty) {
-        // 兜底：从 matrixUserId 提取员工名称 (@name:domain -> name)
-        if (response.matrixUserId.isNotEmpty) {
-          final userId = response.matrixUserId;
-          if (userId.startsWith('@') && userId.contains(':')) {
-            employeeName = userId.substring(1, userId.indexOf(':'));
-          } else {
-            employeeName = userId;
-          }
-        } else {
-          employeeName = 'Employee';
+        if (_employeeCount > 0) {
+          _employeeCount--;
         }
-      }
-
-      // 显示成功对话框
-      showHireSuccessDialog(
-        context: context,
-        employeeName: employeeName,
-        isFirstEmployee: isFirstEmployee,
-        onViewEmployee: () {
-          widget.onEmployeeHired?.call();
-        },
-        onContinueHiring: () {
-          // 留在当前页面，不做任何操作
-        },
+      });
+      final message = e.toLocalizedString(context, ExceptionContext.hireEmployee);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }

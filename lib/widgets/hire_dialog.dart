@@ -64,6 +64,7 @@ class _HireDialogState extends State<HireDialog> {
   }
 
   Future<void> _onConfirm() async {
+    if (_isLoading) return;
     final name = _nameController.text.trim();
     final invitationCode = _invitationCodeController.text.trim();
 
@@ -93,27 +94,17 @@ class _HireDialogState extends State<HireDialog> {
       _error = null;
     });
 
-    try {
-      // 调用统一创建接口，返回 UnifiedCreateAgentResponse
-      final response = await widget.repository.hireFromTemplate(
-        widget.template.id,
-        name,
-        invitationCode: invitationCode,
-      );
-      if (mounted) {
-        // 返回响应对象，调用方可以获取 agentId、matrixUserId 等
-        Navigator.of(context).pop(HireResult(
-          response: response,
-          displayName: name,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _isLoading = false;
-        });
-      }
+    // 调用统一创建接口（异步），先返回 UI 结果让入职动画接管
+    final responseFuture = widget.repository.hireFromTemplate(
+      widget.template.id,
+      name,
+      invitationCode: invitationCode,
+    );
+    if (mounted) {
+      Navigator.of(context).pop(HireResult(
+        responseFuture: responseFuture,
+        displayName: name,
+      ));
     }
   }
 

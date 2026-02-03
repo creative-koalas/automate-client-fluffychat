@@ -35,7 +35,7 @@ class Agent {
   /// 合同到期时间（ISO 8601 格式）
   final String? contractExpiresAt;
 
-  /// 工作状态：working（工作中）/ idle_long（摸鱼中）/ idle（睡觉中）
+  /// 工作状态：busy/idle/suspended（busy 表示 loop 处理中）
   final String workStatus;
 
   /// 最后活跃时间（ISO 8601 格式）
@@ -52,7 +52,7 @@ class Agent {
     this.matrixUserId,
     required this.createdAt,
     this.contractExpiresAt,
-    this.workStatus = 'idle_long',
+    this.workStatus = 'idle',
     this.lastActiveAt,
   });
 
@@ -69,7 +69,7 @@ class Agent {
       matrixUserId: json['matrix_user_id'] as String?,
       createdAt: json['created_at'] as String,
       contractExpiresAt: json['contract_expires_at'] as String?,
-      workStatus: json['work_status'] as String? ?? 'idle_long',
+      workStatus: json['work_status'] as String? ?? 'idle',
       lastActiveAt: json['last_active_at'] as String?,
     );
   }
@@ -125,51 +125,29 @@ class Agent {
 
   /// 获取实际工作状态
   /// 规则：
-  /// - 后端返回 working（有 is_active=1 的任务）→ 直接使用
-  /// - 后端返回非 working 时，根据 lastActiveAt 细分：
-  ///   - 0 < 最后活跃时间 < 5分钟：摸鱼中 (idle)
-  ///   - 最后活跃时间 > 5分钟：睡觉中 (idle_long)
+  /// - work_status=busy/working/running → 工作中
+  /// - 其他状态 → 休息中
   String get computedWorkStatus {
-    // 后端已计算好 working 状态（有 is_active=1 的任务），直接使用
-    if (workStatus == 'working') {
+    final normalized = workStatus.trim().toLowerCase();
+    if (normalized == 'busy' || normalized == 'working' || normalized == 'running') {
       return 'working';
     }
-
-    // 非 working 状态，根据 lastActiveAt 细分 idle/idle_long
-    if (lastActiveAt == null) {
-      return 'idle_long'; // 没有活跃记录，默认睡觉中
-    }
-
-    try {
-      final lastActive = DateTime.parse(lastActiveAt!);
-      final now = DateTime.now();
-      final difference = now.difference(lastActive);
-
-      if (difference.inMinutes < 5) {
-        return 'idle'; // 摸鱼中
-      } else {
-        return 'idle_long'; // 睡觉中
-      }
-    } catch (_) {
-      return 'idle_long'; // 解析失败，默认睡觉中
-    }
+    return 'idle_long';
   }
 
   /// 是否正在工作（基于计算的状态）
   bool get isWorking => computedWorkStatus == 'working';
 
-  /// 是否长时间空闲（基于计算的状态）
-  bool get isIdleLong => computedWorkStatus == 'idle_long';
+  /// 是否休息中（基于计算的状态）
+  bool get isResting => computedWorkStatus == 'idle_long';
 
   /// 获取工作状态显示文本的 key（基于计算的状态）
   String get workStatusKey {
     switch (computedWorkStatus) {
       case 'working':
         return 'employee_working';
-      case 'idle_long':
-        return 'employee_idle_long';
       default:
-        return 'employee_idle';
+        return 'employee_idle_long';
     }
   }
 
