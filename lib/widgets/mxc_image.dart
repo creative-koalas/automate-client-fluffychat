@@ -66,6 +66,16 @@ class _MxcImageState extends State<MxcImage> {
     _imageDataCache.clear();
   }
 
+  /// 清除指定 URL 的图片缓存
+  static void _evictImageCache(String url) {
+    try {
+      final imageProvider = NetworkImage(url);
+      imageProvider.evict();
+    } catch (_) {
+      // 忽略清除失败
+    }
+  }
+
   Uint8List? get _imageData => widget.cacheKey == null
       ? _imageDataNoCache
       : _imageDataCache[widget.cacheKey];
@@ -148,6 +158,8 @@ class _MxcImageState extends State<MxcImage> {
   @override
   void initState() {
     super.initState();
+    // 如果缓存中已有数据，不需要等待 postFrameCallback
+    if (_imageData != null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryLoad());
   }
 
@@ -212,10 +224,11 @@ class _MxcImageState extends State<MxcImage> {
   Widget build(BuildContext context) {
     // 普通 HTTP/HTTPS URL 使用 CustomNetworkImage（包含 ISRG X1 证书）
     if (_isHttpUrl) {
+      final imageUrl = widget.uri.toString();
       return ClipRRect(
         borderRadius: widget.borderRadius,
         child: CustomNetworkImage(
-          widget.uri.toString(),
+          imageUrl,
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
@@ -224,7 +237,9 @@ class _MxcImageState extends State<MxcImage> {
             return placeholder(context);
           },
           errorBuilder: (context, e, s) {
-            Logs().d('Unable to load network image', e, s);
+            Logs().d('Unable to load network image: $imageUrl', e, s);
+            // 清除失败图片的缓存，避免下次继续显示错误
+            _evictImageCache(imageUrl);
             return placeholder(context);
           },
         ),
@@ -235,47 +250,59 @@ class _MxcImageState extends State<MxcImage> {
     final data = _imageData;
     final hasData = data != null && data.isNotEmpty;
 
-    return AnimatedSwitcher(
-      duration: FluffyThemes.animationDuration,
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: child,
-      ),
-      child: hasData
-          ? ClipRRect(
-              key: ValueKey('image_loaded_$data'),
-              borderRadius: widget.borderRadius,
-              child: Image.memory(
-                data,
-                width: widget.width,
-                height: widget.height,
-                fit: widget.fit,
-                filterQuality: widget.isThumbnail
-                    ? FilterQuality.low
-                    : FilterQuality.medium,
-                errorBuilder: (context, e, s) {
-                  Logs().d('Unable to render mxc image', e, s);
-                  return SizedBox(
-                    width: widget.width,
-                    height: widget.height,
-                    child: Material(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        size: min(widget.height ?? 64, 64),
-                        color: Theme.of(context).colorScheme.onSurface,
+    // 使用稳定的 cacheKey 作为 key，避免 data 变化导致不必要的重建
+    final stableKey = widget.cacheKey ?? widget.uri?.toString() ?? 'no_key';
+
+    return RepaintBoundary(
+      child: AnimatedSwitcher(
+        duration: FluffyThemes.animationDuration,
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+        child: hasData
+            ? ClipRRect(
+                key: ValueKey('loaded_$stableKey'),
+                borderRadius: widget.borderRadius,
+                child: Image.memory(
+                  data,
+                  width: widget.width,
+                  height: widget.height,
+                  fit: widget.fit,
+                  filterQuality: widget.isThumbnail
+                      ? FilterQuality.low
+                      : FilterQuality.medium,
+                  // 启用 gaplessPlayback 避免闪烁
+                  gaplessPlayback: true,
+                  errorBuilder: (context, e, s) {
+                    Logs().d('Unable to render mxc image', e, s);
+                    // 清除损坏的图片缓存，避免下次继续显示错误
+                    final cacheKey = widget.cacheKey;
+                    if (cacheKey != null) {
+                      _imageDataCache.remove(cacheKey);
+                    }
+                    return SizedBox(
+                      width: widget.width,
+                      height: widget.height,
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: min(widget.height ?? 64, 64),
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
+              )
+            : KeyedSubtree(
+                key: ValueKey('loading_$stableKey'),
+                child: placeholder(context),
               ),
-            )
-          : KeyedSubtree(
-              key: const ValueKey('image_loading'),
-              child: placeholder(context),
-            ),
+      ),
     );
   }
 }

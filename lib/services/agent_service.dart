@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/config.dart';
 import '../models/agent.dart';
 import '../repositories/agent_repository.dart';
 
@@ -114,18 +115,7 @@ class AgentService {
   /// 返回 null 如果不是员工、没有头像或头像 URL 无效
   Uri? getAgentAvatarUri(String? matrixUserId) {
     final agent = getAgentByMatrixUserId(matrixUserId);
-    if (agent?.avatarUrl == null || agent!.avatarUrl!.isEmpty) {
-      return null;
-    }
-    try {
-      final uri = Uri.parse(agent.avatarUrl!);
-      // 只要能解析成功就返回，让 MxcImage 组件处理
-      return uri;
-    } catch (e) {
-      // 解析失败，返回 null
-      debugPrint('[AgentService] Invalid avatar URL: ${agent.avatarUrl}');
-      return null;
-    }
+    return parseAvatarUri(agent?.avatarUrl);
   }
 
   /// 获取员工头像和显示名称（用于 Avatar 组件）
@@ -134,8 +124,86 @@ class AgentService {
     final agent = getAgentByMatrixUserId(matrixUserId);
     if (agent == null) return (null, null);
 
-    final avatarUri = getAgentAvatarUri(matrixUserId);
+    final avatarUri = parseAvatarUri(agent.avatarUrl);
     return (avatarUri, agent.displayName);
+  }
+
+  /// 解析员工头像 URL，支持 mxc/http(s) 与相对路径
+  Uri? parseAvatarUri(String? avatarUrl) {
+    if (avatarUrl == null) return null;
+    final trimmed = avatarUrl.trim();
+    if (trimmed.isEmpty || trimmed == 'null') return null;
+
+    final directUri = Uri.tryParse(trimmed);
+    final supportedDirect = _supportedAvatarUri(directUri);
+    if (supportedDirect != null) {
+      return supportedDirect;
+    }
+
+    final fixedScheme = _fixMissingSlashes(directUri, trimmed);
+    if (fixedScheme != null) {
+      return fixedScheme;
+    }
+
+    final normalized = _normalizeAvatarUri(trimmed);
+    final supportedNormalized = _supportedAvatarUri(normalized);
+    if (supportedNormalized != null) {
+      return supportedNormalized;
+    }
+
+    debugPrint('[AgentService] Invalid avatar URL: $avatarUrl');
+    return null;
+  }
+
+  Uri? _supportedAvatarUri(Uri? uri) {
+    if (uri == null) return null;
+    final scheme = uri.scheme.toLowerCase();
+    if ((scheme == 'http' || scheme == 'https' || scheme == 'mxc') &&
+        uri.host.isNotEmpty) {
+      return uri;
+    }
+    return null;
+  }
+
+  Uri? _fixMissingSlashes(Uri? uri, String raw) {
+    if (uri == null) return null;
+    if (uri.host.isNotEmpty) return null;
+    if (raw.contains('://')) return null;
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https' && scheme != 'mxc') {
+      return null;
+    }
+    final rest = raw.substring(scheme.length + 1);
+    return _supportedAvatarUri(Uri.tryParse('$scheme://$rest'));
+  }
+
+  Uri? _normalizeAvatarUri(String raw) {
+    final baseUri = Uri.parse(PsygoConfig.baseUrl);
+    final defaultScheme = baseUri.scheme.isNotEmpty ? baseUri.scheme : 'https';
+
+    if (raw.startsWith('//')) {
+      return Uri.tryParse('$defaultScheme:$raw');
+    }
+
+    if (_looksLikeHost(raw)) {
+      return Uri.tryParse('$defaultScheme://$raw');
+    }
+
+    if (raw.startsWith('/')) {
+      return Uri.tryParse('${baseUri.origin}$raw');
+    }
+
+    final basePath = baseUri.path.endsWith('/')
+        ? baseUri.path
+        : '${baseUri.path}/';
+    final baseWithSlash = baseUri.replace(path: basePath);
+    return baseWithSlash.resolve(raw);
+  }
+
+  bool _looksLikeHost(String value) {
+    final stop = value.indexOf(RegExp(r'[/?#]'));
+    final hostPart = stop == -1 ? value : value.substring(0, stop);
+    return hostPart.contains('.') || hostPart.contains(':');
   }
 
   /// 更新单个员工信息（用于局部更新）

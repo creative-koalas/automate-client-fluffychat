@@ -1,11 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../core/token_manager.dart';
+
 class PsygoAuthState extends ChangeNotifier {
   PsygoAuthState({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ?? const FlutterSecureStorage() {
+    // 监听 TokenManager 事件，保持状态同步
+    _tokenEventSubscription = TokenManager.instance.events.listen(_onTokenEvent);
+  }
 
   final FlutterSecureStorage _storage;
+  StreamSubscription<TokenEvent>? _tokenEventSubscription;
 
   static const _primaryKey = 'automate_primary_token';
   static const _refreshKey = 'automate_refresh_token';
@@ -129,35 +137,26 @@ class PsygoAuthState extends ChangeNotifier {
   }
 
   /// Update access token after refresh
+  /// 通过 TokenManager 更新，确保状态一致
   Future<void> updateAccessToken(String accessToken, int expiresIn, {String? refreshToken}) async {
+    // 通过 TokenManager 更新，会触发 refreshed 事件
+    await TokenManager.instance.updateAccessToken(accessToken, expiresIn, refreshToken: refreshToken);
+    // 同步更新内存状态（避免等待事件回调）
     _primaryToken = accessToken;
     _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-    await _storage.write(key: _primaryKey, value: accessToken);
-    await _storage.write(
-      key: _expiresAtKey,
-      value: _expiresAt!.millisecondsSinceEpoch.toString(),
-    );
     if (refreshToken != null && refreshToken.isNotEmpty) {
       _refreshToken = refreshToken;
-      await _storage.write(key: _refreshKey, value: refreshToken);
     }
     notifyListeners();
   }
 
   Future<void> markLoggedOut() async {
-    _primaryToken = null;
-    _refreshToken = null;
-    _expiresAt = null;
-    _userId = null;
-    _onboardingCompleted = false;
-    _matrixAccessToken = null;
-    _matrixUserId = null;
-    _matrixDeviceId = null;
-    _loggedIn = false;
+    _clearInMemoryState();
+    // 通过 TokenManager 清除 token（会触发 loggedOut 事件）
+    // 使用 clearTokens 而非 logout 避免重复触发事件
+    await TokenManager.instance.clearTokens();
+    // 清除 Matrix 和其他状态
     await Future.wait([
-      _storage.delete(key: _primaryKey),
-      _storage.delete(key: _refreshKey),
-      _storage.delete(key: _expiresAtKey),
       _storage.delete(key: _userIdKey),
       _storage.delete(key: _onboardingCompletedKey),
       _storage.delete(key: _matrixAccessTokenKey),
@@ -172,5 +171,40 @@ class PsygoAuthState extends ChangeNotifier {
     _onboardingCompleted = true;
     await _storage.write(key: _onboardingCompletedKey, value: 'true');
     notifyListeners();
+  }
+
+  /// 处理 TokenManager 事件
+  void _onTokenEvent(TokenEvent event) {
+    switch (event) {
+      case TokenEvent.refreshed:
+        // Token 刷新成功，重新加载状态
+        load();
+        break;
+      case TokenEvent.expired:
+      case TokenEvent.loggedOut:
+        // Token 过期或登出，清除状态
+        _clearInMemoryState();
+        notifyListeners();
+        break;
+    }
+  }
+
+  /// 清除内存中的状态（不操作存储，存储由 TokenManager 处理）
+  void _clearInMemoryState() {
+    _primaryToken = null;
+    _refreshToken = null;
+    _expiresAt = null;
+    _userId = null;
+    _onboardingCompleted = false;
+    _matrixAccessToken = null;
+    _matrixUserId = null;
+    _matrixDeviceId = null;
+    _loggedIn = false;
+  }
+
+  @override
+  void dispose() {
+    _tokenEventSubscription?.cancel();
+    super.dispose();
   }
 }

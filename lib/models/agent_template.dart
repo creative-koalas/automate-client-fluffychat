@@ -124,7 +124,6 @@ class AgentTemplate {
 /// 支持基于模板创建或定制创建两种模式
 class UnifiedCreateAgentRequest {
   final String name; // Agent 名称（必填）
-  final String invitationCode; // 邀请码（必填，开发环境可传空字符串）
   final int? templateId; // 模板 ID（可选，提供则基于模板创建）
   final String? systemPrompt; // 系统提示词（无模板时由服务端默认）
   final String? userRules; // 用户规则（可选，会追加到 system_prompt）
@@ -136,7 +135,6 @@ class UnifiedCreateAgentRequest {
 
   const UnifiedCreateAgentRequest({
     required this.name,
-    required this.invitationCode,
     this.templateId,
     this.systemPrompt,
     this.userRules,
@@ -150,7 +148,6 @@ class UnifiedCreateAgentRequest {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'invitation_code': invitationCode,
       if (templateId != null) 'template_id': templateId,
       if (systemPrompt != null) 'system_prompt': systemPrompt,
       if (userRules != null) 'user_rules': userRules,

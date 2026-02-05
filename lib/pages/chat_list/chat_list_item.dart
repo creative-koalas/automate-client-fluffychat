@@ -11,15 +11,17 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/room_status_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/custom_network_image.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/hover_builder.dart';
 import '../../config/themes.dart';
 import '../../utils/date_time_extension.dart';
+import '../../utils/string_color.dart';
 import '../../widgets/avatar.dart';
 
 enum ArchivedRoomAction { delete, rejoin }
 
-class ChatListItem extends StatelessWidget {
+class ChatListItem extends StatefulWidget {
   final Room room;
   final Room? space;
   final bool activeChat;
@@ -40,6 +42,58 @@ class ChatListItem extends StatelessWidget {
   });
 
   @override
+  State<ChatListItem> createState() => _ChatListItemState();
+}
+
+class _ChatListItemState extends State<ChatListItem> {
+  Room get room => widget.room;
+  Room? get space => widget.space;
+  bool get activeChat => widget.activeChat;
+  void Function(BuildContext context)? get onLongPress => widget.onLongPress;
+  void Function()? get onForget => widget.onForget;
+  void Function() get onTap => widget.onTap;
+  String? get filter => widget.filter;
+
+  @override
+  void initState() {
+    super.initState();
+    // 监听 AgentService 变化，员工数据加载完成后刷新头像
+    AgentService.instance.agentsNotifier.addListener(_onAgentsChanged);
+  }
+
+  @override
+  void dispose() {
+    AgentService.instance.agentsNotifier.removeListener(_onAgentsChanged);
+    super.dispose();
+  }
+
+  void _onAgentsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildEmployeeAvatar({
+    required String avatarUrl,
+    required String name,
+    required double size,
+    BorderSide? border,
+    String? presenceUserId,
+    Color? presenceBackgroundColor,
+    void Function()? onTap,
+  }) {
+    final avatarUri = AgentService.instance.parseAvatarUri(avatarUrl);
+    return Avatar(
+      border: border,
+      borderRadius: null,
+      mxContent: avatarUri,
+      size: size,
+      name: name,
+      presenceUserId: presenceUserId,
+      presenceBackgroundColor: presenceBackgroundColor,
+      onTap: onTap,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDesktop = FluffyThemes.isColumnMode(context);
@@ -57,15 +111,15 @@ class ChatListItem extends StatelessWidget {
     final displayname = room.getLocalizedDisplayname(
       MatrixLocals(L10n.of(context)),
     );
-    final filter = this.filter;
-    if (filter != null && !displayname.toLowerCase().contains(filter)) {
+    final currentFilter = filter;
+    if (currentFilter != null && !displayname.toLowerCase().contains(currentFilter)) {
       return const SizedBox.shrink();
     }
 
     final needLastEventSender = lastEvent == null
         ? false
         : room.getState(EventTypes.RoomMember, lastEvent.senderId) == null;
-    final space = this.space;
+    final currentSpace = space;
 
     final chatItem = Padding(
       padding: const EdgeInsets.symmetric(
@@ -149,7 +203,7 @@ class ChatListItem extends StatelessWidget {
                       height: Avatar.defaultSize,
                       child: Stack(
                         children: [
-                          if (space != null)
+                          if (currentSpace != null)
                             Positioned(
                               top: 0,
                               left: 0,
@@ -162,9 +216,9 @@ class ChatListItem extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(
                                   FluffyThemes.radiusMd,
                                 ),
-                                mxContent: space.avatar,
+                                mxContent: currentSpace.avatar,
                                 size: Avatar.defaultSize * 0.75,
-                                name: space.getLocalizedDisplayname(),
+                                name: currentSpace.getLocalizedDisplayname(),
                                 onTap: () => onLongPress?.call(context),
                               ),
                             ),
@@ -174,36 +228,59 @@ class ChatListItem extends StatelessWidget {
                             child: Builder(
                               builder: (context) {
                                 // 私聊时显示对方用户的头像
-                                Uri? avatarUrl = room.avatar;
-                                String avatarName = displayname;
+                                final avatarSize = currentSpace != null
+                                    ? Avatar.defaultSize * 0.75
+                                    : Avatar.defaultSize;
+
                                 if (directChatMatrixId != null) {
-                                  // 优先使用员工头像（从后端 API 获取）
-                                  final agentAvatarUri = AgentService.instance.getAgentAvatarUri(directChatMatrixId);
-                                  if (agentAvatarUri != null) {
-                                    final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
-                                    avatarUrl = agentAvatarUri;
-                                    avatarName = agent!.displayName;
-                                  } else {
-                                    // 非员工或员工没有头像，使用 Matrix 用户头像
-                                    final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
-                                    avatarUrl = user.avatarUrl;
-                                    avatarName = user.calcDisplayname();
+                                  // 优先使用员工头像（直接使用 avatarUrl 字符串，和 EmployeeCard 一样）
+                                  final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
+                                  if (agent != null && agent.avatarUrl != null && agent.avatarUrl!.isNotEmpty) {
+                                    return _buildEmployeeAvatar(
+                                      avatarUrl: agent.avatarUrl!,
+                                      name: agent.displayName,
+                                      size: avatarSize,
+                                      border: currentSpace == null
+                                          ? null
+                                          : BorderSide(
+                                              width: 2,
+                                              color: backgroundColor ?? theme.colorScheme.surface,
+                                            ),
+                                      presenceUserId: directChatMatrixId,
+                                      presenceBackgroundColor: backgroundColor,
+                                      onTap: () => onLongPress?.call(context),
+                                    );
                                   }
+                                  // 非员工或员工没有头像，使用 Matrix 用户头像
+                                  final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
+                                  return Avatar(
+                                    border: currentSpace == null
+                                        ? null
+                                        : BorderSide(
+                                            width: 2,
+                                            color: backgroundColor ?? theme.colorScheme.surface,
+                                          ),
+                                    borderRadius: null,
+                                    mxContent: user.avatarUrl,
+                                    size: avatarSize,
+                                    name: user.calcDisplayname(),
+                                    presenceUserId: directChatMatrixId,
+                                    presenceBackgroundColor: backgroundColor,
+                                    onTap: () => onLongPress?.call(context),
+                                  );
                                 }
+                                // 群聊使用房间头像
                                 return Avatar(
-                                  border: space == null
+                                  border: currentSpace == null
                                       ? null
                                       : BorderSide(
                                           width: 2,
-                                          color: backgroundColor ??
-                                              theme.colorScheme.surface,
+                                          color: backgroundColor ?? theme.colorScheme.surface,
                                         ),
                                   borderRadius: null,
-                                  mxContent: avatarUrl,
-                                  size: space != null
-                                      ? Avatar.defaultSize * 0.75
-                                      : Avatar.defaultSize,
-                                  name: avatarName,
+                                  mxContent: room.avatar,
+                                  size: avatarSize,
+                                  name: displayname,
                                   presenceUserId: directChatMatrixId,
                                   presenceBackgroundColor: backgroundColor,
                                   onTap: () => onLongPress?.call(context),

@@ -1,16 +1,15 @@
 /// Automate API HTTP 客户端（通用版）
 /// 负责与 Automate Assistant 后端通信
-/// 注意：此客户端用于 Repository 层，直接从 SecureStorage 读取 token
-/// 与 backend/api_client.dart 共享相同的 storage keys
+/// 使用 TokenManager 统一管理 token
 library;
 
 import 'dart:convert';
 import 'dart:ui';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
 import 'config.dart';
+import 'token_manager.dart';
 import '../utils/custom_http_client.dart';
 
 /// API 响应包装
@@ -51,23 +50,16 @@ class ApiException implements Exception {
 }
 
 /// Automate API 客户端（通用版，用于 Repository）
-/// 直接从 SecureStorage 读取 token，与 PsygoAuthState 共享相同的 keys
+/// 使用 TokenManager 统一管理 token
 class PsygoApiClient {
-  static const _storage = FlutterSecureStorage();
-
-  // Storage keys（必须与 PsygoAuthState 保持一致！）
-  static const String _primaryKey = 'automate_primary_token';
-  static const String _refreshKey = 'automate_refresh_token';
-  static const String _expiresAtKey = 'automate_expires_at';
-
-  // Token 过期前刷新阈值（5 分钟）
-  static const Duration _refreshThreshold = Duration(minutes: 5);
-
   final http.Client _httpClient;
+  final TokenManager _tokenManager;
 
   PsygoApiClient({
     http.Client? httpClient,
-  }) : _httpClient = httpClient ?? CustomHttpClient.createHTTPClient();
+    TokenManager? tokenManager,
+  })  : _httpClient = httpClient ?? CustomHttpClient.createHTTPClient(),
+        _tokenManager = tokenManager ?? TokenManager.instance;
 
   /// GET 请求
   Future<ApiResponse<T>> get<T>(
@@ -80,13 +72,17 @@ class PsygoApiClient {
       queryParameters: queryParameters,
     );
 
-    final headers = await _buildHeaders(requiresAuth);
+    Future<http.Response> doRequest() async {
+      final headers = await _buildHeaders(requiresAuth);
+      return _httpClient.get(uri, headers: headers).timeout(PsygoConfig.receiveTimeout);
+    }
 
-    final response = await _httpClient
-        .get(uri, headers: headers)
-        .timeout(PsygoConfig.receiveTimeout);
-
-    return _handleResponse<T>(response, fromJsonT);
+    final response = await doRequest();
+    return _handleResponse<T>(
+      response,
+      fromJsonT,
+      retryRequest: requiresAuth ? doRequest : null,
+    );
   }
 
   /// POST 请求
@@ -97,17 +93,19 @@ class PsygoApiClient {
     bool requiresAuth = true,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path);
-    final headers = await _buildHeaders(requiresAuth);
+    final encodedBody = body != null ? jsonEncode(body) : null;
 
-    final response = await _httpClient
-        .post(
-          uri,
-          headers: headers,
-          body: body != null ? jsonEncode(body) : null,
-        )
-        .timeout(PsygoConfig.receiveTimeout);
+    Future<http.Response> doRequest() async {
+      final headers = await _buildHeaders(requiresAuth);
+      return _httpClient.post(uri, headers: headers, body: encodedBody).timeout(PsygoConfig.receiveTimeout);
+    }
 
-    return _handleResponse<T>(response, fromJsonT);
+    final response = await doRequest();
+    return _handleResponse<T>(
+      response,
+      fromJsonT,
+      retryRequest: requiresAuth ? doRequest : null,
+    );
   }
 
   /// PUT 请求
@@ -118,17 +116,19 @@ class PsygoApiClient {
     bool requiresAuth = true,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path);
-    final headers = await _buildHeaders(requiresAuth);
+    final encodedBody = body != null ? jsonEncode(body) : null;
 
-    final response = await _httpClient
-        .put(
-          uri,
-          headers: headers,
-          body: body != null ? jsonEncode(body) : null,
-        )
-        .timeout(PsygoConfig.receiveTimeout);
+    Future<http.Response> doRequest() async {
+      final headers = await _buildHeaders(requiresAuth);
+      return _httpClient.put(uri, headers: headers, body: encodedBody).timeout(PsygoConfig.receiveTimeout);
+    }
 
-    return _handleResponse<T>(response, fromJsonT);
+    final response = await doRequest();
+    return _handleResponse<T>(
+      response,
+      fromJsonT,
+      retryRequest: requiresAuth ? doRequest : null,
+    );
   }
 
   /// DELETE 请求
@@ -142,13 +142,17 @@ class PsygoApiClient {
       queryParameters: queryParameters,
     );
 
-    final headers = await _buildHeaders(requiresAuth);
+    Future<http.Response> doRequest() async {
+      final headers = await _buildHeaders(requiresAuth);
+      return _httpClient.delete(uri, headers: headers).timeout(PsygoConfig.receiveTimeout);
+    }
 
-    final response = await _httpClient
-        .delete(uri, headers: headers)
-        .timeout(PsygoConfig.receiveTimeout);
-
-    return _handleResponse<T>(response, fromJsonT);
+    final response = await doRequest();
+    return _handleResponse<T>(
+      response,
+      fromJsonT,
+      retryRequest: requiresAuth ? doRequest : null,
+    );
   }
 
   /// 构建请求头
@@ -159,14 +163,9 @@ class PsygoApiClient {
     };
 
     if (requiresAuth) {
-      // Check if token is expiring soon (within 5 minutes) and refresh if needed
-      if (await _isTokenExpiringSoon()) {
-        Logs().i('[AutomateApi] Token expiring soon, refreshing...');
-        await _refreshAccessToken();
-      }
-
-      final accessToken = await _storage.read(key: _primaryKey);
-      if (accessToken == null) {
+      // 使用 TokenManager 获取 token（自动处理刷新）
+      final accessToken = await _tokenManager.getAccessToken(autoRefresh: true);
+      if (accessToken == null || accessToken.isEmpty) {
         throw ApiException(7, 'No access token available');
       }
       headers['Authorization'] = 'Bearer $accessToken';
@@ -175,85 +174,13 @@ class PsygoApiClient {
     return headers;
   }
 
-  /// 检查 token 是否即将过期
-  Future<bool> _isTokenExpiringSoon() async {
-    final expiresAtStr = await _storage.read(key: _expiresAtKey);
-    if (expiresAtStr == null) return true;
-
-    final timestamp = int.tryParse(expiresAtStr);
-    if (timestamp == null) return true;
-
-    final expiresAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final timeUntilExpiry = expiresAt.difference(DateTime.now());
-    return timeUntilExpiry <= _refreshThreshold;
-  }
-
-  /// 刷新 Access Token
-  Future<void> _refreshAccessToken() async {
-    final refreshToken = await _storage.read(key: _refreshKey);
-    if (refreshToken == null) {
-      Logs().e('[AutomateApi] No refresh token available');
-      throw ApiException(7, 'No refresh token available');
-    }
-
-    try {
-      final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/refresh-token');
-      final response = await _httpClient.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refresh_token': refreshToken}),
-      ).timeout(PsygoConfig.receiveTimeout);
-
-      // Parse response
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      if (json['code'] != 0) {
-        final errorMsg = json['message'] as String? ?? 'Token refresh failed';
-        Logs().e('[AutomateApi] Token refresh failed: $errorMsg');
-        // Clear tokens on refresh failure
-        await _clearTokens();
-        throw ApiException(json['code'] as int, errorMsg);
-      }
-
-      // Extract new access token
-      final data = json['data'] as Map<String, dynamic>;
-      final newAccessToken = data['access_token'] as String;
-      final expiresIn = data['expires_in'] as int;
-      final newRefreshToken = data['refresh_token'] as String?;
-
-      // Update tokens
-      final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-      final writes = <Future<void>>[
-        _storage.write(key: _primaryKey, value: newAccessToken),
-        _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
-      ];
-      if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
-        writes.add(_storage.write(key: _refreshKey, value: newRefreshToken));
-      }
-      await Future.wait(writes);
-
-      Logs().i('[AutomateApi] Access token refreshed successfully');
-    } catch (e) {
-      Logs().e('[AutomateApi] Token refresh error: $e');
-      // Clear tokens on any error
-      await _clearTokens();
-      rethrow;
-    }
-  }
-
-  /// 清除所有 token
-  Future<void> _clearTokens() async {
-    await Future.wait([
-      _storage.delete(key: _primaryKey),
-      _storage.delete(key: _refreshKey),
-      _storage.delete(key: _expiresAtKey),
-    ]);
-  }
-
-  /// 处理响应
-  ApiResponse<T> _handleResponse<T>(
+  /// 处理响应，支持 token 失效时自动重试
+  Future<ApiResponse<T>> _handleResponse<T>(
     http.Response response,
-    T Function(dynamic)? fromJsonT,
-  ) {
+    T Function(dynamic)? fromJsonT, {
+    Future<http.Response> Function()? retryRequest,
+    bool isRetry = false,
+  }) async {
     // 解析 JSON
     final Map<String, dynamic> json;
     try {
@@ -266,10 +193,24 @@ class PsygoApiClient {
 
     // 处理业务错误
     if (!apiResponse.isSuccess) {
-      // Token 失效
-      if (apiResponse.code == 10002 || apiResponse.code == 10003) {
-        Logs().w('[AutomateApi] Invalid token, clearing tokens');
-        _clearTokens();
+      // Token 失效（10002/10003）- 尝试刷新后重试
+      if ((apiResponse.code == 10002 || apiResponse.code == 10003) && !isRetry && retryRequest != null) {
+        Logs().w('[AutomateApi] Token invalid (code=${apiResponse.code}), attempting refresh...');
+
+        try {
+          final refreshSuccess = await _tokenManager.refreshAccessToken();
+          if (refreshSuccess) {
+            Logs().i('[AutomateApi] Token refreshed, retrying request...');
+            final retryResponse = await retryRequest();
+            return _handleResponse<T>(retryResponse, fromJsonT, isRetry: true);
+          }
+        } catch (e) {
+          Logs().e('[AutomateApi] Token refresh failed: $e');
+        }
+
+        // 刷新失败，触发登出
+        Logs().w('[AutomateApi] Token refresh failed, triggering logout');
+        _tokenManager.logout();
       }
       throw ApiException(apiResponse.code, apiResponse.message);
     }

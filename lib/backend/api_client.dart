@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
+import '../core/token_manager.dart';
 import '../utils/custom_http_client.dart';
 
 class PsygoApiClient {
@@ -10,21 +11,59 @@ class PsygoApiClient {
       : _dio = dio ?? CustomHttpClient.createDio() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onError: (error, handler) {
-          if (error.response?.statusCode == 401) {
-            auth.markLoggedOut();
-          }
+    _dio.interceptors.add(_buildAuthInterceptor());
+  }
+
+  /// 构建认证拦截器，支持 401 自动重试
+  InterceptorsWrapper _buildAuthInterceptor() {
+    return InterceptorsWrapper(
+      onError: (error, handler) async {
+        // 只处理 401 错误
+        if (error.response?.statusCode != 401) {
           return handler.next(error);
-        },
-      ),
+        }
+
+        // 检查是否已经是重试请求（避免无限循环）
+        final options = error.requestOptions;
+        if (options.extra['_retried'] == true) {
+          await auth.markLoggedOut();
+          return handler.next(error);
+        }
+
+        // 尝试刷新 token
+        debugPrint('[API] 401 received, attempting token refresh...');
+        final refreshSuccess = await refreshAccessToken();
+
+        if (!refreshSuccess) {
+          debugPrint('[API] Token refresh failed, logging out');
+          await auth.markLoggedOut();
+          return handler.next(error);
+        }
+
+        // 刷新成功，重试原请求
+        debugPrint('[API] Token refreshed, retrying request...');
+        try {
+          final newToken = await TokenManager.instance.getAccessToken(autoRefresh: false);
+          options.headers['Authorization'] = 'Bearer $newToken';
+          options.extra['_retried'] = true;
+
+          final response = await _dio.fetch(options);
+          return handler.resolve(response);
+        } catch (retryError) {
+          debugPrint('[API] Retry failed: $retryError');
+          return handler.next(error);
+        }
+      },
     );
   }
 
   final PsygoAuthState auth;
   final Dio _dio;
   static const Set<int> _unauthorizedCodes = {10002, 10003};
+
+  Future<void> _syncAuthState() async {
+    await auth.load();
+  }
 
   /// 发送短信验证码
   Future<void> sendVerificationCode(String phone) async {
@@ -133,77 +172,37 @@ class PsygoApiClient {
 
   /// Refresh the access token using refresh token
   /// Returns true if refresh was successful, false otherwise
+  /// 委托给 TokenManager 统一处理，避免重复逻辑
   Future<bool> refreshAccessToken() async {
-    final refreshToken = auth.refreshToken;
-    if (refreshToken == null || refreshToken.isEmpty) {
-      return false;
-    }
-
     try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        '${PsygoConfig.baseUrl}/api/auth/refresh-token',
-        data: {'refresh_token': refreshToken},
-      );
-
-      final data = res.data ?? {};
-      final respCode = data['code'] as int? ?? -1;
-      if (res.statusCode != 200 || respCode != 0) {
-        // Refresh failed, clear tokens
-        await auth.markLoggedOut();
-        return false;
+      final success = await TokenManager.instance.refreshAccessToken();
+      if (success) {
+        // 刷新成功，重新加载 auth 状态
+        await _syncAuthState();
       }
-
-      final respData = data['data'] as Map<String, dynamic>?;
-      if (respData == null) {
-        await auth.markLoggedOut();
-        return false;
-      }
-
-      final newAccessToken = respData['access_token'] as String?;
-      final newRefreshToken = respData['refresh_token'] as String?;
-      final newExpiresIn = respData['expires_in'] as int?;
-
-      if (newAccessToken == null || newExpiresIn == null) {
-        await auth.markLoggedOut();
-        return false;
-      }
-
-      await auth.updateAccessToken(
-        newAccessToken,
-        newExpiresIn,
-        refreshToken: newRefreshToken,
-      );
-      return true;
+      return success;
     } catch (e) {
-      await auth.markLoggedOut();
+      debugPrint('[API] Token refresh failed: $e');
       return false;
     }
   }
 
   /// Ensure we have a valid token before making API calls
   /// Will refresh token if it's expiring soon
+  /// 委托给 TokenManager，它会自动处理刷新逻辑
   Future<bool> ensureValidToken() async {
-    // No token at all
-    if (!auth.isLoggedIn || auth.primaryToken == null) {
-      return false;
-    }
-
-    // Token is still valid
-    if (auth.hasValidToken && !auth.isTokenExpiringSoon) {
+    // TokenManager.getAccessToken 会自动刷新即将过期的 token
+    final token = await TokenManager.instance.getAccessToken(autoRefresh: true);
+    if (token != null && token.isNotEmpty) {
+      await _syncAuthState();
       return true;
     }
-
-    // Token expired or expiring soon, try to refresh
-    if (auth.refreshToken != null) {
-      return await refreshAccessToken();
-    }
-
-    // No refresh token available
     return false;
   }
 
   /// 创建充值订单
   Future<RechargeOrderResponse> createRechargeOrder(double amount) async {
+    await _syncAuthState();
     final userId = auth.userId;
     if (userId == null || userId.isEmpty) {
       throw AutomateBackendException('User ID not found');
@@ -239,6 +238,7 @@ class PsygoApiClient {
 
   /// 查询订单状态
   Future<PaymentOrder> getOrderStatus(String outTradeNo) async {
+    await _syncAuthState();
     final token = auth.primaryToken;
     final res = await _dio.get<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/payments/orders/$outTradeNo',
@@ -271,6 +271,7 @@ class PsygoApiClient {
     String? appVersion,
     String? deviceInfo,
   }) async {
+    await _syncAuthState();
     final userId = auth.userId;
     if (userId == null || userId.isEmpty) {
       throw AutomateBackendException('User ID not found');
@@ -303,6 +304,7 @@ class PsygoApiClient {
 
   /// 获取用户信息（包含余额）
   Future<UserInfo> getUserInfo() async {
+    await _syncAuthState();
     final userId = auth.userId;
     if (userId == null || userId.isEmpty) {
       throw AutomateBackendException('User ID not found');
@@ -427,6 +429,7 @@ class PsygoApiClient {
   /// 获取用户协议接受状态（需要认证）
   /// 用于检查用户是否已同意所有激活的协议
   Future<AgreementStatus> getAgreementStatus() async {
+    await _syncAuthState();
     final token = auth.primaryToken;
     final res = await _dio.get<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/agreements/status',
@@ -454,6 +457,7 @@ class PsygoApiClient {
   /// 注销账号（用户自助注销）
   /// 级联删除：Agent、Matrix 账号、推送设备、用户记录（软删除）
   Future<void> deleteAccount() async {
+    await _syncAuthState();
     final token = auth.primaryToken;
     if (token == null || token.isEmpty) {
       throw AutomateBackendException('Not logged in');

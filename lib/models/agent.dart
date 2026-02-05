@@ -35,7 +35,7 @@ class Agent {
   /// 合同到期时间（ISO 8601 格式）
   final String? contractExpiresAt;
 
-  /// 工作状态：busy/idle/suspended（busy 表示 loop 处理中）
+  /// 工作状态：busy/idle/suspending/suspended（busy 表示 loop 处理中）
   final String workStatus;
 
   /// 最后活跃时间（ISO 8601 格式）
@@ -126,28 +126,37 @@ class Agent {
   /// 获取实际工作状态
   /// 规则：
   /// - work_status=busy/working/running → 工作中
+  /// - work_status=idle → 摸鱼中
   /// - 其他状态 → 休息中
   String get computedWorkStatus {
     final normalized = workStatus.trim().toLowerCase();
     if (normalized == 'busy' || normalized == 'working' || normalized == 'running') {
       return 'working';
     }
-    return 'idle_long';
+    if (normalized == 'idle') {
+      return 'slacking';
+    }
+    return 'resting';
   }
 
   /// 是否正在工作（基于计算的状态）
   bool get isWorking => computedWorkStatus == 'working';
 
+  /// 是否摸鱼中（基于计算的状态）
+  bool get isSlacking => computedWorkStatus == 'slacking';
+
   /// 是否休息中（基于计算的状态）
-  bool get isResting => computedWorkStatus == 'idle_long';
+  bool get isResting => computedWorkStatus == 'resting';
 
   /// 获取工作状态显示文本的 key（基于计算的状态）
   String get workStatusKey {
     switch (computedWorkStatus) {
       case 'working':
-        return 'employee_working';
+        return 'employeeWorking';
+      case 'slacking':
+        return 'employeeSlacking';
       default:
-        return 'employee_idle_long';
+        return 'employeeSleeping';
     }
   }
 

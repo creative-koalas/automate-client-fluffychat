@@ -24,6 +24,7 @@ import 'package:psygo/pages/chat/chat_view.dart';
 import 'package:psygo/pages/chat/event_info_dialog.dart';
 import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/fluffy_share.dart';
@@ -139,6 +140,7 @@ class ChatController extends State<ChatPageWithRoom>
   Timer? typingTimeout;
   bool currentlyTyping = false;
   bool dragging = false;
+  late final VoidCallback _agentServiceListener;
 
   void onDragEntered(_) => setState(() => dragging = true);
 
@@ -471,6 +473,12 @@ class ChatController extends State<ChatPageWithRoom>
   void initState() {
     inputFocus = FocusNode(onKeyEvent: _customEnterKeyHandling);
 
+    _agentServiceListener = () {
+      if (!mounted) return;
+      setState(() {});
+    };
+    AgentService.instance.agentsNotifier.addListener(_agentServiceListener);
+
     scrollController.addListener(_updateScrollController);
     inputFocus.addListener(_inputFocusListener);
 
@@ -687,6 +695,7 @@ class ChatController extends State<ChatPageWithRoom>
 
   @override
   void dispose() {
+    AgentService.instance.agentsNotifier.removeListener(_agentServiceListener);
     timeline?.cancelSubscriptions();
     timeline = null;
     inputFocus.removeListener(_inputFocusListener);

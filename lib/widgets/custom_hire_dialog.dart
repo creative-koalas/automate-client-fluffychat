@@ -4,15 +4,17 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 
+import '../core/api_client.dart';
 import '../models/plugin.dart';
 import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
 import '../repositories/plugin_repository.dart';
+import '../utils/localized_exception_extension.dart';
 import 'custom_network_image.dart';
 import 'dicebear_avatar_picker.dart';
 
 /// 定制招聘向导（三步）
-/// 第1步：基本信息（名称 + 邀请码）
+/// 第1步：基本信息（名称）
 /// 第2步：选择插件（多选）
 /// 第3步：配置插件（如有需要）
 class CustomHireDialog extends StatefulWidget {
@@ -35,7 +37,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   // 表单控制器
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _invitationCodeController = TextEditingController();
   final FocusNode _nameFocusNode = FocusNode();
 
   // 插件相关
@@ -101,7 +102,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   @override
   void dispose() {
     _nameController.dispose();
-    _invitationCodeController.dispose();
     _nameFocusNode.dispose();
     _pluginRepository.dispose();
     // 清理所有配置控制器
@@ -296,14 +296,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   /// 提交创建
   Future<void> _onSubmit() async {
     if (_isSubmitting) return;
-    final invitationCode = _invitationCodeController.text.trim();
-
-    if (invitationCode.isEmpty) {
-      setState(() {
-        _error = L10n.of(context).invitationCodeRequired;
-      });
-      return;
-    }
 
     setState(() {
       _isSubmitting = true;
@@ -319,19 +311,31 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     }).toList();
 
     // 调用创建接口（异步），先返回 UI 结果让入职动画接管
-    final responseFuture = widget.repository.createCustomAgentWithPlugins(
-      name: _nameController.text.trim(),
-      plugins: plugins.isNotEmpty ? plugins : null,
-      invitationCode: invitationCode,
-      avatarUrl: _avatarUrl,
-    );
-
-    if (mounted) {
+    try {
+      final response = await widget.repository.createCustomAgentWithPlugins(
+        name: _nameController.text.trim(),
+        plugins: plugins.isNotEmpty ? plugins : null,
+        avatarUrl: _avatarUrl,
+      );
+      if (!mounted) return;
       Navigator.of(context).pop(HireResult(
-        responseFuture: responseFuture,
+        responseFuture: Future.value(response),
         displayName: _nameController.text.trim(),
       ));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _formatError(e);
+        _isSubmitting = false;
+      });
     }
+  }
+
+  String _formatError(Object error) {
+    if (error is ApiException) {
+      return error.message;
+    }
+    return error.toLocalizedString(context, ExceptionContext.customHireEmployee);
   }
 
   @override
@@ -625,16 +629,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         ),
         const SizedBox(height: 20),
 
-        // 邀请码
-        _buildInputField(
-          theme: theme,
-          controller: _invitationCodeController,
-          label: l10n.invitationCode,
-          hint: l10n.enterInvitationCode,
-          icon: Icons.vpn_key_outlined,
-          enabled: !_isSubmitting,
-        ),
-        const SizedBox(height: 8),
       ],
     );
   }
