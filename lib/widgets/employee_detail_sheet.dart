@@ -631,12 +631,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       );
     }
 
-    // 根据 loop 状态判断工作/休息
-    final isWorking = employee.isWorking;
-    final statusColor = isWorking ? Colors.green : Colors.blue;
-    final statusText = isWorking
-        ? '💼 ${l10n.employeeWorking}'
-        : '😴 ${l10n.employeeSleeping}';
+    final status = employee.computedWorkStatus;
+    final statusColor = _getWorkStatusColor(status);
+    final statusText = _getWorkStatusText(l10n, status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -666,6 +663,28 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         ],
       ),
     );
+  }
+
+  String _getWorkStatusText(L10n l10n, String status) {
+    switch (status) {
+      case 'working':
+        return '💼 ${l10n.employeeWorking}';
+      case 'slacking':
+        return '🐟 ${l10n.employeeSlacking}';
+      default:
+        return '😴 ${l10n.employeeSleeping}';
+    }
+  }
+
+  Color _getWorkStatusColor(String status) {
+    switch (status) {
+      case 'working':
+        return Colors.green;
+      case 'slacking':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   Widget _buildSkillsList(ThemeData theme, L10n l10n) {

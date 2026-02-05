@@ -145,54 +145,65 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     }
 
     final theme = Theme.of(context);
-    return InkWell(
-      hoverColor: Colors.transparent,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      onTap: controller.isArchived
-          ? null
-          : () => FluffyThemes.isThreeColumnMode(context)
-              ? controller.toggleDisplayChatDetailsColumn()
-              : context.go('/rooms/${room.id}/details'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Hero(
+    final onProfileTap = controller.isArchived
+        ? null
+        : () => FluffyThemes.isThreeColumnMode(context)
+            ? controller.toggleDisplayChatDetailsColumn()
+            : context.go('/rooms/${room.id}/details');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          InkWell(
+            hoverColor: Colors.transparent,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            onTap: onProfileTap,
+            child: Hero(
               tag: 'content_banner',
               child: _buildAvatar(room, context),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                      letterSpacing: -0.2,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: onProfileTap,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  // 私聊：显示员工工作状态或在线状态
-                  // 群聊：不显示状态
-                  room.directChatMatrixID != null
-                      ? (_employee != null
-                          ? _buildEmployeeWorkStatus(context, _employee!)
-                          : _buildPresenceStatus(context, room))
-                      : const SizedBox.shrink(),
-                ],
-              ),
+                ),
+                const SizedBox(height: 2),
+                // 私聊：显示员工工作状态或在线状态
+                // 群聊：不显示状态
+                room.directChatMatrixID != null
+                    ? (_employee != null
+                        ? _buildEmployeeWorkStatus(context, _employee!)
+                        : _buildPresenceStatus(context, room))
+                    : const SizedBox.shrink(),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -250,11 +261,10 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
 
-    final isWorking = employee.isWorking;
-    final statusText = isWorking
-        ? '💼 ${l10n.employeeWorking}'
-        : '😴 ${l10n.employeeSleeping}';
-    final dotColor = isWorking ? Colors.green : Colors.blue;
+    final status = employee.computedWorkStatus;
+    final statusText = _getWorkStatusText(l10n, status);
+    final statusHint = _getWorkStatusHint(l10n, status);
+    final dotColor = _getWorkStatusColor(status);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -275,16 +285,55 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          statusText,
-          style: TextStyle(
-            fontSize: 12,
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w400,
+        Flexible(
+          child: Text(
+            statusText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
+        const SizedBox(width: 4),
+        _StatusHint(message: statusHint),
       ],
     );
+  }
+
+  String _getWorkStatusText(L10n l10n, String status) {
+    switch (status) {
+      case 'working':
+        return '💼 ${l10n.employeeWorking}';
+      case 'slacking':
+        return '🐟 ${l10n.employeeSlacking}';
+      default:
+        return '😴 ${l10n.employeeSleeping}';
+    }
+  }
+
+  String _getWorkStatusHint(L10n l10n, String status) {
+    switch (status) {
+      case 'working':
+        return l10n.employeeWorkingHint;
+      case 'slacking':
+        return l10n.employeeSlackingHint;
+      default:
+        return l10n.employeeSleepingHint;
+    }
+  }
+
+  Color _getWorkStatusColor(String status) {
+    switch (status) {
+      case 'working':
+        return Colors.green;
+      case 'slacking':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   /// 构建原有的在线状态显示
@@ -356,6 +405,135 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                 ),
         );
       },
+    );
+  }
+}
+
+class _StatusHint extends StatefulWidget {
+  final String message;
+
+  const _StatusHint({required this.message});
+
+  @override
+  State<_StatusHint> createState() => _StatusHintState();
+}
+
+class _StatusHintState extends State<_StatusHint> {
+  OverlayEntry? _entry;
+  Timer? _hideTimer;
+
+  void _showTooltip({bool autoHide = false}) {
+    _hideTimer?.cancel();
+    if (_entry != null) {
+      if (autoHide) {
+        _scheduleHide();
+      }
+      return;
+    }
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+    if (overlay == null) {
+      return;
+    }
+
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) {
+      return;
+    }
+
+    final target = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final message = widget.message;
+
+    _entry = OverlayEntry(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final screenSize = MediaQuery.of(context).size;
+        const maxWidth = 240.0;
+        final rightSpace = screenSize.width - (target.dx + size.width + 8);
+        var left = target.dx + size.width + 8;
+        if (rightSpace < maxWidth) {
+          left = target.dx - maxWidth - 8;
+        }
+        if (left < 8) {
+          left = 8;
+        }
+        var top = target.dy + size.height / 2 - 16;
+        if (top < 8) {
+          top = 8;
+        }
+
+        return Positioned(
+          left: left,
+          top: top,
+          child: IgnorePointer(
+            child: Material(
+              color: theme.colorScheme.surfaceContainerHighest,
+              elevation: 6,
+              shadowColor: Colors.black.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: maxWidth),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  child: Text(
+                    message,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(_entry!);
+    if (autoHide) {
+      _scheduleHide();
+    }
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(
+      const Duration(seconds: 3),
+      _hideTooltip,
+    );
+  }
+
+  void _hideTooltip() {
+    _hideTimer?.cancel();
+    _hideTimer = null;
+    _entry?.remove();
+    _entry = null;
+  }
+
+  @override
+  void dispose() {
+    _hideTooltip();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.help,
+      onEnter: (_) => _showTooltip(),
+      onExit: (_) => _hideTooltip(),
+      child: GestureDetector(
+        onTap: () => _showTooltip(autoHide: true),
+        behavior: HitTestBehavior.opaque,
+        child: Icon(
+          Icons.info_outline_rounded,
+          size: 12,
+          color: theme.colorScheme.outline,
+        ),
+      ),
     );
   }
 }

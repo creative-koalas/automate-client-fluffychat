@@ -419,13 +419,11 @@ class _EmployeeCardState extends State<EmployeeCard>
   }
 
   Widget _buildWorkStatusDot(ThemeData theme) {
-    // 入职中状态下不显示工作状态点
     if (!widget.employee.isReady || widget.isOffboarding) {
       return const SizedBox.shrink();
     }
 
-    // 根据 loop 状态判断工作/休息
-    final dotColor = widget.employee.isWorking ? Colors.green : Colors.blue;
+    final dotColor = _getWorkStatusColor(widget.employee.computedWorkStatus);
 
     return Container(
       width: 12,
@@ -442,7 +440,6 @@ class _EmployeeCardState extends State<EmployeeCard>
   }
 
   String _getWorkStatusText(L10n l10n) {
-    // 入职中状态下显示不同文案
     if (widget.isOffboarding) {
       return '${l10n.deleteEmployee}...';
     }
@@ -450,10 +447,25 @@ class _EmployeeCardState extends State<EmployeeCard>
       return l10n.employeeOnboarding;
     }
 
-    // 根据 loop 状态判断工作/休息，添加 emoji
-    return widget.employee.isWorking
-        ? '💼 ${l10n.employeeWorking}'
-        : '😴 ${l10n.employeeSleeping}';
+    switch (widget.employee.computedWorkStatus) {
+      case 'working':
+        return '💼 ${l10n.employeeWorking}';
+      case 'slacking':
+        return '🐟 ${l10n.employeeSlacking}';
+      default:
+        return '😴 ${l10n.employeeSleeping}';
+    }
+  }
+
+  Color _getWorkStatusColor(String status) {
+    switch (status) {
+      case 'working':
+        return Colors.green;
+      case 'slacking':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   Widget _buildStatusBadge(BuildContext context, ThemeData theme, L10n l10n) {
