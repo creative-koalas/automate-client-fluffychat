@@ -449,14 +449,27 @@ class _StatusHintState extends State<_StatusHint> {
       builder: (context) {
         final theme = Theme.of(context);
         final screenSize = MediaQuery.of(context).size;
-        const maxWidth = 240.0;
-        final rightSpace = screenSize.width - (target.dx + size.width + 8);
-        var left = target.dx + size.width + 8;
-        if (rightSpace < maxWidth) {
-          left = target.dx - maxWidth - 8;
+        const defaultMaxWidth = 240.0;
+        const horizontalPadding = 8.0;
+        final rightSpace =
+            screenSize.width - (target.dx + size.width + horizontalPadding);
+        var left = target.dx + size.width + horizontalPadding;
+        var maxWidth = defaultMaxWidth;
+        final isNarrow = screenSize.width < 600;
+
+        if (isNarrow) {
+          if (rightSpace > 0) {
+            maxWidth =
+                rightSpace < defaultMaxWidth ? rightSpace : defaultMaxWidth;
+          } else {
+            left = target.dx - defaultMaxWidth - horizontalPadding;
+          }
+        } else if (rightSpace < defaultMaxWidth) {
+          left = target.dx - defaultMaxWidth - horizontalPadding;
         }
-        if (left < 8) {
-          left = 8;
+
+        if (left < horizontalPadding) {
+          left = horizontalPadding;
         }
         var top = target.dy + size.height / 2 - 16;
         if (top < 8) {
@@ -473,7 +486,7 @@ class _StatusHintState extends State<_StatusHint> {
               shadowColor: Colors.black.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: maxWidth),
+                constraints: BoxConstraints(maxWidth: maxWidth),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   child: Text(
