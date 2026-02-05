@@ -12,6 +12,7 @@ class WindowService {
   WindowService._();
 
   static bool _trayInitialized = false;
+  static bool _hiddenToTray = false;
   static _CloseInterceptor? _closeInterceptor;
   static final SystemTray _systemTray = SystemTray();
   static const String _trayEventLeftUp = 'leftMouseUp';
@@ -21,6 +22,8 @@ class WindowService {
   static const Duration _linuxTrayLeftClickDelay = Duration(milliseconds: 80);
   static int _linuxTrayShowToken = 0;
   static bool? _isGnomeDesktopCache;
+
+  static bool get isHiddenToTray => _hiddenToTray;
 
   static const Size loginWindowSize = Size(420, 580);
   static const Size mainWindowSize = Size(1280, 720);
@@ -197,6 +200,7 @@ class WindowService {
   /// 显示窗口
   static Future<void> showWindow() async {
     if (!PlatformInfos.isDesktop) return;
+    _hiddenToTray = false;
     await windowManager.show();
     await windowManager.focus();
   }
@@ -204,6 +208,7 @@ class WindowService {
   /// 隐藏窗口到托盘
   static Future<void> hideToTray() async {
     if (!PlatformInfos.isDesktop) return;
+    _hiddenToTray = true;
     await windowManager.hide();
   }
 
@@ -243,6 +248,7 @@ class WindowService {
   /// 切换到主窗口模式（登录成功后调用）
   static Future<void> switchToMainWindow() async {
     if (!PlatformInfos.isDesktop) return;
+    _hiddenToTray = false;
     debugPrint('[WindowService] switchToMainWindow called');
 
     // 先解除大小限制，再设置新的大小
@@ -267,6 +273,7 @@ class WindowService {
   /// 切换到登录窗口模式
   static Future<void> switchToLoginWindow() async {
     if (!PlatformInfos.isDesktop) return;
+    _hiddenToTray = false;
     debugPrint('[WindowService] switchToLoginWindow called');
 
     await windowManager.setMinimumSize(loginWindowSize);

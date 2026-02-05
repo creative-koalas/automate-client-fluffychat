@@ -24,6 +24,7 @@ import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/uia_request_manager.dart';
 import 'package:psygo/utils/voip_plugin.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -385,6 +386,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   }
 
   Future<bool> _isDesktopInBackground() async {
+    if (WindowService.isHiddenToTray) {
+      return true;
+    }
     try {
       final isVisible = await windowManager.isVisible();
       final isFocused = await windowManager.isFocused();

@@ -76,7 +76,8 @@ extension LocalNotificationsExtension on MatrixState {
     if (activeRoomId == roomId) {
       if (kIsWeb && webHasFocus) return;
       if (PlatformInfos.isDesktop &&
-          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
+          !WindowService.isHiddenToTray) {
         try {
           final isVisible = await windowManager.isVisible();
           final isFocused = await windowManager.isFocused();
