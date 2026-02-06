@@ -123,6 +123,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
+  background_color_ios: "#ffffff"
   image_path_ios: "assets/logo_macos.png"
   macos:
     generate: true
