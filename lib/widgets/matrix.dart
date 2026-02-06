@@ -241,8 +241,21 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     );
   }
 
-  final linuxNotifications =
-      PlatformInfos.isLinux ? NotificationsClient() : null;
+  NotificationsClient? _linuxNotifications;
+
+  NotificationsClient? get linuxNotifications {
+    if (!PlatformInfos.isLinux) return null;
+    _linuxNotifications ??= NotificationsClient();
+    return _linuxNotifications;
+  }
+
+  void resetLinuxNotifications() {
+    if (!PlatformInfos.isLinux) return;
+    try {
+      _linuxNotifications?.close();
+    } catch (_) {}
+    _linuxNotifications = NotificationsClient();
+  }
   final Map<String, int> linuxNotificationIds = {};
 
   @override
@@ -353,6 +366,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       // 避免 Matrix SDK 本地通知和阿里云推送通知重复
       if (!PlatformInfos.isMobile) {
         onNotification[name] ??= c.onNotification.stream.listen((event) {
+          if (PlatformInfos.isLinux) {
+            Logs().i(
+              '[LinuxNotify] onNotification room=${event.room.id} event=${event.eventId} type=${event.type}',
+            );
+          }
           if (PlatformInfos.isDesktop && _isDesktopEventNotified(event)) {
             return;
           }
@@ -412,6 +430,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     if (!await _isDesktopInBackground()) return;
     if (_isDesktopEventNotified(event)) return;
     _trackDesktopNotifiedEvent(event);
+    if (PlatformInfos.isLinux) {
+      Logs().i(
+        '[LinuxNotify] background notify room=${event.room.id} event=${event.eventId} type=${event.type}',
+      );
+    }
     showLocalNotification(event);
   }
 
@@ -655,7 +678,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     onBlurSub?.cancel();
     voiceMessageEventId.dispose();
 
-    linuxNotifications?.close();
+    _linuxNotifications?.close();
+    _linuxNotifications = null;
 
     super.dispose();
   }
