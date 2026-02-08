@@ -2,6 +2,8 @@
 /// 负责 Agent 相关的 API 调用和数据转换
 library;
 
+import 'dart:math';
+
 import '../core/api_client.dart';
 import '../models/agent.dart';
 import '../models/agent_style.dart';
@@ -9,6 +11,7 @@ import '../models/agent_style.dart';
 /// Agent 数据仓库
 class AgentRepository {
   final PsygoApiClient _apiClient;
+  final Random _random = Random.secure();
 
   AgentRepository({PsygoApiClient? apiClient})
       : _apiClient = apiClient ?? PsygoApiClient();
@@ -68,10 +71,53 @@ class AgentRepository {
   /// [agentId] Agent ID
   /// [confirm] 确认删除（必须为 true）
   Future<void> deleteAgent(String agentId, {bool confirm = true}) async {
-    await _apiClient.delete<void>(
+    final accepted = await _apiClient.delete<Map<String, dynamic>>(
       '/api/agents/$agentId',
       queryParameters: {'confirm': confirm.toString()},
+      headers: {'Idempotency-Key': _newIdempotencyKey()},
+      fromJsonT: (data) =>
+          data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
+
+    final operationId =
+        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
+    if (operationId.isEmpty) {
+      throw ApiException(-1, 'Missing operation_id');
+    }
+    await _waitDeleteOperation(operationId);
+  }
+
+  String _newIdempotencyKey() {
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final rand = _random.nextInt(1 << 32);
+    return '$ts-$rand';
+  }
+
+  Future<void> _waitDeleteOperation(String operationId) async {
+    final deadline = DateTime.now().add(const Duration(minutes: 12));
+
+    while (DateTime.now().isBefore(deadline)) {
+      final resp = await _apiClient.get<Map<String, dynamic>>(
+        '/api/operations/$operationId',
+        fromJsonT: (data) =>
+            data is Map<String, dynamic> ? data : <String, dynamic>{},
+      );
+
+      final data = resp.data ?? <String, dynamic>{};
+      final status = (data['status'] as String?)?.trim().toLowerCase() ?? '';
+      if (status == 'succeeded') {
+        return;
+      }
+      if (status == 'failed') {
+        final error = (data['error'] as String?)?.trim();
+        throw ApiException(
+            -1, error?.isNotEmpty == true ? error! : 'Operation failed');
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+    }
+
+    throw ApiException(-1, 'Operation timeout');
   }
 
   /// 获取可用的沟通和汇报风格列表

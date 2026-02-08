@@ -2,6 +2,8 @@
 /// 负责 AgentTemplate 相关的 API 调用和数据转换
 library;
 
+import 'dart:math';
+
 import '../core/api_client.dart';
 import '../models/agent_template.dart';
 
@@ -11,6 +13,7 @@ export '../models/agent_template.dart' show PluginConfig;
 /// AgentTemplate 数据仓库
 class AgentTemplateRepository {
   final PsygoApiClient _apiClient;
+  final Random _random = Random.secure();
 
   AgentTemplateRepository({
     PsygoApiClient? apiClient,
@@ -65,18 +68,24 @@ class AgentTemplateRepository {
     String? userRules,
     String? avatarUrl,
   }) async {
-    final response = await _apiClient.post<Map<String, dynamic>>(
+    final accepted = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
+      headers: {'Idempotency-Key': _newIdempotencyKey()},
       body: UnifiedCreateAgentRequest(
         name: name,
         templateId: templateId,
         userRules: userRules,
         avatarUrl: avatarUrl,
       ).toJson(),
-      fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
+      fromJsonT: (data) =>
+          data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
-
-    return _buildCreateResponse(response);
+    final operationId =
+        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
+    if (operationId.isEmpty) {
+      throw ApiException(-1, 'Missing operation_id');
+    }
+    return _waitCreateOperation(operationId);
   }
 
   /// 定制创建 Agent（无模板）
@@ -89,17 +98,23 @@ class AgentTemplateRepository {
     required String name,
     String? systemPrompt,
   }) async {
-    final response = await _apiClient.post<Map<String, dynamic>>(
+    final accepted = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
+      headers: {'Idempotency-Key': _newIdempotencyKey()},
       body: UnifiedCreateAgentRequest(
         name: name,
         systemPrompt: systemPrompt,
         // 不指定 templateId，后端会创建空白 Agent
       ).toJson(),
-      fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
+      fromJsonT: (data) =>
+          data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
-
-    return _buildCreateResponse(response);
+    final operationId =
+        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
+    if (operationId.isEmpty) {
+      throw ApiException(-1, 'Missing operation_id');
+    }
+    return _waitCreateOperation(operationId);
   }
 
   /// 定制创建 Agent（带插件）
@@ -116,33 +131,62 @@ class AgentTemplateRepository {
     List<PluginConfig>? plugins,
     String? avatarUrl,
   }) async {
-    final response = await _apiClient.post<Map<String, dynamic>>(
+    final accepted = await _apiClient.post<Map<String, dynamic>>(
       '/api/agents/create-unified',
+      headers: {'Idempotency-Key': _newIdempotencyKey()},
       body: UnifiedCreateAgentRequest(
         name: name,
         systemPrompt: systemPrompt,
         plugins: plugins,
         avatarUrl: avatarUrl,
       ).toJson(),
-      fromJsonT: (data) => data is Map<String, dynamic> ? data : <String, dynamic>{},
+      fromJsonT: (data) =>
+          data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
-
-    return _buildCreateResponse(response);
+    final operationId =
+        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
+    if (operationId.isEmpty) {
+      throw ApiException(-1, 'Missing operation_id');
+    }
+    return _waitCreateOperation(operationId);
   }
 
-  UnifiedCreateAgentResponse _buildCreateResponse(
-    ApiResponse<Map<String, dynamic>> response,
-  ) {
-    if (response.data == null) {
-      return UnifiedCreateAgentResponse(
-        message: response.message,
-        agentId: '',
-        matrixUserId: '',
-        pluginsCount: 0,
+  String _newIdempotencyKey() {
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final rand = _random.nextInt(1 << 32);
+    return '$ts-$rand';
+  }
+
+  Future<UnifiedCreateAgentResponse> _waitCreateOperation(
+      String operationId) async {
+    final deadline = DateTime.now().add(const Duration(minutes: 12));
+
+    while (DateTime.now().isBefore(deadline)) {
+      final resp = await _apiClient.get<Map<String, dynamic>>(
+        '/api/operations/$operationId',
+        fromJsonT: (data) =>
+            data is Map<String, dynamic> ? data : <String, dynamic>{},
       );
+
+      final data = resp.data ?? <String, dynamic>{};
+      final status = (data['status'] as String?)?.trim().toLowerCase() ?? '';
+      if (status == 'succeeded') {
+        final result = data['result'];
+        if (result is Map<String, dynamic>) {
+          return UnifiedCreateAgentResponse.fromJson(result);
+        }
+        throw ApiException(-1, 'Missing operation result');
+      }
+      if (status == 'failed') {
+        final error = (data['error'] as String?)?.trim();
+        throw ApiException(
+            -1, error?.isNotEmpty == true ? error! : 'Operation failed');
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
     }
 
-    return UnifiedCreateAgentResponse.fromJson(response.data!);
+    throw ApiException(-1, 'Operation timeout');
   }
 
   /// 释放资源

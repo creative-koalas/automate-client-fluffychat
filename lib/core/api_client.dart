@@ -32,7 +32,9 @@ class ApiResponse<T> {
   ) {
     return ApiResponse(
       code: json['code'] as int,
-      data: fromJsonT != null && json['data'] != null ? fromJsonT(json['data']) : null,
+      data: fromJsonT != null && json['data'] != null
+          ? fromJsonT(json['data'])
+          : null,
       message: json['message'] as String? ?? '',
     );
   }
@@ -67,14 +69,20 @@ class PsygoApiClient {
     Map<String, String>? queryParameters,
     T Function(dynamic)? fromJsonT,
     bool requiresAuth = true,
+    Map<String, String>? headers,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path).replace(
       queryParameters: queryParameters,
     );
 
     Future<http.Response> doRequest() async {
-      final headers = await _buildHeaders(requiresAuth);
-      return _httpClient.get(uri, headers: headers).timeout(PsygoConfig.receiveTimeout);
+      final merged = await _buildHeaders(requiresAuth);
+      if (headers != null) {
+        merged.addAll(headers);
+      }
+      return _httpClient
+          .get(uri, headers: merged)
+          .timeout(PsygoConfig.receiveTimeout);
     }
 
     final response = await doRequest();
@@ -91,13 +99,19 @@ class PsygoApiClient {
     Map<String, dynamic>? body,
     T Function(dynamic)? fromJsonT,
     bool requiresAuth = true,
+    Map<String, String>? headers,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path);
     final encodedBody = body != null ? jsonEncode(body) : null;
 
     Future<http.Response> doRequest() async {
-      final headers = await _buildHeaders(requiresAuth);
-      return _httpClient.post(uri, headers: headers, body: encodedBody).timeout(PsygoConfig.receiveTimeout);
+      final merged = await _buildHeaders(requiresAuth);
+      if (headers != null) {
+        merged.addAll(headers);
+      }
+      return _httpClient
+          .post(uri, headers: merged, body: encodedBody)
+          .timeout(PsygoConfig.receiveTimeout);
     }
 
     final response = await doRequest();
@@ -114,13 +128,19 @@ class PsygoApiClient {
     Map<String, dynamic>? body,
     T Function(dynamic)? fromJsonT,
     bool requiresAuth = true,
+    Map<String, String>? headers,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path);
     final encodedBody = body != null ? jsonEncode(body) : null;
 
     Future<http.Response> doRequest() async {
-      final headers = await _buildHeaders(requiresAuth);
-      return _httpClient.put(uri, headers: headers, body: encodedBody).timeout(PsygoConfig.receiveTimeout);
+      final merged = await _buildHeaders(requiresAuth);
+      if (headers != null) {
+        merged.addAll(headers);
+      }
+      return _httpClient
+          .put(uri, headers: merged, body: encodedBody)
+          .timeout(PsygoConfig.receiveTimeout);
     }
 
     final response = await doRequest();
@@ -137,14 +157,20 @@ class PsygoApiClient {
     Map<String, String>? queryParameters,
     T Function(dynamic)? fromJsonT,
     bool requiresAuth = true,
+    Map<String, String>? headers,
   }) async {
     final uri = Uri.parse(PsygoConfig.baseUrl + path).replace(
       queryParameters: queryParameters,
     );
 
     Future<http.Response> doRequest() async {
-      final headers = await _buildHeaders(requiresAuth);
-      return _httpClient.delete(uri, headers: headers).timeout(PsygoConfig.receiveTimeout);
+      final merged = await _buildHeaders(requiresAuth);
+      if (headers != null) {
+        merged.addAll(headers);
+      }
+      return _httpClient
+          .delete(uri, headers: merged)
+          .timeout(PsygoConfig.receiveTimeout);
     }
 
     final response = await doRequest();
@@ -194,8 +220,11 @@ class PsygoApiClient {
     // 处理业务错误
     if (!apiResponse.isSuccess) {
       // Token 失效（10002/10003）- 尝试刷新后重试
-      if ((apiResponse.code == 10002 || apiResponse.code == 10003) && !isRetry && retryRequest != null) {
-        Logs().w('[AutomateApi] Token invalid (code=${apiResponse.code}), attempting refresh...');
+      if ((apiResponse.code == 10002 || apiResponse.code == 10003) &&
+          !isRetry &&
+          retryRequest != null) {
+        Logs().w(
+            '[AutomateApi] Token invalid (code=${apiResponse.code}), attempting refresh...');
 
         try {
           final refreshSuccess = await _tokenManager.refreshAccessToken();
