@@ -455,6 +455,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
         // 启动同步状态监听，检测持续连接失败
         _startSyncStatusMonitoring(matrix.client);
+        if (PlatformInfos.isMobile) {
+          unawaited(matrix.ensureAliyunPushRegistered(matrix.client));
+        }
 
         // 启动协议检查后台服务
         _startAgreementCheckService();
@@ -486,6 +489,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           setState(() => _state = _AuthState.authenticated);
           _startAgreementCheckService();
           _startSyncStatusMonitoring(matrix.client);
+          if (PlatformInfos.isMobile) {
+            unawaited(matrix.ensureAliyunPushRegistered(matrix.client));
+          }
           return;
         }
 
@@ -749,6 +755,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
         // 启动同步状态监听，检测持续连接失败
         _startSyncStatusMonitoring(client);
+        if (PlatformInfos.isMobile) {
+          unawaited(matrix.ensureAliyunPushRegistered(client));
+        }
 
         // Navigate to main page after successful login
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -793,6 +802,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // 启动同步状态监听，检测持续连接失败
       _startSyncStatusMonitoring(client);
+      if (PlatformInfos.isMobile) {
+        unawaited(matrix.ensureAliyunPushRegistered(client));
+      }
 
       // Navigate to main page if not already there
       WidgetsBinding.instance.addPostFrameCallback((_) {

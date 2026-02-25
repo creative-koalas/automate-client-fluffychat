@@ -191,6 +191,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   static const int _desktopNotificationCacheLimit = 200;
   final onLoginStateChanged = <String, StreamSubscription<LoginState>>{};
   final onUiaRequest = <String, StreamSubscription<UiaRequest>>{};
+  final Map<String, Future<void>> _pushRegistrationTasks = {};
   StreamSubscription<html.Event>? onFocusSub;
   StreamSubscription<html.Event>? onBlurSub;
 
@@ -330,7 +331,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         AgentService.instance.refresh();
         // 移动端注册推送
         if (PlatformInfos.isMobile) {
-          _registerAliyunPushAfterLogin(c);
+          unawaited(ensureAliyunPushRegistered(c));
         }
         _updatePushState();
       }
@@ -560,6 +561,28 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
     } catch (e, s) {
       Logs().e('[Matrix] Aliyun Push init error', e, s);
+    }
+  }
+
+  Future<void> ensureAliyunPushRegistered(Client c) async {
+    if (!PlatformInfos.isMobile) return;
+    final userID = c.userID;
+    if (userID == null || userID.isEmpty) return;
+
+    final inFlightTask = _pushRegistrationTasks[userID];
+    if (inFlightTask != null) {
+      await inFlightTask;
+      return;
+    }
+
+    final task = _registerAliyunPushAfterLogin(c);
+    _pushRegistrationTasks[userID] = task;
+    try {
+      await task;
+    } finally {
+      if (identical(_pushRegistrationTasks[userID], task)) {
+        _pushRegistrationTasks.remove(userID);
+      }
     }
   }
 
