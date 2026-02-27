@@ -287,7 +287,6 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   /// 构建员工工作状态显示
   Widget _buildEmployeeWorkStatus(BuildContext context, Agent employee) {
     final l10n = L10n.of(context);
-    final theme = Theme.of(context);
 
     final status = _resolveDisplayedWorkStatus(employee.computedWorkStatus);
     final statusText = _getWorkStatusText(l10n, status);
@@ -313,29 +312,18 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          statusText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12,
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 8),
         Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: dotColor.withAlpha(30),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: InkWell(
-              onTap: () => _showFullStatusHint(context, statusHint),
-              borderRadius: BorderRadius.circular(999),
+          child: InkWell(
+            onTap: () => _showFullStatusHint(context, statusHint),
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: dotColor.withAlpha(30),
+                borderRadius: BorderRadius.circular(999),
+              ),
               child: Text(
-                statusHint,
+                statusText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -363,7 +351,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
         SnackBar(
           content: Text(hint),
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 1),
+          duration: const Duration(seconds: 2),
         ),
       );
   }
