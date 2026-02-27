@@ -50,7 +50,7 @@ class EmployeesTabState extends State<EmployeesTab>
 
   // 移动端刷新：进入页面/回到前台时主动刷新，并开启固定轮询
   Timer? _mobilePollingTimer;
-  static const Duration _mobilePollingInterval = Duration(seconds: 10);
+  static const Duration _mobilePollingInterval = Duration(seconds: 15);
   bool _isTabVisible = false;
   bool _isAppInForeground = true;
 
