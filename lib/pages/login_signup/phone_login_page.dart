@@ -129,7 +129,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       }
     } catch (e) {
       setState(() {
-        phoneError = (e as Object).toLocalizedString(
+        phoneError = e.toLocalizedString(
           context,
           ExceptionContext.requestVerifyCode,
         );
@@ -142,7 +142,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   void _showSuccessToast(String message) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+    final accentColor =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -176,9 +177,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             ],
           ),
         ),
-        backgroundColor: isDark
-            ? const Color(0xFF00B386)
-            : accentColor,
+        backgroundColor: isDark ? const Color(0xFF00B386) : accentColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -239,7 +238,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       debugPrint('验证码登录错误: $e');
       if (!mounted) return;
       setState(() {
-        codeError = (e as Object).toLocalizedString(
+        codeError = e.toLocalizedString(
           context,
           ExceptionContext.verifyCode,
         );
@@ -254,7 +253,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
-    final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+    final accentColor =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
     final shouldAccept = await showModalBottomSheet<bool>(
       context: context,
@@ -395,8 +395,9 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: (isDark ? const Color(0xFF00D3A1) : accentColor)
-                              .withValues(alpha: 0.3),
+                          color:
+                              (isDark ? const Color(0xFF00D3A1) : accentColor)
+                                  .withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 4),
                         ),
@@ -520,12 +521,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
 
           // Logo 尺寸响应式 - 更大 Logo
-          final logoSize = isExtraSmallScreen ? 100.0
-              : (isSmallScreen ? 110.0
-              : (isMediumScreen ? 120.0 : 130.0));
-          final logoImageHeight = isExtraSmallScreen ? 55.0
-              : (isSmallScreen ? 60.0
-              : (isMediumScreen ? 65.0 : 70.0));
+          final logoSize = isExtraSmallScreen
+              ? 100.0
+              : (isSmallScreen ? 110.0 : (isMediumScreen ? 120.0 : 130.0));
+          final logoImageHeight = isExtraSmallScreen
+              ? 55.0
+              : (isSmallScreen ? 60.0 : (isMediumScreen ? 65.0 : 70.0));
 
           // 卡片宽度响应式
           final cardMaxWidth = (isExtraSmallScreen || isSmallScreen)
@@ -533,11 +534,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               : (isMediumScreen ? 420.0 : 480.0);
 
           // 间距响应式 - Logo与卡片间距
-          final cardSpacingTop = isExtraSmallScreen ? 28.0
-              : (isSmallScreen ? 32.0
-              : (isMediumScreen ? 40.0 : 48.0));
+          final cardSpacingTop = isExtraSmallScreen
+              ? 28.0
+              : (isSmallScreen ? 32.0 : (isMediumScreen ? 40.0 : 48.0));
           final verticalPadding = screenHeight < 700 ? 12.0 : 24.0;
-          final horizontalPadding = (isExtraSmallScreen || isSmallScreen) ? 12.0 : 20.0;
+          final horizontalPadding =
+              (isExtraSmallScreen || isSmallScreen) ? 12.0 : 20.0;
 
           // Theme-based colors
           final bgColors = isDark
@@ -553,7 +555,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                 ];
 
           final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
-          final accentColor = isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+          final accentColor =
+              isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
           // PC端使用圆角无边框窗口
           Widget content = Container(
@@ -566,9 +569,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                 colors: bgColors,
               ),
               // PC端添加圆角
-              borderRadius: PlatformInfos.isDesktop
-                  ? BorderRadius.circular(6)
-                  : null,
+              borderRadius:
+                  PlatformInfos.isDesktop ? BorderRadius.circular(6) : null,
             ),
             child: Stack(
               children: [
@@ -655,9 +657,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   /// Build animated glowing orbs for background
   Widget _buildGlowingOrbs(bool isDark) {
     // Theme-based glow colors
-    final glowColor1 = isDark ? const Color(0xFF00D4FF) : const Color(0xFF4FC3F7);
-    final glowColor2 = isDark ? const Color(0xFF00FF9F) : const Color(0xFF81C784);
-    final glowColor3 = isDark ? const Color(0xFF0099FF) : const Color(0xFF64B5F6);
+    final glowColor1 =
+        isDark ? const Color(0xFF00D4FF) : const Color(0xFF4FC3F7);
+    final glowColor2 =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF81C784);
+    final glowColor3 =
+        isDark ? const Color(0xFF0099FF) : const Color(0xFF64B5F6);
 
     return Stack(
       children: [
@@ -770,9 +775,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     final spacingTop = isSmallScreen ? 14.0 : 16.0;
     final spacingBetween = isSmallScreen ? 10.0 : 12.0;
 
-    final subtitleColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : const Color(0xFF5A6A7A);
+    final subtitleColor =
+        isDark ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF5A6A7A);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -789,19 +793,27 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         SizedBox(height: spacingTop),
 
         // Phone input with glow on focus
-        // PC端允许在获取验证码后修改手机号，移动端锁定
+        // 获取验证码后也允许修改手机号；修改后重置验证码状态
         _GlowingTextField(
           controller: phoneController,
           hintText: '请输入手机号',
           prefixIcon: Icons.phone_outlined,
           errorText: phoneError,
-          readOnly: loading || (codeSent && !PlatformInfos.isDesktop),
+          readOnly: loading,
           keyboardType: TextInputType.phone,
-          textInputAction: codeSent ? TextInputAction.next : TextInputAction.done,
+          textInputAction:
+              codeSent ? TextInputAction.next : TextInputAction.done,
           isDark: isDark,
           accentColor: accentColor,
           onChanged: (value) {
-            setState(() => phoneError = null);
+            setState(() {
+              phoneError = null;
+              if (codeSent) {
+                codeSent = false;
+                codeError = null;
+                codeController.clear();
+              }
+            });
           },
           onSubmitted: (_) {
             if (!codeSent && !loading && countdown == 0) {
@@ -842,7 +854,9 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                 countdown > 0 ? '$countdown秒后重新发送' : '重新发送验证码',
                 style: TextStyle(
                   color: countdown > 0
-                      ? (isDark ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF9E9E9E))
+                      ? (isDark
+                          ? Colors.white.withValues(alpha: 0.4)
+                          : const Color(0xFF9E9E9E))
                       : accentColor,
                   fontSize: 13,
                 ),
@@ -860,7 +874,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               height: 14,
               child: Checkbox(
                 value: agreedToEula,
-                onChanged: (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
+                onChanged:
+                    (loading || codeSent) ? null : (_) => toggleEulaAgreement(),
                 fillColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return accentColor;
@@ -920,7 +935,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
         // Get verification code or Login button
         if (!codeSent)
           _GradientButton(
-            onPressed: (loading || countdown > 0) ? null : requestVerificationCode,
+            onPressed:
+                (loading || countdown > 0) ? null : requestVerificationCode,
             loading: loading,
             text: countdown > 0 ? '$countdown秒后重试' : '获取验证码',
             isDark: isDark,
@@ -1089,7 +1105,9 @@ class _AnimatedFloatingLogoState extends State<_AnimatedFloatingLogo>
         return Transform.translate(
           offset: Offset(0, _floatAnimation.value),
           child: Image.asset(
-            widget.isDark ? 'assets/logo_dark.png' : 'assets/logo_transparent.png',
+            widget.isDark
+                ? 'assets/logo_dark.png'
+                : 'assets/logo_transparent.png',
             width: widget.size,
             height: widget.size,
           ),
@@ -1167,9 +1185,8 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
     final borderColor = widget.isDark
         ? Colors.white.withValues(alpha: 0.1)
         : Colors.black.withValues(alpha: 0.15);
-    final focusBorderColor = widget.isDark
-        ? const Color(0xFF00D4FF)
-        : widget.accentColor;
+    final focusBorderColor =
+        widget.isDark ? const Color(0xFF00D4FF) : widget.accentColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1364,9 +1381,7 @@ class _ClickableLinkState extends State<_ClickableLink> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: _isHovered
-                    ? widget.accentColor
-                    : Colors.transparent,
+                color: _isHovered ? widget.accentColor : Colors.transparent,
                 width: 1.5,
               ),
             ),
