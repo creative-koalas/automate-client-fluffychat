@@ -135,9 +135,16 @@ class ChatView extends StatelessWidget {
               final agent = AgentService.instance
                   .getAgentByMatrixUserId(directChatMatrixID);
               if (agent == null) return const SizedBox.shrink();
+              final theme = Theme.of(context);
+              final l10n = L10n.of(context);
+              final isDisabled = !controller.webEntryOpen &&
+                  !controller.webEntryLoading &&
+                  !agent.canOpenWebEntry;
 
               return IconButton(
-                tooltip: controller.webEntryOpen ? '返回聊天' : '打开 WebView',
+                tooltip: controller.webEntryOpen
+                    ? '返回聊天'
+                    : (isDisabled ? l10n.agentWebEntryUnavailable : '打开 WebView'),
                 onPressed: controller.webEntryOpen || controller.webEntryLoading
                     ? controller.closeWebEntry
                     : () => controller.openWebEntry(),
@@ -147,10 +154,33 @@ class ChatView extends StatelessWidget {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Icon(
-                        controller.webEntryOpen
-                            ? Icons.arrow_back
-                            : Icons.web_outlined,
+                    : Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
+                            controller.webEntryOpen
+                                ? Icons.arrow_back
+                                : Icons.web_outlined,
+                            color: isDisabled
+                                ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                                : null,
+                          ),
+                          if (!controller.webEntryOpen &&
+                              agent.webEntryStatus ==
+                                  Agent.webEntryStatusUpdated)
+                            Positioned(
+                              right: -1,
+                              top: -1,
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
               );
             },

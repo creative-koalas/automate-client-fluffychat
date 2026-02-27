@@ -3541,7 +3541,7 @@
     "@employeeSlackingHint": {},
     "employeeSleepingHint": "唤醒员工需要一定时间",
     "@employeeSleepingHint": {},
-    "agentWebEntryUnavailable": "该员工当前未开放入口",
+    "agentWebEntryUnavailable": "该员工暂未开放入口",
     "@agentWebEntryUnavailable": {},
     "employeeOnboarding": "入职中...",
     "@employeeOnboarding": {},

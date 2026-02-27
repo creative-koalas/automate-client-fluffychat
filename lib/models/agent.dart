@@ -4,6 +4,10 @@ library;
 
 /// Agent 领域模型
 class Agent {
+  static const int webEntryStatusDisabled = 0;
+  static const int webEntryStatusEnabled = 1;
+  static const int webEntryStatusUpdated = 2;
+
   /// Agent 唯一标识（如 "agent_1_abc123"）
   final String agentId;
 
@@ -26,8 +30,9 @@ class Agent {
   /// 前端逻辑：isReady=false 时显示"入职中"，阻止用户交互
   final bool isReady;
 
-  /// Web 入口是否已开启（用于在私聊会话中展示/启用 WebView 按钮）
-  final bool webEntryEnabled;
+  /// Web 入口状态：
+  /// 0=禁止，1=开启，2=有更新（显示红点）
+  final int webEntryStatus;
 
   /// Agent 的 Matrix 账号 ID（如 @agent-1-abc:matrix.org）
   final String? matrixUserId;
@@ -52,7 +57,7 @@ class Agent {
     this.avatarUrl,
     required this.isActive,
     required this.isReady,
-    this.webEntryEnabled = false,
+    this.webEntryStatus = webEntryStatusDisabled,
     this.matrixUserId,
     required this.createdAt,
     this.contractExpiresAt,
@@ -70,7 +75,9 @@ class Agent {
       avatarUrl: json['avatar_url'] as String?,
       isActive: json['is_active'] as bool? ?? false,
       isReady: json['is_ready'] as bool? ?? false,
-      webEntryEnabled: json['web_entry_enabled'] as bool? ?? false,
+      webEntryStatus: _parseWebEntryStatus(
+        rawStatus: json['web_entry_status'],
+      ),
       matrixUserId: json['matrix_user_id'] as String?,
       createdAt: json['created_at'] as String,
       contractExpiresAt: json['contract_expires_at'] as String?,
@@ -89,7 +96,7 @@ class Agent {
       'avatar_url': avatarUrl,
       'is_active': isActive,
       'is_ready': isReady,
-      'web_entry_enabled': webEntryEnabled,
+      'web_entry_status': webEntryStatus,
       'matrix_user_id': matrixUserId,
       'created_at': createdAt,
       'contract_expires_at': contractExpiresAt,
@@ -107,7 +114,7 @@ class Agent {
     String? avatarUrl,
     bool? isActive,
     bool? isReady,
-    bool? webEntryEnabled,
+    int? webEntryStatus,
     String? matrixUserId,
     String? createdAt,
     String? contractExpiresAt,
@@ -122,7 +129,7 @@ class Agent {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isActive: isActive ?? this.isActive,
       isReady: isReady ?? this.isReady,
-      webEntryEnabled: webEntryEnabled ?? this.webEntryEnabled,
+      webEntryStatus: webEntryStatus ?? this.webEntryStatus,
       matrixUserId: matrixUserId ?? this.matrixUserId,
       createdAt: createdAt ?? this.createdAt,
       contractExpiresAt: contractExpiresAt ?? this.contractExpiresAt,
@@ -131,6 +138,38 @@ class Agent {
     );
   }
 
+  static int _parseWebEntryStatus({
+    Object? rawStatus,
+  }) {
+    int? parsedStatus;
+    if (rawStatus is int) {
+      parsedStatus = rawStatus;
+    } else if (rawStatus is num) {
+      parsedStatus = rawStatus.toInt();
+    } else if (rawStatus is String) {
+      parsedStatus = int.tryParse(rawStatus.trim());
+    }
+    if (parsedStatus != null) {
+      return _normalizeWebEntryStatus(parsedStatus);
+    }
+    return webEntryStatusDisabled;
+  }
+
+  static int _normalizeWebEntryStatus(int status) {
+    switch (status) {
+      case webEntryStatusDisabled:
+      case webEntryStatusEnabled:
+      case webEntryStatusUpdated:
+        return status;
+      default:
+        return webEntryStatusDisabled;
+    }
+  }
+
+  bool get canOpenWebEntry => webEntryStatus != webEntryStatusDisabled;
+
+  bool get hasWebEntryUpdate => webEntryStatus == webEntryStatusUpdated;
+
   /// 获取实际工作状态
   /// 规则：
   /// - work_status=busy/working/running → 工作中
@@ -138,7 +177,9 @@ class Agent {
   /// - 其他状态 → 休息中
   String get computedWorkStatus {
     final normalized = workStatus.trim().toLowerCase();
-    if (normalized == 'busy' || normalized == 'working' || normalized == 'running') {
+    if (normalized == 'busy' ||
+        normalized == 'working' ||
+        normalized == 'running') {
       return 'working';
     }
     if (normalized == 'idle') {
@@ -241,7 +282,9 @@ class AgentPage {
   factory AgentPage.fromJson(Map<String, dynamic> json) {
     final agentsJson = json['agents'] as List<dynamic>? ?? [];
     return AgentPage(
-      agents: agentsJson.map((e) => Agent.fromJson(e as Map<String, dynamic>)).toList(),
+      agents: agentsJson
+          .map((e) => Agent.fromJson(e as Map<String, dynamic>))
+          .toList(),
       nextCursor: json['next_cursor'] as int?,
       hasNextPage: json['has_next_page'] as bool? ?? false,
       trialExpiresAt: json['trial_expires_at'] as String?,

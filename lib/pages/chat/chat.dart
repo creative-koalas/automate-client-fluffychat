@@ -162,7 +162,7 @@ class ChatController extends State<ChatPageWithRoom>
     return AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
   }
 
-  bool get canOpenWebEntry => webEntryAgent?.webEntryEnabled == true;
+  bool get canOpenWebEntry => webEntryAgent?.canOpenWebEntry == true;
 
   bool get _supportsInlineWebView {
     if (kIsWeb) return false;
@@ -185,10 +185,13 @@ class ChatController extends State<ChatPageWithRoom>
     if (agent == null) return;
     if (_webEntryLoading) return;
 
-    if (!agent.webEntryEnabled) {
+    if (!agent.canOpenWebEntry) {
       final l10n = L10n.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.agentWebEntryUnavailable)),
+        SnackBar(
+          content: Text(l10n.agentWebEntryUnavailable),
+          duration: const Duration(seconds: 2),
+        ),
       );
       return;
     }
@@ -209,6 +212,7 @@ class ChatController extends State<ChatPageWithRoom>
 
       if (!_supportsInlineWebView) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
+        _markWebEntryUpdateViewed(agent);
         return;
       }
 
@@ -216,6 +220,7 @@ class ChatController extends State<ChatPageWithRoom>
         _webEntryUrl = fullUrl;
         _webEntryOpen = true;
       });
+      _markWebEntryUpdateViewed(agent);
     } catch (_) {
       if (!mounted || requestId != _webEntryRequestId) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -226,6 +231,13 @@ class ChatController extends State<ChatPageWithRoom>
         setState(() => _webEntryLoading = false);
       }
     }
+  }
+
+  void _markWebEntryUpdateViewed(Agent agent) {
+    if (!agent.hasWebEntryUpdate) return;
+    AgentService.instance.updateAgent(
+      agent.copyWith(webEntryStatus: Agent.webEntryStatusEnabled),
+    );
   }
 
   void onDragEntered(_) => setState(() => dragging = true);
@@ -1029,7 +1041,10 @@ class ChatController extends State<ChatPageWithRoom>
         if (PlatformInfos.isMobile &&
             mimeType != null &&
             mimeType.startsWith('video')) {
-          _showLoadingSnackBar(scaffoldMessenger, l10n.generatingVideoThumbnail);
+          _showLoadingSnackBar(
+            scaffoldMessenger,
+            l10n.generatingVideoThumbnail,
+          );
           thumbnail = await xfile.getVideoThumbnail();
           _showLoadingSnackBar(scaffoldMessenger, l10n.compressVideo);
           file = await xfile.getVideoInfo(
