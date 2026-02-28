@@ -76,6 +76,14 @@ class MessageDownloadContent extends StatelessWidget {
     }
   }
 
+  void _onFileCardTap(BuildContext context) {
+    if (PlatformInfos.isWeb) {
+      event.saveFile(context);
+      return;
+    }
+    _openFilePreview(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final filename = event.content.tryGet<String>('filename') ?? event.body;
@@ -97,7 +105,7 @@ class MessageDownloadContent extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(AppConfig.borderRadius / 2),
-            onTap: () => event.saveFile(context),
+            onTap: () => _onFileCardTap(context),
             child: Container(
               width: 400,
               padding: const EdgeInsets.all(16.0),
@@ -107,7 +115,7 @@ class MessageDownloadContent extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     backgroundColor: textColor.withAlpha(32),
-                    child: Icon(Icons.file_download_outlined, color: textColor),
+                    child: Icon(Icons.visibility_outlined, color: textColor),
                   ),
                   Flexible(
                     child: Column(
@@ -132,13 +140,12 @@ class MessageDownloadContent extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (!PlatformInfos.isWeb)
-                    IconButton(
-                      icon: const Icon(Icons.visibility_outlined),
-                      color: textColor,
-                      tooltip: L10n.of(context).open,
-                      onPressed: () => _openFilePreview(context),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.file_download_outlined),
+                    color: textColor,
+                    tooltip: L10n.of(context).downloadFile,
+                    onPressed: () => event.saveFile(context),
+                  ),
                 ],
               ),
             ),
