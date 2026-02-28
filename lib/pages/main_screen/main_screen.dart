@@ -83,7 +83,9 @@ class _MainScreenState extends State<MainScreen> {
           ? ChatList(
               activeChat: widget.activeChat,
             )
-          : const TeamPage();
+          : const TeamPage(
+              isVisible: true,
+            );
     }
 
     // Mobile mode: PageView without swipe + premium bottom navigation
@@ -96,7 +98,9 @@ class _MainScreenState extends State<MainScreen> {
           ChatList(
             activeChat: widget.activeChat,
           ),
-          const TeamPage(),
+          TeamPage(
+            isVisible: _currentPage == 1,
+          ),
         ],
       ),
       bottomNavigationBar: Container(
@@ -212,8 +216,10 @@ class _NavItem extends StatelessWidget {
           highlightColor: theme.colorScheme.primary.withValues(alpha: 0.08),
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: isSelected ? FluffyThemes.spacing24 : FluffyThemes.spacing16,
-              vertical: isSelected ? FluffyThemes.spacing12 : FluffyThemes.spacing8,
+              horizontal:
+                  isSelected ? FluffyThemes.spacing24 : FluffyThemes.spacing16,
+              vertical:
+                  isSelected ? FluffyThemes.spacing12 : FluffyThemes.spacing8,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -238,7 +244,9 @@ class _NavItem extends StatelessWidget {
                   curve: FluffyThemes.curveStandard,
                   child: isSelected
                       ? Padding(
-                          padding: const EdgeInsets.only(left: FluffyThemes.spacing8),
+                          padding: const EdgeInsets.only(
+                            left: FluffyThemes.spacing8,
+                          ),
                           child: Text(
                             label,
                             style: TextStyle(

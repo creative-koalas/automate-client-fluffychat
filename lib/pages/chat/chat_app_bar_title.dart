@@ -191,7 +191,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
               children: [
                 Row(
                   children: [
-                    Expanded(
+                    Flexible(
+                      fit: FlexFit.loose,
                       child: InkWell(
                         hoverColor: Colors.transparent,
                         splashColor: Colors.transparent,

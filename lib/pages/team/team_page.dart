@@ -22,7 +22,12 @@ const bool _useSimplifiedTeamPage = true;
 /// Contains three tabs: Employees, Recruit, Training
 /// Supports swipe to switch between tabs
 class TeamPage extends StatefulWidget {
-  const TeamPage({super.key});
+  final bool isVisible;
+
+  const TeamPage({
+    super.key,
+    this.isVisible = true,
+  });
 
   @override
   State<TeamPage> createState() => TeamPageController();
@@ -47,6 +52,14 @@ class TeamPageController extends State<TeamPage>
   }
 
   @override
+  void didUpdateWidget(covariant TeamPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isVisible != widget.isVisible) {
+      _notifyEmployeesTabVisibility();
+    }
+  }
+
+  @override
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
@@ -62,7 +75,9 @@ class TeamPageController extends State<TeamPage>
   }
 
   void _notifyEmployeesTabVisibility() {
-    _employeesTabKey.currentState?.onTabVisibilityChanged(_tabController.index == 0);
+    final isEmployeesVisible = widget.isVisible &&
+        (_useSimplifiedTeamPage || _tabController.index == 0);
+    _employeesTabKey.currentState?.onTabVisibilityChanged(isEmployeesVisible);
   }
 
   /// Switch to Employees tab and refresh the list
@@ -249,7 +264,8 @@ class TeamPageView extends StatelessWidget {
             Container(
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
@@ -305,7 +321,8 @@ class TeamPageView extends StatelessWidget {
               onTap: () => unawaited(controller.openRecruitMenu(context)),
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -402,7 +419,8 @@ class TeamPageView extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
