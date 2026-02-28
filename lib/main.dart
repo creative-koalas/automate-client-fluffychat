@@ -30,7 +30,9 @@ void main() async {
     final stack = details.stack?.toString() ?? '';
 
     // 忽略 swipe_to_action 包的 setState 错误（静默处理）
-    if (exception.toString().contains('Null check operator used on a null value') &&
+    if (exception
+            .toString()
+            .contains('Null check operator used on a null value') &&
         stack.contains('SwipeableState')) {
       return;
     }
@@ -96,7 +98,7 @@ void main() async {
         await windowManager.setSize(mainWindowSize);
         await windowManager.setMinimumSize(mainWindowMinSize);
         await windowManager.center();
-        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
         await windowManager.show();
         await windowManager.focus();
       });
@@ -201,24 +203,31 @@ class _IosStartupAppState extends State<_IosStartupApp> {
     Logs().nativeColors = false;
     developer.log('[iOS Startup] Vodozemac initialized', name: 'Startup');
 
-    developer.log('[iOS Startup] Getting Matrix clients (timeout: 45s)...', name: 'Startup');
+    developer.log('[iOS Startup] Getting Matrix clients (timeout: 45s)...',
+        name: 'Startup');
     final clients = await ClientManager.getClients(store: store)
         .timeout(const Duration(seconds: 45));
-    developer.log('[iOS Startup] Got ${clients.length} Matrix clients', name: 'Startup');
+    developer.log('[iOS Startup] Got ${clients.length} Matrix clients',
+        name: 'Startup');
 
     String? pin;
     try {
-      developer.log('[iOS Startup] Reading PIN from keychain...', name: 'Startup');
+      developer.log('[iOS Startup] Reading PIN from keychain...',
+          name: 'Startup');
       pin = await const FlutterSecureStorage().read(
         key: 'chat.fluffy.app_lock',
       );
-      developer.log('[iOS Startup] PIN read complete (${pin != null ? "found" : "not found"})', name: 'Startup');
+      developer.log(
+          '[iOS Startup] PIN read complete (${pin != null ? "found" : "not found"})',
+          name: 'Startup');
     } catch (e, s) {
-      developer.log('[iOS Startup] PIN read ERROR: $e', name: 'Startup', error: e);
+      developer.log('[iOS Startup] PIN read ERROR: $e',
+          name: 'Startup', error: e);
       Logs().d('Unable to read PIN from Secure storage', e, s);
     }
 
-    developer.log('[iOS Startup] Preloading first client data...', name: 'Startup');
+    developer.log('[iOS Startup] Preloading first client data...',
+        name: 'Startup');
     final firstClient = clients.firstOrNull;
     if (firstClient != null) {
       final roomsLoading = firstClient.roomsLoading;

@@ -6,32 +6,34 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
-import 'package:psygo/pages/team/recruit_tab.dart';
-import 'package:psygo/pages/team/training_tab.dart';
 import 'package:psygo/pages/wallet/wallet_page.dart';
+import 'package:psygo/repositories/agent_template_repository.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/fluffy_share.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
-import 'package:psygo/widgets/collapsible_sidebar.dart';
+import 'package:psygo/widgets/custom_hire_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/hire_success_dialog.dart';
 import 'package:psygo/widgets/layouts/empty_page.dart';
 import 'package:psygo/widgets/matrix.dart';
 
 /// PC 端主页索引
 enum DesktopPageIndex {
   messages(0),
-  employees(1),
-  recruitment(2),
-  training(3);
+  employees(1);
 
   final int value;
   const DesktopPageIndex(this.value);
 }
 
-/// PC 端桌面布局 - 包含可收缩侧边栏
+/// PC 端桌面布局 - 自定义顶部双入口导航（消息 / 员工）
 /// 只用于桌面端，不影响移动端
 class DesktopLayout extends StatefulWidget {
   final String? activeChat;
@@ -53,8 +55,6 @@ class DesktopLayout extends StatefulWidget {
 }
 
 class _DesktopLayoutState extends State<DesktopLayout> {
-  // 使用静态变量保存当前页面，这样即使 widget 重建也能恢复到用户选择的页面
-  static DesktopPageIndex _savedCurrentPage = DesktopPageIndex.messages;
   // 保存消息列表宽度
   static double _chatListWidth = FluffyThemes.columnWidth;
   // 缓存未读计数
@@ -79,7 +79,6 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
   late DesktopPageIndex _currentPage;
   int _unreadCount = 0;
-  bool _isMenuOpen = false;
   bool _isDraggingDivider = false;
 
   // 监听同步事件以更新未读计数
@@ -87,17 +86,13 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
   // 各页面的 Key，用于刷新
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
-  final GlobalKey<RecruitTabState> _recruitTabKey = GlobalKey();
-  final GlobalKey<TrainingTabState> _trainingTabKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    // 如果有 activeChat，说明是要打开聊天，切换到消息页面
-    // 否则恢复到之前保存的页面
     _currentPage = widget.activeChat != null
         ? DesktopPageIndex.messages
-        : _savedCurrentPage;
+        : widget.initialPage;
     // 先使用缓存的未读计数
     _unreadCount = _cachedUnreadCount;
     // 延迟到 context 可用后初始化
@@ -158,40 +153,10 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     final newPage = DesktopPageIndex.values[index];
     if (_currentPage != newPage) {
       setState(() => _currentPage = newPage);
-      _savedCurrentPage = newPage; // 保存当前页面状态
-      // 当切换到非消息页面时，清除路由中的 roomId，这样下次点击"开始聊天"时路由会变化
       if (newPage != DesktopPageIndex.messages && widget.activeChat != null) {
         context.go('/rooms');
       }
     }
-    // 点击按钮时刷新对应页面
-    _refreshCurrentPage(newPage);
-  }
-
-  /// 刷新当前选中的页面
-  void _refreshCurrentPage(DesktopPageIndex page) {
-    switch (page) {
-      case DesktopPageIndex.messages:
-        // 消息页面由 Matrix sync 自动刷新
-        break;
-      case DesktopPageIndex.employees:
-        _employeesTabKey.currentState?.refreshEmployeeList();
-        break;
-      case DesktopPageIndex.recruitment:
-        _recruitTabKey.currentState?.refresh();
-        break;
-      case DesktopPageIndex.training:
-        _trainingTabKey.currentState?.refresh();
-        break;
-    }
-  }
-
-  /// 招聘成功后切换到员工页面并刷新
-  void _switchToEmployeesAndRefresh() {
-    setState(() => _currentPage = DesktopPageIndex.employees);
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _employeesTabKey.currentState?.refreshEmployeeList();
-    });
   }
 
   /// 刷新员工列表
@@ -199,9 +164,49 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     _employeesTabKey.currentState?.refreshEmployeeList();
   }
 
-  /// 切换到招聘页面
-  void _switchToRecruitment() {
-    setState(() => _currentPage = DesktopPageIndex.recruitment);
+  Future<void> _openRecruitMenu() async {
+    final repository = AgentTemplateRepository();
+
+    try {
+      final result = await showDialog<HireResult>(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: CustomHireDialog(
+              repository: repository,
+              isDialog: true,
+            ),
+          ),
+        ),
+      );
+
+      if (!mounted || result == null) return;
+
+      _refreshEmployeeList();
+      unawaited(AgentService.instance.refresh());
+
+      final displayName = result.displayName.trim();
+      final employeeName = displayName.isNotEmpty ? displayName : 'Employee';
+
+      showHireSuccessDialog(
+        context: context,
+        employeeName: employeeName,
+        onViewEmployee: _refreshEmployeeList,
+        onContinueHiring: () {
+          if (!mounted) return;
+          unawaited(_openRecruitMenu());
+        },
+      );
+
+      await result.responseFuture;
+      if (!mounted) return;
+      _refreshEmployeeList();
+      unawaited(AgentService.instance.refresh());
+    } finally {
+      repository.dispose();
+    }
   }
 
   /// 菜单选项 - 完全按照 ClientChooserButton 的方式
@@ -390,12 +395,11 @@ class _DesktopLayoutState extends State<DesktopLayout> {
         return LayoutBuilder(
           builder: (context, constraints) {
             final showName = constraints.maxWidth > 150;
-
             return Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: showName ? 16 : 0,
-                  vertical: 12,
+                  vertical: 4,
                 ),
                 child: Material(
                   clipBehavior: Clip.hardEdge,
@@ -403,25 +407,16 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                   color: Colors.transparent,
                   child: PopupMenuButton<Object>(
                     popUpAnimationStyle: AnimationStyle.noAnimation,
-                    onOpened: () => setState(() => _isMenuOpen = true),
-                    onCanceled: () => setState(() => _isMenuOpen = false),
-                    onSelected: (value) {
-                      setState(() => _isMenuOpen = false);
-                      _onMenuSelected(value);
-                    },
+                    onSelected: _onMenuSelected,
                     itemBuilder: _buildMenuItems,
                     child: showName
                         ? Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                          avatar,
-                          const SizedBox(width: 12),
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
+                              avatar,
+                              const SizedBox(width: 12),
+                              Flexible(
+                                child: Text(
                                   displayName,
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w600,
@@ -429,24 +424,14 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                 ),
-                                Text(
-                                  userId,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      )
-                    : avatar,
+                              ),
+                            ],
+                          )
+                        : avatar,
+                  ),
+                ),
               ),
-            ),
-          ),
-        );
+            );
           },
         );
       },
@@ -512,9 +497,11 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                   end: Alignment.bottomCenter,
                                   colors: _isDraggingDivider
                                       ? [
-                                          theme.colorScheme.primary.withAlpha(100),
+                                          theme.colorScheme.primary
+                                              .withAlpha(100),
                                           theme.colorScheme.primary,
-                                          theme.colorScheme.primary.withAlpha(100),
+                                          theme.colorScheme.primary
+                                              .withAlpha(100),
                                         ]
                                       : [
                                           theme.dividerColor.withAlpha(60),
@@ -542,117 +529,276 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           },
         );
       case DesktopPageIndex.employees:
-        // 员工页面：全宽显示
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('员工管理'),
-            automaticallyImplyLeading: false,
-            actions: [
-              // 钱包按钮
-              IconButton(
-                icon: Icon(
-                  Icons.account_balance_wallet_outlined,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                tooltip: L10n.of(context).walletTitle,
-                onPressed: () {
-                  // PC 端以独立窗口形式打开
-                  showDialog(
-                    context: context,
-                    builder: (context) => Dialog(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: const SizedBox(
-                          width: 420,
-                          height: 680,
-                          child: WalletPage(showBackButton: false),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: EmployeesTab(
-            key: _employeesTabKey,
-            onNavigateToRecruit: _switchToRecruitment,
-          ),
-        );
-      case DesktopPageIndex.recruitment:
-        // 招聘页面：全宽显示
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('招聘中心'),
-            automaticallyImplyLeading: false,
-          ),
-          body: RecruitTab(
-            key: _recruitTabKey,
-            onEmployeeHired: _switchToEmployeesAndRefresh,
-            onRefreshEmployees: _refreshEmployeeList,
-          ),
-        );
-      case DesktopPageIndex.training:
-        // 培训页面：全宽显示
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('培训市场'),
-            automaticallyImplyLeading: false,
-          ),
-          body: TrainingTab(key: _trainingTabKey),
+        // 员工页面：只保留列表主体
+        return EmployeesTab(
+          key: _employeesTabKey,
+          onNavigateToRecruit: () => unawaited(_openRecruitMenu()),
         );
     }
+  }
+
+  Future<void> _openWalletDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: const SizedBox(
+            width: 420,
+            height: 680,
+            child: WalletPage(showBackButton: false),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopNavigation(ThemeData theme, L10n l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showProfileText = constraints.maxWidth > 1160;
+
+        return WindowDragArea(
+          child: Container(
+            height: 82,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Psygo',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerLow
+                            .withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _TopNavigationButton(
+                            icon: Icons.chat_bubble_outline_rounded,
+                            selectedIcon: Icons.chat_bubble_rounded,
+                            label: l10n.messages,
+                            selected: _currentPage == DesktopPageIndex.messages,
+                            badgeCount: _unreadCount,
+                            onTap: () => _onPageSelected(
+                              DesktopPageIndex.messages.value,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _TopNavigationButton(
+                            icon: Icons.groups_outlined,
+                            selectedIcon: Icons.groups_rounded,
+                            label: l10n.teamPageTitle,
+                            selected:
+                                _currentPage == DesktopPageIndex.employees,
+                            onTap: () => _onPageSelected(
+                              DesktopPageIndex.employees.value,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l10n.walletTitle,
+                  onPressed: _openWalletDialog,
+                  icon: const Icon(Icons.account_balance_wallet_rounded),
+                  style: IconButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: showProfileText ? 224 : 56,
+                  child: _buildAdaptiveHeader(),
+                ),
+                if (PlatformInfos.isDesktop) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 1,
+                    height: 28,
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.4,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  WindowControlButtons(
+                    iconColor: theme.colorScheme.onSurfaceVariant,
+                    hoverColor: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.9),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    final menuItems = [
-      SidebarMenuItem(
-        icon: Icons.chat_bubble_outline,
-        selectedIcon: Icons.chat_bubble,
-        label: '消息',
-        badgeCount: _unreadCount,
-      ),
-      const SidebarMenuItem(
-        icon: Icons.people_outline,
-        selectedIcon: Icons.people,
-        label: '员工',
-      ),
-      const SidebarMenuItem(
-        icon: Icons.person_add_outlined,
-        selectedIcon: Icons.person_add,
-        label: '招聘',
-      ),
-      const SidebarMenuItem(
-        icon: Icons.school_outlined,
-        selectedIcon: Icons.school,
-        label: '培训',
-      ),
-    ];
+    final l10n = L10n.of(context);
 
     return Scaffold(
-      body: Row(
-        children: [
-          // 可收缩侧边栏 - 使用单个自适应 header 避免 widget 切换导致 PopupMenu 失效
-          CollapsibleSidebar(
-            items: menuItems,
-            selectedIndex: _currentPage.value,
-            onItemSelected: _onPageSelected,
-            header: _buildAdaptiveHeader(),
-            backgroundColor: theme.colorScheme.surface,
-            preventCollapse: _isMenuOpen,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.secondaryContainer.withValues(alpha: 0.38),
+              theme.colorScheme.primaryContainer.withValues(alpha: 0.24),
+              theme.colorScheme.surface,
+            ],
+            stops: const [0.0, 0.45, 1.0],
           ),
-          // 主内容区
-          Expanded(
-            child: _buildContent(),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                child: _buildTopNavigation(theme, l10n),
+              ),
+              Expanded(
+                child: _buildContent(),
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopNavigationButton extends StatelessWidget {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final int badgeCount;
+  final VoidCallback onTap;
+
+  const _TopNavigationButton({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: selected
+            ? theme.colorScheme.primary.withValues(alpha: 0.14)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? selectedIcon : icon,
+                  size: 18,
+                  color: foreground,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? foreground : theme.colorScheme.onSurface,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+                if (badgeCount > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badgeCount > 99 ? '99+' : '$badgeCount',
+                      style: TextStyle(
+                        color: theme.colorScheme.onError,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
