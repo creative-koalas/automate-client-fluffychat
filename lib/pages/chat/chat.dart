@@ -187,10 +187,7 @@ class ChatController extends State<ChatPageWithRoom>
     final l10n = L10n.of(context);
 
     if (!agent.webEntryEnabled) {
-      final l10n = L10n.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.chatWebEntryNotEnabled)),
-      );
+      _showWebEntryHint(l10n.chatWebEntryNotEnabled);
       return;
     }
 
@@ -219,14 +216,30 @@ class ChatController extends State<ChatPageWithRoom>
       });
     } catch (_) {
       if (!mounted || requestId != _webEntryRequestId) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.chatOpenFailedRetryLater)),
-      );
+      _showWebEntryHint(l10n.chatOpenFailedRetryLater);
     } finally {
       if (mounted && requestId == _webEntryRequestId) {
         setState(() => _webEntryLoading = false);
       }
     }
+  }
+
+  void _showWebEntryHint(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: PlatformInfos.isMobile
+              ? InkWell(
+                  onTap: messenger.hideCurrentSnackBar,
+                  child: Text(message),
+                )
+              : Text(message),
+        ),
+      );
   }
 
   void onDragEntered(_) => setState(() => dragging = true);
