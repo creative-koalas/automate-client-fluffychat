@@ -8,6 +8,7 @@ import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -46,7 +47,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 清除登录状态
       await _clearAuthState();
       if (mounted) {
-        setLoginError('Matrix 凭证缺失，请重新登录');
+        setLoginError(L10n.of(context).authMatrixCredentialsMissing);
         setLoading(false);
       }
       return false;
@@ -56,10 +57,11 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       final matrix = Matrix.of(context);
       final store = await SharedPreferences.getInstance();
 
-      // 使用用户专属的 client（基于 Matrix 用户 ID 命名数据库）
-      final client = await ClientManager.getOrCreateClientForUser(
+      // 使用用户专属 client。登录链路优先复用内存对象，避免重复 initWithRestore。
+      final client = await ClientManager.getOrCreateLoginClientForUser(
         matrixUserId,
         store,
+        inMemoryClients: matrix.widget.clients,
       );
 
       // 确保 client 在 clients 列表中
@@ -89,9 +91,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 清除旧内存状态
       await client.clear();
 
-      // Set homeserver before login
+      // 使用固定 homeserver，直接 init，避免额外探测请求带来的登录卡顿。
       final homeserverUrl = Uri.parse(PsygoConfig.matrixHomeserver);
-      await client.checkHomeserver(homeserverUrl);
 
       // 使用后端返回的 access_token 直接初始化，无需密码登录
       await client.init(
@@ -99,6 +100,9 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         newUserID: matrixUserId,
         newHomeserver: homeserverUrl,
         newDeviceName: PlatformInfos.clientName,
+        // Do not block UI on first sync/load; background sync continues after init.
+        waitForFirstSync: false,
+        waitUntilLoadCompletedLoaded: false,
       );
       debugPrint('Matrix 登录成功');
 
@@ -126,7 +130,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 清除登录状态和 Matrix 客户端
       await _clearAuthState();
       if (mounted) {
-        final message = (e as Object).toLocalizedString(
+        final message = e.toLocalizedString(
           context,
           ExceptionContext.matrixLogin,
         );
@@ -170,13 +174,5 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
     }
 
     debugPrint('[LoginFlow] Auth state cleared');
-  }
-
-  /// 提取干净的错误消息
-  String _extractErrorMessage(Object e) {
-    if (e is AutomateBackendException) {
-      return e.message;
-    }
-    return e.toString();
   }
 }

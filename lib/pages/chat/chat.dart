@@ -107,8 +107,8 @@ class PendingAttachment {
     required this.id,
     required this.file,
     String? caption,
-  }) : captionController = TextEditingController(text: caption ?? ''),
-       orderController = TextEditingController();
+  })  : captionController = TextEditingController(text: caption ?? ''),
+        orderController = TextEditingController();
 
   final String id;
   final XFile file;
@@ -184,6 +184,7 @@ class ChatController extends State<ChatPageWithRoom>
     final agent = webEntryAgent;
     if (agent == null) return;
     if (_webEntryLoading) return;
+    final l10n = L10n.of(context);
 
     if (!agent.canOpenWebEntry) {
       final l10n = L10n.of(context);
@@ -224,7 +225,7 @@ class ChatController extends State<ChatPageWithRoom>
     } catch (_) {
       if (!mounted || requestId != _webEntryRequestId) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('打开失败，请稍后重试')),
+        SnackBar(content: Text(l10n.chatOpenFailedRetryLater)),
       );
     } finally {
       if (mounted && requestId == _webEntryRequestId) {
@@ -871,7 +872,7 @@ class ChatController extends State<ChatPageWithRoom>
       setState(() => _syncPendingAttachmentOrderControllers());
       return;
     }
-    final clamped = parsedIndex.clamp(1, _pendingAttachments.length);
+    final clamped = parsedIndex.clamp(1, _pendingAttachments.length) as int;
     final newIndex = clamped - 1;
     if (newIndex == currentIndex) {
       setState(() => _syncPendingAttachmentOrderControllers());
@@ -954,7 +955,8 @@ class ChatController extends State<ChatPageWithRoom>
     }
 
     final trimmedText = sendController.text.trim();
-    final hasPending = PlatformInfos.isDesktop && _pendingAttachments.isNotEmpty;
+    final hasPending =
+        PlatformInfos.isDesktop && _pendingAttachments.isNotEmpty;
     if (!hasPending && trimmedText.isEmpty) return;
 
     if (hasPending) {

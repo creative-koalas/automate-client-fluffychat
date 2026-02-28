@@ -8,12 +8,12 @@ import 'payment_success_page.dart';
 
 /// 支付状态枚举
 enum PaymentState {
-  idle,           // 空闲，等待用户点击支付
-  creatingOrder,  // 正在创建订单
+  idle, // 空闲，等待用户点击支付
+  creatingOrder, // 正在创建订单
   awaitingAlipay, // 等待用户从支付宝返回
-  verifying,      // 正在验证支付结果
-  success,        // 支付成功
-  failed,         // 支付失败
+  verifying, // 正在验证支付结果
+  success, // 支付成功
+  failed, // 支付失败
 }
 
 /// 订单确认页面
@@ -44,7 +44,9 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   // ========== 支付状态管理（核心改动） ==========
   PaymentState _paymentState = PaymentState.idle;
   String _statusMessage = '';
-  String? _pendingOutTradeNo;  // 待验证的订单号
+  String? _pendingOutTradeNo; // 待验证的订单号
+  Timer? _resumeVerifyTimer;
+  bool _paymentFinalized = false;
 
   // 真实订单数据（从后端返回）
   double? _realTotalAmount;
@@ -57,7 +59,8 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _orderNo = 'ORD${DateTime.now().millisecondsSinceEpoch.toString().substring(4)}';
+    _orderNo =
+        'ORD${DateTime.now().millisecondsSinceEpoch.toString().substring(4)}';
     _startCountdown();
 
     // 注册生命周期监听器
@@ -67,6 +70,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     _timer?.cancel();
+    _resumeVerifyTimer?.cancel();
     // 移除生命周期监听器
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -82,12 +86,41 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
 
     if (state == AppLifecycleState.resumed) {
       // App 从后台恢复（用户从支付宝返回）
-      if (_paymentState == PaymentState.awaitingAlipay && _pendingOutTradeNo != null) {
-        print('📱 [LIFECYCLE] Resumed from Alipay, starting verification...');
-        // 开始验证支付结果
-        _verifyPaymentOnResume();
+      if (_paymentState == PaymentState.awaitingAlipay &&
+          _pendingOutTradeNo != null) {
+        print(
+            '📱 [LIFECYCLE] Resumed from Alipay, scheduling fallback verification...');
+        // 延迟触发兜底校验：如果 pay() 已经返回并切换状态，这个定时器会自动失效。
+        _resumeVerifyTimer?.cancel();
+        _resumeVerifyTimer = Timer(const Duration(seconds: 3), () {
+          if (!mounted) return;
+          if (_paymentState == PaymentState.awaitingAlipay &&
+              _pendingOutTradeNo != null) {
+            _verifyPaymentOnResume();
+          }
+        });
       }
     }
+  }
+
+  void _clearPendingPaymentSession() {
+    _resumeVerifyTimer?.cancel();
+    _resumeVerifyTimer = null;
+    _pendingOutTradeNo = null;
+    _realTotalAmount = null;
+    _realCreditsAmount = null;
+  }
+
+  bool _isTerminalFailedStatus(String status) {
+    final normalized = status.toLowerCase();
+    return normalized == 'closed' || normalized == 'refunded';
+  }
+
+  String _formatAmount(double amount) {
+    final cents = (amount * 100).round();
+    if (cents % 100 == 0) return (cents ~/ 100).toString();
+    if (cents % 10 == 0) return (cents / 100).toStringAsFixed(1);
+    return (cents / 100).toStringAsFixed(2);
   }
 
   void _startCountdown() {
@@ -100,8 +133,9 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
         timer.cancel();
         // 超时处理
         if (mounted && _paymentState == PaymentState.idle) {
+          final messenger = ScaffoldMessenger.of(context);
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
               content: Text(L10n.of(context).orderTimeout),
               behavior: SnackBarBehavior.floating,
@@ -129,11 +163,17 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   }
 
   Future<void> _onConfirmPayment() async {
+    if (_paymentState != PaymentState.idle) return;
+
     final l10n = L10n.of(context);
     final apiClient = context.read<PsygoApiClient>();
 
+    _paymentFinalized = false;
+    _clearPendingPaymentSession();
+
     // 更新状态为创建订单中
-    _updatePaymentState(PaymentState.creatingOrder, message: l10n.walletProcessing);
+    _updatePaymentState(PaymentState.creatingOrder,
+        message: l10n.walletProcessing);
 
     try {
       // 1. 调用后端创建订单
@@ -178,32 +218,31 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
       if (resultStatus == '9000') {
         // ✅ 支付成功 - 验证订单
         await _handlePaymentSuccess(apiClient, orderResponse.outTradeNo);
-
       } else if (resultStatus == '8000') {
         // ⏳ 支付处理中 - 轮询
         await _handlePaymentProcessing(apiClient, orderResponse.outTradeNo);
-
       } else if (resultStatus == '6001') {
         // ❌ 用户取消
         print('❌ [CANCELED] User canceled payment');
+        _clearPendingPaymentSession();
         _updatePaymentState(PaymentState.idle);
         _showSnackBar(l10n.orderCanceled);
-
       } else if (resultStatus == '6002') {
         // ❌ 网络错误
         print('❌ [NETWORK-ERROR] Network error occurred');
+        _clearPendingPaymentSession();
         _updatePaymentState(PaymentState.idle);
         final memo = payResult['memo'] as String? ?? '网络连接出错';
         _showSnackBar('$memo (code: $resultStatus)');
-
       } else {
         // ❌ 其他错误
         print('❌ [FAILED] Payment failed with status: $resultStatus');
+        _clearPendingPaymentSession();
         _updatePaymentState(PaymentState.idle);
         final memo = payResult['memo'] as String? ?? l10n.orderPaymentFailed;
-        _showSnackBar('${l10n.orderPaymentFailed}: $memo (code: $resultStatus)', isError: true);
+        _showSnackBar('${l10n.orderPaymentFailed}: $memo (code: $resultStatus)',
+            isError: true);
       }
-
     } catch (e, stackTrace) {
       print('===== Error Caught =====');
       print('Error: $e');
@@ -212,6 +251,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
 
       if (!mounted) return;
 
+      _clearPendingPaymentSession();
       _updatePaymentState(PaymentState.idle);
       _showSnackBar(L10n.of(context).orderCreateFailed, isError: true);
     }
@@ -241,10 +281,11 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
           // 支付成功
           await _onPaymentVerified(apiClient);
           return;
-        } else if (order.status == 'closed') {
+        } else if (_isTerminalFailedStatus(order.status)) {
           // 订单关闭
+          _clearPendingPaymentSession();
           _updatePaymentState(PaymentState.idle);
-          _showSnackBar('支付已取消');
+          _showSnackBar(order.status == 'refunded' ? '订单已退款' : '支付已取消');
           return;
         }
       } catch (e) {
@@ -253,12 +294,14 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
     }
 
     // 3次都没查到，提示用户稍后查看
+    _clearPendingPaymentSession();
     _updatePaymentState(PaymentState.idle);
     _showSnackBar('支付结果确认中，请稍后在钱包查看余额');
   }
 
   /// 处理支付成功
-  Future<void> _handlePaymentSuccess(PsygoApiClient apiClient, String outTradeNo) async {
+  Future<void> _handlePaymentSuccess(
+      PsygoApiClient apiClient, String outTradeNo) async {
     _updatePaymentState(PaymentState.verifying, message: '正在确认支付结果...');
 
     // 轮询查询订单状态（3秒一次，最多10次）
@@ -274,6 +317,11 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
         if (order.status == 'paid') {
           await _onPaymentVerified(apiClient);
           return;
+        } else if (_isTerminalFailedStatus(order.status)) {
+          _clearPendingPaymentSession();
+          _updatePaymentState(PaymentState.idle);
+          _showSnackBar(order.status == 'refunded' ? '订单已退款' : '支付已取消');
+          return;
         }
       } catch (e) {
         print('⚠️ [POLL-${i + 1}] Query failed: $e');
@@ -283,6 +331,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
     // 30秒内未查询到支付成功
     print('⚠️ [TIMEOUT] Payment verification timeout');
     if (mounted) {
+      _clearPendingPaymentSession();
       _updatePaymentState(PaymentState.idle);
       _showSnackBar('支付结果确认中，请稍后在钱包查看余额');
       Navigator.of(context).pop(false);
@@ -290,7 +339,8 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
   }
 
   /// 处理支付处理中（8000状态）
-  Future<void> _handlePaymentProcessing(PsygoApiClient apiClient, String outTradeNo) async {
+  Future<void> _handlePaymentProcessing(
+      PsygoApiClient apiClient, String outTradeNo) async {
     _updatePaymentState(PaymentState.verifying, message: '支付处理中，请稍候...');
 
     // 轮询查询（5秒一次，最多12次）
@@ -306,9 +356,10 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
         if (order.status == 'paid') {
           await _onPaymentVerified(apiClient);
           return;
-        } else if (order.status == 'closed') {
+        } else if (_isTerminalFailedStatus(order.status)) {
+          _clearPendingPaymentSession();
           _updatePaymentState(PaymentState.idle);
-          _showSnackBar('支付已取消');
+          _showSnackBar(order.status == 'refunded' ? '订单已退款' : '支付已取消');
           return;
         }
       } catch (e) {
@@ -319,6 +370,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
     // 60秒超时
     print('⚠️ [TIMEOUT-8000] Processing timeout after 60s');
     if (mounted) {
+      _clearPendingPaymentSession();
       _updatePaymentState(PaymentState.idle);
       _showSnackBar('支付处理超时，请稍后在钱包查看余额');
     }
@@ -326,6 +378,9 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
 
   /// 支付验证成功的统一处理
   Future<void> _onPaymentVerified(PsygoApiClient apiClient) async {
+    if (_paymentFinalized) return;
+    _paymentFinalized = true;
+
     print('✅ [VERIFIED] Order confirmed as paid');
 
     // 刷新用户余额
@@ -341,6 +396,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
       // 使用真实的订单数据，如果没有则使用默认计算值
       final amount = _realTotalAmount ?? widget.amount;
       final credits = _realCreditsAmount ?? (widget.amount * 100).round();
+      _clearPendingPaymentSession();
 
       // 跳转到充值成功页面
       await Navigator.of(context).pushReplacement(
@@ -372,7 +428,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
 
     // 如果正在处理支付，显示全屏 loading 覆盖层
     final isProcessing = _paymentState != PaymentState.idle &&
-                         _paymentState != PaymentState.success;
+        _paymentState != PaymentState.success;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -604,7 +660,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
                       ),
                     ),
                     Text(
-                      widget.amount.toStringAsFixed(0),
+                      _formatAmount(widget.amount),
                       style: const TextStyle(
                         fontSize: 48,
                         fontWeight: FontWeight.bold,
@@ -616,7 +672,8 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: _lightGreen,
                     borderRadius: BorderRadius.circular(12),
@@ -631,7 +688,7 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${l10n.orderWillGetCredits} ${(widget.amount * 100).toStringAsFixed(0)} ${l10n.walletCreditsUnit}',
+                        '${l10n.orderWillGetCredits} ${(widget.amount * 100).round()} ${l10n.walletCreditsUnit}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: _primaryGreen,
@@ -740,11 +797,13 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
     final isProcessing = _paymentState != PaymentState.idle;
 
     return GestureDetector(
-      onTap: isProcessing ? null : () {
-        setState(() {
-          _selectedPayment = index;
-        });
-      },
+      onTap: isProcessing
+          ? null
+          : () {
+              setState(() {
+                _selectedPayment = index;
+              });
+            },
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
         opacity: isProcessing ? 0.5 : 1.0,
@@ -805,7 +864,8 @@ class _OrderPageState extends State<OrderPage> with WidgetsBindingObserver {
                         if (isRecommended && recommendedLabel != null) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: _lightGreen,
                               borderRadius: BorderRadius.circular(4),

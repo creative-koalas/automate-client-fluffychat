@@ -208,6 +208,7 @@ class TokenManager {
       _storage.delete(key: _primaryKey),
       _storage.delete(key: _refreshKey),
       _storage.delete(key: _expiresAtKey),
+      _storage.delete(key: _userIdKey),
     ]);
   }
 

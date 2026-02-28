@@ -69,6 +69,37 @@ abstract class ClientManager {
     return client;
   }
 
+  /// 登录流程专用：获取可直接用于 token 初始化的 client。
+  ///
+  /// 与 [getOrCreateClientForUser] 的区别：
+  /// - 优先复用内存中的 client，避免重复打开数据库
+  /// - 新建 client 时不执行 initWithRestore，登录流程会紧接着调用 client.init(newToken: ...)
+  static Future<Client> getOrCreateLoginClientForUser(
+    String matrixUserId,
+    SharedPreferences store, {
+    required List<Client> inMemoryClients,
+  }) async {
+    final clientName = userIdToClientName(matrixUserId);
+    developer.log('[ClientManager] getOrCreateLoginClientForUser: $matrixUserId -> $clientName', name: 'ClientManager');
+
+    final existing = inMemoryClients.firstWhereOrNull(
+      (client) => client.clientName == clientName,
+    );
+    if (existing != null) {
+      developer.log('[ClientManager] Reusing in-memory client: $clientName', name: 'ClientManager');
+      return existing;
+    }
+
+    final clientNamesList = store.getStringList(clientNamespace) ?? [];
+    if (!clientNamesList.contains(clientName)) {
+      clientNamesList.add(clientName);
+      await store.setStringList(clientNamespace, clientNamesList);
+      developer.log('[ClientManager] Added login clientName to store: $clientName', name: 'ClientManager');
+    }
+
+    return createClient(clientName, store);
+  }
+
   static Future<List<Client>> getClients({
     bool initialize = true,
     required SharedPreferences store,

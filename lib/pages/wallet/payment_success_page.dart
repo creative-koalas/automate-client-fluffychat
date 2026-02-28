@@ -84,6 +84,13 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
     _numberController.forward();
   }
 
+  String _formatAmount(double amount) {
+    final cents = (amount * 100).round();
+    if (cents % 100 == 0) return (cents ~/ 100).toString();
+    if (cents % 10 == 0) return (cents / 100).toStringAsFixed(1);
+    return (cents / 100).toStringAsFixed(2);
+  }
+
   @override
   void dispose() {
     _checkController.dispose();
@@ -191,7 +198,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
 
           // 支付金额信息
           Text(
-            '支付 ¥${widget.amount.toStringAsFixed(0)} · 已到账',
+            '支付 ¥${_formatAmount(widget.amount)} · 已到账',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[500],
@@ -282,7 +289,8 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
     return AnimatedBuilder(
       animation: _numberAnimation,
       builder: (context, child) {
-        final displayCredits = (widget.credits * _numberAnimation.value).round();
+        final displayCredits =
+            (widget.credits * _numberAnimation.value).round();
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,

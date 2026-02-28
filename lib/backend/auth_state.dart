@@ -63,7 +63,7 @@ class PsygoAuthState extends ChangeNotifier {
 
   /// Check if we have a valid (non-expired) token
   bool get hasValidToken {
-    return _primaryToken != null && !isTokenExpired;
+    return _primaryToken != null && _primaryToken!.isNotEmpty && !isTokenExpired;
   }
 
   Future<void> load() async {
@@ -74,11 +74,15 @@ class PsygoAuthState extends ChangeNotifier {
         ? DateTime.fromMillisecondsSinceEpoch(int.tryParse(expiresAtStr) ?? 0)
         : null;
     _userId = await _storage.read(key: _userIdKey);
-    _onboardingCompleted = true;
+    final onboardingCompletedStr =
+        await _storage.read(key: _onboardingCompletedKey);
+    _onboardingCompleted = onboardingCompletedStr == null
+        ? true
+        : onboardingCompletedStr.toLowerCase() == 'true';
     _matrixAccessToken = await _storage.read(key: _matrixAccessTokenKey);
     _matrixUserId = await _storage.read(key: _matrixUserIdKey);
     _matrixDeviceId = await _storage.read(key: _matrixDeviceIdKey);
-    _loggedIn = _primaryToken != null;
+    _loggedIn = _primaryToken != null && _primaryToken!.isNotEmpty;
     notifyListeners();
   }
 

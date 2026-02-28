@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/agent.dart';
 import '../../repositories/agent_repository.dart';
+import '../../utils/localized_exception_extension.dart';
 import '../../utils/retry_helper.dart';
 import '../../widgets/employee_card.dart';
 import '../../widgets/employee_detail_sheet.dart';
@@ -137,7 +138,10 @@ class EmployeesTabState extends State<EmployeesTab>
       if (!mounted || requestSeq != _replaceRequestSeq) return;
 
       setState(() {
-        _error = e.toString();
+        _error = e.toLocalizedString(
+          context,
+          ExceptionContext.loadEmployeeList,
+        );
         _isLoading = false;
       });
     }
@@ -770,7 +774,8 @@ class EmployeesTabState extends State<EmployeesTab>
           final cardWidth = availableWidth / crossAxisCount - 12; // 减去间距
 
           // 根据卡片宽度调整宽高比（数值越小，卡片越高）
-          final aspectRatio = cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
+          final aspectRatio =
+              cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
 
           return CustomScrollView(
             controller: _scrollController,
@@ -821,7 +826,9 @@ class EmployeesTabState extends State<EmployeesTab>
                         child: EmployeeCard(
                           employee: employee,
                           isOffboarding: isDeleting,
-                          onTap: isDeleting ? null : () => _onEmployeeTap(employee),
+                          onTap: isDeleting
+                              ? null
+                              : () => _onEmployeeTap(employee),
                         ),
                       );
                     },
@@ -892,5 +899,4 @@ class EmployeesTabState extends State<EmployeesTab>
       ],
     );
   }
-
 }

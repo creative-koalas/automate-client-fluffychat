@@ -101,6 +101,8 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> _onRecharge() async {
+    final l10n = L10n.of(context);
+
     // 公测阶段提示弹窗
     await showDialog(
       context: context,
@@ -110,28 +112,28 @@ class _WalletPageState extends State<WalletPage> {
         final isDark = theme.brightness == Brightness.dark;
         final accentSurface =
             _tint(colorScheme.surface, _lightGreen, isDark ? 0.2 : 0.7);
-        bool copied = false;
+        var copied = false;
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             insetPadding: const EdgeInsets.all(24),
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.info_outline, color: _primaryGreen, size: 28),
-                SizedBox(width: 12),
-                Text('温馨提示', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const Icon(Icons.info_outline, color: _primaryGreen, size: 28),
+                const SizedBox(width: 12),
+                Text(l10n.walletPublicBetaDialogTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('公测阶段，无需充值即可体验全部功能！', style: TextStyle(fontSize: 15, height: 1.5)),
+                Text(l10n.walletPublicBetaDialogBody, style: const TextStyle(fontSize: 15, height: 1.5)),
                 const SizedBox(height: 16),
                 Text(
-                  '如有积分需求，请通过邮箱联系我们：',
+                  l10n.walletPublicBetaDialogContact,
                   style: TextStyle(
                     fontSize: 14,
                     color: colorScheme.onSurfaceVariant,
@@ -178,11 +180,11 @@ class _WalletPageState extends State<WalletPage> {
                       ),
                     ),
                     if (copied)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
                         child: Text(
-                          '✓ 已复制到剪贴板',
-                          style: TextStyle(fontSize: 12, color: _primaryGreen),
+                          '✓ ${l10n.copiedToClipboard}',
+                          style: const TextStyle(fontSize: 12, color: _primaryGreen),
                         ),
                       ),
                   ],
@@ -192,7 +194,7 @@ class _WalletPageState extends State<WalletPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('我知道了', style: TextStyle(color: _primaryGreen, fontWeight: FontWeight.w600)),
+                child: Text(l10n.appUpdateGotIt, style: const TextStyle(color: _primaryGreen, fontWeight: FontWeight.w600)),
               ),
             ],
           ),

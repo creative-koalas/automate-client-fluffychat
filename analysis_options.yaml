@@ -19,6 +19,7 @@ analyzer:
     - lib/generated_plugin_registrant.dart
     - lib/l10n/*.dart
     - third_party/**
+    - android/local_plugins/**/example/**
 
 dart_code_metrics:
   metrics:

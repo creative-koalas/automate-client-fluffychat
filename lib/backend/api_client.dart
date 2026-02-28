@@ -200,11 +200,19 @@ class PsygoApiClient {
       throw AutomateBackendException('Empty response data');
     }
 
+    final token = (respData['access_token'] as String?)?.trim() ?? '';
+    final userId = (respData['user_id'] as String?)?.trim() ?? '';
+    if (token.isEmpty || userId.isEmpty) {
+      throw AutomateBackendException(
+        'Invalid auth response: missing access_token or user_id',
+      );
+    }
+
     final authResponse = AuthResponse(
-      token: respData['access_token'] as String? ?? '',
+      token: token,
       refreshToken: respData['refresh_token'] as String?,
       expiresIn: respData['expires_in'] as int?,
-      userId: respData['user_id'] as String? ?? '',
+      userId: userId,
       phone: respData['phone'] as String? ?? '',
       matrixAccessToken: respData['matrix_access_token'] as String?,
       matrixUserId: respData['matrix_user_id'] as String?,
