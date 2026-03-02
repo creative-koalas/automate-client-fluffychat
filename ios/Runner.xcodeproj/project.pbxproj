@@ -832,6 +832,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				67564704B5FE6343E4406E2E /* [CP] Embed Pods Frameworks */,
+				367A09FB96386E21D4C4EE98 /* Generate WebRTC dSYM */,
 				AC2627F633EA807C65B06E75 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
@@ -1488,6 +1489,27 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		367A09FB96386E21D4C4EE98 /* Generate WebRTC dSYM */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks/WebRTC.framework/WebRTC",
+			);
+			name = "Generate WebRTC dSYM";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/WebRTC.framework.dSYM",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\n\nif [ \"${ACTION}\" != \"install\" ] && [ \"${ACTION}\" != \"archive\" ]; then\n  exit 0\nfi\n\nAPP_FRAMEWORK_BIN=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks/WebRTC.framework/WebRTC\"\nWEBRTC_DSYM_DIR=\"${DWARF_DSYM_FOLDER_PATH}/WebRTC.framework.dSYM\"\n\nif [ ! -f \"${APP_FRAMEWORK_BIN}\" ]; then\n  echo \"WebRTC.framework not found at ${APP_FRAMEWORK_BIN}, skip dSYM generation.\"\n  exit 0\nfi\n\nrm -rf \"${WEBRTC_DSYM_DIR}\"\ndsymutil \"${APP_FRAMEWORK_BIN}\" -o \"${WEBRTC_DSYM_DIR}\"\necho \"✅ Generated WebRTC dSYM: ${WEBRTC_DSYM_DIR}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

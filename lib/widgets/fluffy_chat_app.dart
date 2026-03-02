@@ -168,6 +168,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   int _consecutiveSyncErrors = 0;
   static const int _maxConsecutiveSyncErrors = 5;  // 连续5次同步失败后登出
   Timer? _authStateRecheckTimer;
+  int _matrixReadyWaitCount = 0;
+  static const int _maxMatrixReadyWaitCount = 6; // 6 * 500ms = 3s
+  bool _matrixRecoveryInProgress = false;
 
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
@@ -195,6 +198,19 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     super.dispose();
   }
 
+  void _scheduleAuthStateRecheck(String reason) {
+    if (_authStateRecheckTimer?.isActive ?? false) {
+      return;
+    }
+    debugPrint('[AuthGate] Scheduling auth recheck: $reason');
+    _authStateRecheckTimer = Timer(const Duration(milliseconds: 500), () {
+      _authStateRecheckTimer = null;
+      if (mounted) {
+        _onAuthStateChanged();
+      }
+    });
+  }
+
   /// 认证状态变化回调
   void _onAuthStateChanged() {
     if (!mounted) return;
@@ -217,6 +233,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
       debugPrint('[AuthGate] User logged out via auth state change, clearing all auth state');
+      _matrixReadyWaitCount = 0;
+      _matrixRecoveryInProgress = false;
 
       // 取消同步状态监听
       _syncStatusSubscription?.cancel();
@@ -234,26 +252,37 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // 检查 Matrix 是否也已登录
       try {
         final matrix = Matrix.of(context);
-        if (matrix.client.isLogged()) {
+        final loggedClients = matrix.widget.clients.where((c) => c.isLogged()).toList();
+        if (loggedClients.isNotEmpty) {
           debugPrint('[AuthGate] User logged in with Matrix, updating state to authenticated');
+          _matrixReadyWaitCount = 0;
+          _matrixRecoveryInProgress = false;
           setState(() => _state = _AuthState.authenticated);
           _authStateRecheckTimer?.cancel();
           _authStateRecheckTimer = null;
           _startAgreementCheckService();
           // 启动同步状态监听，检测持续连接失败
-          _startSyncStatusMonitoring(matrix.client);
+          _startSyncStatusMonitoring(loggedClients.first);
         } else {
-          // Matrix 还没登录完成，限流轮询，避免并发定时器叠加
-          if (!(_authStateRecheckTimer?.isActive ?? false)) {
-            debugPrint('[AuthGate] Psygo logged in but Matrix not yet, will check again');
-            _authStateRecheckTimer = Timer(const Duration(milliseconds: 500), () {
-              _authStateRecheckTimer = null;
-              if (mounted) _onAuthStateChanged();
-            });
+          _matrixReadyWaitCount++;
+          if (_matrixReadyWaitCount >= _maxMatrixReadyWaitCount &&
+              !_matrixRecoveryInProgress) {
+            _matrixRecoveryInProgress = true;
+            _matrixReadyWaitCount = 0;
+            debugPrint('[AuthGate] Matrix still not ready after waiting, triggering recovery login');
+            unawaited(() async {
+              try {
+                await _loginMatrixAndProceed();
+              } finally {
+                _matrixRecoveryInProgress = false;
+              }
+            }());
           }
+          _scheduleAuthStateRecheck('Psygo logged in but Matrix not ready yet');
         }
       } catch (e) {
         debugPrint('[AuthGate] Could not check Matrix state: $e');
+        _scheduleAuthStateRecheck('Matrix state unavailable');
       }
     }
   }
@@ -1231,7 +1260,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   Widget build(BuildContext context) {
     // watch auth state 以便在状态变化时重建 UI
     // 实际的登出逻辑在 _onAuthStateChanged 中处理
-    context.watch<PsygoAuthState>();
+    final auth = context.watch<PsygoAuthState>();
 
     switch (_state) {
       case _AuthState.checking:
@@ -1255,7 +1284,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // 移动端：需要登录时显示加载界面，等待一键登录 SDK 弹出
         // 这样可以避免短暂显示聊天列表后再弹出登录页
         if (PlatformInfos.isMobile) {
-          if (_forceManualLogin) {
+          if (_forceManualLogin || auth.isLoggedIn) {
             return widget.child ?? const SizedBox.shrink();
           }
           return _buildLoadingScreen('正在准备登录...');
