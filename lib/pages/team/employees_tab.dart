@@ -778,65 +778,82 @@ class EmployeesTabState extends State<EmployeesTab>
           final aspectRatio =
               cardWidth > 350 ? 3.2 : (cardWidth > 300 ? 2.8 : 2.5);
 
-          return CustomScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              // 试用期倒计时横幅
-              if (_trialExpiresAt != null)
-                SliverToBoxAdapter(
-                  child: TrialCountdownBanner(
-                    expiresAt: _trialExpiresAt!,
-                    onExpired: _refresh,
-                  ),
-                ),
-              // 员工网格
-              SliverPadding(
-                padding: const EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 8,
-                  bottom: 32,
-                ),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: aspectRatio,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index == _employees.length) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final employee = _employees[index];
-                      final isDeleting =
-                          _deletingEmployees.contains(employee.agentId);
-                      return GestureDetector(
-                        // PC端使用右键触发快捷菜单
-                        onSecondaryTapDown: (details) {
-                          if (!isDeleting) {
-                            _onEmployeeLongPress(
-                              employee,
-                              details.globalPosition,
-                            );
+          final showFloatingRecruitButton = widget.onNavigateToRecruit != null;
+          return Stack(
+            children: [
+              CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  // 试用期倒计时横幅
+                  if (_trialExpiresAt != null)
+                    SliverToBoxAdapter(
+                      child: TrialCountdownBanner(
+                        expiresAt: _trialExpiresAt!,
+                        onExpired: _refresh,
+                      ),
+                    ),
+                  // 员工网格
+                  SliverPadding(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 8,
+                      bottom: showFloatingRecruitButton ? 104 : 24,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: aspectRatio,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index == _employees.length) {
+                            return const Center(child: CircularProgressIndicator());
                           }
+
+                          final employee = _employees[index];
+                          final isDeleting =
+                              _deletingEmployees.contains(employee.agentId);
+                          return GestureDetector(
+                            // PC端使用右键触发快捷菜单
+                            onSecondaryTapDown: (details) {
+                              if (!isDeleting) {
+                                _onEmployeeLongPress(
+                                  employee,
+                                  details.globalPosition,
+                                );
+                              }
+                            },
+                            child: EmployeeCard(
+                              employee: employee,
+                              isOffboarding: isDeleting,
+                              onTap: isDeleting
+                                  ? null
+                                  : () => _onEmployeeTap(employee),
+                            ),
+                          );
                         },
-                        child: EmployeeCard(
-                          employee: employee,
-                          isOffboarding: isDeleting,
-                          onTap: isDeleting
-                              ? null
-                              : () => _onEmployeeTap(employee),
-                        ),
-                      );
-                    },
-                    childCount: _employees.length + (_isLoadingMore ? 1 : 0),
+                        childCount: _employees.length + (_isLoadingMore ? 1 : 0),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (showFloatingRecruitButton)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 24,
+                  child: IgnorePointer(
+                    ignoring: false,
+                    child: Center(
+                      child: _buildRecruitButton(theme, l10n),
+                    ),
                   ),
                 ),
-              ),
             ],
           );
         },
@@ -898,6 +915,68 @@ class EmployeesTabState extends State<EmployeesTab>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRecruitButton(ThemeData theme, L10n l10n) {
+    final onNavigateToRecruit = widget.onNavigateToRecruit;
+    if (onNavigateToRecruit == null) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary,
+            theme.colorScheme.tertiary,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            blurRadius: 18,
+            spreadRadius: 1,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onNavigateToRecruit,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.customHire,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
