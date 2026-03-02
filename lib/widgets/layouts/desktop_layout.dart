@@ -592,10 +592,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 18,
-                        color: theme.colorScheme.primary,
+                      _PsygoBubbleLogo(
+                        size: 22,
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -717,6 +715,25 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PsygoBubbleLogo extends StatelessWidget {
+  final double size;
+
+  const _PsygoBubbleLogo({
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Image.asset(
+      isDark ? 'assets/logo_dark.png' : 'assets/logo_transparent.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
     );
   }
 }
