@@ -584,19 +584,30 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 22,
-                    vertical: 14,
+                    vertical: 13,
                   ),
                   child: Row(
                     children: [
-                      _PsygoBubbleLogo(
-                        size: 30,
+                      const _PsygoBubbleLogo(
+                        size: 34,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        'Psygo',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: Text(
+                          'Psygo',
+                          maxLines: 1,
+                          strutStyle: const StrutStyle(
+                            height: 1.2,
+                            forceStrutHeight: true,
+                          ),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                            height: 1.2,
+                            color: theme.colorScheme.onSurface,
+                          ),
                         ),
                       ),
                     ],
