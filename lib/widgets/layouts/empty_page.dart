@@ -35,10 +35,11 @@ class EmptyPage extends StatelessWidget {
         ),
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.8, end: 1.0),
-          duration: FluffyThemes.animationDurationSlow,
-          curve: FluffyThemes.animationCurveBounce,
+          duration: FluffyThemes.durationSlow,
+          curve: FluffyThemes.curveBounce,
           builder: (context, value, child) => Opacity(
-            opacity: value,
+            // easeOutBack can overshoot above 1.0 near the end of animation.
+            opacity: value.clamp(0.0, 1.0).toDouble(),
             child: Transform.scale(
               scale: value,
               child: child,
