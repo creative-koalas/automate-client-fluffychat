@@ -32,6 +32,11 @@ class EmployeesTab extends StatefulWidget {
 
 class EmployeesTabState extends State<EmployeesTab>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  // Persist offboarding state across tab/page rebuilds so the card style does
+  // not revert when user navigates away and back during deletion.
+  static final ValueNotifier<Set<String>> _offboardingEmployeeIdsNotifier =
+      ValueNotifier<Set<String>>(<String>{});
+
   final AgentRepository _repository = AgentRepository();
   final ScrollController _scrollController = ScrollController();
 
@@ -42,7 +47,6 @@ class EmployeesTabState extends State<EmployeesTab>
   int? _nextCursor;
   bool _hasMore = true;
   String? _trialExpiresAt;
-  final Set<String> _deletingEmployees = <String>{};
   int _replaceRequestSeq = 0;
 
   // 轮询定时器：用于检测员工 isReady 状态变化
@@ -62,6 +66,7 @@ class EmployeesTabState extends State<EmployeesTab>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _offboardingEmployeeIdsNotifier.addListener(_handleOffboardingStateChanged);
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _isAppInForeground =
         lifecycle == null || lifecycle == AppLifecycleState.resumed;
@@ -72,6 +77,8 @@ class EmployeesTabState extends State<EmployeesTab>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _offboardingEmployeeIdsNotifier
+        .removeListener(_handleOffboardingStateChanged);
     _stopMobilePolling();
     _stopReadyPolling();
     _scrollController.removeListener(_onScroll);
@@ -104,6 +111,22 @@ class EmployeesTabState extends State<EmployeesTab>
         _scrollController.position.maxScrollExtent - 200) {
       _loadMore();
     }
+  }
+
+  void _handleOffboardingStateChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  bool _isOffboarding(String agentId) {
+    return _offboardingEmployeeIdsNotifier.value.contains(agentId);
+  }
+
+  void _setOffboardingState(String agentId, bool isOffboarding) {
+    final next = Set<String>.from(_offboardingEmployeeIdsNotifier.value);
+    final changed = isOffboarding ? next.add(agentId) : next.remove(agentId);
+    if (!changed) return;
+    _offboardingEmployeeIdsNotifier.value = next;
   }
 
   Future<void> _loadEmployees() async {
@@ -321,7 +344,7 @@ class EmployeesTabState extends State<EmployeesTab>
 
   /// 打开员工详情 Sheet（移动端）或对话框（PC端）
   void _onEmployeeTap(Agent employee) {
-    if (_deletingEmployees.contains(employee.agentId)) {
+    if (_isOffboarding(employee.agentId)) {
       final l10n = L10n.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -344,7 +367,7 @@ class EmployeesTabState extends State<EmployeesTab>
             child: EmployeeDetailSheet(
               employee: employee,
               onDelete: () => _deleteEmployee(employee),
-              isDeleting: _deletingEmployees.contains(employee.agentId),
+              isDeleting: _isOffboarding(employee.agentId),
               isDialog: true,
             ),
           ),
@@ -362,7 +385,7 @@ class EmployeesTabState extends State<EmployeesTab>
         builder: (context) => EmployeeDetailSheet(
           employee: employee,
           onDelete: () => _deleteEmployee(employee),
-          isDeleting: _deletingEmployees.contains(employee.agentId),
+          isDeleting: _isOffboarding(employee.agentId),
         ),
       );
     }
@@ -372,7 +395,7 @@ class EmployeesTabState extends State<EmployeesTab>
   void _onEmployeeLongPress(Agent employee, Offset tapPosition) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
-    final isDeleting = _deletingEmployees.contains(employee.agentId);
+    final isDeleting = _isOffboarding(employee.agentId);
     final chatEnabled = employee.isReady && !isDeleting;
     final detailsEnabled = !isDeleting;
     final deleteEnabled = !isDeleting;
@@ -617,19 +640,21 @@ class EmployeesTabState extends State<EmployeesTab>
 
   /// 辞退员工
   Future<void> _deleteEmployee(Agent employee) async {
-    if (_deletingEmployees.contains(employee.agentId)) {
+    if (_isOffboarding(employee.agentId)) {
       return;
     }
-    setState(() {
-      _deletingEmployees.add(employee.agentId);
-    });
+    _setOffboardingState(employee.agentId, true);
+    final deleteRepository = AgentRepository();
 
     try {
-      await _repository.deleteAgent(employee.agentId);
+      await deleteRepository.deleteAgent(employee.agentId);
+      // Keep offboarding visual state after API success.
+      // Some refresh paths may still show the employee briefly due to eventual
+      // consistency; we must keep the card in offboarding style until it
+      // disappears from the list.
       if (mounted) {
         setState(() {
           _employees.removeWhere((e) => e.agentId == employee.agentId);
-          _deletingEmployees.remove(employee.agentId);
         });
       }
       if (mounted) {
@@ -641,10 +666,11 @@ class EmployeesTabState extends State<EmployeesTab>
         );
       }
     } catch (e) {
+      // When page is switched during deletion, this widget may be disposed and
+      // request lifecycle can still finish later. Keep offboarding style sticky
+      // for non-mounted states to avoid flicker back to normal card style.
       if (mounted) {
-        setState(() {
-          _deletingEmployees.remove(employee.agentId);
-        });
+        _setOffboardingState(employee.agentId, false);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -654,6 +680,8 @@ class EmployeesTabState extends State<EmployeesTab>
           ),
         );
       }
+    } finally {
+      deleteRepository.dispose();
     }
   }
 
@@ -815,8 +843,7 @@ class EmployeesTabState extends State<EmployeesTab>
                           }
 
                           final employee = _employees[index];
-                          final isDeleting =
-                              _deletingEmployees.contains(employee.agentId);
+                          final isDeleting = _isOffboarding(employee.agentId);
                           return GestureDetector(
                             // PC端使用右键触发快捷菜单
                             onSecondaryTapDown: (details) {
@@ -892,8 +919,7 @@ class EmployeesTabState extends State<EmployeesTab>
                 }
 
                 final employee = _employees[index];
-                final isDeleting =
-                    _deletingEmployees.contains(employee.agentId);
+                final isDeleting = _isOffboarding(employee.agentId);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: GestureDetector(
