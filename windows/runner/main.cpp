@@ -1,5 +1,6 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <shobjidl_core.h>
 #include <windows.h>
 
 #include "flutter_window.h"
@@ -7,11 +8,14 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // Ensure this process is tied to the same AUMID used by Windows toast notifications.
+  SetCurrentProcessExplicitAppUserModelID(L"com.psygo.app");
+
   // Single instance check using Mutex
   HANDLE mutex = CreateMutex(NULL, TRUE, L"com.psygo.app.single_instance");
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     // Find existing window and bring to front
-    HWND existingWindow = FindWindow(nullptr, L"Psygo");
+    HWND existingWindow = FindWindow(nullptr, L"PsyGo");
     if (existingWindow) {
       ShowWindow(existingWindow, SW_RESTORE);
       SetForegroundWindow(existingWindow);
@@ -40,7 +44,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.CreateAndShow(L"Psygo", origin, size)) {
+  if (!window.CreateAndShow(L"PsyGo", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

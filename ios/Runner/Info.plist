@@ -9,7 +9,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Psygo</string>
+		<string>PsyGo</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -53,27 +53,27 @@
 		<key>NSBluetoothPeripheralUsageDescription</key>
 		<string>Play audio and voice messages on bluetooth devices</string>
 		<key>NSCalendarsUsageDescription</key>
-		<string>Share calendar dates with your contacts in Psygo.</string>
+		<string>Share calendar dates with your contacts in PsyGo.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Open the camera and take a picture to share them with your contacts on Psygo.</string>
+		<string>Open the camera and take a picture to share them with your contacts on PsyGo.</string>
 		<key>NSContactsUsageDescription</key>
-		<string>Share contacts with your contacts in Psygo.</string>
+		<string>Share contacts with your contacts in PsyGo.</string>
 		<key>NSFaceIDUsageDescription</key>
-		<string>Psygo uses an app lock for an additional security level</string>
+		<string>PsyGo uses an app lock for an additional security level</string>
 		<key>NSLocationAlwaysUsageDescription</key>
-		<string>Share your location with your contacts in Psygo.</string>
+		<string>Share your location with your contacts in PsyGo.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Share your location with your contacts in Psygo.</string>
+		<string>Share your location with your contacts in PsyGo.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>Share your location with your contacts in Psygo.</string>
+		<string>Share your location with your contacts in PsyGo.</string>
 		<key>NSMicrophoneUsageDescription</key>
-		<string>Record voice message and share them with your contacts on Psygo.</string>
+		<string>Record voice message and share them with your contacts on PsyGo.</string>
 		<key>NSMotionUsageDescription</key>
-		<string>Share motions with your contacts in Psygo.</string>
+		<string>Share motions with your contacts in PsyGo.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Open photos from your gallery and share them with your contacts on Psygo.</string>
+		<string>Open photos from your gallery and share them with your contacts on PsyGo.</string>
 		<key>NSSpeechRecognitionUsageDescription</key>
-		<string>Share data with your contacts in Psygo.</string>
+		<string>Share data with your contacts in PsyGo.</string>
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>audio</string>

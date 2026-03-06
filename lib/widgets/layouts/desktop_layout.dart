@@ -122,6 +122,12 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   @override
   void didUpdateWidget(DesktopLayout oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.activeChat == null &&
+        widget.initialPage != oldWidget.initialPage &&
+        _currentPage != widget.initialPage) {
+      setState(() => _currentPage = widget.initialPage);
+      return;
+    }
     // 当 activeChat 变化且当前不在消息页面时，自动切换到消息页面
     if (widget.activeChat != null &&
         widget.activeChat != oldWidget.activeChat &&
@@ -583,24 +589,31 @@ class _DesktopLayoutState extends State<DesktopLayout> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
+                    horizontal: 22,
+                    vertical: 13,
                   ),
                   child: Row(
                     children: [
-                      _PsygoBubbleLogo(
-                        size: 22,
+                      const _PsygoBubbleLogo(
+                        size: 34,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Psygo',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
+                      const SizedBox(width: 10),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: Text(
+                          'PsyGo',
+                          maxLines: 1,
+                          strutStyle: const StrutStyle(
+                            height: 1.2,
+                            forceStrutHeight: true,
+                          ),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                            height: 1.2,
+                            color: theme.colorScheme.onSurface,
+                          ),
                         ),
                       ),
                     ],
@@ -705,7 +718,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 5),
                 child: _buildTopNavigation(theme, l10n),
               ),
               Expanded(

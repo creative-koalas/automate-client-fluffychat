@@ -52,7 +52,7 @@ Future<void> pushHelper(
           l10n.incomingMessages,
           number: notification.counts?.unread,
           ticker: l10n.unreadChatsInApp(
-            AppSettings.applicationName.value,
+            'PsyGo',
             (notification.counts?.unread ?? 0).toString(),
           ),
           importance: Importance.high,

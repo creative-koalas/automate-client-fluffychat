@@ -1,6 +1,6 @@
-; Psygo Setup (Admin + Program Files + Chinese + VC++ runtime)
+; PsyGo Setup (Admin + Program Files + Chinese + VC++ runtime)
 
-#define MyAppName "Psygo"
+#define MyAppName "PsyGo"
 #define MyAppVersion "1.0"
 #define MyAppPublisher "创意考拉"
 #define MyAppURL "https://psygoai.com"
@@ -41,7 +41,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline
 
-OutputBaseFilename=Psygo-Setup
+OutputBaseFilename=PsyGo-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -60,8 +60,8 @@ Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 Source: "{#VCRedistSource}"; DestDir: "{tmp}"; DestName: "{#VCRedistFileName}"; Flags: deleteafterinstall
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; AppUserModelID: "com.psygo.app"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; AppUserModelID: "com.psygo.app"
 
 [Run]
 ; IMPORTANT: run the file *by its temp filename*, not the original source path

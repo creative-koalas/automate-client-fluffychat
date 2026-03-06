@@ -67,23 +67,23 @@ class WindowService {
       if (Platform.isLinux) {
         try {
           await _systemTray.initSystemTray(
-            title: 'Psygo',
+            title: 'PsyGo',
             iconPath: iconPath,
-            toolTip: 'Psygo',
+            toolTip: 'PsyGo',
           );
         } catch (_) {
           iconPath = 'assets/logo_opaque.png';
           await _systemTray.initSystemTray(
-            title: 'Psygo',
+            title: 'PsyGo',
             iconPath: iconPath,
-            toolTip: 'Psygo',
+            toolTip: 'PsyGo',
           );
         }
       } else {
         await _systemTray.initSystemTray(
-          title: 'Psygo',
+          title: 'PsyGo',
           iconPath: iconPath,
-          toolTip: 'Psygo',
+          toolTip: 'PsyGo',
         );
       }
 

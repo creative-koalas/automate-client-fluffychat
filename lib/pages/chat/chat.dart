@@ -168,7 +168,10 @@ class ChatController extends State<ChatPageWithRoom>
 
   bool get _supportsInlineWebView {
     if (kIsWeb) return false;
-    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+    return Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isWindows;
   }
 
   bool _shouldThrottleWebEntryHint() {
@@ -200,16 +203,7 @@ class ChatController extends State<ChatPageWithRoom>
     final l10n = L10n.of(context);
 
     if (!agent.canOpenWebEntry) {
-      final l10n = L10n.of(context);
-      if (_shouldThrottleWebEntryHint()) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.agentWebEntryUnavailable),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      _showWebEntryHint(l10n.agentWebEntryUnavailable);
       return;
     }
 
@@ -240,12 +234,7 @@ class ChatController extends State<ChatPageWithRoom>
       _markWebEntryUpdateViewed(agent);
     } catch (_) {
       if (!mounted || requestId != _webEntryRequestId) return;
-      if (_shouldThrottleWebEntryHint()) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.chatOpenFailedRetryLater)),
-      );
+      _showWebEntryHint(l10n.chatOpenFailedRetryLater);
     } finally {
       if (mounted && requestId == _webEntryRequestId) {
         setState(() => _webEntryLoading = false);
@@ -258,6 +247,28 @@ class ChatController extends State<ChatPageWithRoom>
     AgentService.instance.updateAgent(
       agent.copyWith(webEntryStatus: Agent.webEntryStatusEnabled),
     );
+  }
+
+  void _showWebEntryHint(String message) {
+    if (_shouldThrottleWebEntryHint()) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: PlatformInfos.isMobile
+              ? InkWell(
+                  onTap: messenger.hideCurrentSnackBar,
+                  child: Text(message),
+                )
+              : Text(message),
+        ),
+      );
   }
 
   void onDragEntered(_) => setState(() => dragging = true);
