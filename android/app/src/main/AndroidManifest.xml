@@ -245,6 +245,13 @@
         <meta-data
             android:name="com.heytap.msp.push.app_secret"
             android:value="${OPPO_APP_SECRET}" />
+        <!-- 兼容 aliyun_push 插件读取键名 -->
+        <meta-data
+            android:name="com.oppo.push.key"
+            android:value="${OPPO_APP_KEY}" />
+        <meta-data
+            android:name="com.oppo.push.secret"
+            android:value="${OPPO_APP_SECRET}" />
 
         <!-- 阿里云推送消息接收器 -->
         <receiver
