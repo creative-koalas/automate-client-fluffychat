@@ -26,7 +26,10 @@ jobs:
           HEAD_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.sha }}
         run: ./scripts/ci/check_format_changed_dart.sh
       - name: Check import formatting
-        run: dart run import_sorter:main --no-comments --exit-if-changed
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          HEAD_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.sha }}
+        run: ./scripts/ci/check_import_sort_changed_dart.sh
       - name: Check license compliance
         run: dart run license_checker check-licenses -c licenses.yaml --problematic
       - run: flutter analyze
