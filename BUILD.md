@@ -76,6 +76,7 @@ flutter upgrade
 ## CI 对象存储发布（腾讯 COS）
 
 `Cross Platform CI` 支持手动触发后将产物上传到腾讯 COS，并可选更新 `dev/test/release` 渠道指针。
+当前上传平台为：Android、Linux、Windows。
 
 ### 触发方式
 

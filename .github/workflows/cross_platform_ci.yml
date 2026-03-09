@@ -155,61 +155,6 @@ jobs:
             build/app/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
-  build_macos:
-    name: Build macOS
-    if: github.event_name == 'workflow_dispatch'
-    needs: test
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-      - uses: moonrepo/setup-rust@v1
-      - run: flutter pub get
-      - run: flutter build macos --release
-      - name: Pack macOS artifact
-        run: |
-          set -euo pipefail
-          app_path="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' | head -n1)"
-          [ -n "$app_path" ]
-          ditto -c -k --sequesterRsrc --keepParent \
-            "$app_path" \
-            fluffychat-macos-universal.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fluffychat-macos-universal
-          path: fluffychat-macos-universal.zip
-
-  build_ios:
-    name: Build iOS (no codesign)
-    if: github.event_name == 'workflow_dispatch'
-    needs: test
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-      - uses: moonrepo/setup-rust@v1
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
-      - name: Pack iOS artifact
-        run: |
-          set -euo pipefail
-          app_path="$(find build/ios/iphoneos -maxdepth 1 -name '*.app' | head -n1)"
-          [ -n "$app_path" ]
-          app_name="$(basename "$app_path")"
-          tar -czf fluffychat-ios-app.tar.gz -C build/ios/iphoneos "$app_name"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fluffychat-ios-app
-          path: fluffychat-ios-app.tar.gz
-
   publish_to_cos:
     name: Publish Artifacts To COS
     if: github.event_name == 'workflow_dispatch' && (inputs.upload_to_cos == true || inputs.target_channel != 'none')
@@ -217,8 +162,6 @@ jobs:
       - build_linux
       - build_windows
       - build_android_apk
-      - build_macos
-      - build_ios
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -241,9 +184,7 @@ jobs:
 
             case "$artifact_name" in
               fluffychat-android-*) platform="android" ;;
-              fluffychat-ios-*) platform="ios" ;;
               fluffychat-linux-*) platform="linux" ;;
-              fluffychat-macos-*) platform="macos" ;;
               fluffychat-windows-*) platform="windows" ;;
               *)
                 echo "Skip unsupported artifact name: $artifact_name"
