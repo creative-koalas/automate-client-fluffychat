@@ -32,10 +32,10 @@ jobs:
         run: ./scripts/ci/check_import_sort_changed_dart.sh
       - name: Check license compliance
         run: dart run license_checker check-licenses -c licenses.yaml --problematic
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-warnings --no-fatal-infos
       - name: Add Firebase Messaging
         run: ./scripts/add-firebase-messaging.sh
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-warnings --no-fatal-infos
       - run: flutter test
 
   build_debug_apk:

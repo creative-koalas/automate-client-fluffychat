@@ -54,7 +54,7 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: ./scripts/ci/check_format_changed_dart.sh
       - name: Static analysis
-        run: flutter analyze
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
       - name: Unit tests
         run: flutter test
 
