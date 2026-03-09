@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
+import 'package:provider/provider.dart';
 
+import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
@@ -13,6 +15,7 @@ import 'package:psygo/pages/team/employees_tab.dart';
 import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/services/recruit_guide_service.dart';
 import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -81,6 +84,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   late DesktopPageIndex _currentPage;
   int _unreadCount = 0;
   bool _isDraggingDivider = false;
+  bool _showRecruitGuideHighlight = false;
 
   // 监听同步事件以更新未读计数
   StreamSubscription? _syncSubscription;
@@ -100,6 +104,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateUnreadCount();
       _setupSyncListener();
+      unawaited(_syncRecruitGuideHighlight());
     });
   }
 
@@ -171,22 +176,54 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     _employeesTabKey.currentState?.refreshEmployeeList();
   }
 
+  Future<bool> _shouldShowRecruitGuide() async {
+    final userId = context.read<PsygoAuthState>().userId;
+    return RecruitGuideService.instance.shouldShowGuide(userId);
+  }
+
+  Future<void> _syncRecruitGuideHighlight() async {
+    final shouldShow = await _shouldShowRecruitGuide();
+    if (!mounted || _showRecruitGuideHighlight == shouldShow) {
+      return;
+    }
+    setState(() => _showRecruitGuideHighlight = shouldShow);
+  }
+
+  Future<void> _markRecruitGuideCompleted() async {
+    final userId = context.read<PsygoAuthState>().userId;
+    await RecruitGuideService.instance.markGuideCompleted(userId);
+    if (!mounted || !_showRecruitGuideHighlight) return;
+    setState(() => _showRecruitGuideHighlight = false);
+  }
+
   Future<void> _openRecruitMenu() async {
     final repository = AgentTemplateRepository();
+    final showRecruitGuide = await _shouldShowRecruitGuide();
+    if (!mounted) {
+      repository.dispose();
+      return;
+    }
 
     try {
       final result = await showDialog<HireResult>(
         context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: CustomHireDialog(
-              repository: repository,
-              isDialog: true,
+        builder: (dialogContext) {
+          final dialogWidth = (MediaQuery.sizeOf(dialogContext).width - 48)
+              .clamp(520.0, 580.0)
+              .toDouble();
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: SizedBox(
+              width: dialogWidth,
+              child: CustomHireDialog(
+                repository: repository,
+                isDialog: true,
+                showRecruitGuide: showRecruitGuide,
+                onRecruitGuideCompleted: _markRecruitGuideCompleted,
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
 
       if (!mounted || result == null) return;
@@ -230,6 +267,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       );
     } finally {
       repository.dispose();
+      unawaited(_syncRecruitGuideHighlight());
     }
   }
 
@@ -557,6 +595,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
         return EmployeesTab(
           key: _employeesTabKey,
           onNavigateToRecruit: () => unawaited(_openRecruitMenu()),
+          showRecruitGuideHighlight: _showRecruitGuideHighlight,
         );
     }
   }

@@ -4,6 +4,8 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
+import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -120,18 +122,14 @@ class InvitationSelectionView extends StatelessWidget {
                               user: contacts[i],
                               profile: Profile(
                                 avatarUrl: contacts[i].avatarUrl,
-                                displayName: contacts[i].displayName ??
-                                    contacts[i].id.localpart ??
-                                    L10n.of(context).user,
+                                displayName: contacts[i].calcDisplayname(),
                                 userId: contacts[i].id,
                               ),
                               isMember: participants.contains(contacts[i].id),
                               onTap: () => controller.inviteAction(
                                 context,
                                 contacts[i].id,
-                                contacts[i].displayName ??
-                                    contacts[i].id.localpart ??
-                                    L10n.of(context).user,
+                                contacts[i].calcDisplayname(),
                               ),
                             ),
                           );
@@ -163,11 +161,27 @@ class _InviteContactListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final client = Matrix.of(context).client;
+    final directChatRoomId = client.getDirectChatFromUserId(profile.userId);
+    final directChatRoom =
+        directChatRoomId == null ? null : client.getRoomById(directChatRoomId);
+    final roomDisplayName =
+        directChatRoom?.getLocalizedDisplayname(MatrixLocals(l10n)).trim();
+    final agentDisplayName = AgentService.instance
+        .getAgentByMatrixUserId(profile.userId)
+        ?.displayName;
+    final displayName = _resolveDisplayName(
+      l10n,
+      roomDisplayName,
+      agentDisplayName,
+    );
 
     return ListTile(
       leading: Avatar(
-        mxContent: profile.avatarUrl,
-        name: profile.displayName,
+        mxContent: AgentService.instance.getAgentAvatarUri(profile.userId) ??
+            user?.avatarUrl ??
+            profile.avatarUrl,
+        name: displayName,
         presenceUserId: profile.userId,
         onTap: () => UserDialog.show(
           context: context,
@@ -175,7 +189,7 @@ class _InviteContactListTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        profile.displayName ?? profile.userId.localpart ?? l10n.user,
+        displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -193,5 +207,41 @@ class _InviteContactListTile extends StatelessWidget {
         icon: Icon(isMember ? Icons.check : Icons.add),
       ),
     );
+  }
+
+  String _resolveDisplayName(
+    L10n l10n,
+    String? roomDisplayName,
+    String? agentDisplayName,
+  ) {
+    final normalizedRoomDisplayName = roomDisplayName?.trim();
+    if (normalizedRoomDisplayName != null &&
+        normalizedRoomDisplayName.isNotEmpty &&
+        normalizedRoomDisplayName != profile.userId) {
+      return normalizedRoomDisplayName;
+    }
+
+    final normalizedAgentDisplayName = agentDisplayName?.trim();
+    if (normalizedAgentDisplayName != null &&
+        normalizedAgentDisplayName.isNotEmpty) {
+      return normalizedAgentDisplayName;
+    }
+
+    final userDisplayName = user?.calcDisplayname();
+    final normalizedUserDisplayName = userDisplayName?.trim();
+    if (normalizedUserDisplayName != null &&
+        normalizedUserDisplayName.isNotEmpty &&
+        normalizedUserDisplayName != profile.userId) {
+      return normalizedUserDisplayName;
+    }
+
+    final profileDisplayName = profile.displayName?.trim();
+    if (profileDisplayName != null &&
+        profileDisplayName.isNotEmpty &&
+        profileDisplayName != profile.userId) {
+      return profileDisplayName;
+    }
+
+    return profile.userId.localpart ?? l10n.user;
   }
 }

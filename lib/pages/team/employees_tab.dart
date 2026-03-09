@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/matrix.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../models/agent.dart';
 import '../../repositories/agent_repository.dart';
@@ -15,16 +15,22 @@ import '../../utils/retry_helper.dart';
 import '../../widgets/employee_card.dart';
 import '../../widgets/employee_detail_sheet.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/recruit_entry_guide_highlight.dart';
 import '../../widgets/skeleton_card.dart';
 import '../../widgets/trial_countdown_banner.dart';
 
 /// 员工列表 Tab
 /// 显示当前用户的所有 Agent（员工）
 class EmployeesTab extends StatefulWidget {
-  /// Callback to switch to recruit tab when employee list is empty
+  /// Callback to open the recruit flow from the employee list.
   final VoidCallback? onNavigateToRecruit;
+  final bool showRecruitGuideHighlight;
 
-  const EmployeesTab({super.key, this.onNavigateToRecruit});
+  const EmployeesTab({
+    super.key,
+    this.onNavigateToRecruit,
+    this.showRecruitGuideHighlight = false,
+  });
 
   @override
   State<EmployeesTab> createState() => EmployeesTabState();
@@ -839,7 +845,9 @@ class EmployeesTabState extends State<EmployeesTab>
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           if (index == _employees.length) {
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           }
 
                           final employee = _employees[index];
@@ -863,7 +871,8 @@ class EmployeesTabState extends State<EmployeesTab>
                             ),
                           );
                         },
-                        childCount: _employees.length + (_isLoadingMore ? 1 : 0),
+                        childCount:
+                            _employees.length + (_isLoadingMore ? 1 : 0),
                       ),
                     ),
                   ),
@@ -948,57 +957,65 @@ class EmployeesTabState extends State<EmployeesTab>
     final onNavigateToRecruit = widget.onNavigateToRecruit;
     if (onNavigateToRecruit == null) return const SizedBox.shrink();
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.tertiary,
+    return RecruitEntryGuideHighlight(
+      visible: widget.showRecruitGuideHighlight,
+      title: l10n.customHire,
+      description: l10n.customHireDescription,
+      skipLabel: l10n.skip,
+      actionLabel: l10n.customHire,
+      onAction: onNavigateToRecruit,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.tertiary,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
-            blurRadius: 18,
-            spreadRadius: 1,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onNavigateToRecruit,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.customHire,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onNavigateToRecruit,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.add_rounded,
                     color: Colors.white,
-                    letterSpacing: 0.2,
+                    size: 22,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.customHire,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: Colors.white,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -328,24 +328,27 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
         ),
         const SizedBox(width: 6),
         Flexible(
-          child: InkWell(
-            onTap: () => _showFullStatusHint(context, statusHint),
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: dotColor.withAlpha(30),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                statusText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: dotColor,
-                  fontWeight: FontWeight.w600,
-                  height: 1.1,
+          child: KeyedSubtree(
+            key: controller.workStatusGuideKey,
+            child: InkWell(
+              onTap: () => _showFullStatusHint(context, statusHint),
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: dotColor.withAlpha(30),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: dotColor,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
                 ),
               ),
             ),

@@ -1,11 +1,8 @@
 import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-
 import 'package:badges/badges.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:matrix/matrix.dart';
-
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
@@ -21,8 +18,10 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/account_config.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/chat_settings_popup_menu.dart';
+import 'package:psygo/widgets/employee_work_template_bar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/agent_web_entry_view.dart';
+import 'package:psygo/widgets/chat_room_intro_guide.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/unread_rooms_badge.dart';
@@ -37,6 +36,228 @@ class ChatView extends StatelessWidget {
   final ChatController controller;
 
   const ChatView(this.controller, {super.key});
+
+  Widget _buildGuideStatusItem(
+    BuildContext context, {
+    required Color color,
+    required String label,
+    required String hint,
+  }) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(top: 5),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF374151),
+                height: 1.4,
+              ),
+              children: [
+                TextSpan(
+                  text: '$label：',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(text: hint),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChatRoomGuide(BuildContext context) {
+    final l10n = L10n.of(context);
+    final steps = controller.isGroupMentionGuide
+        ? <ChatRoomIntroGuideStep>[
+            ChatRoomIntroGuideStep(
+              targetKey: controller.mentionGuideKey,
+              title: l10n.chatRoomGuideMentionTitle,
+              description: l10n.chatRoomGuideMentionBody,
+            ),
+          ]
+        : <ChatRoomIntroGuideStep>[
+            ChatRoomIntroGuideStep(
+              targetKey: controller.workStatusGuideKey,
+              title: l10n.chatRoomGuideWorkStatusTitle,
+              description: l10n.chatRoomGuideWorkStatusBody,
+              contentBuilder: (context) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildGuideStatusItem(
+                    context,
+                    color: Colors.green,
+                    label: l10n.employeeWorking,
+                    hint: l10n.employeeWorkingHint,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildGuideStatusItem(
+                    context,
+                    color: Colors.blue,
+                    label: l10n.employeeSlacking,
+                    hint: l10n.employeeSlackingHint,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildGuideStatusItem(
+                    context,
+                    color: Colors.blueGrey,
+                    label: l10n.employeeSleeping,
+                    hint: l10n.employeeSleepingHint,
+                  ),
+                ],
+              ),
+            ),
+            ChatRoomIntroGuideStep(
+              targetKey: controller.webEntryGuideKey,
+              title: l10n.chatRoomGuideSmartInterfaceTitle,
+              description: l10n.chatRoomGuideSmartInterfaceBody,
+            ),
+            ChatRoomIntroGuideStep(
+              targetKey: controller.webEntryGuideKey,
+              title: l10n.chatRoomGuideWebEntryTitle,
+              description: l10n.chatRoomGuideWebEntryBody,
+            ),
+            ChatRoomIntroGuideStep(
+              targetKey: controller.employeeWorkTemplateGuideKey,
+              title: l10n.chatRoomGuideWorkTemplateTitle,
+              description: l10n.chatRoomGuideWorkTemplateBody,
+            ),
+          ];
+
+    return ChatRoomIntroGuide(
+      visible: controller.showChatRoomGuide,
+      containerKey: controller.chatRoomGuideContainerKey,
+      steps: steps,
+      currentStepIndex: controller.chatRoomGuideStepIndex,
+      showStepCounter: !controller.isGroupMentionGuide,
+      onPrimaryAction: controller.nextChatRoomGuideStep,
+      primaryActionLabel: controller.chatRoomGuideStepIndex >= steps.length - 1
+          ? l10n.confirm
+          : l10n.next,
+    );
+  }
+
+  List<EmployeeWorkTemplateItem> _employeeWorkTemplates(BuildContext context) {
+    final l10n = L10n.of(context);
+    return [
+      EmployeeWorkTemplateItem(
+        icon: Icons.today_outlined,
+        title: l10n.employeeWorkTemplatePlanTitle,
+        description: l10n.employeeWorkTemplatePlanDescription,
+        message: l10n.employeeWorkTemplatePlanMessage,
+      ),
+      EmployeeWorkTemplateItem(
+        icon: Icons.notes_rounded,
+        title: l10n.employeeWorkTemplateSummaryTitle,
+        description: l10n.employeeWorkTemplateSummaryDescription,
+        message: l10n.employeeWorkTemplateSummaryMessage,
+      ),
+      EmployeeWorkTemplateItem(
+        icon: Icons.bug_report_outlined,
+        title: l10n.employeeWorkTemplateIssueTitle,
+        description: l10n.employeeWorkTemplateIssueDescription,
+        message: l10n.employeeWorkTemplateIssueMessage,
+      ),
+    ];
+  }
+
+  Future<void> _handleEmployeeWorkTemplateTap(
+    BuildContext context,
+    EmployeeWorkTemplateItem template,
+  ) async {
+    final l10n = L10n.of(context);
+    final shouldSend = await showEmployeeWorkTemplatePreviewDialog(
+      context: context,
+      template: template,
+      previewLabel: l10n.employeeWorkTemplatePreviewLabel,
+      sendLabel: l10n.send,
+      cancelLabel: l10n.cancel,
+    );
+    if (shouldSend == true) {
+      controller.sendEmployeeWorkTemplateMessage(template.message);
+    }
+  }
+
+  Widget _buildTimelinePane(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+    final showEmployeeWorkTemplateBar =
+        controller.isEmployeeChat && controller.activeThreadId == null;
+    final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
+        ? EmployeeWorkTemplateBar(
+            key: controller.employeeWorkTemplateGuideKey,
+            title: l10n.employeeWorkTemplatesTitle,
+            subtitle: l10n.employeeWorkTemplatesSubtitle,
+            templates: _employeeWorkTemplates(context),
+            onTemplateTap: (template) =>
+                _handleEmployeeWorkTemplateTap(context, template),
+          )
+        : null;
+
+    return Column(
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              GestureDetector(
+                onTap: controller.clearSingleSelectedEvent,
+                child: ChatEventList(
+                  controller: controller,
+                  inlineTopWidget: employeeWorkTemplateBar,
+                ),
+              ),
+              if (controller.readMarkerEventId.isNotEmpty)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Material(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: controller.scrollToReadMarker,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_upward,
+                              size: 16,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '新消息',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   List<Widget> _appBarActions(BuildContext context) {
     if (controller.selectMode) {
@@ -141,47 +362,55 @@ class ChatView extends StatelessWidget {
                   !controller.webEntryLoading &&
                   !agent.canOpenWebEntry;
 
-              return IconButton(
-                tooltip: controller.webEntryOpen
-                    ? '返回聊天'
-                    : (isDisabled ? l10n.agentWebEntryUnavailable : '打开 WebView'),
-                onPressed: controller.webEntryOpen || controller.webEntryLoading
-                    ? controller.closeWebEntry
-                    : () => controller.openWebEntry(),
-                icon: controller.webEntryLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(
-                            controller.webEntryOpen
-                                ? Icons.arrow_back
-                                : Icons.web_outlined,
-                            color: isDisabled
-                                ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-                                : null,
-                          ),
-                          if (!controller.webEntryOpen &&
-                              agent.webEntryStatus ==
-                                  Agent.webEntryStatusUpdated)
-                            Positioned(
-                              right: -1,
-                              top: -1,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.error,
-                                  shape: BoxShape.circle,
+              return KeyedSubtree(
+                key: controller.webEntryGuideKey,
+                child: IconButton(
+                  tooltip: controller.webEntryOpen
+                      ? '返回聊天'
+                      : (isDisabled
+                          ? l10n.agentWebEntryUnavailable
+                          : '打开 WebView'),
+                  onPressed:
+                      controller.webEntryOpen || controller.webEntryLoading
+                          ? controller.closeWebEntry
+                          : () => controller.openWebEntry(),
+                  icon: controller.webEntryLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              controller.webEntryOpen
+                                  ? Icons.arrow_back
+                                  : Icons.web_outlined,
+                              color: isDisabled
+                                  ? theme.colorScheme.onSurface.withValues(
+                                      alpha: 0.38,
+                                    )
+                                  : null,
+                            ),
+                            if (!controller.webEntryOpen &&
+                                agent.webEntryStatus ==
+                                    Agent.webEntryStatusUpdated)
+                              Positioned(
+                                right: -1,
+                                top: -1,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.error,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
+                          ],
+                        ),
+                ),
               );
             },
           ),
@@ -251,373 +480,335 @@ class ChatView extends StatelessWidget {
             if (scrollUpBannerEventId != null && activeThreadId == null) {
               appbarBottomHeight += ChatAppBarListTile.fixedHeight;
             }
-            return Scaffold(
-              appBar: AppBar(
-                actionsIconTheme: IconThemeData(
-                  color: controller.selectedEvents.isEmpty
-                      ? null
-                      : theme.colorScheme.onTertiaryContainer,
-                ),
-                backgroundColor: controller.selectedEvents.isEmpty
-                    ? controller.activeThreadId != null
-                        ? theme.colorScheme.secondaryContainer
-                        : null
-                    : theme.colorScheme.tertiaryContainer,
-                automaticallyImplyLeading: false,
-                leading: controller.selectMode
-                    ? IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: controller.clearSelectedEvents,
-                        tooltip: L10n.of(context).close,
-                        color: theme.colorScheme.onTertiaryContainer,
-                      )
-                    : activeThreadId != null
+            return Stack(
+              key: controller.chatRoomGuideContainerKey,
+              children: [
+                Scaffold(
+                  appBar: AppBar(
+                    actionsIconTheme: IconThemeData(
+                      color: controller.selectedEvents.isEmpty
+                          ? null
+                          : theme.colorScheme.onTertiaryContainer,
+                    ),
+                    backgroundColor: controller.selectedEvents.isEmpty
+                        ? controller.activeThreadId != null
+                            ? theme.colorScheme.secondaryContainer
+                            : null
+                        : theme.colorScheme.tertiaryContainer,
+                    automaticallyImplyLeading: false,
+                    leading: controller.selectMode
                         ? IconButton(
                             icon: const Icon(Icons.close),
-                            onPressed: controller.closeThread,
-                            tooltip: L10n.of(context).backToMainChat,
-                            color: theme.colorScheme.onSecondaryContainer,
-                          )
-                        : FluffyThemes.isColumnMode(context)
-                            ? null
-                            : StreamBuilder<Object>(
-                                stream: Matrix.of(context)
-                                    .client
-                                    .onSync
-                                    .stream
-                                    .where(
-                                      (syncUpdate) => syncUpdate.hasRoomUpdate,
-                                    ),
-                                builder: (context, _) => UnreadRoomsBadge(
-                                  filter: (r) => r.id != controller.roomId,
-                                  badgePosition:
-                                      BadgePosition.topEnd(end: 8, top: 4),
-                                  child: const Center(child: BackButton()),
-                                ),
-                              ),
-                titleSpacing: FluffyThemes.isColumnMode(context) ? 24 : 0,
-                title: ChatAppBarTitle(controller),
-                actions: _appBarActions(context),
-                bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(appbarBottomHeight),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      PinnedEvents(controller),
-                      if (activeThreadId != null)
-                        SizedBox(
-                          height: ChatAppBarListTile.fixedHeight,
-                          child: Center(
-                            child: TextButton.icon(
-                              onPressed: () =>
-                                  controller.scrollToEventId(activeThreadId),
-                              icon: const Icon(Icons.message),
-                              label: Text(L10n.of(context).replyInThread),
-                              style: TextButton.styleFrom(
-                                foregroundColor:
-                                    theme.colorScheme.onSecondaryContainer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (scrollUpBannerEventId != null &&
-                          activeThreadId == null)
-                        ChatAppBarListTile(
-                          leading: IconButton(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            icon: const Icon(Icons.close),
+                            onPressed: controller.clearSelectedEvents,
                             tooltip: L10n.of(context).close,
-                            onPressed: () {
-                              controller.discardScrollUpBannerEventId();
-                              controller.setReadMarker();
-                            },
-                          ),
-                          title: L10n.of(context).jumpToLastReadMessage,
-                          trailing: TextButton(
-                            onPressed: () {
-                              controller.scrollToEventId(
-                                scrollUpBannerEventId,
-                              );
-                              controller.discardScrollUpBannerEventId();
-                            },
-                            child: Text(L10n.of(context).jump),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              floatingActionButtonLocation:
-                  FloatingActionButtonLocation.miniCenterFloat,
-              floatingActionButton: controller.showScrollDownButton &&
-                      controller.selectedEvents.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 56.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              theme.colorScheme.primaryContainer,
-                              theme.colorScheme.secondaryContainer,
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary
-                                  .withValues(alpha: 0.2),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: FloatingActionButton(
-                          onPressed: controller.scrollDown,
-                          heroTag: null,
-                          mini: true,
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: theme.colorScheme.primary,
-                          elevation: 0,
-                          child: const Icon(
-                            Icons.arrow_downward_rounded,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    )
-                  : null,
-              body: DropTarget(
-                onDragDone: controller.onDragDone,
-                onDragEntered: controller.onDragEntered,
-                onDragExited: controller.onDragExited,
-                child: Stack(
-                  children: <Widget>[
-                    if (accountConfig.wallpaperUrl != null)
-                      Opacity(
-                        opacity: accountConfig.wallpaperOpacity ?? 0.5,
-                        child: ImageFiltered(
-                          imageFilter: ui.ImageFilter.blur(
-                            sigmaX: accountConfig.wallpaperBlur ?? 0.0,
-                            sigmaY: accountConfig.wallpaperBlur ?? 0.0,
-                          ),
-                          child: MxcImage(
-                            cacheKey: accountConfig.wallpaperUrl.toString(),
-                            uri: accountConfig.wallpaperUrl,
-                            fit: BoxFit.cover,
-                            height: MediaQuery.sizeOf(context).height,
-                            width: MediaQuery.sizeOf(context).width,
-                            isThumbnail: false,
-                            placeholder: (_) => Container(),
-                          ),
-                        ),
-                      ),
-                    SafeArea(
-                      child: Column(
-                        children: <Widget>[
-                          Expanded(
-                            child: controller.webEntryOpen &&
-                                    controller.webEntryUrl != null
-                                ? AgentWebEntryView(
-                                    url: controller.webEntryUrl!,
-                                  )
-                                : Stack(
-                                    children: [
-                                      GestureDetector(
-                                        onTap:
-                                            controller.clearSingleSelectedEvent,
-                                        child: ChatEventList(
-                                          controller: controller,
+                            color: theme.colorScheme.onTertiaryContainer,
+                          )
+                        : activeThreadId != null
+                            ? IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: controller.closeThread,
+                                tooltip: L10n.of(context).backToMainChat,
+                                color: theme.colorScheme.onSecondaryContainer,
+                              )
+                            : FluffyThemes.isColumnMode(context)
+                                ? null
+                                : StreamBuilder<Object>(
+                                    stream: Matrix.of(context)
+                                        .client
+                                        .onSync
+                                        .stream
+                                        .where(
+                                          (syncUpdate) =>
+                                              syncUpdate.hasRoomUpdate,
                                         ),
-                                      ),
-                                      // Scroll to last read position button
-                                      if (controller
-                                          .readMarkerEventId.isNotEmpty)
-                                        Positioned(
-                                          top: 8,
-                                          right: 8,
-                                          child: Material(
-                                            color: theme
-                                                .colorScheme.primaryContainer,
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            child: InkWell(
-                                              onTap:
-                                                  controller.scrollToReadMarker,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 8,
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.arrow_upward,
-                                                      size: 16,
-                                                      color: theme.colorScheme
-                                                          .onPrimaryContainer,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    const Text(
-                                                      '新消息',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
+                                    builder: (context, _) => UnreadRoomsBadge(
+                                      filter: (r) => r.id != controller.roomId,
+                                      badgePosition:
+                                          BadgePosition.topEnd(end: 8, top: 4),
+                                      child: const Center(child: BackButton()),
+                                    ),
                                   ),
-                          ),
-                          if (controller.showScrollDownButton)
-                            Divider(
-                              height: 1,
-                              color: theme.dividerColor,
-                            ),
-                          if (controller.room.isExtinct)
-                            Container(
-                              margin: EdgeInsets.all(bottomSheetPadding),
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.chevron_right),
-                                label: Text(L10n.of(context).enterNewChat),
-                                onPressed: controller.goToNewRoomAction,
-                              ),
-                            )
-                          else if (controller.room.canSendDefaultMessages &&
-                              controller.room.membership == Membership.join)
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  margin: PlatformInfos.isDesktop
-                                      ? EdgeInsets.only(
-                                          top: bottomSheetPadding,
-                                          left: 60.0,
-                                          right: 60.0,
-                                          bottom: 4, // 减小底部间距
-                                        )
-                                      : EdgeInsets.only(
-                                          top: bottomSheetPadding,
-                                          left: bottomSheetPadding,
-                                          right: bottomSheetPadding,
-                                          bottom: 4, // 减小底部间距
-                                        ),
-                                  constraints: PlatformInfos.isDesktop
-                                      ? null // PC 端不限制宽度，动态适应
-                                      : const BoxConstraints(
-                                          maxWidth:
-                                              FluffyThemes.maxTimelineWidth,
-                                        ),
-                                  alignment: PlatformInfos.isDesktop
-                                      ? null // PC 端不居中
-                                      : Alignment.center,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Material(
-                                        clipBehavior: Clip.hardEdge,
-                                        color:
-                                            controller.selectedEvents.isNotEmpty
-                                                ? theme.colorScheme
-                                                    .tertiaryContainer
-                                                : theme.colorScheme
-                                                    .surfaceContainerHigh,
-                                        borderRadius: const BorderRadius.all(
-                                          Radius.circular(24),
-                                        ),
-                                        child: controller
-                                                    .room.isAbandonedDMRoom ==
-                                                true
-                                            ? Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceEvenly,
-                                                children: [
-                                                  TextButton.icon(
-                                                    style: TextButton.styleFrom(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                        16,
-                                                      ),
-                                                      foregroundColor: theme
-                                                          .colorScheme.error,
-                                                    ),
-                                                    icon: const Icon(
-                                                      Icons.archive_outlined,
-                                                    ),
-                                                    onPressed:
-                                                        controller.leaveChat,
-                                                    label: Text(
-                                                      L10n.of(context)
-                                                          .declineInvitation,
-                                                    ),
-                                                  ),
-                                                  TextButton.icon(
-                                                    style: TextButton.styleFrom(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                        16,
-                                                      ),
-                                                    ),
-                                                    icon: const Icon(
-                                                      Icons.forum_outlined,
-                                                    ),
-                                                    onPressed:
-                                                        controller.recreateChat,
-                                                    label: Text(
-                                                      L10n.of(context)
-                                                          .reopenChat,
-                                                    ),
-                                                  ),
-                                                ],
-                                              )
-                                            : Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  ReplyDisplay(controller),
-                                                  ChatInputRow(controller),
-                                                  ChatEmojiPicker(controller),
-                                                ],
-                                              ),
-                                      ),
-                                      // AI 内容免责声明（在 Material 外面，但在 Container margin 里面）
-                                      _AiContentDisclaimer(
-                                        room: controller.room,
-                                      ),
-                                    ],
+                    titleSpacing: FluffyThemes.isColumnMode(context) ? 24 : 0,
+                    title: ChatAppBarTitle(controller),
+                    actions: _appBarActions(context),
+                    bottom: PreferredSize(
+                      preferredSize: Size.fromHeight(appbarBottomHeight),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          PinnedEvents(controller),
+                          if (activeThreadId != null)
+                            SizedBox(
+                              height: ChatAppBarListTile.fixedHeight,
+                              child: Center(
+                                child: TextButton.icon(
+                                  onPressed: () => controller
+                                      .scrollToEventId(activeThreadId),
+                                  icon: const Icon(Icons.message),
+                                  label: Text(L10n.of(context).replyInThread),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor:
+                                        theme.colorScheme.onSecondaryContainer,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ),
+                          if (scrollUpBannerEventId != null &&
+                              activeThreadId == null)
+                            ChatAppBarListTile(
+                              leading: IconButton(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                icon: const Icon(Icons.close),
+                                tooltip: L10n.of(context).close,
+                                onPressed: () {
+                                  controller.discardScrollUpBannerEventId();
+                                  controller.setReadMarker();
+                                },
+                              ),
+                              title: L10n.of(context).jumpToLastReadMessage,
+                              trailing: TextButton(
+                                onPressed: () {
+                                  controller.scrollToEventId(
+                                    scrollUpBannerEventId,
+                                  );
+                                  controller.discardScrollUpBannerEventId();
+                                },
+                                child: Text(L10n.of(context).jump),
+                              ),
                             ),
                         ],
                       ),
                     ),
-                    if (controller.dragging)
-                      Container(
-                        color: theme.scaffoldBackgroundColor.withAlpha(230),
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.upload_outlined,
-                          size: 100,
+                  ),
+                  floatingActionButtonLocation:
+                      FloatingActionButtonLocation.miniCenterFloat,
+                  floatingActionButton: controller.showScrollDownButton &&
+                          controller.selectedEvents.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: 56.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  theme.colorScheme.primaryContainer,
+                                  theme.colorScheme.secondaryContainer,
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary
+                                      .withValues(alpha: 0.2),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: FloatingActionButton(
+                              onPressed: controller.scrollDown,
+                              heroTag: null,
+                              mini: true,
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: theme.colorScheme.primary,
+                              elevation: 0,
+                              child: const Icon(
+                                Icons.arrow_downward_rounded,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        )
+                      : null,
+                  body: DropTarget(
+                    onDragDone: controller.onDragDone,
+                    onDragEntered: controller.onDragEntered,
+                    onDragExited: controller.onDragExited,
+                    child: Stack(
+                      children: <Widget>[
+                        if (accountConfig.wallpaperUrl != null)
+                          Opacity(
+                            opacity: accountConfig.wallpaperOpacity ?? 0.5,
+                            child: ImageFiltered(
+                              imageFilter: ui.ImageFilter.blur(
+                                sigmaX: accountConfig.wallpaperBlur ?? 0.0,
+                                sigmaY: accountConfig.wallpaperBlur ?? 0.0,
+                              ),
+                              child: MxcImage(
+                                cacheKey: accountConfig.wallpaperUrl.toString(),
+                                uri: accountConfig.wallpaperUrl,
+                                fit: BoxFit.cover,
+                                height: MediaQuery.sizeOf(context).height,
+                                width: MediaQuery.sizeOf(context).width,
+                                isThumbnail: false,
+                                placeholder: (_) => Container(),
+                              ),
+                            ),
+                          ),
+                        SafeArea(
+                          child: Column(
+                            children: <Widget>[
+                              Expanded(
+                                child: controller.webEntryOpen &&
+                                        controller.webEntryUrl != null
+                                    ? AgentWebEntryView(
+                                        url: controller.webEntryUrl!,
+                                      )
+                                    : _buildTimelinePane(context),
+                              ),
+                              if (controller.showScrollDownButton)
+                                Divider(
+                                  height: 1,
+                                  color: theme.dividerColor,
+                                ),
+                              if (controller.room.isExtinct)
+                                Container(
+                                  margin: EdgeInsets.all(bottomSheetPadding),
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.chevron_right),
+                                    label: Text(L10n.of(context).enterNewChat),
+                                    onPressed: controller.goToNewRoomAction,
+                                  ),
+                                )
+                              else if (controller.room.canSendDefaultMessages &&
+                                  controller.room.membership == Membership.join)
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      margin: PlatformInfos.isDesktop
+                                          ? EdgeInsets.only(
+                                              top: bottomSheetPadding,
+                                              left: 60.0,
+                                              right: 60.0,
+                                              bottom: 4, // 减小底部间距
+                                            )
+                                          : EdgeInsets.only(
+                                              top: bottomSheetPadding,
+                                              left: bottomSheetPadding,
+                                              right: bottomSheetPadding,
+                                              bottom: 4, // 减小底部间距
+                                            ),
+                                      constraints: PlatformInfos.isDesktop
+                                          ? null // PC 端不限制宽度，动态适应
+                                          : const BoxConstraints(
+                                              maxWidth:
+                                                  FluffyThemes.maxTimelineWidth,
+                                            ),
+                                      alignment: PlatformInfos.isDesktop
+                                          ? null // PC 端不居中
+                                          : Alignment.center,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Material(
+                                            clipBehavior: Clip.hardEdge,
+                                            color: controller
+                                                    .selectedEvents.isNotEmpty
+                                                ? theme.colorScheme
+                                                    .tertiaryContainer
+                                                : theme.colorScheme
+                                                    .surfaceContainerHigh,
+                                            borderRadius:
+                                                const BorderRadius.all(
+                                              Radius.circular(24),
+                                            ),
+                                            child: controller.room
+                                                        .isAbandonedDMRoom ==
+                                                    true
+                                                ? Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceEvenly,
+                                                    children: [
+                                                      TextButton.icon(
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(
+                                                            16,
+                                                          ),
+                                                          foregroundColor: theme
+                                                              .colorScheme
+                                                              .error,
+                                                        ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .archive_outlined,
+                                                        ),
+                                                        onPressed: controller
+                                                            .leaveChat,
+                                                        label: Text(
+                                                          L10n.of(context)
+                                                              .declineInvitation,
+                                                        ),
+                                                      ),
+                                                      TextButton.icon(
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(
+                                                            16,
+                                                          ),
+                                                        ),
+                                                        icon: const Icon(
+                                                          Icons.forum_outlined,
+                                                        ),
+                                                        onPressed: controller
+                                                            .recreateChat,
+                                                        label: Text(
+                                                          L10n.of(context)
+                                                              .reopenChat,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  )
+                                                : Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      ReplyDisplay(controller),
+                                                      ChatInputRow(controller),
+                                                      ChatEmojiPicker(
+                                                        controller,
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
+                                          // AI 内容免责声明（在 Material 外面，但在 Container margin 里面）
+                                          _AiContentDisclaimer(
+                                            room: controller.room,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
+                        if (controller.dragging)
+                          Container(
+                            color: theme.scaffoldBackgroundColor.withAlpha(230),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.upload_outlined,
+                              size: 100,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                _buildChatRoomGuide(context),
+              ],
             );
           },
         ),
