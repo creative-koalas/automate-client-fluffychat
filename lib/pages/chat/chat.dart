@@ -748,7 +748,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void nextChatRoomGuideStep() {
-    final totalSteps = isEmployeeChatGuide ? 2 : 1;
+    final totalSteps = isEmployeeChatGuide ? 4 : 1;
     if (_chatRoomGuideStepIndex >= totalSteps - 1) {
       unawaited(dismissChatRoomGuide());
       return;

@@ -121,8 +121,18 @@ class ChatView extends StatelessWidget {
             ),
             ChatRoomIntroGuideStep(
               targetKey: controller.webEntryGuideKey,
+              title: l10n.chatRoomGuideSmartInterfaceTitle,
+              description: l10n.chatRoomGuideSmartInterfaceBody,
+            ),
+            ChatRoomIntroGuideStep(
+              targetKey: controller.webEntryGuideKey,
               title: l10n.chatRoomGuideWebEntryTitle,
               description: l10n.chatRoomGuideWebEntryBody,
+            ),
+            ChatRoomIntroGuideStep(
+              targetKey: controller.employeeWorkTemplateGuideKey,
+              title: l10n.chatRoomGuideWorkTemplateTitle,
+              description: l10n.chatRoomGuideWorkTemplateBody,
             ),
           ];
 
