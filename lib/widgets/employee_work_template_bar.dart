@@ -32,83 +32,105 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primaryContainer.withValues(alpha: 0.72),
-            theme.colorScheme.secondaryContainer.withValues(alpha: 0.58),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.14),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.assignment_rounded,
-                  size: 20,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 108,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: templates.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final template = templates[index];
-                return _EmployeeWorkTemplateCard(
-                  template: template,
-                  onTap: () => onTemplateTap(template),
-                );
-              },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = constraints.maxWidth >= 900;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: EdgeInsets.all(isWideLayout ? 18 : 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primaryContainer.withValues(alpha: 0.72),
+                theme.colorScheme.secondaryContainer.withValues(alpha: 0.58),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.14),
             ),
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: isWideLayout ? 40 : 34,
+                    height: isWideLayout ? 40 : 34,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.assignment_rounded,
+                      size: isWideLayout ? 22 : 20,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (isWideLayout)
+                Row(
+                  children: [
+                    for (var i = 0; i < templates.length; i++) ...[
+                      Expanded(
+                        child: _EmployeeWorkTemplateCard(
+                          template: templates[i],
+                          onTap: () => onTemplateTap(templates[i]),
+                          isWideLayout: true,
+                        ),
+                      ),
+                      if (i != templates.length - 1) const SizedBox(width: 12),
+                    ],
+                  ],
+                )
+              else
+                SizedBox(
+                  height: 124,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: templates.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      final template = templates[index];
+                      return _EmployeeWorkTemplateCard(
+                        template: template,
+                        onTap: () => onTemplateTap(template),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -116,10 +138,12 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
 class _EmployeeWorkTemplateCard extends StatelessWidget {
   final EmployeeWorkTemplateItem template;
   final VoidCallback onTap;
+  final bool isWideLayout;
 
   const _EmployeeWorkTemplateCard({
     required this.template,
     required this.onTap,
+    this.isWideLayout = false,
   });
 
   @override
@@ -127,7 +151,8 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return SizedBox(
-      width: 188,
+      width: isWideLayout ? null : 208,
+      height: isWideLayout ? 156 : 124,
       child: Material(
         color: Colors.white.withValues(alpha: 0.74),
         borderRadius: BorderRadius.circular(16),
@@ -135,24 +160,24 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(isWideLayout ? 16 : 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: isWideLayout ? 38 : 34,
+                  height: isWideLayout ? 38 : 34,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     template.icon,
-                    size: 18,
+                    size: isWideLayout ? 20 : 18,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: isWideLayout ? 14 : 12),
                 Text(
                   template.title,
                   maxLines: 1,
@@ -162,13 +187,15 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  template.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    height: 1.4,
+                Expanded(
+                  child: Text(
+                    template.description,
+                    maxLines: isWideLayout ? 3 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],

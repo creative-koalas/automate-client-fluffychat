@@ -72,11 +72,14 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
         }
 
         final highlightRect = targetRect.inflate(_guideHighlightPadding);
-        final bubbleHeight = _resolveBubbleHeight(currentStep);
+        final bubbleSize = _resolveBubbleSize(
+          Size(constraints.maxWidth, constraints.maxHeight),
+          currentStep,
+        );
         final bubbleLayout = _buildGuideBubbleLayout(
           Size(constraints.maxWidth, constraints.maxHeight),
           highlightRect,
-          bubbleHeight,
+          bubbleSize,
         );
         final theme = Theme.of(context);
 
@@ -131,8 +134,8 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
             Positioned(
               left: bubbleLayout.left,
               top: bubbleLayout.top,
-              width: _guideBubbleWidth,
-              height: bubbleHeight,
+              width: bubbleSize.width,
+              height: bubbleSize.height,
               child: _buildGuideBubble(
                 context: context,
                 theme: theme,
@@ -214,27 +217,35 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
   _ChatRoomGuideBubbleLayout _buildGuideBubbleLayout(
     Size size,
     Rect highlightRect,
-    double bubbleHeight,
+    Size bubbleSize,
   ) {
-    final showAbove = highlightRect.center.dy > size.height * 0.55;
+    final bubbleWidth = bubbleSize.width;
+    final bubbleHeight = bubbleSize.height;
+    final spaceAbove =
+        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
+    final spaceBelow =
+        size.height - highlightRect.bottom - _guideScreenPadding - _guideConnectorGap;
+    final showAbove = spaceAbove >= bubbleHeight
+        ? true
+        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
     final maxLeft = max(
       _guideScreenPadding,
-      size.width - _guideBubbleWidth - _guideScreenPadding,
+      size.width - bubbleWidth - _guideScreenPadding,
     );
-    final left = (highlightRect.center.dx - (_guideBubbleWidth / 2))
+    final left = (highlightRect.center.dx - (bubbleWidth / 2))
         .clamp(_guideScreenPadding, maxLeft)
         .toDouble();
     final top = showAbove
         ? max(
             _guideScreenPadding,
-            highlightRect.top - bubbleHeight - 36,
+            highlightRect.top - bubbleHeight - _guideConnectorGap,
           ).toDouble()
         : min(
             size.height - bubbleHeight - _guideScreenPadding,
-            highlightRect.bottom + 36,
+            highlightRect.bottom + _guideConnectorGap,
           ).toDouble();
     final connectorX = highlightRect.center.dx
-        .clamp(left + 28, left + _guideBubbleWidth - 28)
+        .clamp(left + 28, left + bubbleWidth - 28)
         .toDouble();
 
     return _ChatRoomGuideBubbleLayout(
@@ -251,10 +262,32 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
     );
   }
 
-  double _resolveBubbleHeight(ChatRoomIntroGuideStep step) {
-    return step.contentBuilder == null
-        ? _guideCompactBubbleHeight
-        : _guideExpandedBubbleHeight;
+  static const double _guideConnectorGap = 36;
+
+  Size _resolveBubbleSize(Size availableSize, ChatRoomIntroGuideStep step) {
+    final maxWidth = max(240.0, availableSize.width - (_guideScreenPadding * 2));
+    final preferredWidth = availableSize.width >= 1280
+        ? 560.0
+        : (availableSize.width >= 900 ? 460.0 : _guideBubbleWidth);
+    final width = min(preferredWidth, maxWidth);
+
+    final preferredHeight = step.contentBuilder == null
+        ? (availableSize.width >= 1280
+            ? 320.0
+            : (availableSize.width >= 900
+                ? 276.0
+                : _guideCompactBubbleHeight))
+        : (availableSize.width >= 1280
+            ? 440.0
+            : (availableSize.width >= 900
+                ? 372.0
+                : _guideExpandedBubbleHeight));
+    final height = min(
+      preferredHeight,
+      max(_guideCompactBubbleHeight, availableSize.height - (_guideScreenPadding * 2)),
+    );
+
+    return Size(width, height);
   }
 
   Widget _buildGuideBubble({
@@ -266,6 +299,21 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
   }) {
     final content =
         step.contentBuilder != null ? step.contentBuilder!(context) : null;
+    final bodyChildren = <Widget>[
+      if (step.description != null)
+        Text(
+          step.description!,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFF374151),
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      if (content != null) ...[
+        if (step.description != null) const SizedBox(height: 14),
+        content,
+      ],
+    ];
 
     return Material(
       color: Colors.transparent,
@@ -303,24 +351,16 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                       color: const Color(0xFF6B7280),
                       fontWeight: FontWeight.w700,
                     ),
-                  ),
+                ),
               ],
             ),
-            if (step.description != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                step.description!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF374151),
-                  height: 1.45,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            const SizedBox(height: 14),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(top: content != null ? 14 : 0),
-                child: content ?? const SizedBox.shrink(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: bodyChildren,
+                ),
               ),
             ),
             const SizedBox(height: 16),
