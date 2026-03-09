@@ -34,12 +34,14 @@ class TeamPage extends StatefulWidget {
 class TeamPageController extends State<TeamPage> {
   // GlobalKey to access EmployeesTab state.
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
+  bool _showRecruitGuideHighlight = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _notifyEmployeesTabVisibility();
+      unawaited(_syncRecruitGuideHighlight());
     });
   }
 
@@ -61,6 +63,18 @@ class TeamPageController extends State<TeamPage> {
     _employeesTabKey.currentState?.refreshEmployeeList();
   }
 
+  bool get showRecruitGuideHighlight => _showRecruitGuideHighlight;
+
+  Future<void> _syncRecruitGuideHighlight() async {
+    final shouldShow = await _shouldShowRecruitGuide();
+    if (!mounted || _showRecruitGuideHighlight == shouldShow) {
+      return;
+    }
+    setState(() {
+      _showRecruitGuideHighlight = shouldShow;
+    });
+  }
+
   Future<bool> _shouldShowRecruitGuide() async {
     final userId = context.read<PsygoAuthState>().userId;
     return RecruitGuideService.instance.shouldShowGuide(userId);
@@ -69,6 +83,10 @@ class TeamPageController extends State<TeamPage> {
   Future<void> _markRecruitGuideCompleted() async {
     final userId = context.read<PsygoAuthState>().userId;
     await RecruitGuideService.instance.markGuideCompleted(userId);
+    if (!mounted || !_showRecruitGuideHighlight) return;
+    setState(() {
+      _showRecruitGuideHighlight = false;
+    });
   }
 
   Future<void> openRecruitMenu(BuildContext context) async {
@@ -140,6 +158,7 @@ class TeamPageController extends State<TeamPage> {
       unawaited(AgentService.instance.refresh());
     } finally {
       repository.dispose();
+      unawaited(_syncRecruitGuideHighlight());
     }
   }
 
@@ -248,7 +267,7 @@ class TeamPageView extends StatelessWidget {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: RecruitEntryGuideHighlight(
-        visible: RecruitGuideService.debugAlwaysShowGuide,
+        visible: controller.showRecruitGuideHighlight,
         title: l10n.customHire,
         description: l10n.customHireDescription,
         skipLabel: l10n.skip,

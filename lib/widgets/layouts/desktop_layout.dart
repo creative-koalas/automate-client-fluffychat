@@ -83,6 +83,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   late DesktopPageIndex _currentPage;
   int _unreadCount = 0;
   bool _isDraggingDivider = false;
+  bool _showRecruitGuideHighlight = false;
 
   // 监听同步事件以更新未读计数
   StreamSubscription? _syncSubscription;
@@ -102,6 +103,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateUnreadCount();
       _setupSyncListener();
+      unawaited(_syncRecruitGuideHighlight());
     });
   }
 
@@ -178,9 +180,19 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     return RecruitGuideService.instance.shouldShowGuide(userId);
   }
 
+  Future<void> _syncRecruitGuideHighlight() async {
+    final shouldShow = await _shouldShowRecruitGuide();
+    if (!mounted || _showRecruitGuideHighlight == shouldShow) {
+      return;
+    }
+    setState(() => _showRecruitGuideHighlight = shouldShow);
+  }
+
   Future<void> _markRecruitGuideCompleted() async {
     final userId = context.read<PsygoAuthState>().userId;
     await RecruitGuideService.instance.markGuideCompleted(userId);
+    if (!mounted || !_showRecruitGuideHighlight) return;
+    setState(() => _showRecruitGuideHighlight = false);
   }
 
   Future<void> _openRecruitMenu() async {
@@ -237,6 +249,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       unawaited(AgentService.instance.refresh());
     } finally {
       repository.dispose();
+      unawaited(_syncRecruitGuideHighlight());
     }
   }
 
@@ -564,6 +577,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
         return EmployeesTab(
           key: _employeesTabKey,
           onNavigateToRecruit: () => unawaited(_openRecruitMenu()),
+          showRecruitGuideHighlight: _showRecruitGuideHighlight,
         );
     }
   }

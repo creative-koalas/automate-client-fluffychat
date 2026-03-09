@@ -6,22 +6,18 @@ class ChatRoomGuideService {
   static final ChatRoomGuideService instance = ChatRoomGuideService._();
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _directGuideKeyPrefix =
-      'automate_chat_room_guide_completed_v1_';
+      'automate_chat_room_guide_completed_v2_';
   static const String _groupMentionGuideKeyPrefix =
-      'automate_group_chat_mention_guide_completed_v1_';
-  static const String _employeeWorkTemplateBarKeyPrefix =
-      'automate_employee_work_template_bar_completed_v1_';
-  static const bool debugAlwaysShowDirectGuide = true;
-  static const bool debugAlwaysShowGroupMentionGuide = true;
-  static const bool debugAlwaysShowEmployeeWorkTemplateBar = true;
+      'automate_group_chat_mention_guide_completed_v2_';
+  static const bool debugAlwaysShowDirectGuide = false;
+  static const bool debugAlwaysShowGroupMentionGuide = false;
 
   Future<bool> shouldShowGuide({
     required String? userId,
     required String? roomId,
   }) async {
     final normalizedUserId = userId?.trim() ?? '';
-    final normalizedRoomId = roomId?.trim() ?? '';
-    if (normalizedUserId.isEmpty || normalizedRoomId.isEmpty) {
+    if (normalizedUserId.isEmpty) {
       return false;
     }
 
@@ -30,7 +26,7 @@ class ChatRoomGuideService {
     }
 
     return _shouldShowByKey(
-      key: '$_directGuideKeyPrefix${normalizedUserId}_$normalizedRoomId',
+      key: '$_directGuideKeyPrefix$normalizedUserId',
     );
   }
 
@@ -39,8 +35,7 @@ class ChatRoomGuideService {
     required String? roomId,
   }) async {
     final normalizedUserId = userId?.trim() ?? '';
-    final normalizedRoomId = roomId?.trim() ?? '';
-    if (normalizedUserId.isEmpty || normalizedRoomId.isEmpty) {
+    if (normalizedUserId.isEmpty) {
       return;
     }
 
@@ -49,7 +44,7 @@ class ChatRoomGuideService {
     }
 
     await _markGuideCompletedByKey(
-      key: '$_directGuideKeyPrefix${normalizedUserId}_$normalizedRoomId',
+      key: '$_directGuideKeyPrefix$normalizedUserId',
     );
   }
 
@@ -58,8 +53,7 @@ class ChatRoomGuideService {
     required String? roomId,
   }) async {
     final normalizedUserId = userId?.trim() ?? '';
-    final normalizedRoomId = roomId?.trim() ?? '';
-    if (normalizedUserId.isEmpty || normalizedRoomId.isEmpty) {
+    if (normalizedUserId.isEmpty) {
       return false;
     }
 
@@ -68,7 +62,7 @@ class ChatRoomGuideService {
     }
 
     return _shouldShowByKey(
-      key: '$_groupMentionGuideKeyPrefix${normalizedUserId}_$normalizedRoomId',
+      key: '$_groupMentionGuideKeyPrefix$normalizedUserId',
     );
   }
 
@@ -77,8 +71,7 @@ class ChatRoomGuideService {
     required String? roomId,
   }) async {
     final normalizedUserId = userId?.trim() ?? '';
-    final normalizedRoomId = roomId?.trim() ?? '';
-    if (normalizedUserId.isEmpty || normalizedRoomId.isEmpty) {
+    if (normalizedUserId.isEmpty) {
       return;
     }
 
@@ -87,47 +80,7 @@ class ChatRoomGuideService {
     }
 
     await _markGuideCompletedByKey(
-      key: '$_groupMentionGuideKeyPrefix${normalizedUserId}_$normalizedRoomId',
-    );
-  }
-
-  Future<bool> shouldShowEmployeeWorkTemplateBar({
-    required String? userId,
-    required String? roomId,
-  }) async {
-    final normalizedUserId = userId?.trim() ?? '';
-    final normalizedRoomId = roomId?.trim() ?? '';
-    if (normalizedUserId.isEmpty || normalizedRoomId.isEmpty) {
-      return false;
-    }
-
-    if (debugAlwaysShowEmployeeWorkTemplateBar) {
-      return true;
-    }
-
-    return _shouldShowByKey(
-      key:
-          '$_employeeWorkTemplateBarKeyPrefix${normalizedUserId}_$normalizedRoomId',
-    );
-  }
-
-  Future<void> markEmployeeWorkTemplateBarCompleted({
-    required String? userId,
-    required String? roomId,
-  }) async {
-    final normalizedUserId = userId?.trim() ?? '';
-    final normalizedRoomId = roomId?.trim() ?? '';
-    if (normalizedUserId.isEmpty || normalizedRoomId.isEmpty) {
-      return;
-    }
-
-    if (debugAlwaysShowEmployeeWorkTemplateBar) {
-      return;
-    }
-
-    await _markGuideCompletedByKey(
-      key:
-          '$_employeeWorkTemplateBarKeyPrefix${normalizedUserId}_$normalizedRoomId',
+      key: '$_groupMentionGuideKeyPrefix$normalizedUserId',
     );
   }
 

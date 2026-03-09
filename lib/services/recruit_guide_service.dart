@@ -6,7 +6,7 @@ class RecruitGuideService {
   static final RecruitGuideService instance = RecruitGuideService._();
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _keyPrefix = 'automate_recruit_guide_completed_v1_';
-  static const bool debugAlwaysShowGuide = true;
+  static const bool debugAlwaysShowGuide = false;
 
   Future<bool> shouldShowGuide(String? userId) async {
     if (debugAlwaysShowGuide) {
