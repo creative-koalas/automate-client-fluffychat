@@ -25,6 +25,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app-name", required=True)
     parser.add_argument("--build-version", required=True)
+    parser.add_argument("--channel", default="none")
     parser.add_argument("--git-sha", required=True)
     parser.add_argument("--input-dir", required=True)
     parser.add_argument("--output", required=True)
@@ -38,6 +39,10 @@ def main() -> None:
 
     artifacts: list[dict[str, object]] = []
     base_key = f"artifacts/{args.app_name}/{args.build_version}/{args.git_sha}"
+    channel = args.channel.strip()
+    channel_prefix = None
+    if channel and channel != "none":
+        channel_prefix = f"{channel}/{args.app_name}"
 
     for platform_dir in sorted(p for p in input_dir.iterdir() if p.is_dir()):
         platform = platform_dir.name
@@ -45,15 +50,19 @@ def main() -> None:
         for file_path in files:
             relative_name = file_path.relative_to(platform_dir).as_posix()
             cos_key = f"{base_key}/{platform}/{relative_name}"
-            artifacts.append(
-                {
-                    "platform": platform,
-                    "file_name": relative_name,
-                    "size": file_path.stat().st_size,
-                    "sha256": sha256_file(file_path),
-                    "cos_key": cos_key,
-                }
-            )
+            artifact: dict[str, object] = {
+                "platform": platform,
+                "file_name": relative_name,
+                "size": file_path.stat().st_size,
+                "sha256": sha256_file(file_path),
+                "cos_key": cos_key,
+            }
+            if channel_prefix is not None:
+                artifact["channel"] = channel
+                artifact["channel_cos_key"] = (
+                    f"{channel_prefix}/{platform}/{relative_name}"
+                )
+            artifacts.append(artifact)
 
     manifest = {
         "app": args.app_name,
@@ -63,6 +72,9 @@ def main() -> None:
         "artifact_count": len(artifacts),
         "artifacts": artifacts,
     }
+    if channel_prefix is not None:
+        manifest["channel"] = channel
+        manifest["channel_artifacts_prefix"] = channel_prefix
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

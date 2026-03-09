@@ -155,12 +155,22 @@ jobs:
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
       - run: flutter build apk --release --target-platform android-arm64
+      - name: Normalize Android artifact name
+        run: |
+          set -euo pipefail
+          mkdir -p build/android
+          if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk build/android/fluffychat-android-apk.apk
+          elif [ -f build/app/outputs/apk/release/app-release.apk ]; then
+            cp build/app/outputs/apk/release/app-release.apk build/android/fluffychat-android-apk.apk
+          else
+            echo "Android APK not found"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: fluffychat-android-apk
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/apk/release/app-release.apk
+          path: build/android/fluffychat-android-apk.apk
           if-no-files-found: error
 
   publish_to_cos:
@@ -191,9 +201,9 @@ jobs:
             artifact_name="$(basename "$artifact_dir")"
 
             case "$artifact_name" in
-              fluffychat-android-*) platform="android" ;;
+              fluffychat-android-*) platform="android-apk" ;;
               fluffychat-linux-*) platform="linux" ;;
-              fluffychat-windows-*) platform="windows" ;;
+              fluffychat-windows-*) platform="windows64" ;;
               *)
                 echo "Skip unsupported artifact name: $artifact_name"
                 continue
@@ -221,6 +231,7 @@ jobs:
       - name: Generate immutable manifest
         env:
           APP_NAME: ${{ inputs.app_name }}
+          CHANNEL: ${{ inputs.target_channel }}
           GIT_SHA: ${{ github.sha }}
           BUILD_VERSION: ${{ steps.build_version.outputs.build_version }}
         run: |
@@ -229,6 +240,7 @@ jobs:
           scripts/ci/generate_cos_manifest.py \
             --app-name "$APP_NAME" \
             --build-version "$BUILD_VERSION" \
+            --channel "$CHANNEL" \
             --git-sha "$GIT_SHA" \
             --input-dir dist \
             --output "manifests/${BUILD_VERSION}.json"
@@ -255,6 +267,7 @@ jobs:
       - name: Upload artifacts and manifest
         env:
           APP_NAME: ${{ inputs.app_name }}
+          CHANNEL: ${{ inputs.target_channel }}
           GIT_SHA: ${{ github.sha }}
           BUILD_VERSION: ${{ steps.build_version.outputs.build_version }}
         run: |
@@ -265,10 +278,17 @@ jobs:
             while IFS= read -r -d '' file_path; do
               object_key="artifacts/${APP_NAME}/${BUILD_VERSION}/${GIT_SHA}/${platform_name}/$(basename "$file_path")"
               coscmd upload -f "$file_path" "$object_key"
+              if [ "$CHANNEL" != "none" ]; then
+                channel_object_key="${CHANNEL}/${APP_NAME}/${platform_name}/$(basename "$file_path")"
+                coscmd upload -f "$file_path" "$channel_object_key"
+              fi
             done < <(find "$platform_dir" -type f -print0)
           done
 
           coscmd upload -f "manifests/${BUILD_VERSION}.json" "manifests/${BUILD_VERSION}.json"
+          if [ "$CHANNEL" != "none" ]; then
+            coscmd upload -f "manifests/${BUILD_VERSION}.json" "${CHANNEL}/${APP_NAME}/manifest.json"
+          fi
 
       - name: Write channel pointer
         if: inputs.target_channel != 'none'
@@ -286,6 +306,7 @@ jobs:
             --app-name "$APP_NAME" \
             --build-version "$BUILD_VERSION" \
             --git-sha "$GIT_SHA" \
+            --channel-artifacts-prefix "${CHANNEL}/${APP_NAME}" \
             --manifest-key "manifests/${BUILD_VERSION}.json" \
             --source-run-id "$GITHUB_RUN_ID" \
             --source-ref "$GITHUB_REF_NAME" \

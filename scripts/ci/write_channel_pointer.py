@@ -15,6 +15,7 @@ def main() -> None:
     parser.add_argument("--app-name", required=True)
     parser.add_argument("--build-version", required=True)
     parser.add_argument("--git-sha", required=True)
+    parser.add_argument("--channel-artifacts-prefix")
     parser.add_argument("--manifest-key", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--source-run-id", required=True)
@@ -31,6 +32,8 @@ def main() -> None:
         "source_ref": args.source_ref,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+    if args.channel_artifacts_prefix:
+        pointer["channel_artifacts_prefix"] = args.channel_artifacts_prefix
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

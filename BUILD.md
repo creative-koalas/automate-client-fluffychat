@@ -98,10 +98,14 @@ flutter upgrade
 
 ### 存储结构
 
-上传后结构如下（`{build_version}` 每次发布 +0.01，`{git_sha}` 为本次构建提交）：
+上传后结构如下（`{build_version}` 每次发布 +0.01，`{git_sha}` 为本次构建提交，`{channel}` 为 `dev/test/release`）：
 
 ```text
 artifacts/{app_name}/{build_version}/{git_sha}/{platform}/{file}
+{channel}/{app_name}/linux/fluffychat-linux-x64.tar.gz
+{channel}/{app_name}/windows64/fluffychat-windows-x64.zip
+{channel}/{app_name}/android-apk/fluffychat-android-apk.apk
+{channel}/{app_name}/manifest.json
 manifests/{build_version}.json
 channels/dev.json
 channels/test.json
@@ -111,5 +115,6 @@ channels/release.json
 说明：
 
 1. `artifacts` 为不可变产物目录
-2. `manifests/{build_version}.json` 记录每个文件的校验和、大小、平台和对象 key
-3. `channels/*.json` 只保存当前渠道指向的版本信息，可用于快速回滚
+2. `{channel}/{app_name}/...` 为渠道直链目录，适合直接给测试环境拉取最新 Linux、Windows64、Android APK
+3. `manifests/{build_version}.json` 记录每个文件的校验和、大小、平台、不可变对象 key，以及渠道目录对象 key
+4. `channels/*.json` 保存当前渠道指向的版本信息和渠道目录前缀，可用于快速回滚
