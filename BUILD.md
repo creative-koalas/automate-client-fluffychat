@@ -72,3 +72,42 @@ flutter --version
 ```bash
 flutter upgrade
 ```
+
+## CI 对象存储发布（腾讯 COS）
+
+`Cross Platform CI` 支持手动触发后将产物上传到腾讯 COS，并可选更新 `dev/test/release` 渠道指针。
+
+### 触发方式
+
+在 GitHub Actions 中手动运行 `Cross Platform CI`，可配置：
+
+1. `upload_to_cos`：是否上传构建产物到 COS（布尔值）
+2. `target_channel`：是否更新渠道指针（`none/dev/test/release`）
+3. `app_name`：对象 key 前缀中的应用名（默认 `fluffychat`）
+
+### COS 必需 Secrets
+
+在仓库 Secrets 中配置：
+
+1. `COS_SECRET_ID`
+2. `COS_SECRET_KEY`
+3. `COS_BUCKET`
+4. `COS_REGION`
+
+### 存储结构
+
+上传后结构如下（`{git_sha}` 为本次构建提交）：
+
+```text
+artifacts/{app_name}/{git_sha}/{platform}/{file}
+manifests/{git_sha}.json
+channels/dev.json
+channels/test.json
+channels/release.json
+```
+
+说明：
+
+1. `artifacts` 为不可变产物目录
+2. `manifests/{git_sha}.json` 记录每个文件的校验和、大小、平台和对象 key
+3. `channels/*.json` 只保存当前渠道指向的版本信息，可用于快速回滚
