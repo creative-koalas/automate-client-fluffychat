@@ -25,8 +25,23 @@ jobs:
         run: ./scripts/prepare-web.sh
       - run: rm ./assets/vodozemac/.gitignore
       - run: flutter pub get
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: |
+          python3 scripts/ci/write_flutter_env.py \
+            --output ci.env.json \
+            --require APP_NAME \
+            --require K8S_NAMESPACE \
+            --require API_BASE_URL \
+            --require MATRIX_HOMESERVER
       - name: Build Release Web
-        run: flutter build web --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps --base-href "/nightly/"
+        run: flutter build web --dart-define-from-file=ci.env.json --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps --base-href "/nightly/"
       - run: mv build/web/ public
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -70,8 +85,23 @@ jobs:
         run: ./scripts/prepare-android-release.sh
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: |
+          python3 scripts/ci/write_flutter_env.py \
+            --output ci.env.json \
+            --require APP_NAME \
+            --require K8S_NAMESPACE \
+            --require API_BASE_URL \
+            --require MATRIX_HOMESERVER
       - name: Build Android Release
-        run: flutter build appbundle --target-platform android-arm,android-arm64
+        run: flutter build appbundle --target-platform android-arm,android-arm64 --dart-define-from-file=ci.env.json
       - name: Set changelog
         working-directory: android/fastlane/metadata/android/en-US/changelogs
         run: git log --no-merges -1 --pretty=%B > default.txt

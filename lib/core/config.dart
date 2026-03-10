@@ -26,6 +26,21 @@ class PsygoConfig {
     defaultValue: 'https://development-matrix.psygoai.com',
   );
 
+  /// Onboarding chatbot backend URL
+  static const String chatbotBaseUrl = String.fromEnvironment(
+    'CHATBOT_BASE_URL',
+    defaultValue: 'https://api.psygoai.com/onboarding-chatbot',
+  );
+
+  /// Aliyun one-click login secret key
+  static const String aliyunOneClickSecretKey = String.fromEnvironment(
+    'ALIYUN_SECRET_KEY',
+    defaultValue: '',
+  );
+
+  static bool get hasAliyunOneClickLoginSecret =>
+      aliyunOneClickSecretKey.isNotEmpty;
+
   /// API 版本前缀
   static const String apiPrefix = '/api';
 

@@ -2,12 +2,17 @@
 
 ## 环境变量配置
 
-本项目使用 Flutter 官方的 `--dart-define-from-file` 功能来管理环境变量，避免将敏感信息提交到版本控制。
+本项目使用 Flutter 官方的 `--dart-define-from-file` 功能来管理客户端构建配置。
+CI 只会注入非敏感的后端地址和应用标识，不会把高敏感 secret 打进安装包。
 
 ### 必需的环境变量
 
-1. **K8S_NODE_IP**: K8s 集群节点 IP（局域网访问）
-2. **ALIYUN_SECRET_KEY**: 阿里云一键登录 SDK 密钥
+1. **APP_NAME**: 应用名称
+2. **APP_ID_SUFFIX**: Android 包名后缀（生产环境通常为空）
+3. **K8S_NAMESPACE**: 后端所在命名空间
+4. **API_BASE_URL**: Psygo Assistant 后端地址
+5. **MATRIX_HOMESERVER**: Matrix Homeserver 地址
+6. **CHATBOT_BASE_URL**: Onboarding chatbot 地址（可选）
 
 ### 配置步骤
 
@@ -19,8 +24,12 @@ cp env.json.example env.json
 2. 编辑 `env.json` 文件，填入实际值：
 ```json
 {
-  "K8S_NODE_IP": "192.168.31.22",
-  "ALIYUN_SECRET_KEY": "your-actual-secret-key"
+  "APP_NAME": "Psygo",
+  "APP_ID_SUFFIX": "",
+  "K8S_NAMESPACE": "prod",
+  "API_BASE_URL": "https://api.example.com/assistant",
+  "MATRIX_HOMESERVER": "https://matrix.example.com",
+  "CHATBOT_BASE_URL": "https://api.example.com/onboarding-chatbot"
 }
 ```
 
@@ -58,9 +67,16 @@ flutter build apk --release --dart-define-from-file=env.json
 ## 注意事项
 
 - `env.json` 文件已添加到 `.gitignore`，不会被提交到版本控制
-- 请勿将敏感信息（如 Secret Key）提交到代码仓库
+- 请勿将敏感信息（如 `ALIYUN_SECRET_KEY`、`PUSH_*_APP_SECRET`）提交到代码仓库
+- 客户端构建配置会被打进安装包，能被反编译提取，因此只应包含可公开的地址和标识
 - 团队成员需要各自配置自己的 `env.json` 文件
 - 确保使用 Flutter 3.7 或更高版本以支持 `--dart-define-from-file`
+
+### 本地调试的可选 secret
+
+如果你在本地调试移动端一键登录或阿里云推送，可以手动在未提交的 `env.json`
+里额外加入 `ALIYUN_SECRET_KEY` 或 `PUSH_*` 键，但不要放进 GitHub Variables /
+Secrets 再注入客户端正式包。
 
 ## 检查 Flutter 版本
 
@@ -95,6 +111,17 @@ flutter upgrade
 2. `COS_SECRET_KEY`
 3. `COS_BUCKET`
 4. `COS_REGION`
+
+### 客户端构建所需 GitHub Variables
+
+为了让 CI 产物指向真实后端，在仓库 Variables 或 `prod` Environment Variables 中配置：
+
+1. `APP_NAME`
+2. `APP_ID_SUFFIX`
+3. `K8S_NAMESPACE`
+4. `API_BASE_URL`
+5. `MATRIX_HOMESERVER`
+6. `CHATBOT_BASE_URL`（可选）
 
 ### 存储结构
 

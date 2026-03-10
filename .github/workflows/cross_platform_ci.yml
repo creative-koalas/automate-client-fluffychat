@@ -90,7 +90,27 @@ jobs:
           cache: true
       - uses: moonrepo/setup-rust@v1
       - run: flutter pub get
-      - run: flutter build linux --release
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+          STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
+        run: |
+          args=(--output ci.env.json)
+          if [ "$STRICT_BUILD_CONFIG" = "true" ]; then
+            args+=(
+              --require APP_NAME
+              --require K8S_NAMESPACE
+              --require API_BASE_URL
+              --require MATRIX_HOMESERVER
+            )
+          fi
+          python3 scripts/ci/write_flutter_env.py "${args[@]}"
+      - run: flutter build linux --release --dart-define-from-file=ci.env.json
       - name: Pack Linux artifact
         run: tar -czf fluffychat-linux-x64.tar.gz -C build/linux/x64/release/bundle .
       - uses: actions/upload-artifact@v4
@@ -113,7 +133,28 @@ jobs:
           cache: true
       - uses: moonrepo/setup-rust@v1
       - run: flutter pub get
-      - run: flutter build windows --release
+      - name: Generate Flutter build env
+        shell: bash
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+          STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
+        run: |
+          args=(--output ci.env.json)
+          if [ "$STRICT_BUILD_CONFIG" = "true" ]; then
+            args+=(
+              --require APP_NAME
+              --require K8S_NAMESPACE
+              --require API_BASE_URL
+              --require MATRIX_HOMESERVER
+            )
+          fi
+          python scripts/ci/write_flutter_env.py "${args[@]}"
+      - run: flutter build windows --release --dart-define-from-file=ci.env.json
       - name: Pack Windows artifact
         shell: pwsh
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath fluffychat-windows-x64.zip
@@ -154,7 +195,27 @@ jobs:
       - run: flutter pub get
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
-      - run: flutter build apk --release --target-platform android-arm64
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+          STRICT_BUILD_CONFIG: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
+        run: |
+          args=(--output ci.env.json)
+          if [ "$STRICT_BUILD_CONFIG" = "true" ]; then
+            args+=(
+              --require APP_NAME
+              --require K8S_NAMESPACE
+              --require API_BASE_URL
+              --require MATRIX_HOMESERVER
+            )
+          fi
+          python3 scripts/ci/write_flutter_env.py "${args[@]}"
+      - run: flutter build apk --release --target-platform android-arm64 --dart-define-from-file=ci.env.json
       - name: Normalize Android artifact name
         run: |
           set -euo pipefail

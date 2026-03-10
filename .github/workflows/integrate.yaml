@@ -69,7 +69,16 @@ jobs:
       - run: flutter pub get
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
-      - run: flutter build apk --debug --target-platform android-arm64
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
+      - run: flutter build apk --debug --target-platform android-arm64 --dart-define-from-file=ci.env.json
 
   build_debug_web:
     runs-on: ubuntu-latest
@@ -85,7 +94,16 @@ jobs:
       - run: flutter pub get
       - name: Prepare web
         run: ./scripts/prepare-web.sh
-      - run: flutter build web
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
+      - run: flutter build web --dart-define-from-file=ci.env.json
 
   build_debug_linux:
     strategy:
@@ -106,4 +124,13 @@ jobs:
           ./flutter/bin/flutter doctor
       - uses: moonrepo/setup-rust@v1
       - run: ./flutter/bin/flutter pub get
-      - run: ./flutter/bin/flutter build linux --target-platform linux-${{ matrix.arch }}
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
+      - run: ./flutter/bin/flutter build linux --target-platform linux-${{ matrix.arch }} --dart-define-from-file=ci.env.json

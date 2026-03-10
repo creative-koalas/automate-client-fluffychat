@@ -96,6 +96,9 @@ class AliyunPushService {
   /// 获取当前平台的 appSecret
   String get _appSecret => Platform.isIOS ? _iosAppSecret : _androidAppSecret;
 
+  bool get _hasSdkCredentials =>
+      _appKey.trim().isNotEmpty && _appSecret.trim().isNotEmpty;
+
   /// 获取设备 ID（推送 token）
   String? get deviceId => _deviceId;
 
@@ -116,6 +119,12 @@ class AliyunPushService {
 
     if (!Platform.isAndroid && !Platform.isIOS) {
       Logs().d('[AliyunPush] Not a mobile platform, skipping');
+      return false;
+    }
+
+    if (!_hasSdkCredentials) {
+      Logs().w('[AliyunPush] Missing SDK credentials, skipping initialization');
+      _audit('init skipped missing credentials');
       return false;
     }
 

@@ -31,8 +31,23 @@ jobs:
       - name: Prepare web
         run: ./scripts/prepare-web.sh
       - run: rm ./assets/vodozemac/.gitignore
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: |
+          python3 scripts/ci/write_flutter_env.py \
+            --output ci.env.json \
+            --require APP_NAME \
+            --require K8S_NAMESPACE \
+            --require API_BASE_URL \
+            --require MATRIX_HOMESERVER
       - name: Build Release Web
-        run: flutter build web --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps --base-href "/web/"
+        run: flutter build web --dart-define-from-file=ci.env.json --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps --base-href "/web/"
       - name: Create archive
         run: tar -czf fluffychat-web.tar.gz build/web/
       - name: Upload Web Build
@@ -97,7 +112,22 @@ jobs:
         run: ./scripts/prepare-android-release.sh
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
-      - run: flutter build apk --release --target-platform android-arm,android-arm64
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: |
+          python3 scripts/ci/write_flutter_env.py \
+            --output ci.env.json \
+            --require APP_NAME \
+            --require K8S_NAMESPACE \
+            --require API_BASE_URL \
+            --require MATRIX_HOMESERVER
+      - run: flutter build apk --release --target-platform android-arm,android-arm64 --dart-define-from-file=ci.env.json
       - name: Upload to release
         uses: actions/upload-release-asset@v1
         env:
@@ -127,7 +157,22 @@ jobs:
           ./flutter/bin/flutter doctor
       - uses: moonrepo/setup-rust@v1
       - run: ./flutter/bin/flutter pub get
-      - run: ./flutter/bin/flutter build linux --target-platform linux-${{ matrix.arch }}
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: |
+          python3 scripts/ci/write_flutter_env.py \
+            --output ci.env.json \
+            --require APP_NAME \
+            --require K8S_NAMESPACE \
+            --require API_BASE_URL \
+            --require MATRIX_HOMESERVER
+      - run: ./flutter/bin/flutter build linux --target-platform linux-${{ matrix.arch }} --dart-define-from-file=ci.env.json
       - name: Create archive
         run: tar -czf fluffychat-linux-${{ matrix.arch }}.tar.gz -C build/linux/${{ matrix.arch }}/release/bundle/ .
       - name: Upload to release
@@ -175,8 +220,23 @@ jobs:
         run: ./scripts/prepare-android-release.sh
       - name: Ensure Android NDK
         run: bash ./scripts/ci/ensure_android_ndk.sh
+      - name: Generate Flutter build env
+        env:
+          APP_NAME: ${{ vars.APP_NAME }}
+          APP_ID_SUFFIX: ${{ vars.APP_ID_SUFFIX }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER }}
+          CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL }}
+        run: |
+          python3 scripts/ci/write_flutter_env.py \
+            --output ci.env.json \
+            --require APP_NAME \
+            --require K8S_NAMESPACE \
+            --require API_BASE_URL \
+            --require MATRIX_HOMESERVER
       - name: Build Android Release
-        run: flutter build appbundle --target-platform android-arm,android-arm64
+        run: flutter build appbundle --target-platform android-arm,android-arm64 --dart-define-from-file=ci.env.json
       - name: Get Tag Name
         id: tag_name
         run: echo "::set-output name=tag::$(echo ${GITHUB_REF#refs/tags/})"
