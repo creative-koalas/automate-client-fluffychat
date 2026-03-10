@@ -77,6 +77,10 @@ jobs:
           API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
           MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
           CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
+          PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
+          PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
+          PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
         run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
       - run: flutter build apk --debug --target-platform android-arm64 --dart-define-from-file=ci.env.json
 
@@ -102,6 +106,10 @@ jobs:
           API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
           MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
           CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
+          PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
+          PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
+          PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
         run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
       - run: flutter build web --dart-define-from-file=ci.env.json
 
@@ -132,5 +140,9 @@ jobs:
           API_BASE_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || secrets.API_BASE_URL }}
           MATRIX_HOMESERVER: ${{ vars.MATRIX_HOMESERVER != '' && vars.MATRIX_HOMESERVER || secrets.MATRIX_HOMESERVER }}
           CHATBOT_BASE_URL: ${{ vars.CHATBOT_BASE_URL != '' && vars.CHATBOT_BASE_URL || secrets.CHATBOT_BASE_URL }}
+          PUSH_ANDROID_APP_KEY: ${{ vars.PUSH_ANDROID_APP_KEY != '' && vars.PUSH_ANDROID_APP_KEY || secrets.PUSH_ANDROID_APP_KEY }}
+          PUSH_ANDROID_APP_SECRET: ${{ vars.PUSH_ANDROID_APP_SECRET != '' && vars.PUSH_ANDROID_APP_SECRET || secrets.PUSH_ANDROID_APP_SECRET }}
+          PUSH_IOS_APP_KEY: ${{ vars.PUSH_IOS_APP_KEY != '' && vars.PUSH_IOS_APP_KEY || secrets.PUSH_IOS_APP_KEY }}
+          PUSH_IOS_APP_SECRET: ${{ vars.PUSH_IOS_APP_SECRET != '' && vars.PUSH_IOS_APP_SECRET || secrets.PUSH_IOS_APP_SECRET }}
         run: python3 scripts/ci/write_flutter_env.py --output ci.env.json
       - run: ./flutter/bin/flutter build linux --target-platform linux-${{ matrix.arch }} --dart-define-from-file=ci.env.json
