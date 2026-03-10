@@ -58,11 +58,13 @@ class EmployeesTabState extends State<EmployeesTab>
 
   // 轮询定时器：用于检测员工 isReady 状态变化
   Timer? _readyPollingTimer;
-  static const Duration _pollingInterval = Duration(seconds: 15);
+  static const Duration _onboardingPollingInterval = Duration(seconds: 2);
 
   // 移动端刷新：进入页面/回到前台时主动刷新，并开启固定轮询
   Timer? _mobilePollingTimer;
-  static const Duration _mobilePollingInterval = Duration(seconds: 15);
+  static const Duration _mobilePollingIntervalNormal = Duration(seconds: 15);
+  static const Duration _mobilePollingIntervalOnboarding = Duration(seconds: 2);
+  Duration _currentMobilePollingInterval = _mobilePollingIntervalNormal;
   bool _isTabVisible = false;
   bool _isAppInForeground = true;
 
@@ -257,6 +259,8 @@ class EmployeesTabState extends State<EmployeesTab>
 
   /// 检查是否有员工处于 isReady=false 状态，决定是否启动轮询
   void _checkAndUpdatePolling() {
+    final hasOnboardingEmployees = _hasOnboardingEmployeesForPolling();
+
     // 移动端使用固定轮询，不启用 isReady 轮询
     if (_isMobileRealtimeEnabled) {
       if (_isTabVisible && _isAppInForeground) {
@@ -268,14 +272,22 @@ class EmployeesTabState extends State<EmployeesTab>
       return;
     }
 
-    final hasUnreadyEmployees =
-        _pendingEmployeesById.isNotEmpty || _employees.any((e) => !e.isReady);
-
-    if (hasUnreadyEmployees) {
+    if (hasOnboardingEmployees) {
       _startReadyPolling();
     } else {
       _stopReadyPolling();
     }
+  }
+
+  bool _hasOnboardingEmployeesForPolling() {
+    if (_employees.any((e) => !e.isReady)) {
+      return true;
+    }
+    if (_pendingEmployeesById.isEmpty) {
+      return false;
+    }
+    final loadedIds = _employees.map((e) => e.agentId).toSet();
+    return _pendingEmployeesById.keys.any((id) => !loadedIds.contains(id));
   }
 
   /// 启动轮询定时器（如果尚未启动）
@@ -284,7 +296,7 @@ class EmployeesTabState extends State<EmployeesTab>
       return; // 已在轮询中
     }
 
-    _readyPollingTimer = Timer.periodic(_pollingInterval, (_) {
+    _readyPollingTimer = Timer.periodic(_onboardingPollingInterval, (_) {
       if (mounted) {
         _refreshSilently();
       }
@@ -355,11 +367,18 @@ class EmployeesTabState extends State<EmployeesTab>
     if (!_isMobileRealtimeEnabled || !_isTabVisible || !_isAppInForeground) {
       return;
     }
+    final targetInterval = _hasOnboardingEmployeesForPolling()
+        ? _mobilePollingIntervalOnboarding
+        : _mobilePollingIntervalNormal;
     if (_mobilePollingTimer != null && _mobilePollingTimer!.isActive) {
-      return;
+      if (_currentMobilePollingInterval == targetInterval) {
+        return;
+      }
+      _mobilePollingTimer?.cancel();
+      _mobilePollingTimer = null;
     }
-
-    _mobilePollingTimer = Timer.periodic(_mobilePollingInterval, (_) {
+    _currentMobilePollingInterval = targetInterval;
+    _mobilePollingTimer = Timer.periodic(targetInterval, (_) {
       if (!mounted || !_isTabVisible || !_isAppInForeground) return;
       unawaited(_refreshOnEnter());
     });
@@ -368,6 +387,7 @@ class EmployeesTabState extends State<EmployeesTab>
   void _stopMobilePolling() {
     _mobilePollingTimer?.cancel();
     _mobilePollingTimer = null;
+    _currentMobilePollingInterval = _mobilePollingIntervalNormal;
   }
 
   /// 进入员工页时的主动刷新（不展示 loading 骨架）
@@ -1000,6 +1020,7 @@ class EmployeesTabState extends State<EmployeesTab>
                               }
                             },
                             child: EmployeeCard(
+                              key: ValueKey(employee.agentId),
                               employee: employee,
                               isOffboarding: isDeleting,
                               onTap: (isDeleting || isPendingPlaceholder)
@@ -1080,6 +1101,7 @@ class EmployeesTabState extends State<EmployeesTab>
                       }
                     },
                     child: EmployeeCard(
+                      key: ValueKey(employee.agentId),
                       employee: employee,
                       isOffboarding: isDeleting,
                       onTap: (isDeleting || isPendingPlaceholder)
