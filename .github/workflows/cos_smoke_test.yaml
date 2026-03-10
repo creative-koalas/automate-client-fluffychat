@@ -1,0 +1,52 @@
+name: COS Smoke Upload
+
+on:
+  workflow_dispatch:
+
+env:
+  COS_BUCKET: psygo-1317773537
+  COS_REGION: ap-beijing
+
+jobs:
+  upload_smoke_file:
+    name: Upload Small File To COS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Create and upload a small file
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${COS_SECRET_ID:-}" ] || [ -z "${COS_SECRET_KEY:-}" ]; then
+            echo "Missing required secrets: COS_SECRET_ID / COS_SECRET_KEY"
+            exit 1
+          fi
+
+          mkdir -p smoke
+          file_name="psygo-cos-smoke-r${GITHUB_RUN_NUMBER}-$(date -u +%Y%m%dT%H%M%SZ).txt"
+          file_path="smoke/${file_name}"
+
+          {
+            echo "repo=${GITHUB_REPOSITORY}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_number=${GITHUB_RUN_NUMBER}"
+            echo "sha=${GITHUB_SHA}"
+            echo "generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            head -c 4096 /dev/urandom | base64
+          } > "$file_path"
+
+          object_key="smoke/github-actions/${file_name}"
+          file_size_bytes="$(wc -c < "$file_path" | tr -d '[:space:]')"
+          echo "Uploading ${file_name} (${file_size_bytes} bytes) -> cos://${COS_BUCKET}/${object_key}"
+
+          python3 scripts/ci/cos_upload.py \
+            --secret-id "$COS_SECRET_ID" \
+            --secret-key "$COS_SECRET_KEY" \
+            --bucket "$COS_BUCKET" \
+            --region "$COS_REGION" \
+            --file "$file_path" \
+            --object-key "$object_key" \
+            --timeout 120
