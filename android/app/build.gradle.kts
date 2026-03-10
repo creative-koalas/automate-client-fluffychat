@@ -90,7 +90,7 @@ android {
     // 从 dart-define 读取包名后缀（prod 为空，test 为 _test，dev 为 _dev）
     val appIdSuffix = getDartDefine("APP_ID_SUFFIX") ?: ""
     // 从 dart-define 读取 app 名称
-    val appName = getDartDefine("APP_NAME") ?: "Psygo"
+    val appName = getDartDefine("APP_NAME") ?: "PsyGo"
     val vivoAppId = getDartDefine("VIVO_APP_ID") ?: ""
     val vivoApiKey = getDartDefine("VIVO_API_KEY") ?: ""
     val xiaomiAppId = getDartDefine("XIAOMI_APP_ID") ?: ""

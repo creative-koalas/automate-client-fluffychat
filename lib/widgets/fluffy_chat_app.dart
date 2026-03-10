@@ -16,6 +16,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/post_login_navigation.dart';
 import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/app_lock.dart';
@@ -60,8 +61,7 @@ class PsygoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ThemeBuilder(
       builder: (context, themeMode, primaryColor) => MaterialApp.router(
-        title: AppSettings.applicationName.value,
-        debugShowCheckedModeBanner: false,
+        title: 'PsyGo',
         themeMode: themeMode,
         theme: FluffyThemes.buildTheme(context, Brightness.light, primaryColor),
         darkTheme:
@@ -142,8 +142,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   int _resumeRetryCount =
       0; // Track resume retry attempts to avoid infinite loops
   static const int _maxResumeRetries = 3; // Max retries on resume
-  bool _suppressResumeAutoRetry =
-      false; // Stop auto retry for persistent Matrix init errors
   bool _authCheckInProgress = false;
   bool _authCheckQueued = false;
   static const Set<String> _oneClickFallbackCodes = {
@@ -168,16 +166,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _isLoggingOut = false; // 防止登出过程中重复触发一键登录
   bool _pendingOneClickLogin = false; // 延迟触发一键登录（等待 app 回到前台）
   bool _forceManualLogin = false; // 一键登录不可用时，直接进入手动登录入口
+  bool _hasResolvedPostLoginDestination = false;
+  bool _isResolvingPostLoginDestination = false;
 
   // Sync error tracking
   StreamSubscription? _syncStatusSubscription;
   String? _syncMonitoringClientName;
   int _consecutiveSyncErrors = 0;
   static const int _maxConsecutiveSyncErrors = 5; // 连续5次同步失败后登出
-  Timer? _authStateRecheckTimer;
-  int _matrixReadyWaitCount = 0;
-  static const int _maxMatrixReadyWaitCount = 6; // 6 * 500ms = 3s
-  bool _matrixRecoveryInProgress = false;
 
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
@@ -192,8 +188,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _authStateRecheckTimer?.cancel();
-    _authStateRecheckTimer = null;
     // 取消同步状态监听
     _syncStatusSubscription?.cancel();
     _syncMonitoringClientName = null;
@@ -204,19 +198,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     AppUpdateService.stopBackgroundCheck();
     AgreementCheckService.stopBackgroundCheck();
     super.dispose();
-  }
-
-  void _scheduleAuthStateRecheck(String reason) {
-    if (_authStateRecheckTimer?.isActive ?? false) {
-      return;
-    }
-    debugPrint('[AuthGate] Scheduling auth recheck: $reason');
-    _authStateRecheckTimer = Timer(const Duration(milliseconds: 500), () {
-      _authStateRecheckTimer = null;
-      if (mounted) {
-        _onAuthStateChanged();
-      }
-    });
   }
 
   /// 认证状态变化回调
@@ -230,19 +211,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       _forceManualLogin = false;
     }
 
-    // 在错误/手动登录状态下，未登录时不做自动轮询，避免日志风暴。
-    // 但如果已经登录（例如手动登录刚完成），必须继续执行后续逻辑，
-    // 否则 _state 会卡在 needsLogin，移动端会一直显示加载页。
-    if ((_state == _AuthState.error || _state == _AuthState.needsLogin) &&
-        !auth.isLoggedIn) {
-      return;
-    }
-
     // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
-      debugPrint('[AuthGate] User logged out via auth state change, clearing all auth state');
-      _matrixReadyWaitCount = 0;
-      _matrixRecoveryInProgress = false;
+      debugPrint(
+          '[AuthGate] User logged out via auth state change, clearing all auth state');
 
       // 取消同步状态监听
       _syncStatusSubscription?.cancel();
@@ -274,34 +246,21 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           debugPrint(
               '[AuthGate] User logged in with Matrix, updating state to authenticated');
           matrix.setActiveClient(loggedInClient);
-          _matrixReadyWaitCount = 0;
-          _matrixRecoveryInProgress = false;
           setState(() => _state = _AuthState.authenticated);
-          _authStateRecheckTimer?.cancel();
-          _authStateRecheckTimer = null;
           _startAgreementCheckService();
           // 启动同步状态监听，检测持续连接失败
           _startSyncStatusMonitoring(loggedInClient);
+          unawaited(_ensurePostLoginDestination());
         } else {
-          _matrixReadyWaitCount++;
-          if (_matrixReadyWaitCount >= _maxMatrixReadyWaitCount &&
-              !_matrixRecoveryInProgress) {
-            _matrixRecoveryInProgress = true;
-            _matrixReadyWaitCount = 0;
-            debugPrint('[AuthGate] Matrix still not ready after waiting, triggering recovery login');
-            unawaited(() async {
-              try {
-                await _loginMatrixAndProceed();
-              } finally {
-                _matrixRecoveryInProgress = false;
-              }
-            }());
-          }
-          _scheduleAuthStateRecheck('Psygo logged in but Matrix not ready yet');
+          // Matrix 还没登录完成，稍后再检查
+          debugPrint(
+              '[AuthGate] PsyGo logged in but Matrix not yet, will check again');
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) _onAuthStateChanged();
+          });
         }
       } catch (e) {
         debugPrint('[AuthGate] Could not check Matrix state: $e');
-        _scheduleAuthStateRecheck('Matrix state unavailable');
       }
     }
   }
@@ -422,10 +381,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // iOS FIX: Handle permission approval during auth check
       // When user slowly approves network permissions, SDK initialization may timeout
       // Auto-retry when app resumes after permission approval (with retry limit)
-      if (_state == _AuthState.error && _suppressResumeAutoRetry) {
-        debugPrint('[AuthGate] Auto retry suppressed for current error, waiting for manual action');
-        return;
-      }
       if (_state == _AuthState.error && _resumeRetryCount < _maxResumeRetries) {
         debugPrint(
             '[AuthGate] In error state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)');
@@ -528,13 +483,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // On mobile only, directly trigger one-click login
       if (PlatformInfos.isMobile && !_hasTriedAuth) {
-        if (PlatformInfos.isIOSSimulator) {
-          debugPrint('[AuthGate] iOS simulator detected, skipping one-click login and using manual login');
-          _forceManualLogin = true;
-          setState(() => _state = _AuthState.needsLogin);
-          _redirectToManualLoginPage();
-          return;
-        }
         _hasTriedAuth = true;
         await _performDirectLogin();
       } else {
@@ -568,6 +516,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
         // 启动协议检查后台服务
         _startAgreementCheckService();
+        await _ensurePostLoginDestination();
         return;
       }
 
@@ -599,6 +548,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           if (PlatformInfos.isMobile) {
             unawaited(matrix.ensureAliyunPushRegistered(matrix.client));
           }
+          await _ensurePostLoginDestination();
           return;
         }
 
@@ -646,13 +596,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // On mobile only, directly trigger one-click login
     if (!_hasTriedAuth) {
-      if (PlatformInfos.isIOSSimulator) {
-        debugPrint('[AuthGate] iOS simulator detected, skipping one-click login and using manual login');
-        _forceManualLogin = true;
-        setState(() => _state = _AuthState.needsLogin);
-        _redirectToManualLoginPage();
-        return;
-      }
       _hasTriedAuth = true;
       await _performDirectLogin();
     } else {
@@ -666,18 +609,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // SDK 授权页会直接弹出覆盖当前界面
     _errorMessage = null;
 
-    if (_secretKey.isEmpty) {
-      debugPrint('[AuthGate] Missing ALIYUN_SECRET_KEY, cannot start one-click login');
-      setState(() {
-        _state = _AuthState.error;
-        _errorMessage = '未配置 ALIYUN_SECRET_KEY，请检查 env.local.json';
-      });
-      return;
-    }
-
     try {
       debugPrint('[AuthGate] Starting one-click login...');
-      debugPrint('[AuthGate] Aliyun secret key length: ${_secretKey.length}');
 
       // 先关闭可能存在的授权页，避免 "授权页已存在" 错误
       await OneClickLoginService.quitLoginPage();
@@ -784,13 +717,34 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (error.contains('预取号失败')) {
       return l10n.authOneClickUnsupportedNetworkHint;
     }
-    if (error.contains('环境检查失败')) {
-      return '当前环境不支持一键登录\n\n请检查：\n- 是否插入 SIM 卡\n- 是否使用运营商网络\n- 是否允许网络权限\n\n如仍无法使用，请联系管理员确认阿里云配置';
-    }
     if (error.contains('SDK初始化失败')) {
       return l10n.authOneClickInitFailedHint;
     }
     return l10n.authLoginFailedRetryLater;
+  }
+
+  Future<void> _ensurePostLoginDestination() async {
+    if (_hasResolvedPostLoginDestination || _isResolvingPostLoginDestination) {
+      return;
+    }
+    _isResolvingPostLoginDestination = true;
+    try {
+      final destination = await resolvePostLoginDestination();
+      if (!mounted) return;
+      final router = PsygoApp.router;
+      final currentPath = router.routeInformationProvider.value.uri.path;
+      debugPrint(
+        '[AuthGate] Post-login destination resolved: $destination, current: $currentPath',
+      );
+      if (currentPath != destination) {
+        router.go(destination);
+      }
+      _hasResolvedPostLoginDestination = true;
+    } catch (e) {
+      debugPrint('[AuthGate] Failed to resolve post-login destination: $e');
+    } finally {
+      _isResolvingPostLoginDestination = false;
+    }
   }
 
   Future<void> _loginMatrixAndProceed() async {
@@ -813,6 +767,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     try {
       final matrix = Matrix.of(context);
+
       // 使用用户专属 client。登录链路优先复用内存对象，避免重复 initWithRestore。
       final client = await ClientManager.getOrCreateLoginClientForUser(
         matrixUserId,
@@ -891,15 +846,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           unawaited(matrix.ensureAliyunPushRegistered(client));
         }
 
-        // Navigate to main page after successful login
+        // Navigate to post-login destination after successful login.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            final router = PsygoApp.router;
-            if (router.routerDelegate.currentConfiguration.fullPath !=
-                '/rooms') {
-              router.go('/rooms');
-            }
-          }
+          unawaited(_ensurePostLoginDestination());
         });
 
         if (PlatformInfos.isMobile) {
@@ -939,14 +888,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         unawaited(matrix.ensureAliyunPushRegistered(client));
       }
 
-      // Navigate to main page if not already there
+      // Navigate to post-login destination if not already there.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          final router = PsygoApp.router;
-          if (router.routerDelegate.currentConfiguration.fullPath != '/rooms') {
-            router.go('/rooms');
-          }
-        }
+        unawaited(_ensurePostLoginDestination());
       });
 
       if (PlatformInfos.isMobile) {
@@ -975,9 +919,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           errorStr.contains('Connection refused') ||
           errorStr.contains('SocketException')) {
         debugPrint('[AuthGate] Matrix encryption/network error');
-        _suppressResumeAutoRetry = true;
-        _authStateRecheckTimer?.cancel();
-        _authStateRecheckTimer = null;
 
         setState(() {
           _state = _AuthState.error;
@@ -1025,6 +966,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // Web and Desktop: redirect to /login-signup for manual login options
+    _hasResolvedPostLoginDestination = false;
+    _isResolvingPostLoginDestination = false;
     setState(() => _state = _AuthState.needsLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -1232,12 +1175,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 重置 AuthGate 状态
+    _hasResolvedPostLoginDestination = false;
+    _isResolvingPostLoginDestination = false;
     setState(() {
       _state = _AuthState.checking;
       _hasTriedAuth = false; // 允许一键登录重新触发
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
-      _suppressResumeAutoRetry = false;
     });
 
     // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
@@ -1322,6 +1266,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 重置 AuthGate 状态
+    _hasResolvedPostLoginDestination = false;
+    _isResolvingPostLoginDestination = false;
     setState(() {
       // PC端/Web端：设置为 needsLogin，显示登录页面
       // 移动端：设置为 checking，等待一键登录
@@ -1330,7 +1276,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
-      _suppressResumeAutoRetry = false;
     });
 
     // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
@@ -1359,7 +1304,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   Widget build(BuildContext context) {
     // watch auth state 以便在状态变化时重建 UI
     // 实际的登出逻辑在 _onAuthStateChanged 中处理
-    final auth = context.watch<PsygoAuthState>();
+    context.watch<PsygoAuthState>();
     final l10n = L10n.of(context);
 
     switch (_state) {
@@ -1384,7 +1329,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // 移动端：需要登录时显示加载界面，等待一键登录 SDK 弹出
         // 这样可以避免短暂显示聊天列表后再弹出登录页
         if (PlatformInfos.isMobile) {
-          if (_forceManualLogin || auth.isLoggedIn) {
+          if (_forceManualLogin) {
             return widget.child ?? const SizedBox.shrink();
           }
           return _buildLoadingScreen(l10n.authPreparingLogin);
@@ -1645,7 +1590,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                                 _hasTriedAuth = false;
                                 _hasRetriedMatrixLogin = false;
                                 _resumeRetryCount = 0;
-                                _suppressResumeAutoRetry = false;
                               });
                               _checkAuthStateSafe();
                             },
@@ -1675,7 +1619,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                               _hasTriedAuth = false;
                               _hasRetriedMatrixLogin = false;
                               _resumeRetryCount = 0;
-                              _suppressResumeAutoRetry = false;
                             });
                             _checkAuthStateSafe();
                           },
@@ -1738,7 +1681,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                         _hasTriedAuth = false;
                         _hasRetriedMatrixLogin = false;
                         _resumeRetryCount = 0; // Reset retry counter
-                        _suppressResumeAutoRetry = false;
                       });
                       _checkAuthStateSafe();
                     },
@@ -1765,7 +1707,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                           _hasTriedAuth = false;
                           _hasRetriedMatrixLogin = false;
                           _resumeRetryCount = 0; // Reset retry counter
-                          _suppressResumeAutoRetry = false;
                         });
                         _checkAuthStateSafe();
                       },

@@ -268,6 +268,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      showDragHandle: false,
       builder: (context) => Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

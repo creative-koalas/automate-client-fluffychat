@@ -88,6 +88,7 @@ dependencies:
   universal_html: ^2.3.0
   url_launcher: ^6.3.2
   webview_flutter: ^4.10.0  # 协议页面 WebView 展示
+  webview_windows: ^0.4.0  # Windows 内嵌 WebView
   open_file: ^3.5.10
   video_compress: ^3.1.4
   video_player: ^2.10.1
@@ -123,22 +124,20 @@ flutter_native_splash:
 
 flutter_launcher_icons:
   android: true
-  ios: true
-  remove_alpha_ios: true
-  background_color_ios: "#ffffff"
-  image_path_ios: "assets/logo_macos.png"
+  ios: false
   macos:
     generate: true
-    image_path: "assets/logo_macos.png"
-  image_path: "assets/logo_opaque_white_bg.png"
+    image_path: "assets/logo.png"
+  image_path_android: "assets/logo_transparent.png"
+  image_path: "assets/logo.png"
   adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/logo.png"
+  adaptive_icon_foreground: "assets/logo_transparent.png"
 
 tobias:
   url_scheme: psygo
 
 msix_config:
-  display_name: Psygo
+  display_name: PsyGo
   publisher_display_name: 创意考拉
   identity_name: company.suite.flutterapp
   msix_version: 0.1.0.0

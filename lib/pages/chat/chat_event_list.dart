@@ -14,10 +14,12 @@ import 'package:psygo/utils/platform_infos.dart';
 
 class ChatEventList extends StatelessWidget {
   final ChatController controller;
+  final Widget? inlineTopWidget;
 
   const ChatEventList({
     super.key,
     required this.controller,
+    this.inlineTopWidget,
   });
 
   @override
@@ -36,12 +38,24 @@ class ChatEventList extends StatelessWidget {
 
     final horizontalPadding = PlatformInfos.isDesktop
         ? 16.0
-        : FluffyThemes.isColumnMode(context) ? 8.0 : 0.0;
+        : FluffyThemes.isColumnMode(context)
+            ? 8.0
+            : 0.0;
 
     final events = timeline.events.filterByVisibleInGui(
       threadId: controller.activeThreadId,
     );
     final animateInEventIndex = controller.animateInEventIndex;
+    String? mentionGuideAvatarEventId;
+    if (controller.isGroupMentionGuide &&
+        controller.chatRoomGuideStepIndex == 0) {
+      for (final event in events) {
+        if (event.senderId != controller.room.client.userID) {
+          mentionGuideAvatarEventId = event.eventId;
+          break;
+        }
+      }
+    }
 
     // create a map of eventId --> index to greatly improve performance of
     // ListView's findChildIndexCallback
@@ -54,138 +68,168 @@ class ChatEventList extends StatelessWidget {
         controller.room.client.applicationAccountConfig.wallpaperUrl != null;
 
     final listView = ListView.custom(
-        padding: EdgeInsets.only(
-          top: 16,
-          bottom: 8,
-          left: horizontalPadding,
-          right: horizontalPadding,
-        ),
-        reverse: true,
-        controller: controller.scrollController,
-        keyboardDismissBehavior: PlatformInfos.isIOS
-            ? ScrollViewKeyboardDismissBehavior.onDrag
-            : ScrollViewKeyboardDismissBehavior.manual,
-        childrenDelegate: SliverChildBuilderDelegate(
-          (BuildContext context, int i) {
-            // Footer to display typing indicator and read receipts:
-            if (i == 0) {
-              if (timeline.isRequestingFuture) {
-                return const Center(
-                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                );
-              }
-              if (timeline.canRequestFuture) {
-                return Center(
+      padding: EdgeInsets.only(
+        top: 16,
+        bottom: 8,
+        left: horizontalPadding,
+        right: horizontalPadding,
+      ),
+      reverse: true,
+      controller: controller.scrollController,
+      keyboardDismissBehavior: PlatformInfos.isIOS
+          ? ScrollViewKeyboardDismissBehavior.onDrag
+          : ScrollViewKeyboardDismissBehavior.manual,
+      childrenDelegate: SliverChildBuilderDelegate(
+        (BuildContext context, int i) {
+          // Footer to display typing indicator and read receipts:
+          if (i == 0) {
+            if (timeline.isRequestingFuture) {
+              return const Center(
+                child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+              );
+            }
+            final footerChildren = <Widget>[
+              SeenByRow(controller),
+              TypingIndicators(controller),
+            ];
+
+            if (timeline.canRequestFuture) {
+              footerChildren.add(
+                Center(
                   child: IconButton(
                     onPressed: controller.requestFuture,
                     icon: const Icon(Icons.refresh_outlined),
                   ),
-                );
-              }
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SeenByRow(controller),
-                  TypingIndicators(controller),
-                ],
+                ),
               );
             }
 
-            // Request history button or progress indicator:
-            if (i == events.length + 1) {
-              if (timeline.isRequestingHistory) {
-                return const Center(
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: footerChildren,
+            );
+          }
+
+          // Request history button or progress indicator:
+          if (i == events.length + 1) {
+            final historyChildren = <Widget>[
+              if (inlineTopWidget != null) inlineTopWidget!,
+            ];
+            if (timeline.isRequestingHistory) {
+              historyChildren.add(
+                const Center(
                   child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                );
-              }
-              if (timeline.canRequestHistory &&
-                  controller.activeThreadId == null) {
-                return Builder(
-                  builder: (context) {
-                    WidgetsBinding.instance
-                        .addPostFrameCallback(controller.requestHistory);
-                    return Center(
+                ),
+              );
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: historyChildren,
+              );
+            }
+            if (timeline.canRequestHistory &&
+                controller.activeThreadId == null) {
+              return Builder(
+                builder: (context) {
+                  WidgetsBinding.instance
+                      .addPostFrameCallback(controller.requestHistory);
+                  historyChildren.add(
+                    Center(
                       child: IconButton(
                         onPressed: controller.requestHistory,
                         icon: const Icon(Icons.refresh_outlined),
                       ),
-                    );
-                  },
-                );
-              }
+                    ),
+                  );
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: historyChildren,
+                  );
+                },
+              );
+            }
+            if (historyChildren.isEmpty) {
               return const SizedBox.shrink();
             }
-            i--;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: historyChildren,
+            );
+          }
+          i--;
 
-            // The message at this index:
-            final event = events[i];
-            final animateIn = animateInEventIndex != null &&
-                timeline.events.length > animateInEventIndex &&
-                event == timeline.events[animateInEventIndex];
+          // The message at this index:
+          final event = events[i];
+          final animateIn = animateInEventIndex != null &&
+              timeline.events.length > animateInEventIndex &&
+              event == timeline.events[animateInEventIndex];
 
-            final nextEvent = i + 1 < events.length ? events[i + 1] : null;
-            final previousEvent = i > 0 ? events[i - 1] : null;
+          final nextEvent = i + 1 < events.length ? events[i + 1] : null;
+          final previousEvent = i > 0 ? events[i - 1] : null;
 
-            // Collapsed state event
-            final canExpand = event.isCollapsedState &&
-                nextEvent?.isCollapsedState == true &&
-                previousEvent?.isCollapsedState != true;
-            final isCollapsed = event.isCollapsedState &&
-                previousEvent?.isCollapsedState == true &&
-                !controller.expandedEventIds.contains(event.eventId);
+          // Collapsed state event
+          final canExpand = event.isCollapsedState &&
+              nextEvent?.isCollapsedState == true &&
+              previousEvent?.isCollapsedState != true;
+          final isCollapsed = event.isCollapsedState &&
+              previousEvent?.isCollapsedState == true &&
+              !controller.expandedEventIds.contains(event.eventId);
 
-            return AutoScrollTag(
-              key: ValueKey(event.eventId),
-              index: i,
-              controller: controller.scrollController,
-              child: Message(
-                event,
-                animateIn: animateIn,
-                resetAnimateIn: () {
-                  controller.animateInEventIndex = null;
-                },
-                onSwipe: () => controller.replyAction(replyTo: event),
-                onInfoTab: controller.showEventInfo,
-                onMention: () => controller.sendController.text +=
-                    '${event.senderFromMemoryOrFallback.mention} ',
+          return AutoScrollTag(
+            key: ValueKey(event.eventId),
+            index: i,
+            controller: controller.scrollController,
+            child: Message(
+              event,
+              animateIn: animateIn,
+              resetAnimateIn: () {
+                controller.animateInEventIndex = null;
+              },
+              onSwipe: () => controller.replyAction(replyTo: event),
+              onInfoTab: controller.showEventInfo,
+                onMention: () => controller.insertMentionText(
+                  event.senderFromMemoryOrFallback.mention,
+                ),
+                avatarKey: mentionGuideAvatarEventId == event.eventId
+                    ? controller.mentionGuideKey
+                    : null,
+                onAvatarGuideTap: controller.handleGroupMentionGuideAvatarTap,
                 highlightMarker:
                     controller.scrollToEventIdMarker == event.eventId,
-                onSelect: controller.onSelectMessage,
-                scrollToEventId: (String eventId) =>
-                    controller.scrollToEventId(eventId),
-                longPressSelect: controller.selectedEvents.isNotEmpty,
-                selected: controller.selectedEvents
-                    .any((e) => e.eventId == event.eventId),
-                singleSelected:
-                    controller.selectedEvents.singleOrNull?.eventId ==
-                        event.eventId,
-                onEdit: () => controller.editSelectedEventAction(),
-                timeline: timeline,
-                displayReadMarker:
-                    i > 0 && controller.readMarkerEventId == event.eventId,
-                nextEvent: nextEvent,
-                previousEvent: previousEvent,
-                wallpaperMode: hasWallpaper,
-                scrollController: controller.scrollController,
-                colors: colors,
-                isCollapsed: isCollapsed,
-                enterThread: controller.activeThreadId == null
-                    ? controller.enterThread
-                    : null,
-                onExpand: canExpand
-                    ? () => controller.expandEventsFrom(
-                          event,
-                          !controller.expandedEventIds.contains(event.eventId),
-                        )
-                    : null,
-              ),
-            );
-          },
-          childCount: events.length + 2,
-          findChildIndexCallback: (key) =>
-              controller.findChildIndexCallback(key, thisEventsKeyMap),
-        ),
-      );
+              onSelect: controller.onSelectMessage,
+              scrollToEventId: (String eventId) =>
+                  controller.scrollToEventId(eventId),
+              longPressSelect: controller.selectedEvents.isNotEmpty,
+              selected: controller.selectedEvents
+                  .any((e) => e.eventId == event.eventId),
+              singleSelected: controller.selectedEvents.singleOrNull?.eventId ==
+                  event.eventId,
+              onEdit: () => controller.editSelectedEventAction(),
+              timeline: timeline,
+              displayReadMarker:
+                  i > 0 && controller.readMarkerEventId == event.eventId,
+              nextEvent: nextEvent,
+              previousEvent: previousEvent,
+              wallpaperMode: hasWallpaper,
+              scrollController: controller.scrollController,
+              colors: colors,
+              isCollapsed: isCollapsed,
+              enterThread: controller.activeThreadId == null
+                  ? controller.enterThread
+                  : null,
+              onExpand: canExpand
+                  ? () => controller.expandEventsFrom(
+                        event,
+                        !controller.expandedEventIds.contains(event.eventId),
+                      )
+                  : null,
+            ),
+          );
+        },
+        childCount: events.length + 2,
+        findChildIndexCallback: (key) =>
+            controller.findChildIndexCallback(key, thisEventsKeyMap),
+      ),
+    );
 
     return SelectionArea(
       // 自定义 contextMenuBuilder，添加空值检查避免 Flutter 框架 bug

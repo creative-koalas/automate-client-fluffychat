@@ -186,40 +186,6 @@ class _HireSuccessDialogState extends State<HireSuccessDialog>
                   ),
                 ],
 
-                // 入职中提示
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withAlpha(20),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.orange.withAlpha(50),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.orange.shade600,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        l10n.employeeOnboardingHint,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: Colors.orange.shade700,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
                 const SizedBox(height: 28),
 
                 // 操作按钮

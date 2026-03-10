@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 
 import 'package:collection/collection.dart';
 import 'package:desktop_notifications/desktop_notifications.dart';
@@ -24,7 +25,7 @@ abstract class ClientManager {
   static const String clientNamespace = 'com.psygo.store.clients';
 
   /// 将 Matrix 用户 ID 转换为合法的 clientName
-  /// 例如: @user:server.com -> Psygo_user_server.com
+  /// 例如: @user:server.com -> PsyGo_user_server.com
   static String userIdToClientName(String matrixUserId) {
     // 去掉 @ 符号，将 : 替换为 _
     final sanitized = matrixUserId
@@ -241,7 +242,7 @@ abstract class ClientManager {
       await NotificationsClient().notify(
         title,
         body: body,
-        appName: AppSettings.applicationName.value,
+        appName: 'PsyGo',
         hints: [
           NotificationHint.soundName('message-new-instant'),
         ],
@@ -250,8 +251,7 @@ abstract class ClientManager {
     }
 
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    final iconUri =
-        Platform.isWindows ? WindowsImage.getAssetUri('assets/logo.png') : null;
+    final iconUri = Platform.isWindows ? _windowsLogoUri() : null;
 
     await flutterLocalNotificationsPlugin.initialize(
       InitializationSettings(
@@ -259,7 +259,7 @@ abstract class ClientManager {
         iOS: const DarwinInitializationSettings(),
         windows: Platform.isWindows
             ? WindowsInitializationSettings(
-                appName: AppSettings.applicationName.value,
+                appName: 'PsyGo',
                 appUserModelId: 'com.psygo.app',
                 guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
                 iconPath: iconUri!.toFilePath(),
@@ -285,7 +285,7 @@ abstract class ClientManager {
                 images: [
                   WindowsImage(
                     iconUri!,
-                    altText: AppSettings.applicationName.value,
+                    altText: 'PsyGo',
                     placement: WindowsImagePlacement.appLogoOverride,
                   ),
                 ],
@@ -293,5 +293,16 @@ abstract class ClientManager {
             : null,
       ),
     );
+  }
+
+  static Uri _windowsLogoUri() {
+    final logoPath = path.join(
+      path.dirname(Platform.resolvedExecutable),
+      'data',
+      'flutter_assets',
+      'assets',
+      'logo.png',
+    );
+    return Uri.file(logoPath, windows: true);
   }
 }

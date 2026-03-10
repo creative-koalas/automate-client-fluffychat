@@ -67,23 +67,23 @@ class WindowService {
       if (Platform.isLinux) {
         try {
           await _systemTray.initSystemTray(
-            title: 'Psygo',
+            title: 'PsyGo',
             iconPath: iconPath,
-            toolTip: 'Psygo',
+            toolTip: 'PsyGo',
           );
         } catch (_) {
           iconPath = 'assets/logo_opaque.png';
           await _systemTray.initSystemTray(
-            title: 'Psygo',
+            title: 'PsyGo',
             iconPath: iconPath,
-            toolTip: 'Psygo',
+            toolTip: 'PsyGo',
           );
         }
       } else {
         await _systemTray.initSystemTray(
-          title: 'Psygo',
+          title: 'PsyGo',
           iconPath: iconPath,
-          toolTip: 'Psygo',
+          toolTip: 'PsyGo',
         );
       }
 
@@ -274,7 +274,7 @@ class WindowService {
     // 设置最小大小（在设置完窗口大小后再设置）
     await windowManager.setMinimumSize(mainWindowMinSize);
     await windowManager.center();
-    await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
 
     // 主窗口关闭时隐藏到托盘
     await setCloseToTray();
@@ -372,7 +372,8 @@ class WindowControlButtons extends StatefulWidget {
   State<WindowControlButtons> createState() => _WindowControlButtonsState();
 }
 
-class _WindowControlButtonsState extends State<WindowControlButtons> with WindowListener {
+class _WindowControlButtonsState extends State<WindowControlButtons>
+    with WindowListener {
   bool _isMaximized = false;
 
   @override
@@ -410,8 +411,12 @@ class _WindowControlButtonsState extends State<WindowControlButtons> with Window
     if (!PlatformInfos.isDesktop) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultIconColor = isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black.withValues(alpha: 0.5);
-    final defaultHoverColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final defaultIconColor = isDark
+        ? Colors.white.withValues(alpha: 0.7)
+        : Colors.black.withValues(alpha: 0.5);
+    final defaultHoverColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.05);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -435,7 +440,7 @@ class _WindowControlButtonsState extends State<WindowControlButtons> with Window
           iconColor: widget.iconColor ?? defaultIconColor,
           hoverColor: const Color(0xFFE81123),
           hoverIconColor: Colors.white,
-          onPressed: WindowService.hideToTray,  // 点击关闭时隐藏到托盘
+          onPressed: WindowService.hideToTray, // 点击关闭时隐藏到托盘
         ),
       ],
     );

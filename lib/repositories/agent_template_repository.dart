@@ -61,31 +61,21 @@ class AgentTemplateRepository {
   /// [userRules] 额外规则/个性化描述（可选）
   /// [avatarUrl] 头像 URL（可选，通常从模板继承）
   ///
-  /// 返回 [UnifiedCreateAgentResponse]，包含 agentId、matrixUserId 等信息
-  Future<UnifiedCreateAgentResponse> hireFromTemplate(
+  /// 返回 [UnifiedCreateAgentAcceptedResponse]，包含 operationId 等信息
+  Future<UnifiedCreateAgentAcceptedResponse> hireFromTemplate(
     int templateId,
     String name, {
     String? userRules,
     String? avatarUrl,
   }) async {
-    final accepted = await _apiClient.post<Map<String, dynamic>>(
-      '/api/agents/create-unified',
-      headers: {'Idempotency-Key': _newIdempotencyKey()},
-      body: UnifiedCreateAgentRequest(
+    return _submitCreateOperation(
+      UnifiedCreateAgentRequest(
         name: name,
         templateId: templateId,
         userRules: userRules,
         avatarUrl: avatarUrl,
-      ).toJson(),
-      fromJsonT: (data) =>
-          data is Map<String, dynamic> ? data : <String, dynamic>{},
+      ),
     );
-    final operationId =
-        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
-    if (operationId.isEmpty) {
-      throw ApiException(-1, 'Missing operation_id');
-    }
-    return _waitCreateOperation(operationId);
   }
 
   /// 定制创建 Agent（无模板）
@@ -93,28 +83,18 @@ class AgentTemplateRepository {
   /// [name] 员工名称
   /// [systemPrompt] 系统提示词（可选）
   ///
-  /// 返回 [UnifiedCreateAgentResponse]
-  Future<UnifiedCreateAgentResponse> createCustomAgent({
+  /// 返回 [UnifiedCreateAgentAcceptedResponse]
+  Future<UnifiedCreateAgentAcceptedResponse> createCustomAgent({
     required String name,
     String? systemPrompt,
   }) async {
-    final accepted = await _apiClient.post<Map<String, dynamic>>(
-      '/api/agents/create-unified',
-      headers: {'Idempotency-Key': _newIdempotencyKey()},
-      body: UnifiedCreateAgentRequest(
+    return _submitCreateOperation(
+      UnifiedCreateAgentRequest(
         name: name,
         systemPrompt: systemPrompt,
         // 不指定 templateId，后端会创建空白 Agent
-      ).toJson(),
-      fromJsonT: (data) =>
-          data is Map<String, dynamic> ? data : <String, dynamic>{},
+      ),
     );
-    final operationId =
-        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
-    if (operationId.isEmpty) {
-      throw ApiException(-1, 'Missing operation_id');
-    }
-    return _waitCreateOperation(operationId);
   }
 
   /// 定制创建 Agent（带插件）
@@ -124,31 +104,40 @@ class AgentTemplateRepository {
   /// [plugins] 插件配置列表（可选）
   /// [avatarUrl] 头像 URL（可选，DiceBear 等）
   ///
-  /// 返回 [UnifiedCreateAgentResponse]
-  Future<UnifiedCreateAgentResponse> createCustomAgentWithPlugins({
+  /// 返回 [UnifiedCreateAgentAcceptedResponse]
+  Future<UnifiedCreateAgentAcceptedResponse> createCustomAgentWithPlugins({
     required String name,
     String? systemPrompt,
     List<PluginConfig>? plugins,
     String? avatarUrl,
   }) async {
-    final accepted = await _apiClient.post<Map<String, dynamic>>(
-      '/api/agents/create-unified',
-      headers: {'Idempotency-Key': _newIdempotencyKey()},
-      body: UnifiedCreateAgentRequest(
+    return _submitCreateOperation(
+      UnifiedCreateAgentRequest(
         name: name,
         systemPrompt: systemPrompt,
         plugins: plugins,
         avatarUrl: avatarUrl,
-      ).toJson(),
+      ),
+    );
+  }
+
+  Future<UnifiedCreateAgentAcceptedResponse> _submitCreateOperation(
+    UnifiedCreateAgentRequest request,
+  ) async {
+    final accepted = await _apiClient.post<Map<String, dynamic>>(
+      '/api/agents/create-unified',
+      headers: {'Idempotency-Key': _newIdempotencyKey()},
+      body: request.toJson(),
       fromJsonT: (data) =>
           data is Map<String, dynamic> ? data : <String, dynamic>{},
     );
-    final operationId =
-        (accepted.data?['operation_id'] as String?)?.trim() ?? '';
-    if (operationId.isEmpty) {
+    final operation = UnifiedCreateAgentAcceptedResponse.fromJson(
+      accepted.data ?? const <String, dynamic>{},
+    );
+    if (operation.operationId.trim().isEmpty) {
       throw ApiException(-1, 'Missing operation_id');
     }
-    return _waitCreateOperation(operationId);
+    return operation;
   }
 
   String _newIdempotencyKey() {
@@ -157,8 +146,9 @@ class AgentTemplateRepository {
     return '$ts-$rand';
   }
 
-  Future<UnifiedCreateAgentResponse> _waitCreateOperation(
-      String operationId) async {
+  Future<UnifiedCreateAgentResponse> waitCreateOperation(
+    String operationId,
+  ) async {
     final deadline = DateTime.now().add(const Duration(minutes: 12));
 
     while (DateTime.now().isBefore(deadline)) {
@@ -180,7 +170,9 @@ class AgentTemplateRepository {
       if (status == 'failed') {
         final error = (data['error'] as String?)?.trim();
         throw ApiException(
-            -1, error?.isNotEmpty == true ? error! : 'Operation failed');
+          -1,
+          error?.isNotEmpty == true ? error! : 'Operation failed',
+        );
       }
 
       await Future.delayed(const Duration(seconds: 1));

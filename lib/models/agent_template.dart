@@ -44,13 +44,13 @@ class AgentTemplate {
   factory AgentTemplate.fromJson(Map<String, dynamic> json) {
     // 解析 skill_tags，支持 List<String> 或 List<dynamic>
     final rawTags = json['skill_tags'];
-    List<String> parsedTags = [];
+    final parsedTags = <String>[];
     if (rawTags is List) {
-      parsedTags = rawTags.map((e) => e.toString()).toList();
+      parsedTags.addAll(rawTags.map((e) => e.toString()));
     }
 
     // 解析 is_active，兼容 status 字段
-    bool isActive = true;
+    var isActive = true;
     if (json.containsKey('is_active')) {
       isActive = json['is_active'] as bool? ?? true;
     } else if (json.containsKey('status')) {
@@ -151,8 +151,7 @@ class UnifiedCreateAgentRequest {
       if (templateId != null) 'template_id': templateId,
       if (systemPrompt != null) 'system_prompt': systemPrompt,
       if (userRules != null) 'user_rules': userRules,
-      if (plugins != null)
-        'plugins': plugins!.map((p) => p.toJson()).toList(),
+      if (plugins != null) 'plugins': plugins!.map((p) => p.toJson()).toList(),
       if (apiKey != null) 'api_key': apiKey,
       if (llmProvider != null) 'llm_provider': llmProvider,
       if (llmModel != null) 'llm_model': llmModel,
@@ -176,6 +175,29 @@ class PluginConfig {
       'plugin_name': pluginName,
       if (config != null) 'config': config,
     };
+  }
+}
+
+/// 统一创建 Agent 接受响应（异步任务已受理）
+class UnifiedCreateAgentAcceptedResponse {
+  final String operationId;
+  final String agentId;
+  final String status;
+
+  const UnifiedCreateAgentAcceptedResponse({
+    required this.operationId,
+    required this.agentId,
+    required this.status,
+  });
+
+  factory UnifiedCreateAgentAcceptedResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return UnifiedCreateAgentAcceptedResponse(
+      operationId: (json['operation_id'] ?? '').toString(),
+      agentId: (json['agent_id'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+    );
   }
 }
 

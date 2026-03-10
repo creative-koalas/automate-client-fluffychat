@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Psygo" "\0"
-            VALUE "FileDescription", "Psygo" "\0"
+            VALUE "CompanyName", "PsyGo" "\0"
+            VALUE "FileDescription", "PsyGo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Psygo" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 Psygo. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Psygo.exe" "\0"
-            VALUE "ProductName", "Psygo" "\0"
+            VALUE "InternalName", "PsyGo" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 PsyGo. All rights reserved." "\0"
+            VALUE "OriginalFilename", "psygo.exe" "\0"
+            VALUE "ProductName", "PsyGo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

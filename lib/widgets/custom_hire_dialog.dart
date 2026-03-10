@@ -1,30 +1,27 @@
+import 'dart:async';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
-
 import 'package:psygo/l10n/l10n.dart';
-
 import '../core/api_client.dart';
-import '../models/plugin.dart';
 import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
-import '../repositories/plugin_repository.dart';
+import '../utils/platform_infos.dart';
 import '../utils/localized_exception_extension.dart';
-import 'custom_network_image.dart';
 import 'dicebear_avatar_picker.dart';
 
-/// 定制招聘向导（三步）
-/// 第1步：基本信息（名称）
-/// 第2步：选择插件（多选）
-/// 第3步：配置插件（如有需要）
+/// 招聘（单步创建）
 class CustomHireDialog extends StatefulWidget {
   final AgentTemplateRepository repository;
   final bool isDialog;
+  final bool showRecruitGuide;
+  final Future<void> Function()? onRecruitGuideCompleted;
 
   const CustomHireDialog({
     super.key,
     required this.repository,
     this.isDialog = false,
+    this.showRecruitGuide = false,
+    this.onRecruitGuideCompleted,
   });
 
   @override
@@ -32,20 +29,13 @@ class CustomHireDialog extends StatefulWidget {
 }
 
 class _CustomHireDialogState extends State<CustomHireDialog> {
-  // 当前步骤（0-基本信息, 1-选择插件, 2-配置插件）
-  int _currentStep = 0;
-
   // 表单控制器
   final TextEditingController _nameController = TextEditingController();
   final FocusNode _nameFocusNode = FocusNode();
-
-  // 插件相关
-  final PluginRepository _pluginRepository = PluginRepository();
-  List<Plugin> _availablePlugins = [];
-  Set<String> _selectedPlugins = {};
-  Map<String, Map<String, TextEditingController>> _pluginConfigControllers = {};
-  bool _isLoadingPlugins = false;
-  String? _pluginError;
+  final GlobalKey _guideStackKey = GlobalKey();
+  final GlobalKey _avatarGuideKey = GlobalKey();
+  final GlobalKey _nameGuideKey = GlobalKey();
+  final GlobalKey _createGuideKey = GlobalKey();
 
   // 提交状态
   bool _isSubmitting = false;
@@ -53,9 +43,29 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   // 头像 URL
   String? _avatarUrl;
+  late bool _showRecruitGuide;
+  bool _recruitGuideHandled = false;
+  int _recruitGuideStepIndex = 0;
 
   // 名称长度限制
   static const int _maxNameLength = 20;
+  static const double _guideBubbleWidth = 280;
+  static const double _guideBubbleHeight = 176;
+  static const double _guideHighlightPadding = 10;
+  static const double _guideScreenPadding = 16;
+  static const double _guideConnectorGap = 36;
+  static const List<String> _zhGuideNameSuggestions = [
+    '知夏',
+    '明远',
+    '安禾',
+    '若溪',
+  ];
+  static const List<String> _enGuideNameSuggestions = [
+    'Avery',
+    'Iris',
+    'Milo',
+    'Clara',
+  ];
 
   // 验证状态
   bool get _isNameValid =>
@@ -70,12 +80,20 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           .every((c) => '0123456789'.contains(c));
   bool get _isNameTooLong =>
       _nameController.text.trim().length > _maxNameLength;
+  bool get _isGuideNameSelectionLocked => _showRecruitGuide;
+
   @override
   void initState() {
     super.initState();
+    _showRecruitGuide = widget.showRecruitGuide;
     // 初始化随机头像
     _initRandomAvatar();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_showRecruitGuide) {
+        setState(() {});
+        return;
+      }
       _nameFocusNode.requestFocus();
     });
   }
@@ -107,233 +125,51 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   void dispose() {
     _nameController.dispose();
     _nameFocusNode.dispose();
-    _pluginRepository.dispose();
-    // 清理所有配置控制器
-    for (final controllers in _pluginConfigControllers.values) {
-      for (final controller in controllers.values) {
-        controller.dispose();
-      }
-    }
     super.dispose();
-  }
-
-  /// 加载可用插件列表
-  Future<void> _loadPlugins() async {
-    setState(() {
-      _isLoadingPlugins = true;
-      _pluginError = null;
-    });
-
-    try {
-      final plugins = await _pluginRepository.getPluginsWithStats();
-      if (mounted) {
-        setState(() {
-          _availablePlugins = plugins;
-          _isLoadingPlugins = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _pluginError = e.toLocalizedString(
-            context,
-            ExceptionContext.customHireEmployee,
-          );
-          _isLoadingPlugins = false;
-        });
-      }
-    }
-  }
-
-  /// 切换到下一步
-  void _nextStep() {
-    if (_currentStep == 0) {
-      // 验证名称
-      if (!_isNameValid) {
-        setState(() {
-          if (_nameController.text.trim().isEmpty) {
-            _error = L10n.of(context).employeeNameRequired;
-          } else if (_isNameNumericOnly) {
-            _error = L10n.of(context).employeeNameCannotBeNumeric;
-          } else if (_isNameTooLong) {
-            _error = L10n.of(context).employeeNameTooLong;
-          }
-        });
-        return;
-      }
-      setState(() => _error = null);
-      // 加载插件列表
-      _loadPlugins();
-    }
-
-    if (_currentStep < 2) {
-      setState(() => _currentStep++);
-    }
-  }
-
-  /// 返回上一步
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-        _error = null;
-      });
-    }
-  }
-
-  /// 切换插件选中状态
-  void _togglePlugin(Plugin plugin) {
-    setState(() {
-      if (_selectedPlugins.contains(plugin.name)) {
-        _selectedPlugins.remove(plugin.name);
-        // 清理配置控制器
-        _pluginConfigControllers[plugin.name]
-            ?.values
-            .forEach((c) => c.dispose());
-        _pluginConfigControllers.remove(plugin.name);
-      } else {
-        _selectedPlugins.add(plugin.name);
-        // 初始化配置控制器
-        if (_hasValidConfigSchema(plugin)) {
-          _initConfigControllers(plugin);
-        }
-      }
-    });
-  }
-
-  /// 检查插件是否有有效的配置 Schema
-  ///
-  /// 支持两种格式：
-  /// 1. 标准 JSON Schema: {"properties": {"field": {...}}}
-  /// 2. 简化格式（后端实际使用）: {"field": {"type": "string", ...}}
-  bool _hasValidConfigSchema(Plugin plugin) {
-    final schema = plugin.configSchema;
-    if (schema == null || schema.isEmpty) return false;
-
-    // 尝试标准 JSON Schema 格式
-    final properties = schema['properties'];
-    if (properties is Map && properties.isNotEmpty) return true;
-
-    // 后端简化格式：schema 本身就是字段定义
-    // 检查是否有任何字段定义（值是 Map 且包含 type 字段）
-    for (final entry in schema.entries) {
-      if (entry.value is Map && (entry.value as Map)['type'] != null) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /// 获取配置字段（兼容两种 schema 格式）
-  Map<String, dynamic> _getSchemaProperties(Map<String, dynamic> schema) {
-    // 标准 JSON Schema 格式
-    final properties = schema['properties'];
-    if (properties is Map && properties.isNotEmpty) {
-      return properties.cast<String, dynamic>();
-    }
-
-    // 后端简化格式：过滤出有效的字段定义
-    final result = <String, dynamic>{};
-    for (final entry in schema.entries) {
-      // 跳过 JSON Schema 元字段
-      if (['type', 'required', '\$schema', 'title', 'description']
-          .contains(entry.key)) {
-        continue;
-      }
-      if (entry.value is Map && (entry.value as Map)['type'] != null) {
-        result[entry.key] = entry.value;
-      }
-    }
-    return result;
-  }
-
-  /// 获取必填字段列表（兼容两种 schema 格式）
-  List<String> _getRequiredFields(
-      Map<String, dynamic> schema, Map<String, dynamic> properties) {
-    // 标准 JSON Schema 格式：顶层 required 数组
-    final required = schema['required'];
-    if (required is List) {
-      return required.cast<String>();
-    }
-
-    // 后端简化格式：每个字段内部的 required 属性
-    final result = <String>[];
-    for (final entry in properties.entries) {
-      final fieldSchema = entry.value as Map<String, dynamic>;
-      if (fieldSchema['required'] == true) {
-        result.add(entry.key);
-      }
-    }
-    return result;
-  }
-
-  /// 初始化插件配置控制器
-  void _initConfigControllers(Plugin plugin) {
-    final schema = plugin.configSchema;
-    if (schema == null) return;
-
-    final properties = _getSchemaProperties(schema);
-    final controllers = <String, TextEditingController>{};
-
-    for (final key in properties.keys) {
-      controllers[key] = TextEditingController();
-    }
-
-    _pluginConfigControllers[plugin.name] = controllers;
-  }
-
-  /// 获取需要配置的插件
-  List<Plugin> get _pluginsNeedingConfig {
-    return _availablePlugins
-        .where((p) =>
-            _selectedPlugins.contains(p.name) && _hasValidConfigSchema(p))
-        .toList();
-  }
-
-  /// 收集插件配置
-  Map<String, dynamic> _collectPluginConfig(String pluginName) {
-    final controllers = _pluginConfigControllers[pluginName];
-    if (controllers == null) return {};
-
-    final config = <String, dynamic>{};
-    for (final entry in controllers.entries) {
-      final value = entry.value.text.trim();
-      if (value.isNotEmpty) {
-        config[entry.key] = value;
-      }
-    }
-    return config;
   }
 
   /// 提交创建
   Future<void> _onSubmit() async {
     if (_isSubmitting) return;
 
+    // 直接创建前保留名称校验（与原步骤1一致）
+    if (!_isNameValid) {
+      setState(() {
+        if (_nameController.text.trim().isEmpty) {
+          _error = L10n.of(context).employeeNameRequired;
+        } else if (_isNameNumericOnly) {
+          _error = L10n.of(context).employeeNameCannotBeNumeric;
+        } else if (_isNameTooLong) {
+          _error = L10n.of(context).employeeNameTooLong;
+        }
+      });
+      _nameFocusNode.requestFocus();
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _error = null;
     });
 
-    // 构建插件配置列表
-    final plugins = _selectedPlugins.map((name) {
-      return PluginConfig(
-        pluginName: name,
-        config: _collectPluginConfig(name),
-      );
-    }).toList();
-
     // 调用创建接口（异步），先返回 UI 结果让入职动画接管
     try {
-      final response = await widget.repository.createCustomAgentWithPlugins(
+      final accepted = await widget.repository.createCustomAgentWithPlugins(
         name: _nameController.text.trim(),
-        plugins: plugins.isNotEmpty ? plugins : null,
+        plugins: null,
         avatarUrl: _avatarUrl,
       );
+      await _completeRecruitGuideIfNeeded();
       if (!mounted) return;
-      Navigator.of(context).pop(HireResult(
-        responseFuture: Future.value(response),
-        displayName: _nameController.text.trim(),
-      ));
+      Navigator.of(context).pop(
+        HireResult(
+          responseFuture:
+              widget.repository.waitCreateOperation(accepted.operationId),
+          displayName: _nameController.text.trim(),
+          agentId: accepted.agentId,
+          avatarUrl: _avatarUrl,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -348,74 +184,179 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       return error.message;
     }
     return error.toLocalizedString(
-        context, ExceptionContext.customHireEmployee);
+      context,
+      ExceptionContext.customHireEmployee,
+    );
+  }
+
+  Future<void> _completeRecruitGuideIfNeeded() async {
+    if (_recruitGuideHandled || !widget.showRecruitGuide) {
+      return;
+    }
+    _recruitGuideHandled = true;
+    await widget.onRecruitGuideCompleted?.call();
+  }
+
+  void _dismissRecruitGuide() {
+    if (!_showRecruitGuide) return;
+    _nameFocusNode.requestFocus();
+    setState(() {
+      _showRecruitGuide = false;
+    });
+    unawaited(_completeRecruitGuideIfNeeded());
+  }
+
+  void _skipRecruitGuide() {
+    _dismissRecruitGuide();
+  }
+
+  void _nextRecruitGuide() {
+    final steps = _guideSteps(L10n.of(context));
+    if (_recruitGuideStepIndex >= steps.length - 1) {
+      _dismissRecruitGuide();
+      return;
+    }
+    setState(() {
+      _recruitGuideStepIndex++;
+    });
+  }
+
+  Future<void> _handleGuidePrimaryAction(L10n l10n) async {
+    switch (_recruitGuideStepIndex) {
+      case 0:
+        _nextRecruitGuide();
+        return;
+      case 1:
+        if (!_isNameValid) {
+          setState(() {
+            if (_nameController.text.trim().isEmpty) {
+              _error = l10n.employeeNameRequired;
+            } else if (_isNameNumericOnly) {
+              _error = l10n.employeeNameCannotBeNumeric;
+            } else if (_isNameTooLong) {
+              _error = l10n.employeeNameTooLong;
+            }
+          });
+          _nameFocusNode.requestFocus();
+          return;
+        }
+        _nextRecruitGuide();
+        return;
+      default:
+        await _onSubmit();
+    }
+  }
+
+  bool get _isGuidePrimaryActionEnabled {
+    if (_isSubmitting) return false;
+    if (_recruitGuideStepIndex == 1) {
+      return _isNameValid;
+    }
+    return true;
+  }
+
+  void _handleNameChanged(String value) {
+    setState(() {
+      if (_error != null) {
+        _error = null;
+      }
+    });
+  }
+
+  List<String> _guideNameSuggestions() {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (languageCode == 'zh' || languageCode == 'yue') {
+      return _zhGuideNameSuggestions;
+    }
+    return _enGuideNameSuggestions;
+  }
+
+  void _selectGuideNameSuggestion(String name) {
+    _nameController.value = TextEditingValue(
+      text: name,
+      selection: TextSelection.collapsed(offset: name.length),
+    );
+    setState(() {
+      _error = null;
+    });
+
+    if (_showRecruitGuide && _recruitGuideStepIndex == 1) {
+      _nextRecruitGuide();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
-
-    if (widget.isDialog) {
-      return _buildDialogContent(theme, l10n);
-    }
-
-    return GestureDetector(
-      onTap: () {}, // 阻止点击传递到背景
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.3,
-        maxChildSize: 0.95,
-        snap: true,
-        snapSizes: const [0.9],
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              children: [
-                // 顶部拖拽指示器 - 可拖拽区域
-                Container(
-                  width: double.infinity,
-                  color: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurfaceVariant
-                            .withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(2),
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: AbsorbPointer(
+        absorbing: _isSubmitting,
+        child: widget.isDialog
+            ? _buildGuideFrame(_buildDialogContent(theme, l10n), theme, l10n)
+            : GestureDetector(
+                onTap: () {}, // 阻止点击传递到背景
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.9,
+                  minChildSize: 0.3,
+                  maxChildSize: 0.95,
+                  snap: true,
+                  snapSizes: const [0.9],
+                  builder: (context, scrollController) {
+                    return _buildGuideFrame(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(28),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            // 顶部拖拽指示器 - 可拖拽区域
+                            Container(
+                              width: double.infinity,
+                              color: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Center(
+                                child: Container(
+                                  width: 40,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.4),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // 标题栏
+                            _buildHeader(theme, l10n),
+                            // 内容区域
+                            Expanded(
+                              child: ListView(
+                                controller: scrollController,
+                                padding:
+                                    const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                                children: [
+                                  _buildContent(theme, l10n),
+                                ],
+                              ),
+                            ),
+                            // 错误提示
+                            if (_error != null) _buildErrorBanner(theme),
+                            // 底部按钮
+                            _buildActions(theme, l10n),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                      theme,
+                      l10n,
+                    );
+                  },
                 ),
-                // 标题栏
-                _buildHeader(theme, l10n),
-                // 步骤指示器
-                _buildStepIndicator(theme, l10n),
-                // 内容区域
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                    children: [
-                      _buildContent(theme, l10n),
-                    ],
-                  ),
-                ),
-                // 错误提示
-                if (_error != null) _buildErrorBanner(theme),
-                // 底部按钮
-                _buildActions(theme, l10n),
-              ],
-            ),
-          );
-        },
+              ),
       ),
     );
   }
@@ -433,15 +374,13 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         children: [
           // 标题栏
           _buildHeader(theme, l10n),
-          // 步骤指示器
-          _buildStepIndicator(theme, l10n),
           // 内容区域
           Flexible(
             child: ScrollConfiguration(
               behavior:
                   ScrollConfiguration.of(context).copyWith(scrollbars: false),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: _buildContent(theme, l10n),
               ),
             ),
@@ -457,7 +396,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   Widget _buildHeader(ThemeData theme, L10n l10n) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
       child: Row(
         children: [
           // 左侧图标
@@ -501,113 +440,414 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     );
   }
 
-  Widget _buildStepIndicator(ThemeData theme, L10n l10n) {
-    final steps = [
-      (l10n.basicInfo, Icons.badge_outlined),
-      (l10n.selectPlugins, Icons.extension_outlined),
-      (l10n.configurePlugins, Icons.tune_outlined),
-    ];
+  Widget _buildContent(ThemeData theme, L10n l10n) {
+    return _buildBasicInfoStep(theme, l10n);
+  }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Row(
-        children: List.generate(steps.length * 2 - 1, (index) {
-          if (index.isOdd) {
-            // 连接线
-            final stepIndex = index ~/ 2;
-            final isCompleted = stepIndex < _currentStep;
-            return Expanded(
-              child: Container(
-                height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: isCompleted
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(1),
+  Widget _buildGuideFrame(Widget child, ThemeData theme, L10n l10n) {
+    return Stack(
+      key: _guideStackKey,
+      children: [
+        child,
+        if (_showRecruitGuide)
+          Positioned.fill(
+            child: _buildRecruitGuideOverlay(theme, l10n),
+          ),
+      ],
+    );
+  }
+
+  List<_RecruitGuideStepData> _guideSteps(L10n l10n) {
+    return [
+      _RecruitGuideStepData(
+        targetKey: _avatarGuideKey,
+        title: l10n.recruitGuideStepAvatarTitle,
+        description: l10n.recruitGuideStepAvatarBody,
+      ),
+      _RecruitGuideStepData(
+        targetKey: _nameGuideKey,
+        title: l10n.recruitGuideStepNameTitle,
+        description: l10n.recruitGuideStepNameBody,
+      ),
+      _RecruitGuideStepData(
+        targetKey: _createGuideKey,
+        title: l10n.recruitGuideStepCreateTitle,
+        description: l10n.recruitGuideStepCreateBody,
+      ),
+    ];
+  }
+
+  Widget _buildRecruitGuideOverlay(ThemeData theme, L10n l10n) {
+    final steps = _guideSteps(l10n);
+    final currentStepIndex = _recruitGuideStepIndex.clamp(0, steps.length - 1);
+    final currentStep = steps[currentStepIndex];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final targetRect = _resolveGuideTargetRect(currentStep.targetKey);
+        if (targetRect == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _showRecruitGuide) {
+              setState(() {});
+            }
+          });
+          return const SizedBox.shrink();
+        }
+
+        final highlightRect = targetRect.inflate(_guideHighlightPadding);
+        final bubbleSize = _resolveGuideBubbleSize(
+          availableSize: Size(constraints.maxWidth, constraints.maxHeight),
+          theme: theme,
+          title: currentStep.title,
+          description: currentStep.description,
+        );
+        final bubbleLayout = _buildGuideBubbleLayout(
+          Size(constraints.maxWidth, constraints.maxHeight),
+          highlightRect,
+          bubbleSize,
+        );
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _RecruitGuideScrimPainter(
+                    highlightRect: highlightRect,
+                    color: Colors.black.withValues(alpha: 0.72),
+                  ),
                 ),
               ),
-            );
-          }
-
-          // 步骤圆点
-          final stepIndex = index ~/ 2;
-          final isCompleted = stepIndex < _currentStep;
-          final isCurrent = stepIndex == _currentStep;
-          final (label, icon) = steps[stepIndex];
-
-          return GestureDetector(
-            onTap: isCompleted
-                ? () => setState(() => _currentStep = stepIndex)
-                : null,
-            child: Column(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: isCurrent ? 44 : 36,
-                  height: isCurrent ? 44 : 36,
-                  decoration: BoxDecoration(
-                    color: isCompleted || isCurrent
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.surfaceContainerHighest,
-                    shape: BoxShape.circle,
-                    boxShadow: isCurrent
-                        ? [
-                            BoxShadow(
-                              color: theme.colorScheme.primary
-                                  .withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Center(
-                    child: isCompleted
-                        ? Icon(
-                            Icons.check_rounded,
-                            size: 18,
-                            color: theme.colorScheme.onPrimary,
-                          )
-                        : Icon(
-                            icon,
-                            size: isCurrent ? 22 : 18,
-                            color: isCurrent
-                                ? theme.colorScheme.onPrimary
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: isCurrent
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
             ),
-          );
-        }),
+            ..._buildGuideBlockerRegions(
+              Size(constraints.maxWidth, constraints.maxHeight),
+              highlightRect,
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _RecruitGuideConnectorPainter(
+                    start: bubbleLayout.connectorStart,
+                    end: bubbleLayout.connectorEnd,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: highlightRect.left,
+              top: highlightRect.top,
+              width: highlightRect.width,
+              height: highlightRect.height,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        blurRadius: 18,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: bubbleLayout.left,
+              top: bubbleLayout.top,
+              width: bubbleSize.width,
+              height: bubbleSize.height,
+              child: _buildGuideBubble(
+                theme: theme,
+                l10n: l10n,
+                title: currentStep.title,
+                description: currentStep.description,
+                currentStep: currentStepIndex + 1,
+                totalSteps: steps.length,
+                isLastStep: currentStepIndex == steps.length - 1,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildGuideBlockerRegions(Size size, Rect highlightRect) {
+    return [
+      Positioned(
+        left: 0,
+        top: 0,
+        right: 0,
+        height: max(0.0, highlightRect.top),
+        child: _buildGuideBlocker(),
+      ),
+      Positioned(
+        left: 0,
+        top: highlightRect.top,
+        width: max(0.0, highlightRect.left),
+        height: max(0.0, highlightRect.height),
+        child: _buildGuideBlocker(),
+      ),
+      Positioned(
+        left: highlightRect.right,
+        top: highlightRect.top,
+        width: max(0.0, size.width - highlightRect.right),
+        height: max(0.0, highlightRect.height),
+        child: _buildGuideBlocker(),
+      ),
+      Positioned(
+        left: 0,
+        top: highlightRect.bottom,
+        right: 0,
+        height: max(0.0, size.height - highlightRect.bottom),
+        child: _buildGuideBlocker(),
+      ),
+    ];
+  }
+
+  Widget _buildGuideBlocker() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {},
+      child: const SizedBox.expand(),
+    );
+  }
+
+  Rect? _resolveGuideTargetRect(GlobalKey targetKey) {
+    final targetContext = targetKey.currentContext;
+    final stackContext = _guideStackKey.currentContext;
+    if (targetContext == null || stackContext == null) {
+      return null;
+    }
+
+    final targetBox = targetContext.findRenderObject();
+    final stackBox = stackContext.findRenderObject();
+    if (targetBox is! RenderBox ||
+        stackBox is! RenderBox ||
+        !targetBox.attached ||
+        !stackBox.attached) {
+      return null;
+    }
+
+    final origin = targetBox.localToGlobal(Offset.zero, ancestor: stackBox);
+    return origin & targetBox.size;
+  }
+
+  _RecruitGuideBubbleLayout _buildGuideBubbleLayout(
+    Size size,
+    Rect highlightRect,
+    Size bubbleSize,
+  ) {
+    final bubbleWidth = bubbleSize.width;
+    final bubbleHeight = bubbleSize.height;
+    final spaceAbove =
+        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
+    final spaceBelow = size.height -
+        highlightRect.bottom -
+        _guideScreenPadding -
+        _guideConnectorGap;
+    final showAbove = spaceAbove >= bubbleHeight
+        ? true
+        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
+    final maxLeft = max(
+      _guideScreenPadding,
+      size.width - bubbleWidth - _guideScreenPadding,
+    );
+    final left = (highlightRect.center.dx - (bubbleWidth / 2))
+        .clamp(_guideScreenPadding, maxLeft)
+        .toDouble();
+    final top = showAbove
+        ? max(
+            _guideScreenPadding,
+            highlightRect.top - bubbleHeight - _guideConnectorGap,
+          ).toDouble()
+        : min(
+            size.height - bubbleHeight - _guideScreenPadding,
+            highlightRect.bottom + _guideConnectorGap,
+          ).toDouble();
+    final connectorX = highlightRect.center.dx
+        .clamp(left + 28, left + bubbleWidth - 28)
+        .toDouble();
+
+    return _RecruitGuideBubbleLayout(
+      left: left,
+      top: top,
+      connectorStart: Offset(
+        connectorX,
+        showAbove ? top + bubbleHeight : top,
+      ),
+      connectorEnd: Offset(
+        highlightRect.center.dx,
+        showAbove ? highlightRect.top : highlightRect.bottom,
       ),
     );
   }
 
-  Widget _buildContent(ThemeData theme, L10n l10n) {
-    switch (_currentStep) {
-      case 0:
-        return _buildBasicInfoStep(theme, l10n);
-      case 1:
-        return _buildPluginSelectionStep(theme, l10n);
-      case 2:
-        return _buildPluginConfigStep(theme, l10n);
-      default:
-        return const SizedBox.shrink();
-    }
+  Size _resolveGuideBubbleSize({
+    required Size availableSize,
+    required ThemeData theme,
+    required String title,
+    required String description,
+  }) {
+    final isDesktop = PlatformInfos.isDesktop;
+    final maxWidth =
+        max(240.0, availableSize.width - (_guideScreenPadding * 2));
+    final preferredWidth = isDesktop ? 500.0 : _guideBubbleWidth;
+    final width = min(preferredWidth, maxWidth);
+    const horizontalPadding = 36.0;
+    final titleWidth = max(120.0, width - horizontalPadding - 52.0);
+    final bodyWidth = max(120.0, width - horizontalPadding);
+    final titleHeight = _measureGuideTextHeight(
+      text: title,
+      maxWidth: titleWidth,
+      style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF111827),
+          ) ??
+          const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+    );
+    final bodyHeight = _measureGuideTextHeight(
+      text: description,
+      maxWidth: bodyWidth,
+      style: theme.textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFF374151),
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ) ??
+          const TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ),
+    );
+    final preferredHeight =
+        18.0 + max(titleHeight, 22.0) + 14.0 + bodyHeight + 16.0 + 52.0 + 16.0;
+    final minHeight = isDesktop ? 220.0 : _guideBubbleHeight;
+    final maxHeight = max(
+      minHeight,
+      min(
+        isDesktop ? 320.0 : 280.0,
+        availableSize.height - (_guideScreenPadding * 2),
+      ),
+    );
+    final height = preferredHeight.clamp(minHeight, maxHeight).toDouble();
+    return Size(width, height);
+  }
+
+  double _measureGuideTextHeight({
+    required String text,
+    required double maxWidth,
+    required TextStyle style,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: null,
+    )..layout(maxWidth: maxWidth);
+    return painter.height;
+  }
+
+  Widget _buildGuideBubble({
+    required ThemeData theme,
+    required L10n l10n,
+    required String title,
+    required String description,
+    required int currentStep,
+    required int totalSteps,
+    required bool isLastStep,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                Text(
+                  '$currentStep/$totalSteps',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: const Color(0xFF6B7280),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF374151),
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: _skipRecruitGuide,
+                  child: Text(
+                    l10n.skip,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: _isGuidePrimaryActionEnabled
+                      ? () => unawaited(_handleGuidePrimaryAction(l10n))
+                      : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: Text(
+                    isLastStep ? l10n.confirm : l10n.next,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// 第1步：基本信息
@@ -617,435 +857,105 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       children: [
         // 头像选择
         Center(
-          child: DiceBearAvatarPicker(
-            initialAvatarUrl: _avatarUrl,
-            onAvatarChanged: (url) {
-              setState(() {
-                _avatarUrl = url;
-              });
-            },
-            size: 88,
+          child: KeyedSubtree(
+            key: _avatarGuideKey,
+            child: DiceBearAvatarPicker(
+              initialAvatarUrl: _avatarUrl,
+              onAvatarChanged: (url) {
+                setState(() {
+                  _avatarUrl = url;
+                });
+              },
+              size: 88,
+            ),
           ),
         ),
         const SizedBox(height: 20),
 
         // 员工名称
-        _buildInputField(
-          theme: theme,
-          controller: _nameController,
-          focusNode: _nameFocusNode,
-          label: l10n.employeeName,
-          hint: l10n.enterEmployeeName,
-          icon: Icons.badge_outlined,
-          isError: _isNameNumericOnly || _isNameTooLong,
-          errorText: _isNameNumericOnly
-              ? l10n.employeeNameCannotBeNumeric
-              : (_isNameTooLong ? l10n.employeeNameTooLong : null),
-          enabled: !_isSubmitting,
-          onChanged: (_) => setState(() {}),
-          maxLength: _maxNameLength,
-          showCounter: true,
+        Container(
+          key: _nameGuideKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInputField(
+                theme: theme,
+                controller: _nameController,
+                focusNode: _nameFocusNode,
+                label: l10n.employeeName,
+                hint: _isGuideNameSelectionLocked
+                    ? l10n.selectEmployeeNameExample
+                    : l10n.enterEmployeeName,
+                icon: Icons.badge_outlined,
+                isError: _isNameNumericOnly || _isNameTooLong,
+                errorText: _isNameNumericOnly
+                    ? l10n.employeeNameCannotBeNumeric
+                    : (_isNameTooLong ? l10n.employeeNameTooLong : null),
+                enabled: !_isSubmitting,
+                readOnly: _isGuideNameSelectionLocked,
+                onChanged: _handleNameChanged,
+                maxLength: _maxNameLength,
+                showCounter: true,
+              ),
+              const SizedBox(height: 12),
+              _buildGuideNameSuggestions(theme, l10n),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
       ],
     );
   }
 
-  /// 第2步：选择插件
-  Widget _buildPluginSelectionStep(ThemeData theme, L10n l10n) {
-    if (_isLoadingPlugins) {
-      return SizedBox(
-        height: 200,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l10n.loadingPlugins,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_pluginError != null) {
-      return _buildErrorState(theme, l10n, _loadPlugins);
-    }
-
-    if (_availablePlugins.isEmpty) {
-      return _buildEmptyPluginsState(theme, l10n);
-    }
+  Widget _buildGuideNameSuggestions(ThemeData theme, L10n l10n) {
+    final suggestions = _guideNameSuggestions();
+    final selectedName = _nameController.text.trim();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 说明文字
-        _buildInfoCard(
-          theme: theme,
-          icon: Icons.auto_awesome_outlined,
-          text: l10n.selectPluginsHint,
-          color: theme.colorScheme.primaryContainer,
-        ),
-        const SizedBox(height: 16),
-
-        // 插件列表
-        ...(_availablePlugins
-            .map((plugin) => _buildPluginItem(plugin, theme, l10n))),
-
-        // 跳过提示
-        if (_selectedPlugins.isEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            l10n.skipPluginSelectionHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
-            textAlign: TextAlign.center,
+        Text(
+          l10n.employeeNameExamples,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildPluginItem(Plugin plugin, ThemeData theme, L10n l10n) {
-    final isSelected = _selectedPlugins.contains(plugin.name);
-    final needsConfig = _hasValidConfigSchema(plugin);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: isSelected
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
-            : theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: () => _togglePlugin(plugin),
-          borderRadius: BorderRadius.circular(16),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: suggestions.map((name) {
+            final isSelected = selectedName == name;
+            return ChoiceChip(
+              label: Text(name),
+              selected: isSelected,
+              onSelected: _isSubmitting
+                  ? null
+                  : (_) => _selectGuideNameSuggestion(name),
+              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.45),
+              selectedColor: theme.colorScheme.primaryContainer,
+              side: BorderSide(
                 color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                width: isSelected ? 2 : 1,
+                    ? theme.colorScheme.primary.withValues(alpha: 0.45)
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
               ),
-            ),
-            child: Row(
-              children: [
-                // 选择指示器
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outline,
-                      width: 2,
-                    ),
-                  ),
-                  child: isSelected
-                      ? Icon(
-                          Icons.check_rounded,
-                          size: 14,
-                          color: theme.colorScheme.onPrimary,
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-
-                // 插件图标
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer
-                        .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: plugin.iconUrl.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: CustomNetworkImage(
-                            plugin.iconUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildPluginIconFallback(theme),
-                          ),
-                        )
-                      : _buildPluginIconFallback(theme),
-                ),
-                const SizedBox(width: 12),
-
-                // 插件信息
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              plugin.name,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (needsConfig) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.tertiaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                l10n.requiresConfiguration,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onTertiaryContainer,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (plugin.description.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          plugin.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+              labelStyle: theme.textTheme.bodyMedium?.copyWith(
+                color: isSelected
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              visualDensity: VisualDensity.compact,
+            );
+          }).toList(),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPluginIconFallback(ThemeData theme) {
-    return Center(
-      child: Icon(
-        Icons.extension_rounded,
-        size: 22,
-        color: theme.colorScheme.secondary,
-      ),
-    );
-  }
-
-  /// 第3步：配置插件
-  Widget _buildPluginConfigStep(ThemeData theme, L10n l10n) {
-    final pluginsToConfig = _pluginsNeedingConfig;
-
-    if (pluginsToConfig.isEmpty) {
-      return SizedBox(
-        height: 200,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color:
-                      theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 40,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l10n.noConfigurationNeeded,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.readyToCreate,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildInfoCard(
-          theme: theme,
-          icon: Icons.tune_outlined,
-          text: l10n.configurePluginsHint,
-          color: theme.colorScheme.secondaryContainer,
-        ),
-        const SizedBox(height: 16),
-        ...(pluginsToConfig.map(
-          (plugin) => _buildPluginConfigForm(plugin, theme, l10n),
-        )),
       ],
-    );
-  }
-
-  Widget _buildPluginConfigForm(Plugin plugin, ThemeData theme, L10n l10n) {
-    final schema = plugin.configSchema ?? {};
-    final properties = _getSchemaProperties(schema);
-    // 获取 required 字段列表（兼容两种格式）
-    final requiredFields = _getRequiredFields(schema, properties);
-    final controllers = _pluginConfigControllers[plugin.name] ?? {};
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 插件标题
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.5),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.extension_rounded,
-                  size: 20,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  plugin.name,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 配置字段
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: properties.entries.map((entry) {
-                final fieldName = entry.key;
-                final fieldSchema = entry.value as Map<String, dynamic>;
-                final isRequired = requiredFields.contains(fieldName);
-                final fieldType = fieldSchema['type'] as String? ?? 'string';
-                final description = fieldSchema['description'] as String?;
-                final title = fieldSchema['title'] as String? ??
-                    _formatFieldName(fieldName);
-                final controller = controllers[fieldName];
-
-                if (controller == null) return const SizedBox.shrink();
-
-                // 布尔类型
-                if (fieldType == 'boolean') {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SwitchListTile(
-                      title: Text(title),
-                      subtitle: description != null ? Text(description) : null,
-                      value: controller.text == 'true',
-                      onChanged: (value) {
-                        setState(() {
-                          controller.text = value.toString();
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                }
-
-                // 字符串/数字类型
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      labelText: isRequired ? '$title *' : title,
-                      hintText: description ?? 'Enter $title',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: theme.colorScheme.surface,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
-                      ),
-                    ),
-                    keyboardType:
-                        fieldType == 'number' || fieldType == 'integer'
-                            ? TextInputType.number
-                            : TextInputType.text,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1061,6 +971,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     int minLines = 1,
     int maxLines = 1,
     bool enabled = true,
+    bool readOnly = false,
     bool isError = false,
     String? errorText,
     bool isOptional = false,
@@ -1098,7 +1009,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
             ],
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 14),
         // 输入框
         TextField(
           controller: controller,
@@ -1147,6 +1058,9 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           minLines: minLines,
           maxLines: maxLines,
           enabled: enabled,
+          readOnly: readOnly,
+          showCursor: !readOnly,
+          enableInteractiveSelection: !readOnly,
           onChanged: onChanged,
         ),
         // 错误提示
@@ -1171,117 +1085,6 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         ],
       ],
     );
-  }
-
-  Widget _buildInfoCard({
-    required ThemeData theme,
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(ThemeData theme, L10n l10n, VoidCallback onRetry) {
-    return SizedBox(
-      height: 200,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.cloud_off_outlined,
-              size: 48,
-              color: theme.colorScheme.error.withValues(alpha: 0.7),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.errorLoadingData,
-              style: theme.textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 12),
-            FilledButton.tonal(
-              onPressed: onRetry,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.refresh_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l10n.tryAgain),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyPluginsState(ThemeData theme, L10n l10n) {
-    return SizedBox(
-      height: 200,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.extension_off_outlined,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.noPluginsAvailable,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.skipPluginSelectionHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatFieldName(String name) {
-    // snake_case to Title Case
-    return name
-        .split('_')
-        .map(
-          (word) => word.isNotEmpty
-              ? '${word[0].toUpperCase()}${word.substring(1)}'
-              : '',
-        )
-        .join(' ');
   }
 
   Widget _buildErrorBanner(ThemeData theme) {
@@ -1326,7 +1129,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
 
   Widget _buildActions(ThemeData theme, L10n l10n) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: widget.isDialog
@@ -1343,11 +1146,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           // 返回/取消按钮
           Expanded(
             child: OutlinedButton(
-              onPressed: _isSubmitting
-                  ? null
-                  : (_currentStep > 0
-                      ? _previousStep
-                      : () => Navigator.pop(context)),
+              onPressed: _isSubmitting ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -1358,19 +1157,17 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                 ),
               ),
               child: Text(
-                _currentStep > 0 ? l10n.back : l10n.cancel,
+                l10n.cancel,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ),
           const SizedBox(width: 14),
-          // 下一步/创建按钮
+          // 创建按钮（直接提交）
           Expanded(
-            flex: _currentStep == 2 ? 2 : 1,
             child: FilledButton(
-              onPressed: _isSubmitting
-                  ? null
-                  : (_currentStep < 2 ? _nextStep : _onSubmit),
+              key: _createGuideKey,
+              onPressed: _isSubmitting ? null : _onSubmit,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -1390,16 +1187,11 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _currentStep < 2 ? l10n.next : l10n.createEmployee,
+                          l10n.createEmployee,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(width: 8),
-                        Icon(
-                          _currentStep < 2
-                              ? Icons.arrow_forward_rounded
-                              : Icons.add_rounded,
-                          size: 20,
-                        ),
+                        const Icon(Icons.add_rounded, size: 20),
                       ],
                     ),
             ),
@@ -1407,5 +1199,106 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         ],
       ),
     );
+  }
+}
+
+class _RecruitGuideStepData {
+  final GlobalKey targetKey;
+  final String title;
+  final String description;
+
+  const _RecruitGuideStepData({
+    required this.targetKey,
+    required this.title,
+    required this.description,
+  });
+}
+
+class _RecruitGuideBubbleLayout {
+  final double left;
+  final double top;
+  final Offset connectorStart;
+  final Offset connectorEnd;
+
+  const _RecruitGuideBubbleLayout({
+    required this.left,
+    required this.top,
+    required this.connectorStart,
+    required this.connectorEnd,
+  });
+}
+
+class _RecruitGuideScrimPainter extends CustomPainter {
+  final Rect highlightRect;
+  final Color color;
+
+  const _RecruitGuideScrimPainter({
+    required this.highlightRect,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final highlightPath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          highlightRect,
+          const Radius.circular(18),
+        ),
+      );
+    final overlayPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      highlightPath,
+    );
+    canvas.drawPath(
+      overlayPath,
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RecruitGuideScrimPainter oldDelegate) {
+    return oldDelegate.highlightRect != highlightRect ||
+        oldDelegate.color != color;
+  }
+}
+
+class _RecruitGuideConnectorPainter extends CustomPainter {
+  final Offset start;
+  final Offset end;
+  final Color color;
+
+  const _RecruitGuideConnectorPainter({
+    required this.start,
+    required this.end,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final vector = end - start;
+    final distance = vector.distance;
+    if (distance <= 0) return;
+
+    final direction = vector / distance;
+    final dotPaint = Paint()..color = color;
+    const step = 10.0;
+
+    for (double current = 0; current < distance; current += step) {
+      final point = start + (direction * current);
+      canvas.drawCircle(point, current == 0 ? 2.8 : 1.8, dotPaint);
+    }
+
+    canvas.drawCircle(end, 4.5, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RecruitGuideConnectorPainter oldDelegate) {
+    return oldDelegate.start != start ||
+        oldDelegate.end != end ||
+        oldDelegate.color != color;
   }
 }

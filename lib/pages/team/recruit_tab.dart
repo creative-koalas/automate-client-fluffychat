@@ -166,6 +166,7 @@ class RecruitTabState extends State<RecruitTab>
 
   void _handleHireResult(HireResult? result) {
     if (result == null || !mounted) return;
+    final l10n = L10n.of(context);
 
     final isFirstEmployee = _employeeCount == 0;
     setState(() {
@@ -177,20 +178,21 @@ class RecruitTabState extends State<RecruitTab>
 
     _triggerPostHireRefresh();
 
-    // 先显示成功反馈，入职动画会处理后续流程
-    showHireSuccessDialog(
-      context: context,
-      employeeName: employeeName,
-      isFirstEmployee: isFirstEmployee,
-      onViewEmployee: () {
-        widget.onEmployeeHired?.call();
-      },
-      onContinueHiring: () {
-        // 留在当前页面，不做任何操作
-      },
+    // 提交创建任务后立即反馈“入职中”，成功提示在 operation 完成后显示。
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.employeeOnboardingHint),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
 
-    unawaited(_finalizeHire(result));
+    unawaited(
+      _finalizeHire(
+        result,
+        employeeName: employeeName,
+        isFirstEmployee: isFirstEmployee,
+      ),
+    );
   }
 
   void _triggerPostHireRefresh() {
@@ -220,7 +222,11 @@ class RecruitTabState extends State<RecruitTab>
     _postHirePollingTimer = null;
   }
 
-  Future<void> _finalizeHire(HireResult result) async {
+  Future<void> _finalizeHire(
+    HireResult result, {
+    required String employeeName,
+    required bool isFirstEmployee,
+  }) async {
     try {
       await result.responseFuture;
       if (!mounted) return;
@@ -228,9 +234,22 @@ class RecruitTabState extends State<RecruitTab>
       // 自动刷新员工列表（后台刷新，用户切回时能看到新员工）
       widget.onRefreshEmployees?.call();
       // 刷新 AgentService 缓存（聊天界面状态显示依赖此缓存）
-      AgentService.instance.refresh();
+      await AgentService.instance.refresh();
+      if (!mounted) return;
+      showHireSuccessDialog(
+        context: context,
+        employeeName: employeeName,
+        isFirstEmployee: isFirstEmployee,
+        onViewEmployee: () {
+          widget.onEmployeeHired?.call();
+        },
+        onContinueHiring: () {
+          // 留在当前页面，不做任何操作
+        },
+      );
     } catch (e) {
       if (!mounted) return;
+      _stopPostHirePolling();
       setState(() {
         if (_employeeCount > 0) {
           _employeeCount--;
@@ -482,7 +501,7 @@ class RecruitTabState extends State<RecruitTab>
     // PC端：根据宽度自适应列数
     const minCardWidth = 180.0;
     final availableWidth = width - 32; // 减去左右 padding
-    int crossAxisCount = (availableWidth / minCardWidth).floor();
+    final crossAxisCount = (availableWidth / minCardWidth).floor();
     return crossAxisCount.clamp(2, 6); // 2-6 列
   }
 }

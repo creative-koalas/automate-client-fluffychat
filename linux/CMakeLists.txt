@@ -4,12 +4,31 @@ project(runner LANGUAGES CXX)
 
 # smth sqlcipher_flutter_libs static linking Hundreds
 set(OPENSSL_USE_STATIC_LIBS OFF)
-# The name of the executable created for the application. Change this to change
-# the on-disk name of your application.
+# The Flutter tool statically parses the first `set(BINARY_NAME "...")`
+# expression when deciding which executable to launch for `flutter run`.
+# Keep the actual runner binary name literal here, otherwise a CMake env
+# expression such as `$ENV{...}` is treated as plain text and launch fails.
 set(BINARY_NAME "psygo")
+
+# Optional alternate on-disk name used for packaged Linux bundles.
+if(DEFINED ENV{PSYGO_LINUX_BINARY_NAME} AND NOT "$ENV{PSYGO_LINUX_BINARY_NAME}" STREQUAL "")
+  set(DIST_BINARY_NAME "$ENV{PSYGO_LINUX_BINARY_NAME}")
+else()
+  set(DIST_BINARY_NAME "${BINARY_NAME}")
+endif()
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.psygo.app")
+if(DEFINED ENV{PSYGO_LINUX_APPLICATION_ID} AND NOT "$ENV{PSYGO_LINUX_APPLICATION_ID}" STREQUAL "")
+  set(APPLICATION_ID "$ENV{PSYGO_LINUX_APPLICATION_ID}")
+else()
+  set(APPLICATION_ID "com.psygo.app")
+endif()
+
+if(DEFINED ENV{PSYGO_LINUX_WINDOW_TITLE} AND NOT "$ENV{PSYGO_LINUX_WINDOW_TITLE}" STREQUAL "")
+  set(APP_WINDOW_TITLE "$ENV{PSYGO_LINUX_WINDOW_TITLE}")
+else()
+  set(APP_WINDOW_TITLE "Psygo")
+endif()
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -57,6 +76,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
 add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
+add_definitions(-DAPP_WINDOW_TITLE="${APP_WINDOW_TITLE}")
 
 # Define the application target. To change its name, change BINARY_NAME above,
 # not the value here, or `flutter run` will no longer work.
@@ -113,6 +133,16 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
+
+if(NOT DIST_BINARY_NAME STREQUAL BINARY_NAME)
+  install(CODE "
+    execute_process(
+      COMMAND \"${CMAKE_COMMAND}\" -E copy_if_different
+        \"${CMAKE_INSTALL_PREFIX}/${BINARY_NAME}\"
+        \"${CMAKE_INSTALL_PREFIX}/${DIST_BINARY_NAME}\"
+    )
+  " COMPONENT Runtime)
+endif()
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)

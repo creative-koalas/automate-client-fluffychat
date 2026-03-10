@@ -37,6 +37,8 @@ class Message extends StatelessWidget {
   final void Function(String) scrollToEventId;
   final void Function() onSwipe;
   final void Function() onMention;
+  final GlobalKey? avatarKey;
+  final VoidCallback? onAvatarGuideTap;
   final void Function() onEdit;
   final void Function(String eventId)? enterThread;
   final bool longPressSelect;
@@ -71,6 +73,8 @@ class Message extends StatelessWidget {
     this.resetAnimateIn,
     this.wallpaperMode = false,
     required this.onMention,
+    this.avatarKey,
+    this.onAvatarGuideTap,
     required this.scrollController,
     required this.colors,
     this.onExpand,
@@ -215,6 +219,15 @@ class Message extends StatelessWidget {
         singleSelected && event.room.canSendDefaultMessages;
 
     final enterThread = this.enterThread;
+
+    void showSenderMenu(BuildContext context, User user) {
+      onAvatarGuideTap?.call();
+      showMemberActionsPopupMenu(
+        context: context,
+        user: user,
+        onMention: onMention,
+      );
+    }
 
     // PC 端消息靠边对齐（自己的靠右，对方的靠左），移动端居中
     final Alignment messageAlignment;
@@ -385,19 +398,19 @@ class Message extends StatelessWidget {
                                             event.senderFromMemoryOrFallback;
                                         final sender =
                                             _resolveSenderPresentation(user);
-                                        return Avatar(
-                                          mxContent: sender.avatarUrl,
-                                          name: sender.displayName,
-                                          onTap: () =>
-                                              showMemberActionsPopupMenu(
-                                            context: context,
-                                            user: user,
-                                            onMention: onMention,
+                                        return KeyedSubtree(
+                                          key: avatarKey,
+                                          child: Avatar(
+                                            mxContent: sender.avatarUrl,
+                                            name: sender.displayName,
+                                            onTap: () =>
+                                                showSenderMenu(context, user),
+                                            presenceUserId: user.stateKey,
+                                            presenceBackgroundColor:
+                                                wallpaperMode
+                                                    ? Colors.transparent
+                                                    : null,
                                           ),
-                                          presenceUserId: user.stateKey,
-                                          presenceBackgroundColor: wallpaperMode
-                                              ? Colors.transparent
-                                              : null,
                                         );
                                       },
                                     )
@@ -416,20 +429,21 @@ class Message extends StatelessWidget {
                                                   _resolveSenderPresentation(
                                                 user,
                                               );
-                                              return Avatar(
-                                                mxContent: sender.avatarUrl,
-                                                name: sender.displayName,
-                                                onTap: () =>
-                                                    showMemberActionsPopupMenu(
-                                                  context: context,
-                                                  user: user,
-                                                  onMention: onMention,
+                                              return KeyedSubtree(
+                                                key: avatarKey,
+                                                child: Avatar(
+                                                  mxContent: sender.avatarUrl,
+                                                  name: sender.displayName,
+                                                  onTap: () => showSenderMenu(
+                                                    context,
+                                                    user,
+                                                  ),
+                                                  presenceUserId: user.stateKey,
+                                                  presenceBackgroundColor:
+                                                      wallpaperMode
+                                                          ? Colors.transparent
+                                                          : null,
                                                 ),
-                                                presenceUserId: user.stateKey,
-                                                presenceBackgroundColor:
-                                                    wallpaperMode
-                                                        ? Colors.transparent
-                                                        : null,
                                               );
                                             },
                                           ),
@@ -729,8 +743,7 @@ class Message extends StatelessWidget {
                                               ? Alignment.bottomRight
                                               : Alignment.bottomLeft,
                                           child: AnimatedSize(
-                                            duration:
-                                                FluffyThemes.durationFast,
+                                            duration: FluffyThemes.durationFast,
                                             curve: FluffyThemes.curveStandard,
                                             child: showReactionPicker
                                                 ? Padding(

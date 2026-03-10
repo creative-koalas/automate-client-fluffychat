@@ -288,7 +288,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // ========== Slogan ==========
         model.sloganIsHidden = false
         model.sloganText = NSAttributedString(
-            string: "Psygo",
+            string: "PsyGo",
             attributes: [
                 .foregroundColor: UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0),  // #1A1A1A
                 .font: UIFont.systemFont(ofSize: 20, weight: .medium)  // 与 Android 一致

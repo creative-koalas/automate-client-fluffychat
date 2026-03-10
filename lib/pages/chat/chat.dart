@@ -29,6 +29,7 @@ import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/services/chat_room_guide_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/fluffy_share.dart';
@@ -121,6 +122,11 @@ class PendingAttachment {
   }
 }
 
+enum ChatRoomGuideType {
+  employee,
+  groupMention,
+}
+
 class ChatController extends State<ChatPageWithRoom>
     with WidgetsBindingObserver {
   Room get room => sendingClient.getRoomById(roomId) ?? widget.room;
@@ -154,10 +160,29 @@ class ChatController extends State<ChatPageWithRoom>
   String? _webEntryUrl;
   DateTime? _lastWebEntryHintAt;
   static const Duration _webEntryHintCooldown = Duration(seconds: 2);
+  final GlobalKey chatRoomGuideContainerKey = GlobalKey();
+  final GlobalKey workStatusGuideKey = GlobalKey();
+  final GlobalKey webEntryGuideKey = GlobalKey();
+  final GlobalKey employeeWorkTemplateGuideKey = GlobalKey();
+  final GlobalKey mentionGuideKey = GlobalKey();
+  bool _showChatRoomGuide = false;
+  bool _pendingChatRoomGuide = false;
+  bool _chatRoomGuideCompleted = false;
+  int _chatRoomGuideStepIndex = 0;
+  ChatRoomGuideType? _chatRoomGuideType;
 
   bool get webEntryOpen => _webEntryOpen;
   bool get webEntryLoading => _webEntryLoading;
   String? get webEntryUrl => _webEntryUrl;
+  bool get showChatRoomGuide => _showChatRoomGuide;
+  int get chatRoomGuideStepIndex => _chatRoomGuideStepIndex;
+  ChatRoomGuideType? get chatRoomGuideType => _chatRoomGuideType;
+  bool get isEmployeeChat =>
+      room.directChatMatrixID != null && webEntryAgent != null;
+  bool get isEmployeeChatGuide =>
+      _chatRoomGuideType == ChatRoomGuideType.employee;
+  bool get isGroupMentionGuide =>
+      _chatRoomGuideType == ChatRoomGuideType.groupMention;
 
   Agent? get webEntryAgent {
     final directChatMatrixID = room.directChatMatrixID;
@@ -168,7 +193,10 @@ class ChatController extends State<ChatPageWithRoom>
 
   bool get _supportsInlineWebView {
     if (kIsWeb) return false;
-    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+    return Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isWindows;
   }
 
   bool _shouldThrottleWebEntryHint() {
@@ -200,16 +228,7 @@ class ChatController extends State<ChatPageWithRoom>
     final l10n = L10n.of(context);
 
     if (!agent.canOpenWebEntry) {
-      final l10n = L10n.of(context);
-      if (_shouldThrottleWebEntryHint()) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.agentWebEntryUnavailable),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      _showWebEntryHint(l10n.agentWebEntryUnavailable);
       return;
     }
 
@@ -240,12 +259,7 @@ class ChatController extends State<ChatPageWithRoom>
       _markWebEntryUpdateViewed(agent);
     } catch (_) {
       if (!mounted || requestId != _webEntryRequestId) return;
-      if (_shouldThrottleWebEntryHint()) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.chatOpenFailedRetryLater)),
-      );
+      _showWebEntryHint(l10n.chatOpenFailedRetryLater);
     } finally {
       if (mounted && requestId == _webEntryRequestId) {
         setState(() => _webEntryLoading = false);
@@ -258,6 +272,28 @@ class ChatController extends State<ChatPageWithRoom>
     AgentService.instance.updateAgent(
       agent.copyWith(webEntryStatus: Agent.webEntryStatusEnabled),
     );
+  }
+
+  void _showWebEntryHint(String message) {
+    if (_shouldThrottleWebEntryHint()) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: PlatformInfos.isMobile
+              ? InkWell(
+                  onTap: messenger.hideCurrentSnackBar,
+                  child: Text(message),
+                )
+              : Text(message),
+        ),
+      );
   }
 
   void onDragEntered(_) => setState(() => dragging = true);
@@ -593,6 +629,7 @@ class ChatController extends State<ChatPageWithRoom>
 
     _agentServiceListener = () {
       if (!mounted) return;
+      _maybeStartChatRoomGuide();
       setState(() {});
     };
     AgentService.instance.agentsNotifier.addListener(_agentServiceListener);
@@ -616,9 +653,104 @@ class ChatController extends State<ChatPageWithRoom>
         room.hasNewMessages ? lastEventThreadId ?? room.fullyRead : '';
     WidgetsBinding.instance.addObserver(this);
     _tryLoadTimeline();
+    unawaited(_loadChatRoomGuideState());
     if (kIsWeb) {
       onFocusSub = html.window.onFocus.listen((_) => setReadMarker());
     }
+  }
+
+  Future<void> _loadChatRoomGuideState() async {
+    final isDirectChat = room.directChatMatrixID != null;
+
+    final shouldShow = isDirectChat
+        ? await ChatRoomGuideService.instance.shouldShowGuide(
+            userId: sendingClient.userID,
+            roomId: roomId,
+          )
+        : await ChatRoomGuideService.instance.shouldShowGroupMentionGuide(
+            userId: sendingClient.userID,
+            roomId: roomId,
+          );
+    if (!mounted || !shouldShow) return;
+
+    _chatRoomGuideType = isDirectChat
+        ? ChatRoomGuideType.employee
+        : ChatRoomGuideType.groupMention;
+    _pendingChatRoomGuide = true;
+    _maybeStartChatRoomGuide();
+  }
+
+  void _maybeStartChatRoomGuide() {
+    if (!mounted ||
+        _chatRoomGuideCompleted ||
+        _showChatRoomGuide ||
+        !_pendingChatRoomGuide) {
+      return;
+    }
+
+    if (_chatRoomGuideType == ChatRoomGuideType.employee &&
+        (room.directChatMatrixID == null || webEntryAgent == null)) {
+      return;
+    }
+
+    if (_chatRoomGuideType == null) {
+      return;
+    }
+
+    setState(() {
+      _showChatRoomGuide = true;
+      _chatRoomGuideStepIndex = 0;
+    });
+  }
+
+  void nextChatRoomGuideStep() {
+    final totalSteps = isEmployeeChatGuide ? 4 : 1;
+    if (_chatRoomGuideStepIndex >= totalSteps - 1) {
+      unawaited(dismissChatRoomGuide());
+      return;
+    }
+
+    setState(() {
+      _chatRoomGuideStepIndex++;
+    });
+  }
+
+  Future<void> dismissChatRoomGuide() async {
+    if (_chatRoomGuideCompleted) return;
+
+    final guideType = _chatRoomGuideType;
+    _pendingChatRoomGuide = false;
+    _chatRoomGuideCompleted = true;
+    if (mounted) {
+      setState(() {
+        _showChatRoomGuide = false;
+        _chatRoomGuideType = null;
+      });
+    } else {
+      _showChatRoomGuide = false;
+      _chatRoomGuideType = null;
+    }
+
+    if (guideType == ChatRoomGuideType.groupMention) {
+      await ChatRoomGuideService.instance.markGroupMentionGuideCompleted(
+        userId: sendingClient.userID,
+        roomId: roomId,
+      );
+      return;
+    }
+
+    await ChatRoomGuideService.instance.markGuideCompleted(
+      userId: sendingClient.userID,
+      roomId: roomId,
+    );
+  }
+
+  void handleGroupMentionGuideAvatarTap() {
+    if (!isGroupMentionGuide || _chatRoomGuideCompleted || !showChatRoomGuide) {
+      return;
+    }
+
+    unawaited(dismissChatRoomGuide());
   }
 
   final Set<String> expandedEventIds = {};
@@ -1945,6 +2077,54 @@ class ChatController extends State<ChatPageWithRoom>
         replyEvent = null;
         editEvent = null;
       });
+
+  void insertMentionText(String mention) {
+    final value = sendController.value;
+    final selection = value.selection;
+    final text = value.text;
+    final start =
+        selection.isValid ? selection.start.clamp(0, text.length) : text.length;
+    final end =
+        selection.isValid ? selection.end.clamp(0, text.length) : text.length;
+    final prefixNeedsSpace =
+        start > 0 && !RegExp(r'\s').hasMatch(text[start - 1]);
+    final insertText = '${prefixNeedsSpace ? ' ' : ''}$mention ';
+    final nextText = text.replaceRange(start, end, insertText);
+    final nextOffset = start + insertText.length;
+
+    sendController.value = value.copyWith(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+      composing: TextRange.empty,
+    );
+    inputFocus.requestFocus();
+
+    if (isGroupMentionGuide && showChatRoomGuide) {
+      unawaited(dismissChatRoomGuide());
+    }
+  }
+
+  void sendEmployeeWorkTemplateMessage(String text) {
+    final trimmedText = text.trim();
+    if (trimmedText.isEmpty) return;
+
+    if (_webEntryOpen || _webEntryLoading) {
+      closeWebEntry();
+    }
+
+    room.sendTextEvent(
+      trimmedText,
+      parseCommands: false,
+      threadRootEventId: activeThreadId,
+    );
+    inputFocus.requestFocus();
+
+    if (isEmployeeChatGuide &&
+        _chatRoomGuideStepIndex == 3 &&
+        showChatRoomGuide) {
+      unawaited(dismissChatRoomGuide());
+    }
+  }
 
   late final ValueNotifier<bool> _displayChatDetailsColumn;
 
