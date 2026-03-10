@@ -46,7 +46,7 @@ jobs:
           file_size_bytes="$(wc -c < "$file_path" | tr -d '[:space:]')"
           echo "Uploading ${file_name} (${file_size_bytes} bytes) -> cos://${COS_BUCKET}/${object_key}"
 
-          python3 scripts/ci/cos_upload.py \
+          python3 -u scripts/ci/cos_upload.py \
             --secret-id "$COS_SECRET_ID" \
             --secret-key "$COS_SECRET_KEY" \
             --bucket "$COS_BUCKET" \

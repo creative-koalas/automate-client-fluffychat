@@ -101,7 +101,10 @@ def _progress_printer() -> Callable[[int, int], None]:
         percent = int(consumed * 100 / total)
         now = time.time()
         if percent >= 100 or percent >= last_percent + 5 or now - last_print_ts >= 15:
-            print(f"Upload progress: {percent}% ({consumed}/{total} bytes)")
+            print(
+                f"Upload progress: {percent}% ({consumed}/{total} bytes)",
+                flush=True,
+            )
             last_percent = percent
             last_print_ts = now
 
@@ -144,17 +147,20 @@ def main() -> int:
         file_size = os.path.getsize(args.local_file)
         print(
             f"Start upload: local={args.local_file} size={file_size} "
-            f"bucket={args.bucket} key={args.object_key}"
+            f"bucket={args.bucket} key={args.object_key}",
+            flush=True,
         )
         print(
             f"upload_file settings: part_size_mb={args.part_size_mb} "
-            f"max_thread={args.max_thread} retry={args.retry} timeout={args.timeout}"
+            f"max_thread={args.max_thread} retry={args.retry} timeout={args.timeout}",
+            flush=True,
         )
         if endpoint is not None:
-            print("Using acceleration endpoint: cos.accelerate.myqcloud.com")
+            print("Using acceleration endpoint: cos.accelerate.myqcloud.com", flush=True)
         if proxies:
             print(
-                "Using proxies: " + ", ".join(f"{k}={v}" for k, v in proxies.items())
+                "Using proxies: " + ", ".join(f"{k}={v}" for k, v in proxies.items()),
+                flush=True,
             )
 
         response = client.upload_file(
@@ -186,9 +192,9 @@ def main() -> int:
 
     etag = response.get("ETag")
     remote_size = head.get("Content-Length")
-    print(f"ETag: {etag}")
-    print(f"HEAD Content-Length: {remote_size}")
-    print(f"cos://{args.bucket}/{args.object_key}")
+    print(f"ETag: {etag}", flush=True)
+    print(f"HEAD Content-Length: {remote_size}", flush=True)
+    print(f"cos://{args.bucket}/{args.object_key}", flush=True)
     return 0
 
 
