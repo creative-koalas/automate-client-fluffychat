@@ -83,6 +83,7 @@ void main() async {
     const storage = FlutterSecureStorage();
     final primaryToken = await storage.read(key: 'automate_primary_token');
     final isLoggedIn = primaryToken != null && primaryToken.isNotEmpty;
+    final showNativeWindowButtons = !Platform.isMacOS;
     debugPrint('[Window] isLoggedIn: $isLoggedIn');
 
     // 设置关闭时隐藏到托盘（拦截系统关闭按钮）
@@ -99,7 +100,10 @@ void main() async {
         await windowManager.setSize(mainWindowSize);
         await windowManager.setMinimumSize(mainWindowMinSize);
         await windowManager.center();
-        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: showNativeWindowButtons,
+        );
         await windowManager.show();
         await windowManager.focus();
       });
@@ -111,7 +115,10 @@ void main() async {
         await windowManager.setMinimumSize(loginWindowSize);
         await windowManager.setMaximumSize(loginWindowSize);
         await windowManager.center();
-        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: showNativeWindowButtons,
+        );
         await windowManager.setResizable(false);
         await windowManager.show();
         await windowManager.focus();
