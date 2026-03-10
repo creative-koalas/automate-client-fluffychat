@@ -163,13 +163,11 @@ jobs:
           fi
           python scripts/ci/write_flutter_env.py "${args[@]}"
       - run: flutter build windows --release --dart-define-from-file=ci.env.json
-      - name: Pack Windows artifact
-        shell: pwsh
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath fluffychat-windows-x64.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: fluffychat-windows-x64
-          path: fluffychat-windows-x64.zip
+          name: fluffychat-windows
+          path: build/windows/x64/runner/Release
+          if-no-files-found: error
 
   build_android_apk:
     name: Build Android APK
@@ -323,7 +321,7 @@ jobs:
               fluffychat-android-*) platform="android" ;;
               fluffychat-linux-*) platform="linux" ;;
               fluffychat-web*) platform="web" ;;
-              fluffychat-windows-*) platform="windows" ;;
+              fluffychat-windows*) platform="windows" ;;
               *)
                 echo "Skip unsupported artifact name: $artifact_name"
                 continue
@@ -393,23 +391,38 @@ jobs:
           BUILD_VERSION: ${{ steps.build_version.outputs.build_version }}
         run: |
           set -euo pipefail
+          date -u '+Upload start: %Y-%m-%dT%H:%M:%SZ'
           for platform_dir in dist/*; do
             [ -d "$platform_dir" ] || continue
             platform_name="$(basename "$platform_dir")"
+            file_count="$(find "$platform_dir" -maxdepth 1 -type f | wc -l)"
+            total_bytes="$(find "$platform_dir" -maxdepth 1 -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')"
             echo "Uploading platform directory: ${platform_name}"
+            echo "  files=${file_count} total_bytes=${total_bytes}"
             find "$platform_dir" -maxdepth 1 -type f -printf '  %f %s bytes\n'
             object_prefix="artifacts/${APP_NAME}/${BUILD_VERSION}/${GIT_SHA}/${platform_name}"
+            date -u "+  ${platform_name} upload start: %Y-%m-%dT%H:%M:%SZ"
             coscmd upload -rs "$platform_dir" "$object_prefix"
+            date -u "+  ${platform_name} upload end: %Y-%m-%dT%H:%M:%SZ"
             if [ "$CHANNEL" != "none" ]; then
               channel_object_prefix="${CHANNEL}/${platform_name}"
+              date -u "+  ${platform_name} channel upload start: %Y-%m-%dT%H:%M:%SZ"
               coscmd upload -rs "$platform_dir" "$channel_object_prefix"
+              date -u "+  ${platform_name} channel upload end: %Y-%m-%dT%H:%M:%SZ"
             fi
           done
 
+          echo "Uploading manifest"
+          date -u '+  manifest upload start: %Y-%m-%dT%H:%M:%SZ'
           coscmd upload -f "manifests/${BUILD_VERSION}.json" "manifests/${BUILD_VERSION}.json"
+          date -u '+  manifest upload end: %Y-%m-%dT%H:%M:%SZ'
           if [ "$CHANNEL" != "none" ]; then
+            echo "Uploading channel manifest"
+            date -u '+  channel manifest upload start: %Y-%m-%dT%H:%M:%SZ'
             coscmd upload -f "manifests/${BUILD_VERSION}.json" "${CHANNEL}/manifest.json"
+            date -u '+  channel manifest upload end: %Y-%m-%dT%H:%M:%SZ'
           fi
+          date -u '+Upload end: %Y-%m-%dT%H:%M:%SZ'
 
       - name: Write channel pointer
         if: inputs.target_channel != 'none'
