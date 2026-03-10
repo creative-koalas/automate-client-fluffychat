@@ -352,6 +352,7 @@ jobs:
                 --part-size-mb "$part_size_mb" \
                 --max-thread "$max_thread" \
                 --retry "$sdk_retry" \
+                --use-accelerate-endpoint \
                 --timeout "$timeout_sec"; then
                 uploaded=1
                 break

@@ -53,4 +53,5 @@ jobs:
             --region "$COS_REGION" \
             --file "$file_path" \
             --object-key "$object_key" \
+            --use-accelerate-endpoint \
             --timeout 120
