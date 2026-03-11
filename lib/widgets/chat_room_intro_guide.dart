@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/guide_bubble_layout.dart';
 
 class ChatRoomIntroGuideStep {
@@ -9,6 +10,8 @@ class ChatRoomIntroGuideStep {
   final String? description;
   final WidgetBuilder? contentBuilder;
   final GuideBubblePlacement preferredPlacement;
+  final double estimatedContentHeight;
+  final Offset bubbleOffset;
 
   const ChatRoomIntroGuideStep({
     required this.targetKey,
@@ -16,6 +19,8 @@ class ChatRoomIntroGuideStep {
     this.description,
     this.contentBuilder,
     this.preferredPlacement = GuideBubblePlacement.below,
+    this.estimatedContentHeight = 0,
+    this.bubbleOffset = Offset.zero,
   });
 }
 
@@ -47,8 +52,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
   static const double _guideBubbleWidth = 292;
   static const double _guideHighlightPadding = 10;
   static const double _guideScreenPadding = 16;
-  static const double _guideCompactBubbleHeight = 218;
-  static const double _guideExpandedBubbleHeight = 272;
+  static const double _guideBubbleHeight = 176;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +81,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
         final highlightRect = targetRect.inflate(_guideHighlightPadding);
         final bubbleSize = _resolveBubbleSize(
           Size(constraints.maxWidth, constraints.maxHeight),
+          Theme.of(context),
           currentStep,
         );
         final bubbleLayout = _buildGuideBubbleLayout(
@@ -84,6 +89,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
           highlightRect,
           bubbleSize,
           currentStep.preferredPlacement,
+          currentStep.bubbleOffset,
         );
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
@@ -233,6 +239,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
     Rect highlightRect,
     Size bubbleSize,
     GuideBubblePlacement preferredPlacement,
+    Offset bubbleOffset,
   ) {
     return GuideBubbleLayoutResolver.resolve(
       containerSize: size,
@@ -241,37 +248,107 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
       screenPadding: _guideScreenPadding,
       connectorGap: _guideConnectorGap,
       preferredPlacement: preferredPlacement,
+      bubbleOffset: bubbleOffset,
     );
   }
 
   static const double _guideConnectorGap = 36;
 
-  Size _resolveBubbleSize(Size availableSize, ChatRoomIntroGuideStep step) {
-    final maxWidth =
-        max(240.0, availableSize.width - (_guideScreenPadding * 2));
-    final preferredWidth = availableSize.width >= 1280
-        ? 560.0
-        : (availableSize.width >= 900 ? 460.0 : _guideBubbleWidth);
-    final width = min(preferredWidth, maxWidth);
-
-    final preferredHeight = step.contentBuilder == null
-        ? (availableSize.width >= 1280
-            ? 320.0
-            : (availableSize.width >= 900 ? 276.0 : _guideCompactBubbleHeight))
-        : (availableSize.width >= 1280
-            ? 440.0
-            : (availableSize.width >= 900
-                ? 372.0
-                : _guideExpandedBubbleHeight));
-    final height = min(
-      preferredHeight,
-      max(
-        _guideCompactBubbleHeight,
-        availableSize.height - (_guideScreenPadding * 2),
-      ),
+  Size _resolveBubbleSize(
+    Size availableSize,
+    ThemeData theme,
+    ChatRoomIntroGuideStep step,
+  ) {
+    final isDesktop = PlatformInfos.isDesktop;
+    final safeMaxWidth = max(
+      0.0,
+      availableSize.width - (_guideScreenPadding * 2),
     );
+    final preferredWidth = isDesktop ? 500.0 : _guideBubbleWidth;
+    final minWidth = min(240.0, safeMaxWidth);
+    final width = safeMaxWidth <= 0
+        ? 0.0
+        : preferredWidth.clamp(minWidth, safeMaxWidth).toDouble();
+
+    final titleColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.colorScheme.onSurfaceVariant;
+    const horizontalPadding = 36.0;
+    final titleWidth = max(
+      120.0,
+      width - horizontalPadding - (widget.showStepCounter ? 52.0 : 0.0),
+    );
+    final bodyWidth = max(120.0, width - horizontalPadding);
+    final titleHeight = _measureTextHeight(
+      text: step.title,
+      maxWidth: titleWidth,
+      style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: titleColor,
+          ) ??
+          const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+    );
+    final description = step.description;
+    final bodyHeight = description == null || description.isEmpty
+        ? 0.0
+        : _measureTextHeight(
+            text: description,
+            maxWidth: bodyWidth,
+            style: theme.textTheme.bodyMedium?.copyWith(
+                  color: bodyColor,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                ) ??
+                const TextStyle(
+                  fontSize: 14,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                ),
+          );
+    final contentSpacing =
+        bodyHeight > 0 && step.estimatedContentHeight > 0 ? 14.0 : 0.0;
+    final preferredHeight = 18.0 +
+        max(titleHeight, 22.0) +
+        14.0 +
+        bodyHeight +
+        contentSpacing +
+        step.estimatedContentHeight +
+        16.0 +
+        52.0 +
+        18.0;
+    final safeMaxHeight = max(
+      0.0,
+      availableSize.height - (_guideScreenPadding * 2),
+    );
+    final minHeight = min(
+      step.estimatedContentHeight > 0
+          ? (isDesktop ? 260.0 : 220.0)
+          : (isDesktop ? 220.0 : _guideBubbleHeight),
+      safeMaxHeight,
+    );
+    final preferredMaxHeight = min(
+      safeMaxHeight,
+      step.estimatedContentHeight > 0
+          ? (isDesktop ? 360.0 : 320.0)
+          : (isDesktop ? 320.0 : 280.0),
+    );
+    final height = safeMaxHeight <= 0
+        ? 0.0
+        : preferredHeight.clamp(minHeight, preferredMaxHeight).toDouble();
 
     return Size(width, height);
+  }
+
+  double _measureTextHeight({
+    required String text,
+    required double maxWidth,
+    required TextStyle style,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: null,
+    )..layout(maxWidth: maxWidth);
+    return painter.height;
   }
 
   Widget _buildGuideBubble({

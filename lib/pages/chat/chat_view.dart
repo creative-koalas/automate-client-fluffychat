@@ -88,7 +88,7 @@ class ChatView extends StatelessWidget {
               targetKey: controller.mentionGuideKey,
               title: l10n.chatRoomGuideMentionTitle,
               description: l10n.chatRoomGuideMentionBody,
-              preferredPlacement: GuideBubblePlacement.below,
+              preferredPlacement: GuideBubblePlacement.above,
             ),
           ]
         : <ChatRoomIntroGuideStep>[
@@ -97,6 +97,7 @@ class ChatView extends StatelessWidget {
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
               preferredPlacement: GuideBubblePlacement.below,
+              estimatedContentHeight: 108,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
