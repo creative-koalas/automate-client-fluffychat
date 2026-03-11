@@ -41,19 +41,31 @@ jobs:
           cache: true
       - uses: moonrepo/setup-rust@v1
       - run: flutter pub get
-      - name: Prepare temporary Android signing
+      - name: Prepare Android signing from secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ] || \
+             [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ] || \
+             [ -z "${ANDROID_KEY_ALIAS:-}" ] || \
+             [ -z "${ANDROID_KEY_PASSWORD:-}" ]; then
+            echo "Missing required Android signing secrets"
+            echo "Required: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD"
+            exit 1
+          fi
+
           cd android
-          keytool -genkey -keyalg RSA -alias key -keysize 4096 \
-            -dname "cn=Psygo CI, ou=CI, o=Psygo, c=US" \
-            -keypass PSYGO_CI -storepass PSYGO_CI -validity 1 \
-            -keystore key.jks -storetype pkcs12
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > key.jks
           {
-            echo "storePassword=PSYGO_CI"
-            echo "keyPassword=PSYGO_CI"
-            echo "keyAlias=key"
-            echo "storeFile=../key.jks"
-          } >> key.properties
+            echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
+            echo "keyPassword=${ANDROID_KEY_PASSWORD}"
+            echo "keyAlias=${ANDROID_KEY_ALIAS}"
+            echo "storeFile=key.jks"
+          } > key.properties
       - name: Build APK
         env:
           ENV_JSON_CONTENT: ${{ secrets[matrix.target.env_secret] }}
@@ -195,12 +207,45 @@ jobs:
           ENV_JSON_CONTENT: ${{ secrets[matrix.target.env_secret] }}
         run: |
           set -euo pipefail
+
+          sanitize_package_name() {
+            local value="$1"
+            value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+            value="$(printf '%s' "$value" | sed 's/[^a-z0-9.+-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+            printf '%s' "$value"
+          }
+
+          sanitize_linux_app_id_suffix() {
+            local value="$1"
+            value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+            value="$(printf '%s' "$value" | sed 's/^[._-]\+//; s/[^a-z0-9_]/_/g; s/_\{2,\}/_/g; s/^_//; s/_$//')"
+            printf '%s' "$value"
+          }
+
           if [ -z "${ENV_JSON_CONTENT:-}" ]; then
             echo "Missing secret: ${{ matrix.target.env_secret }}"
             exit 1
           fi
           printf '%s' "$ENV_JSON_CONTENT" > ci.env.json
           python3 -m json.tool ci.env.json >/dev/null
+
+          env_app_name="$(python3 -c 'import json; print(json.load(open("ci.env.json")).get("APP_NAME",""))')"
+          env_app_id_suffix="$(python3 -c 'import json; print(json.load(open("ci.env.json")).get("APP_ID_SUFFIX",""))')"
+          pubspec_name="$(sed -n 's/^name:[[:space:]]*//p' pubspec.yaml | head -n1)"
+          package_name_source="${env_app_name:-$pubspec_name}"
+          package_name="$(sanitize_package_name "$package_name_source")"
+          if [ -z "$package_name" ]; then
+            echo "Failed to derive a valid Linux package name"
+            exit 1
+          fi
+          app_id_suffix_token="$(sanitize_linux_app_id_suffix "$env_app_id_suffix")"
+          linux_application_id="com.psygo.app${app_id_suffix_token:+.${app_id_suffix_token}}"
+          display_name="${env_app_name:-Psygo}"
+          binary_name="$package_name"
+
+          export PSYGO_LINUX_BINARY_NAME="$binary_name"
+          export PSYGO_LINUX_APPLICATION_ID="$linux_application_id"
+          export PSYGO_LINUX_WINDOW_TITLE="$display_name"
 
           flutter build linux --release --dart-define-from-file=ci.env.json
 
@@ -210,8 +255,9 @@ jobs:
             exit 1
           fi
 
-          package_name="psygo"
-          binary_name="psygo"
+          if [ ! -x "$bundle_dir/$binary_name" ]; then
+            binary_name="psygo"
+          fi
           channel="${{ matrix.target.channel }}"
           app_version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n1)"
           version_tag="${app_version//+/-}"
@@ -248,8 +294,8 @@ jobs:
           {
             echo "[Desktop Entry]"
             echo "Version=1.0"
-            echo "Name=Psygo"
-            echo "GenericName=Psygo"
+            echo "Name=$display_name"
+            echo "GenericName=$display_name"
             echo "Comment=Psygo desktop client"
             echo "Exec=$binary_name"
             echo "Icon=$package_name"
@@ -258,7 +304,9 @@ jobs:
             echo "Categories=Utility;"
           } > "$pkg_root/usr/share/applications/${package_name}.desktop"
 
-          if [ -f "debian/gui/psygo.png" ]; then
+          if [ -f "debian/gui/${package_name}.png" ]; then
+            cp "debian/gui/${package_name}.png" "$pkg_root/usr/share/icons/hicolor/512x512/apps/${package_name}.png"
+          elif [ -f "debian/gui/psygo.png" ]; then
             cp "debian/gui/psygo.png" "$pkg_root/usr/share/icons/hicolor/512x512/apps/${package_name}.png"
           fi
 
