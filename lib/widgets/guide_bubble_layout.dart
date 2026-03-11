@@ -31,6 +31,7 @@ class GuideBubbleLayoutResolver {
     required double screenPadding,
     required double connectorGap,
     required GuideBubblePlacement preferredPlacement,
+    Offset bubbleOffset = Offset.zero,
   }) {
     final bounds = Rect.fromLTWH(
       screenPadding,
@@ -49,6 +50,7 @@ class GuideBubbleLayoutResolver {
         bounds: bounds,
         order: i,
         connectorGap: connectorGap,
+        bubbleOffset: bubbleOffset,
       );
       if (candidate.fitsNaturally) {
         return candidate.layout;
@@ -68,13 +70,14 @@ class GuideBubbleLayoutResolver {
     required Rect bounds,
     required int order,
     required double connectorGap,
+    required Offset bubbleOffset,
   }) {
     final rawOffset = _rawBubbleOffset(
       placement: placement,
       highlightRect: highlightRect,
       bubbleSize: bubbleSize,
       connectorGap: connectorGap,
-    );
+    ).translate(bubbleOffset.dx, bubbleOffset.dy);
     final maxLeft = max(bounds.left, bounds.right - bubbleSize.width);
     final maxTop = max(bounds.top, bounds.bottom - bubbleSize.height);
     final left = rawOffset.dx.clamp(bounds.left, maxLeft).toDouble();
