@@ -1,50 +1,28 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:psygo/services/onboarding_guide_service.dart';
 
 class ChatRoomGuideService {
   ChatRoomGuideService._();
 
   static final ChatRoomGuideService instance = ChatRoomGuideService._();
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const String _directGuideKeyPrefix =
-      'automate_chat_room_guide_completed_v2_';
-  static const String _groupMentionGuideKeyPrefix =
-      'automate_group_chat_mention_guide_completed_v2_';
-  static const bool debugAlwaysShowDirectGuide = false;
-  static const bool debugAlwaysShowGroupMentionGuide = false;
 
   Future<bool> shouldShowGuide({
     required String? userId,
     required String? roomId,
   }) async {
-    final normalizedUserId = userId?.trim() ?? '';
-    if (normalizedUserId.isEmpty) {
+    final state = await OnboardingGuideService.instance.getState(userId);
+    if (state == null) {
       return false;
     }
-
-    if (debugAlwaysShowDirectGuide) {
-      return true;
-    }
-
-    return _shouldShowByKey(
-      key: '$_directGuideKeyPrefix$normalizedUserId',
-    );
+    return !state.employeeChatRoom;
   }
 
   Future<void> markGuideCompleted({
     required String? userId,
     required String? roomId,
   }) async {
-    final normalizedUserId = userId?.trim() ?? '';
-    if (normalizedUserId.isEmpty) {
-      return;
-    }
-
-    if (debugAlwaysShowDirectGuide) {
-      return;
-    }
-
-    await _markGuideCompletedByKey(
-      key: '$_directGuideKeyPrefix$normalizedUserId',
+    await OnboardingGuideService.instance.updateState(
+      userId,
+      employeeChatRoom: true,
     );
   }
 
@@ -52,49 +30,20 @@ class ChatRoomGuideService {
     required String? userId,
     required String? roomId,
   }) async {
-    final normalizedUserId = userId?.trim() ?? '';
-    if (normalizedUserId.isEmpty) {
+    final state = await OnboardingGuideService.instance.getState(userId);
+    if (state == null) {
       return false;
     }
-
-    if (debugAlwaysShowGroupMentionGuide) {
-      return true;
-    }
-
-    return _shouldShowByKey(
-      key: '$_groupMentionGuideKeyPrefix$normalizedUserId',
-    );
+    return !state.groupChat;
   }
 
   Future<void> markGroupMentionGuideCompleted({
     required String? userId,
     required String? roomId,
   }) async {
-    final normalizedUserId = userId?.trim() ?? '';
-    if (normalizedUserId.isEmpty) {
-      return;
-    }
-
-    if (debugAlwaysShowGroupMentionGuide) {
-      return;
-    }
-
-    await _markGuideCompletedByKey(
-      key: '$_groupMentionGuideKeyPrefix$normalizedUserId',
-    );
-  }
-
-  Future<bool> _shouldShowByKey({required String key}) async {
-    final completed = await _storage.read(
-      key: key,
-    );
-    return completed?.toLowerCase() != 'true';
-  }
-
-  Future<void> _markGuideCompletedByKey({required String key}) async {
-    await _storage.write(
-      key: key,
-      value: 'true',
+    await OnboardingGuideService.instance.updateState(
+      userId,
+      groupChat: true,
     );
   }
 }
