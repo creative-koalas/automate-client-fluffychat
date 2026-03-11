@@ -59,7 +59,7 @@ jobs:
           fi
 
           cd android
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > key.jks
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/key.jks
           {
             echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
             echo "keyPassword=${ANDROID_KEY_PASSWORD}"
