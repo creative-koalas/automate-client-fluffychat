@@ -200,11 +200,15 @@ class ChatInputRow extends StatelessWidget {
               clipBehavior: Clip.hardEdge,
               child: IconButton(
                 icon: const Icon(Icons.add_circle_outline),
-                color: theme.colorScheme.onPrimaryContainer,
-                onPressed: () => _showAttachmentBottomSheet(
-                  context,
-                  controller,
-                ),
+                color: controller.isAgentResting
+                    ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                    : theme.colorScheme.onPrimaryContainer,
+                onPressed: controller.isAgentResting
+                    ? null
+                    : () => _showAttachmentBottomSheet(
+                          context,
+                          controller,
+                        ),
               ),
             ),
             if (PlatformInfos.isMobile)
@@ -219,11 +223,15 @@ class ChatInputRow extends StatelessWidget {
                 // 禁用录像功能，点击相机按钮直接拍照
                 child: IconButton(
                   icon: const Icon(Icons.camera_alt_outlined),
-                  onPressed: () => controller.onAddPopupMenuButtonSelected(
-                    AddPopupMenuActions.photoCamera,
-                  ),
+                  onPressed: controller.isAgentResting
+                      ? null
+                      : () => controller.onAddPopupMenuButtonSelected(
+                            AddPopupMenuActions.photoCamera,
+                          ),
                   iconSize: height * 0.5,
-                  color: theme.colorScheme.onPrimaryContainer,
+                  color: controller.isAgentResting
+                      ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                      : theme.colorScheme.onPrimaryContainer,
                 ),
                 // child: PopupMenuButton(
                 //   useRootNavigator: true,

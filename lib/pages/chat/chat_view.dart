@@ -398,7 +398,7 @@ class ChatView extends StatelessWidget {
               final l10n = L10n.of(context);
               final isDisabled = !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
-                  !agent.canOpenWebEntry;
+                  (!agent.canOpenWebEntry || agent.isResting);
 
               return KeyedSubtree(
                 key: controller.webEntryGuideKey,
@@ -408,10 +408,11 @@ class ChatView extends StatelessWidget {
                       : (isDisabled
                           ? l10n.agentWebEntryUnavailable
                           : '打开 WebView'),
-                  onPressed:
-                      controller.webEntryOpen || controller.webEntryLoading
+                  onPressed: isDisabled
+                      ? null
+                      : (controller.webEntryOpen || controller.webEntryLoading
                           ? controller.closeWebEntry
-                          : () => controller.openWebEntry(),
+                          : () => controller.openWebEntry()),
                   icon: controller.webEntryLoading
                       ? const SizedBox(
                           width: 20,

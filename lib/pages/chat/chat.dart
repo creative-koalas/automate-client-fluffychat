@@ -190,6 +190,7 @@ class ChatController extends State<ChatPageWithRoom>
       _chatRoomGuideType == ChatRoomGuideType.groupMention;
   bool get canDismissEmployeeWorkTemplateBar => _employeeChatRoomGuideCompleted;
   bool get employeeWorkTemplateDismissed => _employeeWorkTemplateDismissed;
+  bool get isAgentResting => webEntryAgent?.isResting == true;
   String? get backendUserId => context.read<PsygoAuthState>().userId;
 
   Agent? get webEntryAgent {
