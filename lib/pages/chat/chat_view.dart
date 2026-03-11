@@ -97,7 +97,7 @@ class ChatView extends StatelessWidget {
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
               preferredPlacement: GuideBubblePlacement.below,
-              estimatedContentHeight: 108,
+              estimatedContentHeight: 148,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -120,6 +120,27 @@ class ChatView extends StatelessWidget {
                     color: theme.colorScheme.outline,
                     label: l10n.employeeSleeping,
                     hint: l10n.employeeSleepingHint,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.guideRestingFeatureUnavailable,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -398,21 +419,21 @@ class ChatView extends StatelessWidget {
               final l10n = L10n.of(context);
               final isDisabled = !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
-                  (!agent.canOpenWebEntry || agent.isResting);
+                  !agent.canOpenWebEntry;
+              final isVisuallyDisabled = isDisabled || agent.isResting;
 
               return KeyedSubtree(
                 key: controller.webEntryGuideKey,
                 child: IconButton(
                   tooltip: controller.webEntryOpen
                       ? '返回聊天'
-                      : (isDisabled
+                      : (isVisuallyDisabled
                           ? l10n.agentWebEntryUnavailable
                           : '打开 WebView'),
-                  onPressed: isDisabled
-                      ? null
-                      : (controller.webEntryOpen || controller.webEntryLoading
+                  onPressed:
+                      controller.webEntryOpen || controller.webEntryLoading
                           ? controller.closeWebEntry
-                          : () => controller.openWebEntry()),
+                          : () => controller.openWebEntry(),
                   icon: controller.webEntryLoading
                       ? const SizedBox(
                           width: 20,
@@ -426,7 +447,7 @@ class ChatView extends StatelessWidget {
                               controller.webEntryOpen
                                   ? Icons.arrow_back
                                   : Icons.web_outlined,
-                              color: isDisabled
+                              color: isVisuallyDisabled
                                   ? theme.colorScheme.onSurface.withValues(
                                       alpha: 0.38,
                                     )

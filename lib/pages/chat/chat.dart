@@ -193,6 +193,17 @@ class ChatController extends State<ChatPageWithRoom>
   bool get isAgentResting => webEntryAgent?.isResting == true;
   String? get backendUserId => context.read<PsygoAuthState>().userId;
 
+  bool _blockFileIfResting() {
+    if (!isAgentResting) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(L10n.of(context).guideRestingFeatureUnavailable),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return true;
+  }
+
   Agent? get webEntryAgent {
     final directChatMatrixID = room.directChatMatrixID;
     return AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
@@ -235,6 +246,11 @@ class ChatController extends State<ChatPageWithRoom>
     if (agent == null) return;
     if (_webEntryLoading) return;
     final l10n = L10n.of(context);
+
+    if (agent.isResting) {
+      _showWebEntryHint(l10n.guideRestingFeatureUnavailable);
+      return;
+    }
 
     if (!agent.canOpenWebEntry) {
       _showWebEntryHint(l10n.agentWebEntryUnavailable);
@@ -312,6 +328,7 @@ class ChatController extends State<ChatPageWithRoom>
   void onDragDone(DropDoneDetails details) async {
     setState(() => dragging = false);
     if (details.files.isEmpty) return;
+    if (_blockFileIfResting()) return;
 
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(details.files);
@@ -331,6 +348,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<bool> handlePasteFilesFromClipboard(BuildContext context) async {
+    if (_blockFileIfResting()) return true;
     List<XFile> files;
     try {
       files = await _filesFromClipboard();
@@ -1142,6 +1160,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (!hasPending && trimmedText.isEmpty) return;
 
     if (hasPending) {
+      if (_blockFileIfResting()) return;
       final sent = await _sendPendingAttachments();
       if (!sent) return;
     }
@@ -1350,6 +1369,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void sendFileAction({FileSelectorType type = FileSelectorType.any}) async {
+    if (_blockFileIfResting()) return;
     final files = await selectFiles(
       context,
       allowMultiple: true,
@@ -1374,6 +1394,7 @@ class ChatController extends State<ChatPageWithRoom>
 
   void sendImageFromClipBoard(Uint8List? image) async {
     if (image == null) return;
+    if (_blockFileIfResting()) return;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(
         [XFile.fromData(image, name: 'clipboard_image.png')],

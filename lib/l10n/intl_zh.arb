@@ -3553,6 +3553,8 @@
     "@employeeSlackingHint": {},
     "employeeSleepingHint": "唤醒员工需要一定时间",
     "@employeeSleepingHint": {},
+    "guideRestingFeatureUnavailable": "员工休息时，发送文件与智能界面功能暂不可用",
+    "@guideRestingFeatureUnavailable": {},
     "agentWebEntryUnavailable": "该员工暂未开放入口",
     "@agentWebEntryUnavailable": {},
     "chatRoomGuideWorkStatusTitle": "工作状态说明",

@@ -3526,6 +3526,8 @@
   "@employeeSlackingHint": {},
   "employeeSleepingHint": "Waking the employee may take a moment.",
   "@employeeSleepingHint": {},
+  "guideRestingFeatureUnavailable": "File sending and smart interface are unavailable while the employee is resting",
+  "@guideRestingFeatureUnavailable": {},
   "agentWebEntryUnavailable": "This employee currently has no web entry available.",
   "@agentWebEntryUnavailable": {},
   "chatRoomGuideWorkStatusTitle": "Work status",
