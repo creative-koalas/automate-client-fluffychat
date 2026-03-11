@@ -198,24 +198,51 @@ class ChatView extends StatelessWidget {
     }
   }
 
-  Widget _buildTimelinePane(BuildContext context) {
+  EmployeeWorkTemplateBar _buildEmployeeWorkTemplateBar(
+    BuildContext context, {
+    Key? key,
+    EdgeInsetsGeometry? margin,
+    VoidCallback? onClose,
+  }) {
     final l10n = L10n.of(context);
+    return EmployeeWorkTemplateBar(
+      key: key,
+      title: l10n.employeeWorkTemplatesTitle,
+      subtitle: l10n.employeeWorkTemplatesSubtitle,
+      templates: _employeeWorkTemplates(context),
+      onTemplateTap: (template) => _handleEmployeeWorkTemplateTap(
+        context,
+        template,
+      ),
+      margin: margin,
+      onClose: onClose,
+    );
+  }
+
+  Widget _buildTimelinePane(BuildContext context) {
     final theme = Theme.of(context);
-    final showEmployeeWorkTemplateBar =
-        controller.isEmployeeChat && controller.activeThreadId == null;
+    final isDesktop = PlatformInfos.isDesktop;
+    final templateMargin = EdgeInsets.fromLTRB(
+      isDesktop ? 16 : 12,
+      isDesktop ? 6 : 2,
+      isDesktop ? 16 : 12,
+      8,
+    );
+    final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
+        controller.activeThreadId == null &&
+        !controller.employeeWorkTemplateDismissed;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
-        ? EmployeeWorkTemplateBar(
+        ? _buildEmployeeWorkTemplateBar(
+            context,
             key: controller.employeeWorkTemplateGuideKey,
-            title: l10n.employeeWorkTemplatesTitle,
-            subtitle: l10n.employeeWorkTemplatesSubtitle,
-            templates: _employeeWorkTemplates(context),
-            onTemplateTap: (template) =>
-                _handleEmployeeWorkTemplateTap(context, template),
+            margin: templateMargin,
+            onClose: controller.dismissEmployeeWorkTemplateBar,
           )
         : null;
 
     return Column(
       children: [
+        if (employeeWorkTemplateBar != null) employeeWorkTemplateBar,
         Expanded(
           child: Stack(
             children: [
@@ -223,7 +250,6 @@ class ChatView extends StatelessWidget {
                 onTap: controller.clearSingleSelectedEvent,
                 child: ChatEventList(
                   controller: controller,
-                  inlineTopWidget: employeeWorkTemplateBar,
                 ),
               ),
               if (controller.readMarkerEventId.isNotEmpty)

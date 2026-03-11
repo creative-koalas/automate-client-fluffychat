@@ -19,6 +19,8 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
   final String subtitle;
   final List<EmployeeWorkTemplateItem> templates;
   final ValueChanged<EmployeeWorkTemplateItem> onTemplateTap;
+  final EdgeInsetsGeometry? margin;
+  final VoidCallback? onClose;
 
   const EmployeeWorkTemplateBar({
     super.key,
@@ -26,6 +28,8 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
     required this.subtitle,
     required this.templates,
     required this.onTemplateTap,
+    this.margin,
+    this.onClose,
   });
 
   @override
@@ -47,7 +51,7 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
         final isWideLayout = constraints.maxWidth >= 900;
 
         return Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          margin: margin ?? const EdgeInsets.fromLTRB(12, 0, 12, 8),
           padding: EdgeInsets.all(isWideLayout ? 18 : 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -98,6 +102,19 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onClose != null)
+                    IconButton(
+                      onPressed: onClose,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 14),

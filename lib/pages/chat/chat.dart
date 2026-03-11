@@ -170,6 +170,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool _chatRoomGuideCompleted = false;
   int _chatRoomGuideStepIndex = 0;
   ChatRoomGuideType? _chatRoomGuideType;
+  bool _employeeWorkTemplateDismissed = false;
 
   bool get webEntryOpen => _webEntryOpen;
   bool get webEntryLoading => _webEntryLoading;
@@ -183,6 +184,7 @@ class ChatController extends State<ChatPageWithRoom>
       _chatRoomGuideType == ChatRoomGuideType.employee;
   bool get isGroupMentionGuide =>
       _chatRoomGuideType == ChatRoomGuideType.groupMention;
+  bool get employeeWorkTemplateDismissed => _employeeWorkTemplateDismissed;
 
   Agent? get webEntryAgent {
     final directChatMatrixID = room.directChatMatrixID;
@@ -2109,6 +2111,13 @@ class ChatController extends State<ChatPageWithRoom>
         showChatRoomGuide) {
       unawaited(dismissChatRoomGuide());
     }
+  }
+
+  void dismissEmployeeWorkTemplateBar() {
+    if (_employeeWorkTemplateDismissed) return;
+    setState(() {
+      _employeeWorkTemplateDismissed = true;
+    });
   }
 
   late final ValueNotifier<bool> _displayChatDetailsColumn;

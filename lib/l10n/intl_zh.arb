@@ -3569,7 +3569,7 @@
     "@chatRoomGuideWebEntryBody": {},
     "chatRoomGuideWorkTemplateTitle": "工作模板",
     "@chatRoomGuideWorkTemplateTitle": {},
-    "chatRoomGuideWorkTemplateBody": "这里有常用的工作模板。点击任意模板后，会先弹出预览窗口，确认后就能把这段话直接发送给员工。",
+    "chatRoomGuideWorkTemplateBody": "这里有常用的工作模板。点击任意模板后，会先弹出预览窗口，确认后就能把这段话直接发送给员工。点击右上角 × 可以隐藏模板。",
     "@chatRoomGuideWorkTemplateBody": {},
     "chatRoomGuideMentionTitle": "点击群聊头像",
     "@chatRoomGuideMentionTitle": {},

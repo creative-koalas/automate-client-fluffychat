@@ -3542,7 +3542,7 @@
   "@chatRoomGuideWebEntryBody": {},
   "chatRoomGuideWorkTemplateTitle": "Work templates",
   "@chatRoomGuideWorkTemplateTitle": {},
-  "chatRoomGuideWorkTemplateBody": "These are ready-to-use work templates. Tap any template to preview the message first, then confirm to send it directly to the employee.",
+  "chatRoomGuideWorkTemplateBody": "These are ready-to-use work templates. Tap any template to preview the message first, then confirm to send it directly to the employee. Tap the top-right × to hide this panel.",
   "@chatRoomGuideWorkTemplateBody": {},
   "chatRoomGuideMentionTitle": "Tap a group avatar",
   "@chatRoomGuideMentionTitle": {},
