@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:dio/dio.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
@@ -9,7 +12,7 @@ import '../utils/custom_http_client.dart';
 
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio})
-      : _dio = dio ?? CustomHttpClient.createDio() {
+    : _dio = dio ?? CustomHttpClient.createDio() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(_buildAuthInterceptor());
@@ -44,8 +47,9 @@ class PsygoApiClient {
         // 刷新成功，重试原请求
         debugPrint('[API] Token refreshed, retrying request...');
         try {
-          final newToken =
-              await TokenManager.instance.getAccessToken(autoRefresh: false);
+          final newToken = await TokenManager.instance.getAccessToken(
+            autoRefresh: false,
+          );
           options.headers['Authorization'] = 'Bearer $newToken';
           options.extra['_retried'] = true;
 
@@ -62,6 +66,9 @@ class PsygoApiClient {
   final PsygoAuthState auth;
   final Dio _dio;
   static const Set<int> _unauthorizedCodes = {10002, 10003};
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String _authDeviceIdKey = 'automate_auth_device_id';
+  static const String _hexChars = '0123456789abcdef';
 
   Future<void> _syncAuthState() async {
     await auth.load();
@@ -80,6 +87,44 @@ class PsygoApiClient {
 
   bool _isUnauthorizedCode(int? code) {
     return code != null && _unauthorizedCodes.contains(code);
+  }
+
+  String _authDevicePlatform() {
+    if (kIsWeb) return 'web';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.windows:
+        return 'windows';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.linux:
+        return 'linux';
+      case TargetPlatform.fuchsia:
+        return 'fuchsia';
+    }
+  }
+
+  String _randomHex(int length) {
+    final random = Random.secure();
+    final buffer = StringBuffer();
+    for (var i = 0; i < length; i++) {
+      buffer.write(_hexChars[random.nextInt(_hexChars.length)]);
+    }
+    return buffer.toString();
+  }
+
+  Future<String> _getOrCreateAuthDeviceId() async {
+    final existing = (await _secureStorage.read(key: _authDeviceIdKey))?.trim();
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
+    }
+    final generated =
+        '${_authDevicePlatform()}_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}_${_randomHex(12)}';
+    await _secureStorage.write(key: _authDeviceIdKey, value: generated);
+    return generated;
   }
 
   Future<Response<Map<String, dynamic>>> _requestWithAuthRetry(
@@ -119,9 +164,15 @@ class PsygoApiClient {
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
     try {
+      final authDeviceID = await _getOrCreateAuthDeviceId();
+      final authDevicePlatform = _authDevicePlatform();
       res = await _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
-        data: {'phone': phone},
+        data: {
+          'phone': phone,
+          'auth_device_id': authDeviceID,
+          'auth_device_platform': authDevicePlatform,
+        },
       );
     } on DioException catch (e) {
       debugPrint(
@@ -166,18 +217,31 @@ class PsygoApiClient {
 
   /// 短信验证码登录
   Future<AuthResponse> smsLogin(String phone, String code) async {
+    final authDeviceID = await _getOrCreateAuthDeviceId();
+    final authDevicePlatform = _authDevicePlatform();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/sms-login',
-      data: {'phone': phone, 'code': code},
+      data: {
+        'phone': phone,
+        'code': code,
+        'auth_device_id': authDeviceID,
+        'auth_device_platform': authDevicePlatform,
+      },
     );
     return _handleAuthResponse(res, '登录失败');
   }
 
   /// 一键登录（阿里云）
   Future<AuthResponse> oneClickLogin(String accessToken) async {
+    final authDeviceID = await _getOrCreateAuthDeviceId();
+    final authDevicePlatform = _authDevicePlatform();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/one-click-login',
-      data: {'access_token': accessToken},
+      data: {
+        'access_token': accessToken,
+        'auth_device_id': authDeviceID,
+        'auth_device_platform': authDevicePlatform,
+      },
     );
     return _handleAuthResponse(res, '登录失败');
   }
@@ -281,10 +345,7 @@ class PsygoApiClient {
     final res = await _requestWithAuthRetry((token) {
       return _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/payments/recharge/create',
-        data: {
-          'user_id': userId,
-          'total_amount': amount,
-        },
+        data: {'user_id': userId, 'total_amount': amount},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     });
@@ -477,10 +538,7 @@ class PsygoApiClient {
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/app/version',
-      queryParameters: {
-        'version': currentVersion,
-        'platform': platform,
-      },
+      queryParameters: {'version': currentVersion, 'platform': platform},
     );
 
     final data = res.data ?? {};
@@ -621,15 +679,15 @@ class AuthResponse {
   });
 
   Map<String, dynamic> toJson() => {
-        'token': token,
-        'refreshToken': refreshToken,
-        'expiresIn': expiresIn,
-        'userId': userId,
-        'phone': phone,
-        'matrixAccessToken': matrixAccessToken,
-        'matrixUserId': matrixUserId,
-        'matrixDeviceId': matrixDeviceId,
-      };
+    'token': token,
+    'refreshToken': refreshToken,
+    'expiresIn': expiresIn,
+    'userId': userId,
+    'phone': phone,
+    'matrixAccessToken': matrixAccessToken,
+    'matrixUserId': matrixUserId,
+    'matrixDeviceId': matrixDeviceId,
+  };
 }
 
 /// 充值订单创建请求
@@ -637,15 +695,12 @@ class CreateRechargeOrderRequest {
   final String userId;
   final double totalAmount;
 
-  CreateRechargeOrderRequest({
-    required this.userId,
-    required this.totalAmount,
-  });
+  CreateRechargeOrderRequest({required this.userId, required this.totalAmount});
 
   Map<String, dynamic> toJson() => {
-        'user_id': userId,
-        'total_amount': totalAmount,
-      };
+    'user_id': userId,
+    'total_amount': totalAmount,
+  };
 }
 
 /// 充值订单响应
@@ -834,10 +889,7 @@ class AgreementStatus {
   final bool allAccepted; // 是否已接受所有必需协议
   final List<AgreementAcceptance> agreements; // 各协议的接受状态
 
-  AgreementStatus({
-    required this.allAccepted,
-    required this.agreements,
-  });
+  AgreementStatus({required this.allAccepted, required this.agreements});
 
   factory AgreementStatus.fromJson(Map<String, dynamic> json) {
     final agreementsList = json['agreements'] as List<dynamic>? ?? [];
