@@ -14,10 +14,12 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
+import 'package:provider/provider.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/core/config.dart';
@@ -30,6 +32,7 @@ import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
+import 'package:psygo/services/employee_work_template_visibility_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/fluffy_share.dart';
@@ -170,6 +173,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool _chatRoomGuideCompleted = false;
   int _chatRoomGuideStepIndex = 0;
   ChatRoomGuideType? _chatRoomGuideType;
+  bool _employeeChatRoomGuideCompleted = false;
   bool _employeeWorkTemplateDismissed = false;
 
   bool get webEntryOpen => _webEntryOpen;
@@ -184,7 +188,9 @@ class ChatController extends State<ChatPageWithRoom>
       _chatRoomGuideType == ChatRoomGuideType.employee;
   bool get isGroupMentionGuide =>
       _chatRoomGuideType == ChatRoomGuideType.groupMention;
+  bool get canDismissEmployeeWorkTemplateBar => _employeeChatRoomGuideCompleted;
   bool get employeeWorkTemplateDismissed => _employeeWorkTemplateDismissed;
+  String? get backendUserId => context.read<PsygoAuthState>().userId;
 
   Agent? get webEntryAgent {
     final directChatMatrixID = room.directChatMatrixID;
@@ -655,24 +661,42 @@ class ChatController extends State<ChatPageWithRoom>
         room.hasNewMessages ? lastEventThreadId ?? room.fullyRead : '';
     WidgetsBinding.instance.addObserver(this);
     _tryLoadTimeline();
+    unawaited(_loadEmployeeWorkTemplateVisibilityState());
     unawaited(_loadChatRoomGuideState());
     if (kIsWeb) {
       onFocusSub = html.window.onFocus.listen((_) => setReadMarker());
     }
   }
 
+  Future<void> _loadEmployeeWorkTemplateVisibilityState() async {
+    final dismissed = await EmployeeWorkTemplateVisibilityService.instance
+        .isDismissed(backendUserId);
+    if (!mounted || _employeeWorkTemplateDismissed == dismissed) {
+      return;
+    }
+    setState(() {
+      _employeeWorkTemplateDismissed = dismissed;
+    });
+  }
+
   Future<void> _loadChatRoomGuideState() async {
     final isDirectChat = room.directChatMatrixID != null;
+    final userId = backendUserId;
 
     final shouldShow = isDirectChat
         ? await ChatRoomGuideService.instance.shouldShowGuide(
-            userId: sendingClient.userID,
+            userId: userId,
             roomId: roomId,
           )
         : await ChatRoomGuideService.instance.shouldShowGroupMentionGuide(
-            userId: sendingClient.userID,
+            userId: userId,
             roomId: roomId,
           );
+
+    if (isDirectChat) {
+      _employeeChatRoomGuideCompleted = !shouldShow;
+    }
+
     if (!mounted || !shouldShow) return;
 
     _chatRoomGuideType = isDirectChat
@@ -721,8 +745,12 @@ class ChatController extends State<ChatPageWithRoom>
     if (_chatRoomGuideCompleted) return;
 
     final guideType = _chatRoomGuideType;
+    final userId = backendUserId;
     _pendingChatRoomGuide = false;
     _chatRoomGuideCompleted = true;
+    if (guideType == ChatRoomGuideType.employee) {
+      _employeeChatRoomGuideCompleted = true;
+    }
     if (mounted) {
       setState(() {
         _showChatRoomGuide = false;
@@ -735,14 +763,14 @@ class ChatController extends State<ChatPageWithRoom>
 
     if (guideType == ChatRoomGuideType.groupMention) {
       await ChatRoomGuideService.instance.markGroupMentionGuideCompleted(
-        userId: sendingClient.userID,
+        userId: userId,
         roomId: roomId,
       );
       return;
     }
 
     await ChatRoomGuideService.instance.markGuideCompleted(
-      userId: sendingClient.userID,
+      userId: userId,
       roomId: roomId,
     );
   }
@@ -2114,10 +2142,16 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void dismissEmployeeWorkTemplateBar() {
-    if (_employeeWorkTemplateDismissed) return;
+    if (_employeeWorkTemplateDismissed || !_employeeChatRoomGuideCompleted) {
+      return;
+    }
     setState(() {
       _employeeWorkTemplateDismissed = true;
     });
+    unawaited(
+      EmployeeWorkTemplateVisibilityService.instance
+          .markDismissed(backendUserId),
+    );
   }
 
   late final ValueNotifier<bool> _displayChatDetailsColumn;
