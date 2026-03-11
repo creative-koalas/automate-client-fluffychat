@@ -231,12 +231,16 @@ class ChatView extends StatelessWidget {
     final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
         controller.activeThreadId == null &&
         !controller.employeeWorkTemplateDismissed;
+    final onCloseEmployeeWorkTemplate =
+        controller.canDismissEmployeeWorkTemplateBar
+            ? controller.dismissEmployeeWorkTemplateBar
+            : null;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
         ? _buildEmployeeWorkTemplateBar(
             context,
             key: controller.employeeWorkTemplateGuideKey,
             margin: templateMargin,
-            onClose: controller.dismissEmployeeWorkTemplateBar,
+            onClose: onCloseEmployeeWorkTemplate,
           )
         : null;
 
