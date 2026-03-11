@@ -1,18 +1,21 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:psygo/widgets/guide_bubble_layout.dart';
 
 class ChatRoomIntroGuideStep {
   final GlobalKey targetKey;
   final String title;
   final String? description;
   final WidgetBuilder? contentBuilder;
+  final GuideBubblePlacement preferredPlacement;
 
   const ChatRoomIntroGuideStep({
     required this.targetKey,
     required this.title,
     this.description,
     this.contentBuilder,
+    this.preferredPlacement = GuideBubblePlacement.below,
   });
 }
 
@@ -80,8 +83,19 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
           Size(constraints.maxWidth, constraints.maxHeight),
           highlightRect,
           bubbleSize,
+          currentStep.preferredPlacement,
         );
         final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        final scrimColor = theme.colorScheme.scrim.withValues(
+          alpha: isDark ? 0.82 : 0.72,
+        );
+        final guideAccentColor = theme.colorScheme.primary.withValues(
+          alpha: isDark ? 0.9 : 0.78,
+        );
+        final guideGlowColor = theme.colorScheme.primary.withValues(
+          alpha: isDark ? 0.32 : 0.2,
+        );
 
         return Stack(
           children: [
@@ -90,7 +104,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                 child: CustomPaint(
                   painter: _ChatRoomGuideScrimPainter(
                     highlightRect: highlightRect,
-                    color: Colors.black.withValues(alpha: 0.72),
+                    color: scrimColor,
                   ),
                 ),
               ),
@@ -105,7 +119,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                   painter: _ChatRoomGuideConnectorPainter(
                     start: bubbleLayout.connectorStart,
                     end: bubbleLayout.connectorEnd,
-                    color: Colors.white.withValues(alpha: 0.92),
+                    color: guideAccentColor,
                   ),
                 ),
               ),
@@ -119,10 +133,10 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: guideAccentColor, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.18),
+                        color: guideGlowColor,
                         blurRadius: 18,
                         spreadRadius: 2,
                       ),
@@ -214,58 +228,27 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
     );
   }
 
-  _ChatRoomGuideBubbleLayout _buildGuideBubbleLayout(
+  GuideBubbleLayoutResult _buildGuideBubbleLayout(
     Size size,
     Rect highlightRect,
     Size bubbleSize,
+    GuideBubblePlacement preferredPlacement,
   ) {
-    final bubbleWidth = bubbleSize.width;
-    final bubbleHeight = bubbleSize.height;
-    final spaceAbove =
-        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
-    final spaceBelow =
-        size.height - highlightRect.bottom - _guideScreenPadding - _guideConnectorGap;
-    final showAbove = spaceAbove >= bubbleHeight
-        ? true
-        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
-    final maxLeft = max(
-      _guideScreenPadding,
-      size.width - bubbleWidth - _guideScreenPadding,
-    );
-    final left = (highlightRect.center.dx - (bubbleWidth / 2))
-        .clamp(_guideScreenPadding, maxLeft)
-        .toDouble();
-    final top = showAbove
-        ? max(
-            _guideScreenPadding,
-            highlightRect.top - bubbleHeight - _guideConnectorGap,
-          ).toDouble()
-        : min(
-            size.height - bubbleHeight - _guideScreenPadding,
-            highlightRect.bottom + _guideConnectorGap,
-          ).toDouble();
-    final connectorX = highlightRect.center.dx
-        .clamp(left + 28, left + bubbleWidth - 28)
-        .toDouble();
-
-    return _ChatRoomGuideBubbleLayout(
-      left: left,
-      top: top,
-      connectorStart: Offset(
-        connectorX,
-        showAbove ? top + bubbleHeight : top,
-      ),
-      connectorEnd: Offset(
-        highlightRect.center.dx,
-        showAbove ? highlightRect.top : highlightRect.bottom,
-      ),
+    return GuideBubbleLayoutResolver.resolve(
+      containerSize: size,
+      highlightRect: highlightRect,
+      bubbleSize: bubbleSize,
+      screenPadding: _guideScreenPadding,
+      connectorGap: _guideConnectorGap,
+      preferredPlacement: preferredPlacement,
     );
   }
 
   static const double _guideConnectorGap = 36;
 
   Size _resolveBubbleSize(Size availableSize, ChatRoomIntroGuideStep step) {
-    final maxWidth = max(240.0, availableSize.width - (_guideScreenPadding * 2));
+    final maxWidth =
+        max(240.0, availableSize.width - (_guideScreenPadding * 2));
     final preferredWidth = availableSize.width >= 1280
         ? 560.0
         : (availableSize.width >= 900 ? 460.0 : _guideBubbleWidth);
@@ -274,9 +257,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
     final preferredHeight = step.contentBuilder == null
         ? (availableSize.width >= 1280
             ? 320.0
-            : (availableSize.width >= 900
-                ? 276.0
-                : _guideCompactBubbleHeight))
+            : (availableSize.width >= 900 ? 276.0 : _guideCompactBubbleHeight))
         : (availableSize.width >= 1280
             ? 440.0
             : (availableSize.width >= 900
@@ -284,7 +265,10 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                 : _guideExpandedBubbleHeight));
     final height = min(
       preferredHeight,
-      max(_guideCompactBubbleHeight, availableSize.height - (_guideScreenPadding * 2)),
+      max(
+        _guideCompactBubbleHeight,
+        availableSize.height - (_guideScreenPadding * 2),
+      ),
     );
 
     return Size(width, height);
@@ -297,6 +281,19 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
     required int currentStep,
     required int totalSteps,
   }) {
+    final isDark = theme.brightness == Brightness.dark;
+    final bubbleColor = isDark
+        ? theme.colorScheme.surfaceContainerHigh
+        : theme.colorScheme.surface;
+    final titleColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.colorScheme.onSurfaceVariant;
+    final stepColor = theme.colorScheme.onSurfaceVariant;
+    final borderColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.48 : 0.72,
+    );
+    final shadowColor = theme.colorScheme.shadow.withValues(
+      alpha: isDark ? 0.34 : 0.18,
+    );
     final content =
         step.contentBuilder != null ? step.contentBuilder!(context) : null;
     final bodyChildren = <Widget>[
@@ -304,7 +301,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
         Text(
           step.description!,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFF374151),
+            color: bodyColor,
             height: 1.45,
             fontWeight: FontWeight.w500,
           ),
@@ -320,11 +317,12 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bubbleColor,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.22),
+              color: shadowColor,
               blurRadius: 28,
               offset: const Offset(0, 12),
             ),
@@ -340,7 +338,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                     step.title,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF111827),
+                      color: titleColor,
                     ),
                   ),
                 ),
@@ -348,10 +346,10 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                   Text(
                     '$currentStep/$totalSteps',
                     style: theme.textTheme.labelMedium?.copyWith(
-                      color: const Color(0xFF6B7280),
+                      color: stepColor,
                       fontWeight: FontWeight.w700,
                     ),
-                ),
+                  ),
               ],
             ),
             const SizedBox(height: 14),
@@ -370,7 +368,7 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
                 onPressed: widget.onPrimaryAction,
                 style: FilledButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -390,20 +388,6 @@ class _ChatRoomIntroGuideState extends State<ChatRoomIntroGuide> {
       ),
     );
   }
-}
-
-class _ChatRoomGuideBubbleLayout {
-  final double left;
-  final double top;
-  final Offset connectorStart;
-  final Offset connectorEnd;
-
-  const _ChatRoomGuideBubbleLayout({
-    required this.left,
-    required this.top,
-    required this.connectorStart,
-    required this.connectorEnd,
-  });
 }
 
 class _ChatRoomGuideScrimPainter extends CustomPainter {

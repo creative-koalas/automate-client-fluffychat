@@ -22,6 +22,7 @@ import 'package:psygo/widgets/employee_work_template_bar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/agent_web_entry_view.dart';
 import 'package:psygo/widgets/chat_room_intro_guide.dart';
+import 'package:psygo/widgets/guide_bubble_layout.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/unread_rooms_badge.dart';
@@ -61,7 +62,7 @@ class ChatView extends StatelessWidget {
           child: RichText(
             text: TextSpan(
               style: theme.textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF374151),
+                color: theme.colorScheme.onSurfaceVariant,
                 height: 1.4,
               ),
               children: [
@@ -80,12 +81,14 @@ class ChatView extends StatelessWidget {
 
   Widget _buildChatRoomGuide(BuildContext context) {
     final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     final steps = controller.isGroupMentionGuide
         ? <ChatRoomIntroGuideStep>[
             ChatRoomIntroGuideStep(
               targetKey: controller.mentionGuideKey,
               title: l10n.chatRoomGuideMentionTitle,
               description: l10n.chatRoomGuideMentionBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
           ]
         : <ChatRoomIntroGuideStep>[
@@ -93,26 +96,27 @@ class ChatView extends StatelessWidget {
               targetKey: controller.workStatusGuideKey,
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
+              preferredPlacement: GuideBubblePlacement.below,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildGuideStatusItem(
                     context,
-                    color: Colors.green,
+                    color: theme.colorScheme.tertiary,
                     label: l10n.employeeWorking,
                     hint: l10n.employeeWorkingHint,
                   ),
                   const SizedBox(height: 10),
                   _buildGuideStatusItem(
                     context,
-                    color: Colors.blue,
+                    color: theme.colorScheme.primary,
                     label: l10n.employeeSlacking,
                     hint: l10n.employeeSlackingHint,
                   ),
                   const SizedBox(height: 10),
                   _buildGuideStatusItem(
                     context,
-                    color: Colors.blueGrey,
+                    color: theme.colorScheme.outline,
                     label: l10n.employeeSleeping,
                     hint: l10n.employeeSleepingHint,
                   ),
@@ -123,16 +127,19 @@ class ChatView extends StatelessWidget {
               targetKey: controller.webEntryGuideKey,
               title: l10n.chatRoomGuideSmartInterfaceTitle,
               description: l10n.chatRoomGuideSmartInterfaceBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
             ChatRoomIntroGuideStep(
               targetKey: controller.webEntryGuideKey,
               title: l10n.chatRoomGuideWebEntryTitle,
               description: l10n.chatRoomGuideWebEntryBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
             ChatRoomIntroGuideStep(
               targetKey: controller.employeeWorkTemplateGuideKey,
               title: l10n.chatRoomGuideWorkTemplateTitle,
               description: l10n.chatRoomGuideWorkTemplateBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
           ];
 
