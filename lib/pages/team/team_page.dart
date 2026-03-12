@@ -7,6 +7,7 @@ import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
+import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/services/recruit_guide_service.dart';
@@ -35,6 +36,10 @@ class TeamPageController extends State<TeamPage> {
   // GlobalKey to access EmployeesTab state.
   final GlobalKey<EmployeesTabState> _employeesTabKey = GlobalKey();
   bool _showRecruitGuideHighlight = false;
+  bool _recruitLimitReached = false;
+  static const int _maxRecruitEmployeeCount = 3;
+  static const Duration _recruitTapCooldown = Duration(seconds: 2);
+  DateTime? _lastRecruitTapAt;
 
   @override
   void initState() {
@@ -42,6 +47,7 @@ class TeamPageController extends State<TeamPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _notifyEmployeesTabVisibility();
       unawaited(_syncRecruitGuideHighlight());
+      unawaited(_syncRecruitLimitState());
     });
   }
 
@@ -86,6 +92,16 @@ class TeamPageController extends State<TeamPage> {
   }
 
   bool get showRecruitGuideHighlight => _showRecruitGuideHighlight;
+  bool get recruitLimitReached => _recruitLimitReached;
+
+  void handleRecruitLimitChanged(bool reached) {
+    if (!mounted || _recruitLimitReached == reached) {
+      return;
+    }
+    setState(() {
+      _recruitLimitReached = reached;
+    });
+  }
 
   Future<void> _syncRecruitGuideHighlight() async {
     final shouldShow = await _shouldShowRecruitGuide();
@@ -111,7 +127,66 @@ class TeamPageController extends State<TeamPage> {
     });
   }
 
+  Future<bool> _hasReachedRecruitLimit() async {
+    final repository = AgentRepository();
+    try {
+      final page = await repository.getUserAgents(
+        limit: _maxRecruitEmployeeCount,
+        forceRefresh: true,
+      );
+      return page.agents.length >= _maxRecruitEmployeeCount || page.hasNextPage;
+    } catch (e) {
+      debugPrint('[TeamPage] Failed to fetch employee count: $e');
+      return AgentService.instance.agents.length >= _maxRecruitEmployeeCount;
+    } finally {
+      repository.dispose();
+    }
+  }
+
+  Future<void> _syncRecruitLimitState() async {
+    final reached = await _hasReachedRecruitLimit();
+    if (!mounted || _recruitLimitReached == reached) {
+      return;
+    }
+    setState(() {
+      _recruitLimitReached = reached;
+    });
+  }
+
+  void _showRecruitLimitSnackBar(BuildContext context) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: scaffoldMessenger.hideCurrentSnackBar,
+          child: Text(l10n.recruitLimitReachedMessage),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> openRecruitMenu(BuildContext context) async {
+    final reachedLimit = await _hasReachedRecruitLimit();
+    if (!mounted) return;
+    if (_recruitLimitReached != reachedLimit) {
+      setState(() {
+        _recruitLimitReached = reachedLimit;
+      });
+    }
+    if (reachedLimit) {
+      final now = DateTime.now();
+      final lastTap = _lastRecruitTapAt;
+      if (lastTap != null && now.difference(lastTap) < _recruitTapCooldown) {
+        return;
+      }
+      _lastRecruitTapAt = now;
+      _showRecruitLimitSnackBar(context);
+      return;
+    }
+
     final repository = AgentTemplateRepository();
     final isDesktop = FluffyThemes.isColumnMode(context);
     final showRecruitGuide = await _shouldShowRecruitGuide();
@@ -189,6 +264,7 @@ class TeamPageController extends State<TeamPage> {
     } finally {
       repository.dispose();
       unawaited(_syncRecruitGuideHighlight());
+      unawaited(_syncRecruitLimitState());
     }
   }
 
@@ -205,6 +281,13 @@ class TeamPageView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final recruitButtonDisabled = controller.recruitLimitReached;
+    final recruitGuideDescription = controller.showRecruitGuideHighlight
+        ? l10n.recruitGuideStepCreateBody
+        : l10n.customHireDescription;
+    final recruitButtonContentColor = recruitButtonDisabled
+        ? theme.colorScheme.onSurfaceVariant
+        : Colors.white;
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
@@ -294,12 +377,13 @@ class TeamPageView extends StatelessWidget {
       ),
       body: EmployeesTab(
         key: controller._employeesTabKey,
+        onRecruitLimitChanged: controller.handleRecruitLimitChanged,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: RecruitEntryGuideHighlight(
         visible: controller.showRecruitGuideHighlight,
         title: l10n.customHire,
-        description: l10n.customHireDescription,
+        description: recruitGuideDescription,
         actionLabel: l10n.customHire,
         onAction: () => unawaited(controller.openRecruitMenu(context)),
         child: Container(
@@ -307,15 +391,29 @@ class TeamPageView extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primary,
-                theme.colorScheme.tertiary,
-              ],
+              colors: recruitButtonDisabled
+                  ? [
+                      theme.colorScheme.surfaceContainerHigh,
+                      theme.colorScheme.surfaceContainerHighest,
+                    ]
+                  : [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.tertiary,
+                    ],
             ),
             borderRadius: BorderRadius.circular(20),
+            border: recruitButtonDisabled
+                ? Border.all(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.8,
+                    ),
+                  )
+                : null,
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                color: recruitButtonDisabled
+                    ? theme.colorScheme.shadow.withValues(alpha: 0.08)
+                    : theme.colorScheme.primary.withValues(alpha: 0.3),
                 blurRadius: 20,
                 spreadRadius: 2,
                 offset: const Offset(0, 6),
@@ -338,18 +436,18 @@ class TeamPageView extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.add_rounded,
-                      color: Colors.white,
+                      color: recruitButtonContentColor,
                       size: 24,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       l10n.customHire,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
-                        color: Colors.white,
+                        color: recruitButtonContentColor,
                         letterSpacing: 0.3,
                       ),
                     ),

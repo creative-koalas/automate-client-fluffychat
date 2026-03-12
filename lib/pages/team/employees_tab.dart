@@ -25,11 +25,15 @@ class EmployeesTab extends StatefulWidget {
   /// Callback to open the recruit flow from the employee list.
   final VoidCallback? onNavigateToRecruit;
   final bool showRecruitGuideHighlight;
+  final bool recruitButtonDisabled;
+  final ValueChanged<bool>? onRecruitLimitChanged;
 
   const EmployeesTab({
     super.key,
     this.onNavigateToRecruit,
     this.showRecruitGuideHighlight = false,
+    this.recruitButtonDisabled = false,
+    this.onRecruitLimitChanged,
   });
 
   @override
@@ -38,6 +42,8 @@ class EmployeesTab extends StatefulWidget {
 
 class EmployeesTabState extends State<EmployeesTab>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  static const int _maxRecruitEmployeeCount = 3;
+
   // Persist offboarding state across tab/page rebuilds so the card style does
   // not revert when user navigates away and back during deletion.
   static final ValueNotifier<Set<String>> _offboardingEmployeeIdsNotifier =
@@ -67,6 +73,7 @@ class EmployeesTabState extends State<EmployeesTab>
   Duration _currentMobilePollingInterval = _mobilePollingIntervalNormal;
   bool _isTabVisible = false;
   bool _isAppInForeground = true;
+  bool? _lastReportedRecruitLimitReached;
 
   @override
   bool get wantKeepAlive => true;
@@ -94,6 +101,15 @@ class EmployeesTabState extends State<EmployeesTab>
     _scrollController.dispose();
     _repository.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant EmployeesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.onRecruitLimitChanged != widget.onRecruitLimitChanged) {
+      _lastReportedRecruitLimitReached = null;
+      _notifyRecruitLimitChanged();
+    }
   }
 
   @override
@@ -125,6 +141,30 @@ class EmployeesTabState extends State<EmployeesTab>
   void _handleOffboardingStateChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  bool _isRecruitLimitReachedFromCurrentState() {
+    if (!_isLoading && _hasMore) {
+      return true;
+    }
+    final loadedIds = _employees.map((e) => e.agentId).toSet();
+    final pendingOnlyCount = _pendingEmployeesById.keys
+        .where((id) => !loadedIds.contains(id))
+        .length;
+    final knownCount = _employees.length + pendingOnlyCount;
+    return knownCount >= _maxRecruitEmployeeCount;
+  }
+
+  void _notifyRecruitLimitChanged() {
+    final callback = widget.onRecruitLimitChanged;
+    if (callback == null) return;
+    final reached = _isRecruitLimitReachedFromCurrentState();
+    if (_lastReportedRecruitLimitReached == reached) return;
+    _lastReportedRecruitLimitReached = reached;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      callback(reached);
+    });
   }
 
   bool _isOffboarding(String agentId) {
@@ -242,6 +282,7 @@ class EmployeesTabState extends State<EmployeesTab>
         _trialExpiresAt = page.trialExpiresAt;
         _isLoading = false;
       });
+      _notifyRecruitLimitChanged();
       // 检查是否需要启动/停止轮询
       _checkAndUpdatePolling();
     } catch (e) {
@@ -339,6 +380,7 @@ class EmployeesTabState extends State<EmployeesTab>
           }
         }
       });
+      _notifyRecruitLimitChanged();
       // 刷新后检查是否需要继续轮询
       _checkAndUpdatePolling();
     } catch (e) {
@@ -408,6 +450,7 @@ class EmployeesTabState extends State<EmployeesTab>
         _trialExpiresAt = page.trialExpiresAt;
         _error = null;
       });
+      _notifyRecruitLimitChanged();
       _checkAndUpdatePolling();
     } catch (_) {
       // 进入时静默刷新失败不打断页面使用
@@ -443,6 +486,7 @@ class EmployeesTabState extends State<EmployeesTab>
           _hasMore = page.hasNextPage;
           _isLoadingMore = false;
         });
+        _notifyRecruitLimitChanged();
         // 新加载的员工可能也有 isReady=false，检查是否需要启动轮询
         _checkAndUpdatePolling();
       }
@@ -484,6 +528,7 @@ class EmployeesTabState extends State<EmployeesTab>
         avatarUrl: avatarUrl,
       );
     });
+    _notifyRecruitLimitChanged();
     _checkAndUpdatePolling();
   }
 
@@ -494,6 +539,7 @@ class EmployeesTabState extends State<EmployeesTab>
     final removed = _pendingEmployeesById.remove(normalizedId);
     if (removed == null) return;
     setState(() {});
+    _notifyRecruitLimitChanged();
     _checkAndUpdatePolling();
   }
 
@@ -811,6 +857,7 @@ class EmployeesTabState extends State<EmployeesTab>
         setState(() {
           _employees.removeWhere((e) => e.agentId == employee.agentId);
         });
+        _notifyRecruitLimitChanged();
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1122,11 +1169,18 @@ class EmployeesTabState extends State<EmployeesTab>
   Widget _buildRecruitButton(ThemeData theme, L10n l10n) {
     final onNavigateToRecruit = widget.onNavigateToRecruit;
     if (onNavigateToRecruit == null) return const SizedBox.shrink();
+    final recruitButtonDisabled = widget.recruitButtonDisabled;
+    final recruitGuideDescription = widget.showRecruitGuideHighlight
+        ? l10n.recruitGuideStepCreateBody
+        : l10n.customHireDescription;
+    final iconAndTextColor = recruitButtonDisabled
+        ? theme.colorScheme.onSurfaceVariant
+        : Colors.white;
 
     return RecruitEntryGuideHighlight(
       visible: widget.showRecruitGuideHighlight,
       title: l10n.customHire,
-      description: l10n.customHireDescription,
+      description: recruitGuideDescription,
       actionLabel: l10n.customHire,
       onAction: onNavigateToRecruit,
       child: Container(
@@ -1134,15 +1188,29 @@ class EmployeesTabState extends State<EmployeesTab>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary,
-              theme.colorScheme.tertiary,
-            ],
+            colors: recruitButtonDisabled
+                ? [
+                    theme.colorScheme.surfaceContainerHigh,
+                    theme.colorScheme.surfaceContainerHighest,
+                  ]
+                : [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.tertiary,
+                  ],
           ),
           borderRadius: BorderRadius.circular(16),
+          border: recruitButtonDisabled
+              ? Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.8,
+                  ),
+                )
+              : null,
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              color: recruitButtonDisabled
+                  ? theme.colorScheme.shadow.withValues(alpha: 0.08)
+                  : theme.colorScheme.primary.withValues(alpha: 0.3),
               blurRadius: 18,
               spreadRadius: 1,
               offset: const Offset(0, 6),
@@ -1164,18 +1232,18 @@ class EmployeesTabState extends State<EmployeesTab>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.add_rounded,
-                    color: Colors.white,
+                    color: iconAndTextColor,
                     size: 22,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     l10n.customHire,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: Colors.white,
+                      color: iconAndTextColor,
                       letterSpacing: 0.2,
                     ),
                   ),

@@ -228,10 +228,10 @@
         <!-- 小米推送厂商通道 -->
         <meta-data
             android:name="xiaomi_appid"
-            android:value="\ ${XIAOMI_APP_ID}" />
+            android:value="${XIAOMI_APP_ID}" />
         <meta-data
             android:name="xiaomi_appkey"
-            android:value="\ ${XIAOMI_APP_KEY}" />
+            android:value="${XIAOMI_APP_KEY}" />
 
         <!-- 荣耀推送厂商通道 -->
         <meta-data

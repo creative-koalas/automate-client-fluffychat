@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'auth_state.dart';
@@ -401,6 +402,7 @@ class PsygoApiClient {
     String? category,
     String? appVersion,
     String? deviceInfo,
+    List<XFile> attachments = const [],
   }) async {
     await _syncAuthState();
     final userId = auth.userId;
@@ -408,21 +410,45 @@ class PsygoApiClient {
       throw AutomateBackendException('User ID not found');
     }
 
-    final res = await _requestWithAuthRetry((token) {
+    final payload = <String, dynamic>{
+      'user_id': userId,
+      'content': content,
+      if (replyEmail != null && replyEmail.isNotEmpty) 'reply_email': replyEmail,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
+      if (deviceInfo != null && deviceInfo.isNotEmpty) 'device_info': deviceInfo,
+    };
+    final useMultipart = attachments.isNotEmpty;
+
+    final res = await _requestWithAuthRetry((token) async {
+      dynamic requestData = payload;
+      if (useMultipart) {
+        final formData = FormData.fromMap(payload);
+        for (var i = 0; i < attachments.length; i++) {
+          final file = attachments[i];
+          final name = file.name.trim().isNotEmpty
+              ? file.name.trim()
+              : 'attachment_${i + 1}';
+          formData.files.add(
+            MapEntry(
+              'files',
+              MultipartFile.fromBytes(
+                await file.readAsBytes(),
+                filename: name,
+              ),
+            ),
+          );
+        }
+        requestData = formData;
+      }
+
       return _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/feedback',
-        data: {
-          'user_id': userId,
-          'content': content,
-          if (replyEmail != null && replyEmail.isNotEmpty)
-            'reply_email': replyEmail,
-          if (category != null && category.isNotEmpty) 'category': category,
-          if (appVersion != null && appVersion.isNotEmpty)
-            'app_version': appVersion,
-          if (deviceInfo != null && deviceInfo.isNotEmpty)
-            'device_info': deviceInfo,
-        },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        data: requestData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          contentType: useMultipart ? 'multipart/form-data' : null,
+        ),
       );
     });
 

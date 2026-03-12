@@ -13,6 +13,7 @@ import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
 import 'package:psygo/pages/wallet/wallet_page.dart';
+import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/services/recruit_guide_service.dart';
@@ -84,6 +85,10 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   int _unreadCount = 0;
   bool _isDraggingDivider = false;
   bool _showRecruitGuideHighlight = false;
+  bool _recruitLimitReached = false;
+  static const int _maxRecruitEmployeeCount = 3;
+  static const Duration _recruitTapCooldown = Duration(seconds: 2);
+  DateTime? _lastRecruitTapAt;
 
   // 监听同步事件以更新未读计数
   StreamSubscription? _syncSubscription;
@@ -104,6 +109,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       _updateUnreadCount();
       _setupSyncListener();
       unawaited(_syncRecruitGuideHighlight());
+      unawaited(_syncRecruitLimitState());
     });
   }
 
@@ -212,7 +218,69 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     setState(() => _showRecruitGuideHighlight = false);
   }
 
+  void _handleRecruitLimitChanged(bool reached) {
+    if (!mounted || _recruitLimitReached == reached) {
+      return;
+    }
+    setState(() => _recruitLimitReached = reached);
+  }
+
+  Future<void> _syncRecruitLimitState() async {
+    final reached = await _hasReachedRecruitLimit();
+    if (!mounted || _recruitLimitReached == reached) {
+      return;
+    }
+    setState(() => _recruitLimitReached = reached);
+  }
+
+  Future<bool> _hasReachedRecruitLimit() async {
+    final repository = AgentRepository();
+    try {
+      final page = await repository.getUserAgents(
+        limit: _maxRecruitEmployeeCount,
+        forceRefresh: true,
+      );
+      return page.agents.length >= _maxRecruitEmployeeCount || page.hasNextPage;
+    } catch (e) {
+      debugPrint('[DesktopLayout] Failed to fetch employee count: $e');
+      return AgentService.instance.agents.length >= _maxRecruitEmployeeCount;
+    } finally {
+      repository.dispose();
+    }
+  }
+
+  void _showRecruitLimitSnackBar() {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: scaffoldMessenger.hideCurrentSnackBar,
+          child: Text(l10n.recruitLimitReachedMessage),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _openRecruitMenu() async {
+    final reachedLimit = await _hasReachedRecruitLimit();
+    if (!mounted) return;
+    if (_recruitLimitReached != reachedLimit) {
+      setState(() => _recruitLimitReached = reachedLimit);
+    }
+    if (reachedLimit) {
+      final now = DateTime.now();
+      final lastTap = _lastRecruitTapAt;
+      if (lastTap != null && now.difference(lastTap) < _recruitTapCooldown) {
+        return;
+      }
+      _lastRecruitTapAt = now;
+      _showRecruitLimitSnackBar();
+      return;
+    }
+
     final repository = AgentTemplateRepository();
     final showRecruitGuide = await _shouldShowRecruitGuide();
     if (!mounted) {
@@ -274,6 +342,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     } finally {
       repository.dispose();
       unawaited(_syncRecruitGuideHighlight());
+      unawaited(_syncRecruitLimitState());
     }
   }
 
@@ -602,6 +671,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           key: _employeesTabKey,
           onNavigateToRecruit: () => unawaited(_openRecruitMenu()),
           showRecruitGuideHighlight: _showRecruitGuideHighlight,
+          recruitButtonDisabled: _recruitLimitReached,
+          onRecruitLimitChanged: _handleRecruitLimitChanged,
         );
     }
   }

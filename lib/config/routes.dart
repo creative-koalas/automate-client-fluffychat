@@ -23,6 +23,7 @@ import 'package:psygo/pages/new_group/new_group.dart';
 import 'package:psygo/pages/new_private_chat/new_private_chat.dart';
 import 'package:psygo/pages/settings/settings.dart';
 import 'package:psygo/pages/settings_chat/settings_chat.dart';
+import 'package:psygo/pages/settings_feedback/settings_feedback.dart';
 import 'package:psygo/pages/settings_notifications/settings_notifications.dart';
 import 'package:psygo/pages/settings_style/settings_style.dart';
 import 'package:psygo/widgets/config_viewer.dart';
@@ -265,6 +266,15 @@ abstract class AppRoutes {
                         context,
                         state,
                         const SettingsChat(),
+                      ),
+                      redirect: loggedOutRedirect,
+                    ),
+                    GoRoute(
+                      path: 'feedback',
+                      pageBuilder: (context, state) => defaultPageBuilder(
+                        context,
+                        state,
+                        const SettingsFeedback(),
                       ),
                       redirect: loggedOutRedirect,
                     ),

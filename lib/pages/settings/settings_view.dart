@@ -264,7 +264,7 @@ class SettingsView extends StatelessWidget {
                         theme,
                         icon: Icons.feedback_outlined,
                         title: Text(l10n.settingsFeedback),
-                        onTap: controller.submitFeedbackAction,
+                        onTap: () => context.go('/rooms/settings/feedback'),
                       ),
                       _buildDivider(theme),
                       _buildCardListTile(
