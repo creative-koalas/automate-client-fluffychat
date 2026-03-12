@@ -28,6 +28,7 @@ class SettingsFeedback extends StatefulWidget {
 class _SettingsFeedbackState extends State<SettingsFeedback> {
   static const int _maxAttachmentTotalBytes = 10 * 1024 * 1024;
   static const String _maxAttachmentTotalLabel = '10 MB';
+  static const int _maxAttachmentCount = 5;
 
   final _contentController = TextEditingController();
   final _emailController = TextEditingController();
@@ -112,7 +113,32 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
     return sizes.fold<int>(0, (sum, size) => sum + size);
   }
 
+  String _attachmentCountLimitLabel() {
+    final languageCode =
+        Localizations.localeOf(context).languageCode.toLowerCase();
+    if (languageCode == 'zh') {
+      return '${_maxAttachmentCount}个附件';
+    }
+    return '$_maxAttachmentCount attachments';
+  }
+
+  void _showAttachmentCountLimitSnackBar() {
+    final l10n = L10n.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          l10n.fileIsTooBigForServer(_attachmentCountLimitLabel()),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickAttachments(FileSelectorType type) async {
+    if (_attachments.length >= _maxAttachmentCount) {
+      _showAttachmentCountLimitSnackBar();
+      return;
+    }
+
     final picked = await selectFiles(
       context,
       type: type,
@@ -133,9 +159,17 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
     }
     if (newAttachments.isEmpty) return;
 
+    var attachmentsToAdd = newAttachments;
+    var reachedCountLimit = false;
+    final remainingSlots = _maxAttachmentCount - _attachments.length;
+    if (attachmentsToAdd.length > remainingSlots) {
+      attachmentsToAdd = attachmentsToAdd.take(remainingSlots).toList();
+      reachedCountLimit = true;
+    }
+
     final totalBytes = await _totalAttachmentBytes([
       ..._attachments,
-      ...newAttachments,
+      ...attachmentsToAdd,
     ]);
     if (!mounted) return;
     if (totalBytes > _maxAttachmentTotalBytes) {
@@ -150,8 +184,12 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
     }
 
     setState(() {
-      _attachments.addAll(newAttachments);
+      _attachments.addAll(attachmentsToAdd);
     });
+
+    if (reachedCountLimit) {
+      _showAttachmentCountLimitSnackBar();
+    }
   }
 
   void _showAttachmentBottomSheet() {
@@ -318,6 +356,11 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.settingsFeedbackContentRequired)),
       );
+      return;
+    }
+
+    if (_attachments.length > _maxAttachmentCount) {
+      _showAttachmentCountLimitSnackBar();
       return;
     }
 
