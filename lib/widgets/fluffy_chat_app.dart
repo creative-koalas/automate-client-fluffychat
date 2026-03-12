@@ -1598,14 +1598,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _state = _AuthState.checking;
-                                _hasTriedAuth = false;
-                                _hasRetriedMatrixLogin = false;
-                                _resumeRetryCount = 0;
-                              });
-                              _checkAuthStateSafe();
+                            onTap: () async {
+                              await _clearAllAuthStateAndRedirectToLogin();
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
@@ -1689,14 +1683,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                 runSpacing: 12,
                 children: [
                   OutlinedButton(
-                    onPressed: () {
-                      setState(() {
-                        _state = _AuthState.checking;
-                        _hasTriedAuth = false;
-                        _hasRetriedMatrixLogin = false;
-                        _resumeRetryCount = 0; // Reset retry counter
-                      });
-                      _checkAuthStateSafe();
+                    onPressed: () async {
+                      await _clearAllAuthStateAndRedirectToLogin();
                     },
                     child: Text(l10n.tryAgain),
                   ),
