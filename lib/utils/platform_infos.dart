@@ -15,6 +15,12 @@ abstract class PlatformInfos {
   static bool get isIOS => !kIsWeb && Platform.isIOS;
   static bool get isAndroid => !kIsWeb && Platform.isAndroid;
 
+  /// iOS 模拟器环境（用于跳过依赖运营商能力的 SDK）
+  static bool get isIOSSimulator =>
+      isIOS &&
+      (Platform.environment.containsKey('SIMULATOR_DEVICE_NAME') ||
+          Platform.environment.containsKey('SIMULATOR_MODEL_IDENTIFIER'));
+
   static bool get isCupertinoStyle => isIOS || isMacOS;
 
   static bool get isMobile => isAndroid || isIOS;
@@ -33,7 +39,7 @@ abstract class PlatformInfos {
   static bool get platformCanRecord => (isMobile || isMacOS);
 
   static String get clientName =>
-      '${AppSettings.applicationName.value} ${isWeb ? 'web' : Platform.operatingSystem}${kReleaseMode ? '' : 'Debug'}';
+      '${AppSettings.applicationName.value} ${isWeb ? 'web' : Platform.operatingSystem}';
 
   static Future<String> getVersion() async {
     var version = kIsWeb ? 'Web' : 'Unknown';

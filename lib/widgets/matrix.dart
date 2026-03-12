@@ -351,7 +351,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         // 刷新员工列表缓存（登录后才有 token）
         AgentService.instance.refresh();
         // 移动端注册推送
-        if (PlatformInfos.isMobile) {
+        if (PlatformInfos.isMobile && !_skipAliyunPushOnCurrentDevice) {
           unawaited(ensureAliyunPushRegistered(c));
         }
         _updatePushState();
@@ -481,6 +481,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     }
   }
 
+  bool get _skipAliyunPushOnCurrentDevice => PlatformInfos.isIOSSimulator;
+
   void initMatrix() {
     // 设置活跃客户端：优先选择已登录的客户端
     if (widget.clients.isNotEmpty) {
@@ -528,7 +530,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       // );
 
       // 初始化阿里云推送（唯一的推送渠道）
-      _initAliyunPush();
+      if (_skipAliyunPushOnCurrentDevice) {
+        Logs().i('[Matrix] iOS simulator detected, skipping Aliyun Push initialization');
+      } else {
+        _initAliyunPush();
+      }
     }
 
     createVoipPlugin();
@@ -552,6 +558,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
 
   /// 初始化阿里云推送
   Future<void> _initAliyunPush() async {
+    if (_skipAliyunPushOnCurrentDevice) {
+      Logs().i('[Matrix] iOS simulator detected, skip _initAliyunPush');
+      return;
+    }
     try {
       // 设置回调函数（必须在 initialize 之前设置）
       // 1. 获取当前活跃房间 ID（用于判断是否显示通知）
@@ -620,6 +630,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
 
   /// 登录成功后注册阿里云推送
   Future<void> _registerAliyunPushAfterLogin(Client c) async {
+    if (_skipAliyunPushOnCurrentDevice) {
+      Logs().i('[Matrix] iOS simulator detected, skip push registration after login');
+      return;
+    }
     try {
       Logs().i('[Matrix] Registering Aliyun Push after login for ${c.userID}');
       if (kReleaseMode) {

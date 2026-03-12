@@ -171,6 +171,8 @@ abstract class ClientManager {
 
   static NativeImplementations get nativeImplementations => kIsWeb
       ? const NativeImplementationsDummy()
+      : (!kReleaseMode && PlatformInfos.isIOS)
+      ? const NativeImplementationsDummy()
       : NativeImplementationsIsolate(
           compute,
           vodozemacInit: () => vod.init(wasmPath: './assets/assets/vodozemac/'),

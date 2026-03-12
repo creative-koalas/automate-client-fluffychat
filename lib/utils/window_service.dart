@@ -265,6 +265,7 @@ class WindowService {
     if (!PlatformInfos.isDesktop) return;
     _hiddenToTray = false;
     debugPrint('[WindowService] switchToMainWindow called');
+    final showNativeWindowButtons = !Platform.isMacOS;
 
     // 先解除大小限制，再设置新的大小
     await windowManager.setResizable(true);
@@ -274,7 +275,10 @@ class WindowService {
     // 设置最小大小（在设置完窗口大小后再设置）
     await windowManager.setMinimumSize(mainWindowMinSize);
     await windowManager.center();
-    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.hidden,
+      windowButtonVisibility: showNativeWindowButtons,
+    );
 
     // 主窗口关闭时隐藏到托盘
     await setCloseToTray();
@@ -290,12 +294,16 @@ class WindowService {
     if (!PlatformInfos.isDesktop) return;
     _hiddenToTray = false;
     debugPrint('[WindowService] switchToLoginWindow called');
+    final showNativeWindowButtons = !Platform.isMacOS;
 
     await windowManager.setMinimumSize(loginWindowSize);
     await windowManager.setMaximumSize(loginWindowSize);
     await windowManager.setSize(loginWindowSize);
     await windowManager.center();
-    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.hidden,
+      windowButtonVisibility: showNativeWindowButtons,
+    );
     await windowManager.setResizable(false);
 
     // 登录窗口也使用系统托盘

@@ -8,11 +8,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/sms_login_override.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
 
@@ -42,6 +44,15 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   String? _termsUrl;
   String? _privacyUrl;
   bool _loadingAgreements = false;
+
+  String get _normalizedPhone =>
+      SmsLoginOverride.normalizePhone(phoneController.text);
+
+  bool get _shouldSkipSmsForProdTestAccount =>
+      SmsLoginOverride.shouldSkipSmsSend(
+        phone: _normalizedPhone,
+        namespace: PsygoConfig.k8sNamespace,
+      );
 
   @override
   void initState() {
@@ -99,12 +110,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       return;
     }
 
-    if (phoneController.text.isEmpty) {
+    final phone = _normalizedPhone;
+    if (phone.isEmpty) {
       setState(() => phoneError = l10n.authPhoneRequired);
       return;
     }
 
-    if (!phoneController.text.isPhoneNumber) {
+    if (!phone.isPhoneNumber) {
       setState(() => phoneError = l10n.authPhoneInvalid);
       return;
     }
@@ -115,7 +127,23 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     });
 
     try {
-      await backend.sendVerificationCode(phoneController.text);
+      if (_shouldSkipSmsForProdTestAccount) {
+        debugPrint(
+          '[PhoneLogin] Skipping SMS send for prod test account: $phone',
+        );
+        if (!mounted) return;
+
+        setState(() {
+          codeSent = true;
+          loading = false;
+          countdown = 0;
+          codeError = null;
+          codeController.text = SmsLoginOverride.prodTestCode;
+        });
+        return;
+      }
+
+      await backend.sendVerificationCode(phone);
       if (!mounted) return;
 
       setState(() {
@@ -216,7 +244,8 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       return;
     }
 
-    if (phoneController.text.isEmpty) {
+    final phone = _normalizedPhone;
+    if (phone.isEmpty) {
       setState(() => phoneError = l10n.authPhoneRequired);
       return;
     }
@@ -233,11 +262,13 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     });
 
     try {
-      debugPrint('=== 调用后端短信登录 ===');
-      final authResponse = await backend.smsLogin(
-        phoneController.text,
-        codeController.text,
+      final code = SmsLoginOverride.resolveLoginCode(
+        phone: phone,
+        inputCode: codeController.text,
+        namespace: PsygoConfig.k8sNamespace,
       );
+      debugPrint('=== 调用后端短信登录 ===');
+      final authResponse = await backend.smsLogin(phone, code);
       if (!mounted) return;
 
       await handlePostLogin(authResponse);

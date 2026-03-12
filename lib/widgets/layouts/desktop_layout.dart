@@ -12,7 +12,7 @@ import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
-import 'package:psygo/pages/wallet/wallet_page.dart';
+// import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/services/recruit_guide_service.dart';
@@ -606,24 +606,24 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     }
   }
 
-  Future<void> _openWalletDialog() async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: const SizedBox(
-            width: 420,
-            height: 680,
-            child: WalletPage(showBackButton: false),
-          ),
-        ),
-      ),
-    );
-  }
+  // Future<void> _openWalletDialog() async {
+  //   await showDialog<void>(
+  //     context: context,
+  //     builder: (context) => Dialog(
+  //       shape: RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.circular(16),
+  //       ),
+  //       child: ClipRRect(
+  //         borderRadius: BorderRadius.circular(16),
+  //         child: const SizedBox(
+  //           width: 420,
+  //           height: 680,
+  //           child: WalletPage(showBackButton: false),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildTopNavigation(ThemeData theme, L10n l10n) {
     return LayoutBuilder(
@@ -721,15 +721,16 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: l10n.walletTitle,
-                  onPressed: _openWalletDialog,
-                  icon: const Icon(Icons.account_balance_wallet_rounded),
-                  style: IconButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-                const SizedBox(width: 8),
+                // Wallet entry is temporarily hidden from users.
+                // IconButton(
+                //   tooltip: l10n.walletTitle,
+                //   onPressed: _openWalletDialog,
+                //   icon: const Icon(Icons.account_balance_wallet_rounded),
+                //   style: IconButton.styleFrom(
+                //     visualDensity: VisualDensity.compact,
+                //   ),
+                // ),
+                // const SizedBox(width: 8),
                 SizedBox(
                   width: showProfileText ? 224 : 56,
                   child: _buildAdaptiveHeader(),

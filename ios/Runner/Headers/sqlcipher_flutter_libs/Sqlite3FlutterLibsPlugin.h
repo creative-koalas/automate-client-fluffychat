@@ -1,0 +1,9 @@
+#ifndef SQLCIPHER_FLUTTER_LIBS_SQLITE3FLUTTERLIBSPLUGIN_H
+#define SQLCIPHER_FLUTTER_LIBS_SQLITE3FLUTTERLIBSPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface Sqlite3FlutterLibsPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* SQLCIPHER_FLUTTER_LIBS_SQLITE3FLUTTERLIBSPLUGIN_H */

@@ -822,6 +822,24 @@ class ChatController extends State<ChatPageWithRoom>
     });
   }
 
+  void _jumpToLatestWhenReady({int retryCount = 0}) {
+    if (!mounted || !scrollController.hasClients) {
+      return;
+    }
+    final position = scrollController.position;
+    if (!position.hasContentDimensions) {
+      if (retryCount >= 10) {
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _jumpToLatestWhenReady(retryCount: retryCount + 1);
+      });
+      return;
+    }
+    scrollController.jumpTo(0);
+    setReadMarker();
+  }
+
   void _tryLoadTimeline() async {
     final initialEventId = widget.eventId;
     loadTimelineFuture = _getTimeline();
@@ -858,10 +876,7 @@ class ChatController extends State<ChatPageWithRoom>
       if (PlatformInfos.isDesktop) {
         // PC 端：延迟滚动到最新消息，确保 timeline 完全渲染
         Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted && scrollController.hasClients) {
-            scrollController.jumpTo(0);
-            setReadMarker();
-          }
+          _jumpToLatestWhenReady();
         });
       } else if (readMarkerEventIndex > 1) {
         Logs().v('Scroll up to visible event', readMarkerEventId);

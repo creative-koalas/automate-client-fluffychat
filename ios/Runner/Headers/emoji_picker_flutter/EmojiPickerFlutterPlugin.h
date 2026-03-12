@@ -1,0 +1,9 @@
+#ifndef EMOJI_PICKER_FLUTTER_EMOJIPICKERFLUTTERPLUGIN_H
+#define EMOJI_PICKER_FLUTTER_EMOJIPICKERFLUTTERPLUGIN_H
+
+#import <Flutter/Flutter.h>
+
+@interface EmojiPickerFlutterPlugin : NSObject <FlutterPlugin>
+@end
+
+#endif /* EMOJI_PICKER_FLUTTER_EMOJIPICKERFLUTTERPLUGIN_H */

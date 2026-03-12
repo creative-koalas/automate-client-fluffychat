@@ -14,7 +14,7 @@ import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/custom_hire_dialog.dart';
 import 'package:psygo/widgets/recruit_entry_guide_highlight.dart';
 
-import 'package:psygo/pages/wallet/wallet_page.dart';
+// import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 
 /// Team main page
@@ -266,31 +266,33 @@ class TeamPageView extends StatelessWidget {
         ),
         centerTitle: false,
         elevation: 0,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: theme.colorScheme.primary,
-                size: 22,
-              ),
-              tooltip: l10n.walletTitle,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const WalletPage(),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+        // Wallet entry is temporarily hidden from users.
+        // actions: [
+        //   Container(
+        //     margin: const EdgeInsets.only(right: 12),
+        //     decoration: BoxDecoration(
+        //       color: theme.colorScheme.surfaceContainerHighest
+        //           .withValues(alpha: 0.5),
+        //       borderRadius: BorderRadius.circular(12),
+        //     ),
+        //     child: IconButton(
+        //       icon: Icon(
+        //         Icons.account_balance_wallet_rounded,
+        //         color: theme.colorScheme.primary,
+        //         size: 22,
+        //       ),
+        //       tooltip: l10n.walletTitle,
+        //       onPressed: () {
+        //         Navigator.of(context).push(
+        //           MaterialPageRoute(
+        //             builder: (context) => const WalletPage(),
+        //           ),
+        //         );
+        //       },
+        //     ),
+        //   ),
+        // ],
+        actions: const [],
       ),
       body: EmployeesTab(
         key: controller._employeesTabKey,

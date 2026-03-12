@@ -4,6 +4,9 @@
 env*.json
 !env*.example
 
+# Derived data
+**/.derivedData
+
 
 # auto-generated icon sets
 /macos/Runner/Assets.xcassets/AppIcon.appiconset

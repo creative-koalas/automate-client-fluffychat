@@ -61,6 +61,7 @@ class PsygoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ThemeBuilder(
       builder: (context, themeMode, primaryColor) => MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         title: 'PsyGo',
         themeMode: themeMode,
         theme: FluffyThemes.buildTheme(context, Brightness.light, primaryColor),
@@ -169,6 +170,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   bool _forceManualLogin = false; // 一键登录不可用时，直接进入手动登录入口
   bool _hasResolvedPostLoginDestination = false;
   bool _isResolvingPostLoginDestination = false;
+  bool _isAutoResettingFromError = false;
 
   // Sync error tracking
   StreamSubscription? _syncStatusSubscription;
@@ -1462,10 +1464,25 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Widget _buildErrorScreen() {
+    if (!_isAutoResettingFromError && !_isLoggingOut) {
+      _isAutoResettingFromError = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        if (_state != _AuthState.error) {
+          _isAutoResettingFromError = false;
+          return;
+        }
+        try {
+          await _clearAllAuthStateAndRedirectToLogin();
+        } finally {
+          if (mounted) {
+            _isAutoResettingFromError = false;
+          }
+        }
+      });
+    }
+
     final isMatrixError = _errorMessage?.contains('Matrix') ?? false;
-    final normalizedError = (_errorMessage ?? '').toLowerCase();
-    final isNetworkError =
-        normalizedError.contains('network') || normalizedError.contains('网络');
     final l10n = L10n.of(context);
 
     // PC端使用新的主题风格
@@ -1597,14 +1614,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _state = _AuthState.checking;
-                                _hasTriedAuth = false;
-                                _hasRetriedMatrixLogin = false;
-                                _resumeRetryCount = 0;
-                              });
-                              _checkAuthStateSafe();
+                            onTap: () async {
+                              await _clearAllAuthStateAndRedirectToLogin();
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
@@ -1688,26 +1699,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                 runSpacing: 12,
                 children: [
                   OutlinedButton(
-                    onPressed: () {
-                      setState(() {
-                        _state = _AuthState.checking;
-                        _hasTriedAuth = false;
-                        _hasRetriedMatrixLogin = false;
-                        _resumeRetryCount = 0; // Reset retry counter
-                      });
-                      _checkAuthStateSafe();
+                    onPressed: () async {
+                      await _clearAllAuthStateAndRedirectToLogin();
                     },
                     child: Text(l10n.tryAgain),
                   ),
-                  if (isNetworkError) ...[
-                    FilledButton.icon(
-                      onPressed: () async {
-                        await PermissionService.instance.openSettings();
-                      },
-                      icon: const Icon(Icons.settings, size: 18),
-                      label: Text(l10n.authOpenSettings),
-                    ),
-                  ],
                   if (isMatrixError) ...[
                     FilledButton(
                       onPressed: () async {
