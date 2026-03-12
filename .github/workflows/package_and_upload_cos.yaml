@@ -1,0 +1,420 @@
+name: Package And Upload To COS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: package-and-upload-cos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COS_BUCKET: psygo-1317773537
+  COS_REGION: ap-beijing
+
+jobs:
+  build_android_apk:
+    name: Build Android APK (${{ matrix.target.channel }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - channel: prod
+            env_secret: ENV_JSON_PROD
+          - channel: stg
+            env_secret: ENV_JSON_STG
+          - channel: int
+            env_secret: ENV_JSON_INT
+    steps:
+      - uses: actions/checkout@v5
+      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: moonrepo/setup-rust@v1
+      - run: flutter pub get
+      - name: Prepare Android signing from secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ] || \
+             [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ] || \
+             [ -z "${ANDROID_KEY_ALIAS:-}" ] || \
+             [ -z "${ANDROID_KEY_PASSWORD:-}" ]; then
+            echo "Missing required Android signing secrets"
+            echo "Required: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD"
+            exit 1
+          fi
+
+          cd android
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/key.jks
+          {
+            echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
+            echo "keyPassword=${ANDROID_KEY_PASSWORD}"
+            echo "keyAlias=${ANDROID_KEY_ALIAS}"
+            echo "storeFile=key.jks"
+          } > key.properties
+      - name: Build APK
+        env:
+          ENV_JSON_CONTENT: ${{ secrets[matrix.target.env_secret] }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ENV_JSON_CONTENT:-}" ]; then
+            echo "Missing secret: ${{ matrix.target.env_secret }}"
+            exit 1
+          fi
+          printf '%s' "$ENV_JSON_CONTENT" > ci.env.json
+          python3 -m json.tool ci.env.json >/dev/null
+          flutter build apk --release --target-platform android-arm64 --dart-define-from-file=ci.env.json
+      - name: Compute artifact name
+        id: meta
+        run: |
+          app_version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n1)"
+          version_tag="${app_version//+/-}"
+          file_name="psygo-android-${{ matrix.target.channel }}-${version_tag}-r${{ github.run_number }}.apk"
+          echo "file_name=$file_name" >> "$GITHUB_OUTPUT"
+      - name: Normalize APK file
+        run: |
+          set -euo pipefail
+          mkdir -p dist/android
+          if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk "dist/android/${{ steps.meta.outputs.file_name }}"
+          elif [ -f build/app/outputs/apk/release/app-release.apk ]; then
+            cp build/app/outputs/apk/release/app-release.apk "dist/android/${{ steps.meta.outputs.file_name }}"
+          else
+            echo "Android APK not found"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.file_name }}
+          path: dist/android/${{ steps.meta.outputs.file_name }}
+          if-no-files-found: error
+
+  build_windows_exe:
+    name: Build Windows EXE (${{ matrix.target.channel }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - channel: prod
+            env_secret: ENV_JSON_PROD
+          - channel: stg
+            env_secret: ENV_JSON_STG
+          - channel: int
+            env_secret: ENV_JSON_INT
+    steps:
+      - uses: actions/checkout@v5
+      - name: Load versions
+        shell: bash
+        run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: moonrepo/setup-rust@v1
+      - run: flutter pub get
+      - name: Build Windows EXE
+        shell: bash
+        env:
+          ENV_JSON_CONTENT: ${{ secrets[matrix.target.env_secret] }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ENV_JSON_CONTENT:-}" ]; then
+            echo "Missing secret: ${{ matrix.target.env_secret }}"
+            exit 1
+          fi
+          printf '%s' "$ENV_JSON_CONTENT" > ci.env.json
+          python -m json.tool ci.env.json >/dev/null
+          flutter build windows --release --dart-define-from-file=ci.env.json
+      - name: Compute artifact name
+        id: meta
+        shell: bash
+        run: |
+          app_version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n1)"
+          version_tag="${app_version//+/-}"
+          file_name="psygo-windows-${{ matrix.target.channel }}-${version_tag}-r${{ github.run_number }}.exe"
+          echo "file_name=$file_name" >> "$GITHUB_OUTPUT"
+      - name: Normalize EXE file
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/windows
+          cp build/windows/x64/runner/Release/psygo.exe "dist/windows/${{ steps.meta.outputs.file_name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.file_name }}
+          path: dist/windows/${{ steps.meta.outputs.file_name }}
+          if-no-files-found: error
+
+  build_linux_deb:
+    name: Build Linux DEB (${{ matrix.target.channel }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - channel: prod
+            env_secret: ENV_JSON_PROD
+          - channel: stg
+            env_secret: ENV_JSON_STG
+          - channel: int
+            env_secret: ENV_JSON_INT
+    steps:
+      - uses: actions/checkout@v5
+      - run: cat .github/workflows/versions.env >> $GITHUB_ENV
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            libblkid-dev \
+            liblzma-dev \
+            libjsoncpp-dev \
+            cmake-data \
+            libsecret-1-dev \
+            libsecret-1-0 \
+            librhash0 \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libayatana-appindicator3-dev || sudo apt-get install -y libappindicator3-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: moonrepo/setup-rust@v1
+      - run: flutter pub get
+      - name: Build DEB
+        id: build_deb
+        env:
+          ENV_JSON_CONTENT: ${{ secrets[matrix.target.env_secret] }}
+        run: |
+          set -euo pipefail
+
+          sanitize_package_name() {
+            local value="$1"
+            value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+            value="$(printf '%s' "$value" | sed 's/[^a-z0-9.+-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+            printf '%s' "$value"
+          }
+
+          sanitize_linux_app_id_suffix() {
+            local value="$1"
+            value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+            value="$(printf '%s' "$value" | sed 's/^[._-]\+//; s/[^a-z0-9_]/_/g; s/_\{2,\}/_/g; s/^_//; s/_$//')"
+            printf '%s' "$value"
+          }
+
+          if [ -z "${ENV_JSON_CONTENT:-}" ]; then
+            echo "Missing secret: ${{ matrix.target.env_secret }}"
+            exit 1
+          fi
+          printf '%s' "$ENV_JSON_CONTENT" > ci.env.json
+          python3 -m json.tool ci.env.json >/dev/null
+
+          env_app_name="$(python3 -c 'import json; print(json.load(open("ci.env.json")).get("APP_NAME",""))')"
+          env_app_id_suffix="$(python3 -c 'import json; print(json.load(open("ci.env.json")).get("APP_ID_SUFFIX",""))')"
+          pubspec_name="$(sed -n 's/^name:[[:space:]]*//p' pubspec.yaml | head -n1)"
+          package_name_source="${env_app_name:-$pubspec_name}"
+          package_name="$(sanitize_package_name "$package_name_source")"
+          if [ -z "$package_name" ]; then
+            echo "Failed to derive a valid Linux package name"
+            exit 1
+          fi
+          app_id_suffix_token="$(sanitize_linux_app_id_suffix "$env_app_id_suffix")"
+          linux_application_id="com.psygo.app${app_id_suffix_token:+.${app_id_suffix_token}}"
+          display_name="${env_app_name:-Psygo}"
+          binary_name="$package_name"
+
+          export PSYGO_LINUX_BINARY_NAME="$binary_name"
+          export PSYGO_LINUX_APPLICATION_ID="$linux_application_id"
+          export PSYGO_LINUX_WINDOW_TITLE="$display_name"
+
+          flutter build linux --release --dart-define-from-file=ci.env.json
+
+          bundle_dir="build/linux/x64/release/bundle"
+          if [ ! -d "$bundle_dir" ]; then
+            echo "Linux bundle not found: $bundle_dir"
+            exit 1
+          fi
+
+          if [ ! -x "$bundle_dir/$binary_name" ]; then
+            binary_name="psygo"
+          fi
+          channel="${{ matrix.target.channel }}"
+          app_version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n1)"
+          version_tag="${app_version//+/-}"
+          arch="$(dpkg --print-architecture)"
+          file_name="psygo-linux-deb-${channel}-${version_tag}-r${{ github.run_number }}.deb"
+
+          pkg_root="dist/pkg/${package_name}_${version_tag}_${arch}"
+          rm -rf "$pkg_root"
+          mkdir -p \
+            "$pkg_root/DEBIAN" \
+            "$pkg_root/usr/local/lib/$package_name" \
+            "$pkg_root/usr/bin" \
+            "$pkg_root/usr/share/applications" \
+            "$pkg_root/usr/share/icons/hicolor/512x512/apps" \
+            dist/linux
+
+          cp -a "$bundle_dir"/* "$pkg_root/usr/local/lib/$package_name/"
+
+          {
+            echo "Package: $package_name"
+            echo "Version: $version_tag"
+            echo "Architecture: $arch"
+            echo "Priority: optional"
+            echo "Maintainer: Psygo CI"
+            echo "Description: Psygo desktop client"
+          } > "$pkg_root/DEBIAN/control"
+
+          {
+            echo "#!/bin/bash"
+            echo "/usr/local/lib/$package_name/$binary_name \"\$@\""
+          } > "$pkg_root/usr/bin/$binary_name"
+          chmod 755 "$pkg_root/usr/bin/$binary_name"
+
+          {
+            echo "[Desktop Entry]"
+            echo "Version=1.0"
+            echo "Name=$display_name"
+            echo "GenericName=$display_name"
+            echo "Comment=Psygo desktop client"
+            echo "Exec=$binary_name"
+            echo "Icon=$package_name"
+            echo "Terminal=false"
+            echo "Type=Application"
+            echo "Categories=Utility;"
+          } > "$pkg_root/usr/share/applications/${package_name}.desktop"
+
+          if [ -f "debian/gui/${package_name}.png" ]; then
+            cp "debian/gui/${package_name}.png" "$pkg_root/usr/share/icons/hicolor/512x512/apps/${package_name}.png"
+          elif [ -f "debian/gui/psygo.png" ]; then
+            cp "debian/gui/psygo.png" "$pkg_root/usr/share/icons/hicolor/512x512/apps/${package_name}.png"
+          fi
+
+          dpkg-deb --build "$pkg_root" "dist/linux/${file_name}"
+          echo "file_name=$file_name" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build_deb.outputs.file_name }}
+          path: dist/linux/${{ steps.build_deb.outputs.file_name }}
+          if-no-files-found: error
+
+  upload_to_cos:
+    name: Upload Artifacts To COS
+    runs-on: ubuntu-latest
+    needs:
+      - build_android_apk
+      - build_windows_exe
+      - build_linux_deb
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: psygo-*
+          path: downloaded_artifacts
+          merge-multiple: true
+      - name: Show downloaded files
+        run: find downloaded_artifacts -type f | sort
+      - name: Install COS Python SDK
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "cos-python-sdk-v5>=1.9.0,<2"
+      - name: Upload files by channel/platform
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${COS_SECRET_ID:-}" ] || [ -z "${COS_SECRET_KEY:-}" ]; then
+            echo "Missing required secrets: COS_SECRET_ID / COS_SECRET_KEY"
+            exit 1
+          fi
+
+          for file_path in downloaded_artifacts/*; do
+            [ -f "$file_path" ] || continue
+            file_name="$(basename "$file_path")"
+
+            if [[ "$file_name" =~ ^psygo-(android|windows|linux-deb)-(prod|stg|int)- ]]; then
+              platform="${BASH_REMATCH[1]}"
+              channel="${BASH_REMATCH[2]}"
+            else
+              echo "Skip unexpected file name: $file_name"
+              continue
+            fi
+
+            object_key="${channel}/${platform}/${file_name}"
+            file_size_bytes="$(wc -c < "$file_path" | tr -d '[:space:]')"
+            echo "Uploading $file_name (${file_size_bytes} bytes) -> cos://${COS_BUCKET}/${object_key}"
+
+            uploaded=0
+            for attempt in 1 2 3; do
+              case "$attempt" in
+                1)
+                  part_size_mb=10
+                  max_thread=8
+                  sdk_retry=5
+                  timeout_sec=1200
+                  ;;
+                2)
+                  part_size_mb=5
+                  max_thread=4
+                  sdk_retry=8
+                  timeout_sec=1500
+                  ;;
+                3)
+                  part_size_mb=5
+                  max_thread=2
+                  sdk_retry=12
+                  timeout_sec=1800
+                  ;;
+              esac
+
+              echo "Attempt ${attempt}/3: $file_name"
+              if python3 -u scripts/ci/cos_upload.py \
+                --secret-id "$COS_SECRET_ID" \
+                --secret-key "$COS_SECRET_KEY" \
+                --bucket "$COS_BUCKET" \
+                --region "$COS_REGION" \
+                --file "$file_path" \
+                --object-key "$object_key" \
+                --part-size-mb "$part_size_mb" \
+                --max-thread "$max_thread" \
+                --retry "$sdk_retry" \
+                --use-accelerate-endpoint \
+                --timeout "$timeout_sec"; then
+                uploaded=1
+                break
+              fi
+
+              if [ "$attempt" -lt 3 ]; then
+                sleep_seconds=$((attempt * 20))
+                echo "Retrying $file_name in ${sleep_seconds}s..."
+                sleep "$sleep_seconds"
+              fi
+            done
+
+            if [ "$uploaded" -ne 1 ]; then
+              echo "Failed to upload $file_name after 3 attempts"
+              exit 1
+            fi
+          done

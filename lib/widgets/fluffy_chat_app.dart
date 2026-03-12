@@ -164,6 +164,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     '600026', // Pre-login called while auth page open
   };
   bool _blockedByForceUpdate = false; // Track if blocked by force update
+  bool _updateCheckInProgress = false; // 防止并发触发重复检查
   bool _isLoggingOut = false; // 防止登出过程中重复触发一键登录
   bool _pendingOneClickLogin = false; // 延迟触发一键登录（等待 app 回到前台）
   bool _forceManualLogin = false; // 一键登录不可用时，直接进入手动登录入口
@@ -293,6 +294,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   /// 应用启动时初始化更新检查
   Future<void> _initUpdateCheck() async {
+    if (_updateCheckInProgress) return;
+    _updateCheckInProgress = true;
     try {
       final api = context.read<PsygoApiClient>();
 
@@ -318,14 +321,20 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final updateService = AppUpdateService(api);
       final canContinue = await updateService.checkAndPrompt(context);
 
-      // 处理强制更新阻止
-      if (!canContinue && mounted) {
+      // 每次检查都同步阻止状态，避免“已更新但仍被拦截”
+      if (!mounted) return;
+      final shouldBlock = !canContinue;
+      if (_blockedByForceUpdate != shouldBlock) {
         setState(() {
-          _blockedByForceUpdate = true;
+          _blockedByForceUpdate = shouldBlock;
         });
+      } else {
+        _blockedByForceUpdate = shouldBlock;
       }
     } catch (e) {
       debugPrint('[AppUpdate] Init update check failed: $e');
+    } finally {
+      _updateCheckInProgress = false;
     }
   }
 
@@ -340,6 +349,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // 应用恢复时检查更新（先检查 App 更新，再检查协议）
       AppUpdateService.onAppResumed();
+      // 如果当前被强更拦截，恢复到前台时做一次前台检查用于自动解锁
+      if (_blockedByForceUpdate) {
+        unawaited(_initUpdateCheck());
+      }
       // 协议检查（仅已登录用户）
       if (_state == _AuthState.authenticated) {
         AgreementCheckService.onAppResumed();

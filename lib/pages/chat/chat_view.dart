@@ -22,6 +22,7 @@ import 'package:psygo/widgets/employee_work_template_bar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/agent_web_entry_view.dart';
 import 'package:psygo/widgets/chat_room_intro_guide.dart';
+import 'package:psygo/widgets/guide_bubble_layout.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/unread_rooms_badge.dart';
@@ -61,7 +62,7 @@ class ChatView extends StatelessWidget {
           child: RichText(
             text: TextSpan(
               style: theme.textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF374151),
+                color: theme.colorScheme.onSurfaceVariant,
                 height: 1.4,
               ),
               children: [
@@ -80,12 +81,14 @@ class ChatView extends StatelessWidget {
 
   Widget _buildChatRoomGuide(BuildContext context) {
     final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     final steps = controller.isGroupMentionGuide
         ? <ChatRoomIntroGuideStep>[
             ChatRoomIntroGuideStep(
               targetKey: controller.mentionGuideKey,
               title: l10n.chatRoomGuideMentionTitle,
               description: l10n.chatRoomGuideMentionBody,
+              preferredPlacement: GuideBubblePlacement.above,
             ),
           ]
         : <ChatRoomIntroGuideStep>[
@@ -93,28 +96,51 @@ class ChatView extends StatelessWidget {
               targetKey: controller.workStatusGuideKey,
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
+              preferredPlacement: GuideBubblePlacement.below,
+              estimatedContentHeight: 148,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildGuideStatusItem(
                     context,
-                    color: Colors.green,
+                    color: theme.colorScheme.tertiary,
                     label: l10n.employeeWorking,
                     hint: l10n.employeeWorkingHint,
                   ),
                   const SizedBox(height: 10),
                   _buildGuideStatusItem(
                     context,
-                    color: Colors.blue,
+                    color: theme.colorScheme.primary,
                     label: l10n.employeeSlacking,
                     hint: l10n.employeeSlackingHint,
                   ),
                   const SizedBox(height: 10),
                   _buildGuideStatusItem(
                     context,
-                    color: Colors.blueGrey,
+                    color: theme.colorScheme.outline,
                     label: l10n.employeeSleeping,
                     hint: l10n.employeeSleepingHint,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.guideRestingFeatureUnavailable,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -123,16 +149,19 @@ class ChatView extends StatelessWidget {
               targetKey: controller.webEntryGuideKey,
               title: l10n.chatRoomGuideSmartInterfaceTitle,
               description: l10n.chatRoomGuideSmartInterfaceBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
             ChatRoomIntroGuideStep(
               targetKey: controller.webEntryGuideKey,
               title: l10n.chatRoomGuideWebEntryTitle,
               description: l10n.chatRoomGuideWebEntryBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
             ChatRoomIntroGuideStep(
               targetKey: controller.employeeWorkTemplateGuideKey,
               title: l10n.chatRoomGuideWorkTemplateTitle,
               description: l10n.chatRoomGuideWorkTemplateBody,
+              preferredPlacement: GuideBubblePlacement.below,
             ),
           ];
 
@@ -191,24 +220,55 @@ class ChatView extends StatelessWidget {
     }
   }
 
-  Widget _buildTimelinePane(BuildContext context) {
+  EmployeeWorkTemplateBar _buildEmployeeWorkTemplateBar(
+    BuildContext context, {
+    Key? key,
+    EdgeInsetsGeometry? margin,
+    VoidCallback? onClose,
+  }) {
     final l10n = L10n.of(context);
+    return EmployeeWorkTemplateBar(
+      key: key,
+      title: l10n.employeeWorkTemplatesTitle,
+      subtitle: l10n.employeeWorkTemplatesSubtitle,
+      templates: _employeeWorkTemplates(context),
+      onTemplateTap: (template) => _handleEmployeeWorkTemplateTap(
+        context,
+        template,
+      ),
+      margin: margin,
+      onClose: onClose,
+    );
+  }
+
+  Widget _buildTimelinePane(BuildContext context) {
     final theme = Theme.of(context);
-    final showEmployeeWorkTemplateBar =
-        controller.isEmployeeChat && controller.activeThreadId == null;
+    final isDesktop = PlatformInfos.isDesktop;
+    final templateMargin = EdgeInsets.fromLTRB(
+      isDesktop ? 16 : 12,
+      isDesktop ? 6 : 2,
+      isDesktop ? 16 : 12,
+      8,
+    );
+    final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
+        controller.activeThreadId == null &&
+        !controller.employeeWorkTemplateDismissed;
+    final onCloseEmployeeWorkTemplate =
+        controller.canDismissEmployeeWorkTemplateBar
+            ? controller.dismissEmployeeWorkTemplateBar
+            : null;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
-        ? EmployeeWorkTemplateBar(
+        ? _buildEmployeeWorkTemplateBar(
+            context,
             key: controller.employeeWorkTemplateGuideKey,
-            title: l10n.employeeWorkTemplatesTitle,
-            subtitle: l10n.employeeWorkTemplatesSubtitle,
-            templates: _employeeWorkTemplates(context),
-            onTemplateTap: (template) =>
-                _handleEmployeeWorkTemplateTap(context, template),
+            margin: templateMargin,
+            onClose: onCloseEmployeeWorkTemplate,
           )
         : null;
 
     return Column(
       children: [
+        if (employeeWorkTemplateBar != null) employeeWorkTemplateBar,
         Expanded(
           child: Stack(
             children: [
@@ -216,7 +276,6 @@ class ChatView extends StatelessWidget {
                 onTap: controller.clearSingleSelectedEvent,
                 child: ChatEventList(
                   controller: controller,
-                  inlineTopWidget: employeeWorkTemplateBar,
                 ),
               ),
               if (controller.readMarkerEventId.isNotEmpty)
@@ -362,13 +421,14 @@ class ChatView extends StatelessWidget {
               final isDisabled = !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
                   !agent.canOpenWebEntry;
+              final isVisuallyDisabled = isDisabled || agent.isResting;
 
               return KeyedSubtree(
                 key: controller.webEntryGuideKey,
                 child: IconButton(
                   tooltip: controller.webEntryOpen
                       ? '返回聊天'
-                      : (isDisabled
+                      : (isVisuallyDisabled
                           ? l10n.agentWebEntryUnavailable
                           : '打开 WebView'),
                   onPressed:
@@ -388,7 +448,7 @@ class ChatView extends StatelessWidget {
                               controller.webEntryOpen
                                   ? Icons.arrow_back
                                   : Icons.web_outlined,
-                              color: isDisabled
+                              color: isVisuallyDisabled
                                   ? theme.colorScheme.onSurface.withValues(
                                       alpha: 0.38,
                                     )

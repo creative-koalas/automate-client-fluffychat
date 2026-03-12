@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
+import '../core/config.dart';
 import '../core/api_client.dart';
 import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
-import '../utils/platform_infos.dart';
 import '../utils/localized_exception_extension.dart';
+import '../utils/platform_infos.dart';
+import '../widgets/guide_bubble_layout.dart';
 import 'dicebear_avatar_picker.dart';
 
 /// 招聘（单步创建）
@@ -118,7 +120,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final seed =
         List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
-    _avatarUrl = 'https://api.dicebear.com/9.x/$style/png?seed=$seed&size=256';
+    _avatarUrl =
+        '${PsygoConfig.dicebearBaseUrl}/$style/png?seed=$seed&size=256';
   }
 
   @override
@@ -459,16 +462,19 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         targetKey: _avatarGuideKey,
         title: l10n.recruitGuideStepAvatarTitle,
         description: l10n.recruitGuideStepAvatarBody,
+        preferredPlacement: GuideBubblePlacement.below,
       ),
       _RecruitGuideStepData(
         targetKey: _nameGuideKey,
         title: l10n.recruitGuideStepNameTitle,
         description: l10n.recruitGuideStepNameBody,
+        preferredPlacement: GuideBubblePlacement.below,
       ),
       _RecruitGuideStepData(
         targetKey: _createGuideKey,
         title: l10n.recruitGuideStepCreateTitle,
         description: l10n.recruitGuideStepCreateBody,
+        preferredPlacement: GuideBubblePlacement.above,
       ),
     ];
   }
@@ -501,6 +507,17 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           Size(constraints.maxWidth, constraints.maxHeight),
           highlightRect,
           bubbleSize,
+          currentStep.preferredPlacement,
+        );
+        final isDark = theme.brightness == Brightness.dark;
+        final scrimColor = theme.colorScheme.scrim.withValues(
+          alpha: isDark ? 0.82 : 0.72,
+        );
+        final guideAccentColor = theme.colorScheme.primary.withValues(
+          alpha: isDark ? 0.9 : 0.78,
+        );
+        final guideGlowColor = theme.colorScheme.primary.withValues(
+          alpha: isDark ? 0.32 : 0.2,
         );
 
         return Stack(
@@ -510,7 +527,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                 child: CustomPaint(
                   painter: _RecruitGuideScrimPainter(
                     highlightRect: highlightRect,
-                    color: Colors.black.withValues(alpha: 0.72),
+                    color: scrimColor,
                   ),
                 ),
               ),
@@ -525,7 +542,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                   painter: _RecruitGuideConnectorPainter(
                     start: bubbleLayout.connectorStart,
                     end: bubbleLayout.connectorEnd,
-                    color: Colors.white.withValues(alpha: 0.92),
+                    color: guideAccentColor,
                   ),
                 ),
               ),
@@ -539,10 +556,10 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: guideAccentColor, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.18),
+                        color: guideGlowColor,
                         blurRadius: 18,
                         spreadRadius: 2,
                       ),
@@ -633,53 +650,19 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     return origin & targetBox.size;
   }
 
-  _RecruitGuideBubbleLayout _buildGuideBubbleLayout(
+  GuideBubbleLayoutResult _buildGuideBubbleLayout(
     Size size,
     Rect highlightRect,
     Size bubbleSize,
+    GuideBubblePlacement preferredPlacement,
   ) {
-    final bubbleWidth = bubbleSize.width;
-    final bubbleHeight = bubbleSize.height;
-    final spaceAbove =
-        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
-    final spaceBelow = size.height -
-        highlightRect.bottom -
-        _guideScreenPadding -
-        _guideConnectorGap;
-    final showAbove = spaceAbove >= bubbleHeight
-        ? true
-        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
-    final maxLeft = max(
-      _guideScreenPadding,
-      size.width - bubbleWidth - _guideScreenPadding,
-    );
-    final left = (highlightRect.center.dx - (bubbleWidth / 2))
-        .clamp(_guideScreenPadding, maxLeft)
-        .toDouble();
-    final top = showAbove
-        ? max(
-            _guideScreenPadding,
-            highlightRect.top - bubbleHeight - _guideConnectorGap,
-          ).toDouble()
-        : min(
-            size.height - bubbleHeight - _guideScreenPadding,
-            highlightRect.bottom + _guideConnectorGap,
-          ).toDouble();
-    final connectorX = highlightRect.center.dx
-        .clamp(left + 28, left + bubbleWidth - 28)
-        .toDouble();
-
-    return _RecruitGuideBubbleLayout(
-      left: left,
-      top: top,
-      connectorStart: Offset(
-        connectorX,
-        showAbove ? top + bubbleHeight : top,
-      ),
-      connectorEnd: Offset(
-        highlightRect.center.dx,
-        showAbove ? highlightRect.top : highlightRect.bottom,
-      ),
+    return GuideBubbleLayoutResolver.resolve(
+      containerSize: size,
+      highlightRect: highlightRect,
+      bubbleSize: bubbleSize,
+      screenPadding: _guideScreenPadding,
+      connectorGap: _guideConnectorGap,
+      preferredPlacement: preferredPlacement,
     );
   }
 
@@ -694,6 +677,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
         max(240.0, availableSize.width - (_guideScreenPadding * 2));
     final preferredWidth = isDesktop ? 500.0 : _guideBubbleWidth;
     final width = min(preferredWidth, maxWidth);
+    final titleColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.colorScheme.onSurfaceVariant;
     const horizontalPadding = 36.0;
     final titleWidth = max(120.0, width - horizontalPadding - 52.0);
     final bodyWidth = max(120.0, width - horizontalPadding);
@@ -702,7 +687,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       maxWidth: titleWidth,
       style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF111827),
+            color: titleColor,
           ) ??
           const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
     );
@@ -710,7 +695,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       text: description,
       maxWidth: bodyWidth,
       style: theme.textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFF374151),
+            color: bodyColor,
             height: 1.45,
             fontWeight: FontWeight.w500,
           ) ??
@@ -756,16 +741,30 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
     required int totalSteps,
     required bool isLastStep,
   }) {
+    final isDark = theme.brightness == Brightness.dark;
+    final bubbleColor = isDark
+        ? theme.colorScheme.surfaceContainerHigh
+        : theme.colorScheme.surface;
+    final titleColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.colorScheme.onSurfaceVariant;
+    final stepColor = theme.colorScheme.onSurfaceVariant;
+    final borderColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.48 : 0.72,
+    );
+    final shadowColor = theme.colorScheme.shadow.withValues(
+      alpha: isDark ? 0.34 : 0.18,
+    );
     return Material(
       color: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bubbleColor,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.22),
+              color: shadowColor,
               blurRadius: 28,
               offset: const Offset(0, 12),
             ),
@@ -781,14 +780,14 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                     title,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF111827),
+                      color: titleColor,
                     ),
                   ),
                 ),
                 Text(
                   '$currentStep/$totalSteps',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: const Color(0xFF6B7280),
+                    color: stepColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -800,7 +799,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                 child: Text(
                   description,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF374151),
+                    color: bodyColor,
                     height: 1.45,
                     fontWeight: FontWeight.w500,
                   ),
@@ -817,7 +816,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                       : null,
                   style: FilledButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -1195,25 +1194,13 @@ class _RecruitGuideStepData {
   final GlobalKey targetKey;
   final String title;
   final String description;
+  final GuideBubblePlacement preferredPlacement;
 
   const _RecruitGuideStepData({
     required this.targetKey,
     required this.title,
     required this.description,
-  });
-}
-
-class _RecruitGuideBubbleLayout {
-  final double left;
-  final double top;
-  final Offset connectorStart;
-  final Offset connectorEnd;
-
-  const _RecruitGuideBubbleLayout({
-    required this.left,
-    required this.top,
-    required this.connectorStart,
-    required this.connectorEnd,
+    required this.preferredPlacement,
   });
 }
 
