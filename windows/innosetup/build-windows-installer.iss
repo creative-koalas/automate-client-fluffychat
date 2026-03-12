@@ -1,15 +1,17 @@
 ; PsyGo Setup (Admin + Program Files + Chinese + VC++ runtime)
 
 #define MyAppName "PsyGo"
-#define MyAppVersion "1.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0"
+#endif
 #define MyAppPublisher "创意考拉"
 #define MyAppURL "https://psygoai.com"
 #define MyAppExeName "psygo.exe"
 
-#define MySourceDir "{#SourcePath}\..\..\..\build\windows\x64\runner\Release"
-#define VCRedistSource "{#SourcePath}\..\VC_redist.x64.exe"
+#define MySourceDir "{#SourcePath}\..\..\build\windows\x64\runner\Release"
+#define VCRedistSource "{#SourcePath}\..\..\VC_redist.x64.exe"
 #define VCRedistFileName "VC_redist.x64.exe"
-#define IconFilePath "{#SourcePath}\..\..\..\assets\logo.ico"
+#define IconFilePath "{#SourcePath}\..\..\assets\logo.ico"
 
 ; ---- compile-time sanity checks (recommended) ----
 #if !FileExists(AddBackslash(MySourceDir) + MyAppExeName)
