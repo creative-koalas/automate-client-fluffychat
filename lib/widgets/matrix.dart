@@ -16,7 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:window_manager/window_manager.dart';
 
-
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/init_with_restore.dart';
@@ -130,8 +129,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   List<Client> get currentBundle => widget.clients;
 
   Map<String?, List<Client?>> get accountBundles => {
-    null: widget.clients,
-  };
+        null: widget.clients,
+      };
 
   bool get hasComplexBundles => false;
 
@@ -141,14 +140,15 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   final ValueNotifier<String?> voiceMessageEventId = ValueNotifier(null);
 
   Future<Client> getLoginClient() async {
-    debugPrint('[Matrix] getLoginClient called, clients.length=${widget.clients.length}');
-    if (widget.clients.isNotEmpty && !client.isLogged()) {
-      debugPrint('[Matrix] Returning existing client (not logged in)');
+    debugPrint(
+        '[Matrix] getLoginClient called, clients.length=${widget.clients.length}');
+    if (widget.clients.isNotEmpty) {
+      debugPrint('[Matrix] Returning existing single-slot client');
       return client;
     }
     final candidate =
         _loginClientCandidate ??= await ClientManager.createClient(
-      '${AppSettings.applicationName.value}-${DateTime.now().millisecondsSinceEpoch}',
+      ClientManager.defaultSingleClientName,
       store,
     )
           ..onLoginStateChanged
@@ -156,10 +156,12 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
               .where((l) => l == LoginState.loggedIn)
               .first
               .then((_) {
-            debugPrint('[Matrix] onLoginStateChanged: loggedIn, adding client to list');
+            debugPrint(
+                '[Matrix] onLoginStateChanged: loggedIn, adding client to list');
             if (!widget.clients.contains(_loginClientCandidate)) {
               widget.clients.add(_loginClientCandidate!);
-              debugPrint('[Matrix] Client added via onLoginStateChanged, clients.length=${widget.clients.length}');
+              debugPrint(
+                  '[Matrix] Client added via onLoginStateChanged, clients.length=${widget.clients.length}');
             }
             // 设置新登录的客户端为活跃客户端
             _activeClient = widget.clients.indexOf(_loginClientCandidate!);
@@ -175,12 +177,15 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
               PsygoApp.router.go(destination);
             }());
           });
-    debugPrint('[Matrix] Before adding candidate: clients.isEmpty=${widget.clients.isEmpty}');
+    debugPrint(
+        '[Matrix] Before adding candidate: clients.isEmpty=${widget.clients.isEmpty}');
     if (widget.clients.isEmpty) {
       widget.clients.add(candidate);
-      debugPrint('[Matrix] Candidate added to clients list, clients.length=${widget.clients.length}');
+      debugPrint(
+          '[Matrix] Candidate added to clients list, clients.length=${widget.clients.length}');
     }
-    debugPrint('[Matrix] getLoginClient returning, clients.length=${widget.clients.length}');
+    debugPrint(
+        '[Matrix] getLoginClient returning, clients.length=${widget.clients.length}');
     return candidate;
   }
 
@@ -261,6 +266,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     } catch (_) {}
     _linuxNotifications = NotificationsClient();
   }
+
   final Map<String, int> linuxNotificationIds = {};
 
   @override
@@ -277,7 +283,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   /// Ensure a client is present in the bundle and its subscriptions are active.
   /// Returns true if the client was newly added to the bundle.
   bool ensureClientRegistered(Client c) {
-    final exists = widget.clients.any((client) => client.clientName == c.clientName);
+    final exists =
+        widget.clients.any((client) => client.clientName == c.clientName);
     if (!exists) {
       widget.clients.add(c);
     }
@@ -320,8 +327,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       request.onUpdate = null;
       hidPopup = true;
       await KeyVerificationDialog(request: request).show(
-        PsygoApp.router.routerDelegate.navigatorKey.currentContext ??
-            context,
+        PsygoApp.router.routerDelegate.navigatorKey.currentContext ?? context,
       );
     });
     onLoginStateChanged[name] ??= c.onLoginStateChanged.stream.listen((state) {
@@ -350,19 +356,16 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         }
         _updatePushState();
       }
-      if (loggedInWithMultipleClients && state != LoginState.loggedIn) {
+      if (loggedInWithMultipleClients && state == LoginState.loggedOut) {
         ScaffoldMessenger.of(
-          PsygoApp.router.routerDelegate.navigatorKey.currentContext ??
-              context,
+          PsygoApp.router.routerDelegate.navigatorKey.currentContext ?? context,
         ).showSnackBar(
           SnackBar(
             content: Text(L10n.of(context).oneClientLoggedOut),
           ),
         );
 
-        if (state != LoginState.loggedIn) {
-          PsygoApp.router.go('/rooms');
-        }
+        PsygoApp.router.go('/rooms');
       } else {
         // Mobile: Don't redirect to /login-signup, let AuthGate handle
         // Web/Desktop: Redirect to /login-signup for manual login
@@ -443,7 +446,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handleDesktopBackgroundNotification(Client c, Event event) async {
+  Future<void> _handleDesktopBackgroundNotification(
+      Client c, Event event) async {
     if (!PlatformInfos.isDesktop) return;
     if (event.senderId == c.userID) return;
     if (!_desktopNotifyEventTypes.contains(event.type)) return;
@@ -469,7 +473,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       final isMinimized = await windowManager.isMinimized();
       return !(isVisible && isFocused && !isMinimized);
     } catch (e, s) {
-      Logs().w('[Matrix] Unable to query window state for desktop notifications', e, s);
+      Logs().w(
+          '[Matrix] Unable to query window state for desktop notifications',
+          e,
+          s);
       return true;
     }
   }
@@ -479,7 +486,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     if (widget.clients.isNotEmpty) {
       final loggedInIndex = widget.clients.indexWhere((c) => c.isLogged());
       _activeClient = loggedInIndex >= 0 ? loggedInIndex : 0;
-      debugPrint('[Matrix] initMatrix: Set activeClient to $_activeClient (userID: ${widget.clients[_activeClient].userID})');
+      debugPrint(
+          '[Matrix] initMatrix: Set activeClient to $_activeClient (userID: ${widget.clients[_activeClient].userID})');
     }
 
     for (final c in widget.clients) {
@@ -550,7 +558,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       AliyunPushService.instance.activeRoomIdGetter = () => activeRoomId;
 
       // 2. 获取当前用户 Matrix ID（用于过滤自己发的消息）
-      AliyunPushService.instance.currentUserIdGetter = () => clientOrNull?.userID;
+      AliyunPushService.instance.currentUserIdGetter =
+          () => clientOrNull?.userID;
 
       // 3. 通知点击回调（导航到对应房间）
       AliyunPushService.instance.onNotificationTapped = (roomId, eventId) {
@@ -563,12 +572,15 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         Logs().i('[Matrix] Aliyun Push initialized successfully');
 
         // 如果用户已登录（确保客户端列表不为空）
-        if (widget.clients.isNotEmpty && client.isLogged() && client.userID != null) {
+        if (widget.clients.isNotEmpty &&
+            client.isLogged() &&
+            client.userID != null) {
           // 绑定账号用于精准推送
           await AliyunPushService.instance.bindAccount(client.userID!);
 
           // 注册推送到后端和 Synapse
-          final pushRegistered = await AliyunPushService.instance.registerPush(client);
+          final pushRegistered =
+              await AliyunPushService.instance.registerPush(client);
           if (pushRegistered) {
             Logs().i('[Matrix] Push registration completed');
           } else {
@@ -612,7 +624,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       Logs().i('[Matrix] Registering Aliyun Push after login for ${c.userID}');
       if (kReleaseMode) {
         // ignore: avoid_print
-        print('[PUSH_AUDIT] Matrix register after login start user=${c.userID}');
+        print(
+            '[PUSH_AUDIT] Matrix register after login start user=${c.userID}');
       }
 
       // 确保 SDK 已初始化
@@ -622,7 +635,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           Logs().w('[Matrix] Aliyun Push SDK initialization failed');
           if (kReleaseMode) {
             // ignore: avoid_print
-            print('[PUSH_AUDIT] Matrix register after login abort: init failed');
+            print(
+                '[PUSH_AUDIT] Matrix register after login abort: init failed');
           }
           return;
         }
@@ -633,7 +647,8 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         Logs().w('[Matrix] Aliyun Push deviceId is null, cannot register');
         if (kReleaseMode) {
           // ignore: avoid_print
-          print('[PUSH_AUDIT] Matrix register after login abort: deviceId null');
+          print(
+              '[PUSH_AUDIT] Matrix register after login abort: deviceId null');
         }
         return;
       }

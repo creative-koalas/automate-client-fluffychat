@@ -23,6 +23,22 @@ import 'matrix_sdk_extensions/flutter_matrix_dart_sdk_database/builder.dart';
 
 abstract class ClientManager {
   static const String clientNamespace = 'com.psygo.store.clients';
+  static String get _defaultSingleClientName =>
+      '${AppSettings.applicationName.value}_main';
+  static String get defaultSingleClientName => _defaultSingleClientName;
+
+  /// 单账号模式：始终只保留一个 clientName。
+  static Future<String> _ensureSingleClientName(
+    SharedPreferences store,
+  ) async {
+    final clientNames = (store.getStringList(clientNamespace) ?? [])
+        .where((name) => name.trim().isNotEmpty)
+        .toList();
+    final selected =
+        clientNames.isNotEmpty ? clientNames.last : _defaultSingleClientName;
+    await store.setStringList(clientNamespace, [selected]);
+    return selected;
+  }
 
   /// 将 Matrix 用户 ID 转换为合法的 clientName
   /// 例如: @user:server.com -> PsyGo_user_server.com
@@ -41,17 +57,11 @@ abstract class ClientManager {
     String matrixUserId,
     SharedPreferences store,
   ) async {
-    final clientName = userIdToClientName(matrixUserId);
-    developer.log('[ClientManager] getOrCreateClientForUser: $matrixUserId -> $clientName', name: 'ClientManager');
-
-    // 检查是否已在 store 中
-    final clientNamesList = store.getStringList(clientNamespace) ?? [];
-    if (!clientNamesList.contains(clientName)) {
-      // 添加到 store
-      clientNamesList.add(clientName);
-      await store.setStringList(clientNamespace, clientNamesList);
-      developer.log('[ClientManager] Added new clientName to store: $clientName', name: 'ClientManager');
-    }
+    final clientName = await _ensureSingleClientName(store);
+    developer.log(
+      '[ClientManager] getOrCreateClientForUser: matrixUserId=$matrixUserId, clientName=$clientName',
+      name: 'ClientManager',
+    );
 
     // 创建并初始化 client
     final client = await createClient(clientName, store);
@@ -80,22 +90,19 @@ abstract class ClientManager {
     SharedPreferences store, {
     required List<Client> inMemoryClients,
   }) async {
-    final clientName = userIdToClientName(matrixUserId);
-    developer.log('[ClientManager] getOrCreateLoginClientForUser: $matrixUserId -> $clientName', name: 'ClientManager');
+    final clientName = await _ensureSingleClientName(store);
+    developer.log(
+      '[ClientManager] getOrCreateLoginClientForUser: matrixUserId=$matrixUserId, clientName=$clientName',
+      name: 'ClientManager',
+    );
 
     final existing = inMemoryClients.firstWhereOrNull(
       (client) => client.clientName == clientName,
     );
     if (existing != null) {
-      developer.log('[ClientManager] Reusing in-memory client: $clientName', name: 'ClientManager');
+      developer.log('[ClientManager] Reusing in-memory client: $clientName',
+          name: 'ClientManager');
       return existing;
-    }
-
-    final clientNamesList = store.getStringList(clientNamespace) ?? [];
-    if (!clientNamesList.contains(clientName)) {
-      clientNamesList.add(clientName);
-      await store.setStringList(clientNamespace, clientNamesList);
-      developer.log('[ClientManager] Added login clientName to store: $clientName', name: 'ClientManager');
     }
 
     return createClient(clientName, store);
@@ -106,56 +113,42 @@ abstract class ClientManager {
     required SharedPreferences store,
   }) async {
     developer.log('[ClientManager] getClients called', name: 'ClientManager');
-    final clientNames = <String>{};
+    String clientName;
     try {
-      final clientNamesList = store.getStringList(clientNamespace) ?? [];
-      clientNames.addAll(clientNamesList);
-      developer.log('[ClientManager] Found ${clientNames.length} client names', name: 'ClientManager');
+      clientName = await _ensureSingleClientName(store);
+      developer.log(
+        '[ClientManager] Single-account mode clientName=$clientName',
+        name: 'ClientManager',
+      );
     } catch (e, s) {
       Logs().w('Client names in store are corrupted', e, s);
       await store.remove(clientNamespace);
+      clientName = await _ensureSingleClientName(store);
     }
-    if (clientNames.isEmpty) {
-      developer.log('[ClientManager] No client names, adding default', name: 'ClientManager');
-      clientNames.add(PlatformInfos.clientName);
-      await store.setStringList(clientNamespace, clientNames.toList());
-    }
-    developer.log('[ClientManager] Creating ${clientNames.length} clients...', name: 'ClientManager');
-    final clients =
-        await Future.wait(clientNames.map((name) => createClient(name, store)));
-    developer.log('[ClientManager] Clients created', name: 'ClientManager');
+    developer.log('[ClientManager] Creating client...', name: 'ClientManager');
+    final client = await createClient(clientName, store);
+    final clients = <Client>[client];
+    developer.log('[ClientManager] Client created', name: 'ClientManager');
     if (initialize) {
-      developer.log('[ClientManager] Initializing clients...', name: 'ClientManager');
-      await Future.wait(
-        clients.map(
-          (client) => client.initWithRestore(
-            onMigration: () async {
-              final l10n = await lookupL10n(PlatformDispatcher.instance.locale);
-              sendInitNotification(
-                l10n.databaseMigrationTitle,
-                l10n.databaseMigrationBody,
-              );
-            },
-          ).catchError(
-            (e, s) => Logs().e('Unable to initialize client', e, s),
-          ),
-        ),
+      developer.log('[ClientManager] Initializing clients...',
+          name: 'ClientManager');
+      await client.initWithRestore(
+        onMigration: () async {
+          final l10n = await lookupL10n(PlatformDispatcher.instance.locale);
+          sendInitNotification(
+            l10n.databaseMigrationTitle,
+            l10n.databaseMigrationBody,
+          );
+        },
+      ).catchError(
+        (e, s) => Logs().e('Unable to initialize client', e, s),
       );
-      developer.log('[ClientManager] Clients initialized', name: 'ClientManager');
+      developer.log('[ClientManager] Clients initialized',
+          name: 'ClientManager');
     }
-    if (clients.length > 1 && clients.any((c) => !c.isLogged())) {
-      developer.log('[ClientManager] Removing logged out clients...', name: 'ClientManager');
-      final loggedOutClients = clients.where((c) => !c.isLogged()).toList();
-      for (final client in loggedOutClients) {
-        Logs().w(
-          'Multi account is enabled but client ${client.userID} is not logged in. Removing...',
-        );
-        clientNames.remove(client.clientName);
-        clients.remove(client);
-      }
-      await store.setStringList(clientNamespace, clientNames.toList());
-    }
-    developer.log('[ClientManager] getClients complete, returning ${clients.length} clients', name: 'ClientManager');
+    developer.log(
+        '[ClientManager] getClients complete, returning ${clients.length} clients',
+        name: 'ClientManager');
     return clients;
   }
 
@@ -163,9 +156,7 @@ abstract class ClientManager {
     String clientName,
     SharedPreferences store,
   ) async {
-    final clientNamesList = store.getStringList(clientNamespace) ?? [];
-    clientNamesList.add(clientName);
-    await store.setStringList(clientNamespace, clientNamesList);
+    await store.setStringList(clientNamespace, [clientName]);
   }
 
   static Future<void> removeClientNameFromStore(
@@ -173,8 +164,9 @@ abstract class ClientManager {
     SharedPreferences store,
   ) async {
     final clientNamesList = store.getStringList(clientNamespace) ?? [];
-    clientNamesList.remove(clientName);
-    await store.setStringList(clientNamespace, clientNamesList);
+    if (clientNamesList.contains(clientName)) {
+      await store.remove(clientNamespace);
+    }
   }
 
   static NativeImplementations get nativeImplementations => kIsWeb
@@ -188,13 +180,16 @@ abstract class ClientManager {
     String clientName,
     SharedPreferences store,
   ) async {
-    developer.log('[ClientManager] createClient: $clientName', name: 'ClientManager');
+    developer.log('[ClientManager] createClient: $clientName',
+        name: 'ClientManager');
     final shareKeysWith = AppSettings.shareKeysWith.value;
     final enableSoftLogout = AppSettings.enableSoftLogout.value;
 
-    developer.log('[ClientManager] Building database for: $clientName', name: 'ClientManager');
+    developer.log('[ClientManager] Building database for: $clientName',
+        name: 'ClientManager');
     final database = await flutterMatrixSdkDatabaseBuilder(clientName);
-    developer.log('[ClientManager] Database built for: $clientName', name: 'ClientManager');
+    developer.log('[ClientManager] Database built for: $clientName',
+        name: 'ClientManager');
 
     return Client(
       clientName,

@@ -14,6 +14,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/custom_http_client.dart';
+import 'package:psygo/utils/install_state_guard.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -132,6 +133,7 @@ void main() async {
   }
 
   final store = await AppSettings.init();
+  await InstallStateGuard.clearSecureStorageOnFirstInstall(store);
   Logs().i('Welcome to ${AppSettings.applicationName.value} <3');
 
   await vod.init(wasmPath: './assets/assets/vodozemac/');
@@ -195,6 +197,7 @@ class _IosStartupAppState extends State<_IosStartupApp> {
 
     developer.log('[iOS Startup] Initializing AppSettings...', name: 'Startup');
     final store = await AppSettings.init();
+    await InstallStateGuard.clearSecureStorageOnFirstInstall(store);
     Logs().i('Welcome to ${AppSettings.applicationName.value} <3');
     developer.log('[iOS Startup] AppSettings initialized', name: 'Startup');
 
