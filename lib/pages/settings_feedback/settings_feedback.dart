@@ -26,6 +26,9 @@ class SettingsFeedback extends StatefulWidget {
 }
 
 class _SettingsFeedbackState extends State<SettingsFeedback> {
+  static const int _maxAttachmentTotalBytes = 10 * 1024 * 1024;
+  static const String _maxAttachmentTotalLabel = '10 MB';
+
   final _contentController = TextEditingController();
   final _emailController = TextEditingController();
   String _selectedCategory = 'suggestion';
@@ -92,6 +95,23 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
     return imageExtensions.any(lowerName.endsWith);
   }
 
+  Future<int> _attachmentSize(XFile file) async {
+    try {
+      return await file.length();
+    } catch (_) {
+      try {
+        return (await file.readAsBytes()).length;
+      } catch (_) {
+        return 0;
+      }
+    }
+  }
+
+  Future<int> _totalAttachmentBytes(Iterable<XFile> files) async {
+    final sizes = await Future.wait(files.map(_attachmentSize));
+    return sizes.fold<int>(0, (sum, size) => sum + size);
+  }
+
   Future<void> _pickAttachments(FileSelectorType type) async {
     final picked = await selectFiles(
       context,
@@ -112,6 +132,22 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
       }
     }
     if (newAttachments.isEmpty) return;
+
+    final totalBytes = await _totalAttachmentBytes([
+      ..._attachments,
+      ...newAttachments,
+    ]);
+    if (!mounted) return;
+    if (totalBytes > _maxAttachmentTotalBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            L10n.of(context).fileIsTooBigForServer(_maxAttachmentTotalLabel),
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _attachments.addAll(newAttachments);
@@ -281,6 +317,19 @@ class _SettingsFeedbackState extends State<SettingsFeedback> {
     if (content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.settingsFeedbackContentRequired)),
+      );
+      return;
+    }
+
+    final totalBytes = await _totalAttachmentBytes(_attachments);
+    if (!mounted) return;
+    if (totalBytes > _maxAttachmentTotalBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.fileIsTooBigForServer(_maxAttachmentTotalLabel),
+          ),
+        ),
       );
       return;
     }
