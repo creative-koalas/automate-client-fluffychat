@@ -140,6 +140,39 @@ jobs:
       - name: Install Inno Setup
         shell: powershell
         run: choco install innosetup --no-progress -y
+      - name: Download VC++ Redistributable
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+          $output = "VC_redist.x64.exe"
+          $downloaded = $false
+
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+              if (Test-Path $output) {
+                Remove-Item -Force $output
+              }
+
+              Invoke-WebRequest -Uri $url -OutFile $output
+              $size = (Get-Item $output).Length
+              if ($size -lt 1000000) {
+                throw "Downloaded file is too small: $size bytes"
+              }
+
+              $downloaded = $true
+              break
+            } catch {
+              if ($attempt -eq 3) {
+                throw
+              }
+              Start-Sleep -Seconds (10 * $attempt)
+            }
+          }
+
+          if (-not $downloaded) {
+            throw "VC_redist.x64.exe download failed after retries"
+          }
       - name: Build Windows installer
         shell: powershell
         run: |
@@ -157,7 +190,7 @@ jobs:
             "/DMyAppVersion=${{ steps.meta.outputs.version_tag }}" `
             "/O$PWD\dist\windows" `
             "/F$baseName" `
-            "windows\innosetup\build-windows-installer.iss"
+            "installer.iss"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.file_name }}
