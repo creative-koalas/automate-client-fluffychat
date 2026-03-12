@@ -1170,6 +1170,9 @@ class EmployeesTabState extends State<EmployeesTab>
     final onNavigateToRecruit = widget.onNavigateToRecruit;
     if (onNavigateToRecruit == null) return const SizedBox.shrink();
     final recruitButtonDisabled = widget.recruitButtonDisabled;
+    final recruitGuideDescription = widget.showRecruitGuideHighlight
+        ? l10n.recruitGuideStepCreateBody
+        : l10n.customHireDescription;
     final iconAndTextColor = recruitButtonDisabled
         ? theme.colorScheme.onSurfaceVariant
         : Colors.white;
@@ -1177,7 +1180,7 @@ class EmployeesTabState extends State<EmployeesTab>
     return RecruitEntryGuideHighlight(
       visible: widget.showRecruitGuideHighlight,
       title: l10n.customHire,
-      description: l10n.customHireDescription,
+      description: recruitGuideDescription,
       actionLabel: l10n.customHire,
       onAction: onNavigateToRecruit,
       child: Container(

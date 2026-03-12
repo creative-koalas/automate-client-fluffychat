@@ -155,12 +155,13 @@ class TeamPageController extends State<TeamPage> {
 
   void _showRecruitLimitSnackBar(BuildContext context) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
     scaffoldMessenger.showSnackBar(
       SnackBar(
         content: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: scaffoldMessenger.hideCurrentSnackBar,
-          child: const Text('已招满3个员工，暂不支持继续招聘'),
+          child: Text(l10n.recruitLimitReachedMessage),
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -281,6 +282,9 @@ class TeamPageView extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
     final recruitButtonDisabled = controller.recruitLimitReached;
+    final recruitGuideDescription = controller.showRecruitGuideHighlight
+        ? l10n.recruitGuideStepCreateBody
+        : l10n.customHireDescription;
     final recruitButtonContentColor = recruitButtonDisabled
         ? theme.colorScheme.onSurfaceVariant
         : Colors.white;
@@ -379,7 +383,7 @@ class TeamPageView extends StatelessWidget {
       floatingActionButton: RecruitEntryGuideHighlight(
         visible: controller.showRecruitGuideHighlight,
         title: l10n.customHire,
-        description: l10n.customHireDescription,
+        description: recruitGuideDescription,
         actionLabel: l10n.customHire,
         onAction: () => unawaited(controller.openRecruitMenu(context)),
         child: Container(

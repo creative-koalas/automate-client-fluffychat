@@ -251,12 +251,13 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
   void _showRecruitLimitSnackBar() {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
     scaffoldMessenger.showSnackBar(
       SnackBar(
         content: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: scaffoldMessenger.hideCurrentSnackBar,
-          child: const Text('已招满3个员工，暂不支持继续招聘'),
+          child: Text(l10n.recruitLimitReachedMessage),
         ),
         behavior: SnackBarBehavior.floating,
       ),
