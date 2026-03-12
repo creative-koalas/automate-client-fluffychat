@@ -116,13 +116,22 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   RequestTokenResponse? currentThreepidCreds;
 
   void setActiveClient(Client? cl) {
-    final i = widget.clients.indexWhere((c) => c == cl);
+    if (cl == null) return;
+
+    var i = widget.clients.indexWhere((c) => identical(c, cl));
+    if (i == -1) {
+      i = widget.clients.indexWhere((c) => c.clientName == cl.clientName);
+    }
+    if (i == -1 && cl.userID != null) {
+      i = widget.clients.indexWhere((c) => c.userID == cl.userID);
+    }
+
     if (i != -1) {
       _activeClient = i;
       // TODO: Multi-client VoiP support
       createVoipPlugin();
     } else {
-      Logs().w('Tried to set an unknown client ${cl!.userID} as active');
+      Logs().w('Tried to set an unknown client ${cl.userID} as active');
     }
   }
 

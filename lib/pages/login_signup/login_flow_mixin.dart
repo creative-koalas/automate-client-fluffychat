@@ -65,14 +65,13 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         inMemoryClients: matrix.widget.clients,
       );
 
-      // 确保 client 在 clients 列表中
-      if (!matrix.widget.clients.contains(client)) {
-        matrix.widget.clients.add(client);
-      }
+      // 确保 client 在列表中并已注册订阅（clear/logout 后可能被移除）
+      matrix.ensureClientRegistered(client);
 
       // 检查是否需要重新登录：未登录 或 userID 不匹配（切换账号的情况）
       final needsLogin = !client.isLogged() || client.userID != matrixUserId;
       if (!needsLogin) {
+        matrix.ensureClientRegistered(client);
         // 已登录且 userID 匹配，直接使用
         matrix.setActiveClient(client);
         if (PlatformInfos.isDesktop) {
@@ -108,6 +107,9 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       );
       debugPrint('Matrix 登录成功');
 
+      // clear() 可能触发 loggedOut 回调导致该 client 被移除，这里重新确保注册
+      matrix.ensureClientRegistered(client);
+
       // 设置当前客户端为活跃客户端（确保侧边栏显示正确的头像）
       matrix.setActiveClient(client);
 
@@ -125,7 +127,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
 
       // 导航到主页面（无员工时进入员工列表）
       final destination = await resolvePostLoginDestination();
-      debugPrint('[LoginFlow] Matrix login success, navigating to $destination');
+      debugPrint(
+          '[LoginFlow] Matrix login success, navigating to $destination');
       PsygoApp.router.go(destination);
       return true;
     } catch (e) {
