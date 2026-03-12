@@ -164,12 +164,13 @@ class ChatView extends StatelessWidget {
         description: l10n.employeeWorkTemplateSummaryDescription,
         message: l10n.employeeWorkTemplateSummaryMessage,
       ),
-      EmployeeWorkTemplateItem(
-        icon: Icons.bug_report_outlined,
-        title: l10n.employeeWorkTemplateIssueTitle,
-        description: l10n.employeeWorkTemplateIssueDescription,
-        message: l10n.employeeWorkTemplateIssueMessage,
-      ),
+      // The third work template is temporarily hidden.
+      // EmployeeWorkTemplateItem(
+      //   icon: Icons.bug_report_outlined,
+      //   title: l10n.employeeWorkTemplateIssueTitle,
+      //   description: l10n.employeeWorkTemplateIssueDescription,
+      //   message: l10n.employeeWorkTemplateIssueMessage,
+      // ),
     ];
   }
 

@@ -61,6 +61,7 @@ class PsygoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ThemeBuilder(
       builder: (context, themeMode, primaryColor) => MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         title: 'PsyGo',
         themeMode: themeMode,
         theme: FluffyThemes.buildTheme(context, Brightness.light, primaryColor),
