@@ -4,10 +4,14 @@ import 'package:matrix/matrix.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
+import 'package:psygo/core/token_manager.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/layouts/desktop_layout.dart';
 import '../../widgets/matrix.dart';
 import '../bootstrap/bootstrap_dialog.dart';
@@ -23,6 +27,7 @@ class Settings extends StatefulWidget {
 class SettingsController extends State<Settings> {
   Future<Profile>? profileFuture;
   bool profileUpdated = false;
+  bool _logoutInProgress = false;
 
   void updateProfile() => setState(() {
         profileUpdated = true;
@@ -143,6 +148,12 @@ class SettingsController extends State<Settings> {
   }
 
   void logoutAction() async {
+    if (_logoutInProgress) {
+      debugPrint(
+          '[Settings] Logout already in progress, ignoring duplicate tap');
+      return;
+    }
+
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
 
@@ -276,8 +287,12 @@ class SettingsController extends State<Settings> {
       return;
     }
 
+    if (!mounted) return;
+    setState(() => _logoutInProgress = true);
+
     // 在 context 失效前获取需要的引用
     final auth = context.read<PsygoAuthState>();
+    var needsFallback = false;
 
     try {
       debugPrint('[Settings] Starting logout...');
@@ -288,11 +303,84 @@ class SettingsController extends State<Settings> {
       // - 清除缓存
       // - 切换窗口大小
       // - 跳转到登录页
-      await auth.markLoggedOut();
+      await auth.markLoggedOut().timeout(const Duration(seconds: 8));
+      await auth.load();
+      if (auth.isLoggedIn) {
+        debugPrint(
+            '[Settings] Logout did not clear auth state, fallback required');
+        needsFallback = true;
+      }
 
       debugPrint('[Settings] Logout completed');
     } catch (e) {
       debugPrint('[Settings] Logout error: $e');
+      needsFallback = true;
+    }
+
+    if (needsFallback && mounted) {
+      await _forceLocalLogoutFallback();
+    }
+
+    if (mounted) {
+      setState(() => _logoutInProgress = false);
+    }
+  }
+
+  Future<void> _forceLocalLogoutFallback() async {
+    debugPrint('[Settings] Running logout fallback cleanup...');
+
+    final auth = context.read<PsygoAuthState>();
+
+    // 1) 强制清理 token（本地）
+    try {
+      await TokenManager.instance.clearTokens();
+    } catch (e) {
+      debugPrint('[Settings] Fallback clear token error: $e');
+    }
+
+    // 2) 再次清理认证状态（幂等）
+    try {
+      await auth.markLoggedOut().timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('[Settings] Fallback auth clear error: $e');
+    }
+
+    // 3) 强制清理 Matrix 客户端本地状态
+    try {
+      final matrix = Matrix.of(context);
+      final clients = List<Client>.from(matrix.widget.clients);
+      for (final client in clients) {
+        try {
+          if (client.isLogged()) {
+            await client.logout().timeout(const Duration(seconds: 3));
+          }
+        } catch (logoutError) {
+          debugPrint('[Settings] Fallback matrix logout error: $logoutError');
+          try {
+            await client.clear().timeout(const Duration(seconds: 3));
+          } catch (clearError) {
+            debugPrint('[Settings] Fallback matrix clear error: $clearError');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[Settings] Fallback matrix cleanup error: $e');
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    // 4) 最后兜底导航，确保用户离开当前页面
+    try {
+      if (PlatformInfos.isDesktop) {
+        await WindowService.switchToLoginWindow();
+        PsygoApp.router.go('/login-signup');
+      } else {
+        PsygoApp.router.go('/');
+      }
+    } catch (e) {
+      debugPrint('[Settings] Fallback navigation error: $e');
     }
   }
 

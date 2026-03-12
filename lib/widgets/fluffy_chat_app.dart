@@ -12,7 +12,6 @@ import 'package:psygo/backend/backend.dart';
 import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/config/routes.dart';
-import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -174,7 +173,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   StreamSubscription? _syncStatusSubscription;
   String? _syncMonitoringClientName;
   int _consecutiveSyncErrors = 0;
-  static const int _maxConsecutiveSyncErrors = 5; // 连续5次同步失败后登出
+  static const int _maxConsecutiveSyncErrors = 5; // 连续5次同步失败后提示重连
+  DateTime? _lastSyncFailureNoticeAt;
+  static const Duration _syncFailureNoticeCooldown = Duration(seconds: 30);
 
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
@@ -544,8 +545,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Token expired, attempting refresh...');
       setState(() => _state = _AuthState.refreshing);
 
-      final success = await api.refreshAccessToken();
-      if (success) {
+      final refreshOutcome = await api.refreshAccessTokenWithOutcome();
+      if (refreshOutcome == TokenRefreshOutcome.success) {
         debugPrint('[AuthGate] Token refreshed successfully');
         // PC端：切换到主窗口模式
         if (PlatformInfos.isDesktop) {
@@ -568,7 +569,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         await _loginMatrixAndProceed();
         return;
       }
-      debugPrint('[AuthGate] Token refresh failed');
+      if (refreshOutcome == TokenRefreshOutcome.transientFailure) {
+        debugPrint(
+            '[AuthGate] Token refresh failed due to transient network error, keep session');
+        setState(() {
+          _state = _AuthState.error;
+          _errorMessage = L10n.of(context).authChatServiceUnavailable;
+        });
+        return;
+      }
+      debugPrint('[AuthGate] Token refresh failed with invalid session');
     }
 
     // 3. No valid token -> need to authenticate
@@ -1090,11 +1100,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                 .toLowerCase();
         debugPrint('[AuthGate] Sync error #$_consecutiveSyncErrors: $errorStr');
 
-        // 连续同步失败达到阈值时登出
-        // 包括：网络错误、连接超时、HTTP错误等
+        // 连续同步失败达到阈值时，提示网络异常并保持会话。
+        // 避免弱网场景误登出。
         if (_consecutiveSyncErrors >= _maxConsecutiveSyncErrors) {
           debugPrint(
-              '[AuthGate] Max consecutive sync errors reached ($_consecutiveSyncErrors), logging out user');
+              '[AuthGate] Max consecutive sync errors reached, keep session and show notice');
+          _consecutiveSyncErrors = 0;
           _handlePersistentConnectionFailure();
         }
       } else if (status.status == SyncStatus.finished) {
@@ -1107,28 +1118,26 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
-  /// 处理持续连接失败：清除登录状态并跳转到登录页
+  /// 处理持续连接失败：仅提示，不主动登出
   Future<void> _handlePersistentConnectionFailure() async {
-    debugPrint('[AuthGate] Handling persistent connection failure');
-
-    // 取消同步监听避免重复触发
-    _syncStatusSubscription?.cancel();
-    _syncStatusSubscription = null;
-    _syncMonitoringClientName = null;
+    final now = DateTime.now();
+    final lastNoticeAt = _lastSyncFailureNoticeAt;
+    if (lastNoticeAt != null &&
+        now.difference(lastNoticeAt) < _syncFailureNoticeCooldown) {
+      return;
+    }
+    _lastSyncFailureNoticeAt = now;
 
     // 显示提示
     if (mounted) {
       final navContext = PsygoApp.navigatorKey.currentContext ?? context;
       ScaffoldMessenger.of(navContext).showSnackBar(
         SnackBar(
-          content: Text(L10n.of(navContext).authPersistentNetworkFailure),
+          content: Text(L10n.of(navContext).authChatServiceUnavailable),
           duration: Duration(seconds: 3),
         ),
       );
     }
-
-    // 清除所有认证状态并跳转到登录页
-    await _clearAllAuthStateAndRedirectToLogin();
   }
 
   /// 强制登出（协议未接受时调用）

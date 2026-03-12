@@ -250,9 +250,19 @@ class PsygoApiClient {
           Logs().e('[AutomateApi] Token refresh failed: $e');
         }
 
-        // 刷新失败，触发登出
-        Logs().w('[AutomateApi] Token refresh failed, triggering logout');
-        _tokenManager.logout();
+        // 刷新失败后只在会话确定失效时登出，避免网络抖动误踢。
+        final refreshToken = await _tokenManager.getRefreshToken();
+        final shouldLogout = apiResponse.code == 10003 ||
+            refreshToken == null ||
+            refreshToken.isEmpty;
+        if (shouldLogout) {
+          Logs().w(
+              '[AutomateApi] Token refresh failed with invalid session, triggering logout');
+          await _tokenManager.logout();
+        } else {
+          Logs().w(
+              '[AutomateApi] Token refresh failed due to transient error, keep session');
+        }
       }
       throw ApiException(apiResponse.code, apiResponse.message);
     }

@@ -10,9 +10,15 @@ import '../core/config.dart';
 import '../core/token_manager.dart';
 import '../utils/custom_http_client.dart';
 
+enum TokenRefreshOutcome {
+  success,
+  transientFailure,
+  invalidSession,
+}
+
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio})
-    : _dio = dio ?? CustomHttpClient.createDio() {
+      : _dio = dio ?? CustomHttpClient.createDio() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(_buildAuthInterceptor());
@@ -36,11 +42,17 @@ class PsygoApiClient {
 
         // 尝试刷新 token
         debugPrint('[API] 401 received, attempting token refresh...');
-        final refreshSuccess = await refreshAccessToken();
+        final refreshOutcome = await refreshAccessTokenWithOutcome();
 
-        if (!refreshSuccess) {
-          debugPrint('[API] Token refresh failed, logging out');
-          await auth.markLoggedOut();
+        if (refreshOutcome != TokenRefreshOutcome.success) {
+          if (refreshOutcome == TokenRefreshOutcome.invalidSession) {
+            debugPrint(
+                '[API] Token refresh failed with invalid session, logging out');
+            await auth.markLoggedOut();
+          } else {
+            debugPrint(
+                '[API] Token refresh failed due to transient error, keep session');
+          }
           return handler.next(error);
         }
 
@@ -143,10 +155,12 @@ class PsygoApiClient {
     }
 
     debugPrint(
-      '[API] Unauthorized code=$firstCode, attempting token refresh...',
-    );
-    final refreshSuccess = await refreshAccessToken();
-    if (!refreshSuccess) {
+        '[API] Unauthorized code=$firstCode, attempting token refresh...');
+    final refreshOutcome = await refreshAccessTokenWithOutcome();
+    if (refreshOutcome != TokenRefreshOutcome.success) {
+      if (refreshOutcome == TokenRefreshOutcome.invalidSession) {
+        await auth.markLoggedOut();
+      }
       return response;
     }
 
@@ -307,18 +321,26 @@ class PsygoApiClient {
   /// Refresh the access token using refresh token
   /// Returns true if refresh was successful, false otherwise
   /// 委托给 TokenManager 统一处理，避免重复逻辑
-  Future<bool> refreshAccessToken() async {
-    try {
-      final success = await TokenManager.instance.refreshAccessToken();
-      if (success) {
-        // 刷新成功，重新加载 auth 状态
-        await _syncAuthState();
-      }
-      return success;
-    } catch (e) {
-      debugPrint('[API] Token refresh failed: $e');
-      return false;
+  Future<TokenRefreshOutcome> refreshAccessTokenWithOutcome() async {
+    final success = await TokenManager.instance.refreshAccessToken();
+    await _syncAuthState();
+    if (success) {
+      return TokenRefreshOutcome.success;
     }
+
+    // TokenManager 在 refresh token 无效时会清空本地 token。
+    final hasAccessToken = (auth.primaryToken ?? '').isNotEmpty;
+    final hasRefreshToken = (auth.refreshToken ?? '').isNotEmpty;
+    if (!auth.isLoggedIn || !hasAccessToken || !hasRefreshToken) {
+      return TokenRefreshOutcome.invalidSession;
+    }
+
+    return TokenRefreshOutcome.transientFailure;
+  }
+
+  Future<bool> refreshAccessToken() async {
+    final outcome = await refreshAccessTokenWithOutcome();
+    return outcome == TokenRefreshOutcome.success;
   }
 
   /// Ensure we have a valid token before making API calls
@@ -413,10 +435,13 @@ class PsygoApiClient {
     final payload = <String, dynamic>{
       'user_id': userId,
       'content': content,
-      if (replyEmail != null && replyEmail.isNotEmpty) 'reply_email': replyEmail,
+      if (replyEmail != null && replyEmail.isNotEmpty)
+        'reply_email': replyEmail,
       if (category != null && category.isNotEmpty) 'category': category,
-      if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
-      if (deviceInfo != null && deviceInfo.isNotEmpty) 'device_info': deviceInfo,
+      if (appVersion != null && appVersion.isNotEmpty)
+        'app_version': appVersion,
+      if (deviceInfo != null && deviceInfo.isNotEmpty)
+        'device_info': deviceInfo,
     };
     final useMultipart = attachments.isNotEmpty;
 
@@ -653,7 +678,18 @@ class PsygoApiClient {
     if (!_isUnauthorizedCode(code)) {
       return;
     }
-    await auth.markLoggedOut();
+    // 10003 表示 refresh token 失效，必须重新登录。
+    // 10002 可能是 access token 过期，先由 refresh 流程处理，避免误登出。
+    if (code == 10003) {
+      await auth.markLoggedOut();
+      return;
+    }
+
+    await _syncAuthState();
+    final hasRefreshToken = (auth.refreshToken ?? '').isNotEmpty;
+    if (!hasRefreshToken) {
+      await auth.markLoggedOut();
+    }
   }
 }
 
@@ -679,15 +715,15 @@ class AuthResponse {
   });
 
   Map<String, dynamic> toJson() => {
-    'token': token,
-    'refreshToken': refreshToken,
-    'expiresIn': expiresIn,
-    'userId': userId,
-    'phone': phone,
-    'matrixAccessToken': matrixAccessToken,
-    'matrixUserId': matrixUserId,
-    'matrixDeviceId': matrixDeviceId,
-  };
+        'token': token,
+        'refreshToken': refreshToken,
+        'expiresIn': expiresIn,
+        'userId': userId,
+        'phone': phone,
+        'matrixAccessToken': matrixAccessToken,
+        'matrixUserId': matrixUserId,
+        'matrixDeviceId': matrixDeviceId,
+      };
 }
 
 /// 充值订单创建请求
@@ -698,9 +734,9 @@ class CreateRechargeOrderRequest {
   CreateRechargeOrderRequest({required this.userId, required this.totalAmount});
 
   Map<String, dynamic> toJson() => {
-    'user_id': userId,
-    'total_amount': totalAmount,
-  };
+        'user_id': userId,
+        'total_amount': totalAmount,
+      };
 }
 
 /// 充值订单响应
