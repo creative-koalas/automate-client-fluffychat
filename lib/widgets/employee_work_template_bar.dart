@@ -19,6 +19,8 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
   final String subtitle;
   final List<EmployeeWorkTemplateItem> templates;
   final ValueChanged<EmployeeWorkTemplateItem> onTemplateTap;
+  final EdgeInsetsGeometry? margin;
+  final VoidCallback? onClose;
 
   const EmployeeWorkTemplateBar({
     super.key,
@@ -26,32 +28,39 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
     required this.subtitle,
     required this.templates,
     required this.onTemplateTap,
+    this.margin,
+    this.onClose,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final panelStartColor = isDark
+        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.42)
+        : theme.colorScheme.primaryContainer.withValues(alpha: 0.72);
+    final panelEndColor = isDark
+        ? theme.colorScheme.secondaryContainer.withValues(alpha: 0.28)
+        : theme.colorScheme.secondaryContainer.withValues(alpha: 0.58);
+    final panelBorderColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.42 : 0.28,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 900;
 
         return Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          margin: margin ?? const EdgeInsets.fromLTRB(12, 0, 12, 8),
           padding: EdgeInsets.all(isWideLayout ? 18 : 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primaryContainer.withValues(alpha: 0.72),
-                theme.colorScheme.secondaryContainer.withValues(alpha: 0.58),
-              ],
+              colors: [panelStartColor, panelEndColor],
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: theme.colorScheme.primary.withValues(alpha: 0.14),
-            ),
+            border: Border.all(color: panelBorderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,6 +102,19 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onClose != null)
+                    IconButton(
+                      onPressed: onClose,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -149,11 +171,25 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark
+        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.94)
+        : theme.colorScheme.surface.withValues(alpha: 0.9);
+    final cardBorderColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.42 : 0.6,
+    );
+    final iconContainerColor = isDark
+        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : theme.colorScheme.surfaceContainerHighest;
 
     return SizedBox(
       width: isWideLayout ? null : 200,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.74),
+        color: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cardBorderColor),
+        ),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
@@ -168,7 +204,7 @@ class _EmployeeWorkTemplateCard extends StatelessWidget {
                     width: isWideLayout ? 38 : 32,
                     height: isWideLayout ? 38 : 32,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
+                      color: iconContainerColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -223,6 +259,10 @@ Future<bool?> showEmployeeWorkTemplatePreviewDialog({
   required String cancelLabel,
 }) {
   final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  final previewSurfaceColor = isDark
+      ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.92)
+      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.72);
 
   return showAdaptiveDialog<bool>(
     context: context,
@@ -248,8 +288,7 @@ Future<bool?> showEmployeeWorkTemplatePreviewDialog({
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.72),
+                    color: previewSurfaceColor,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: SelectableText(

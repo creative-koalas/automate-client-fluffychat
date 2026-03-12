@@ -219,10 +219,17 @@ class PsygoApiClient {
       matrixDeviceId: respData['matrix_device_id'] as String?,
     );
 
+    final rawOnboardingCompleted = respData['onboarding_completed'];
+    final onboardingCompleted = rawOnboardingCompleted is bool
+        ? rawOnboardingCompleted
+        : (rawOnboardingCompleted is num
+            ? rawOnboardingCompleted != 0
+            : rawOnboardingCompleted?.toString().toLowerCase() == 'true');
+
     await auth.save(
       primaryToken: authResponse.token,
       userId: authResponse.userId,
-      onboardingCompleted: true,
+      onboardingCompleted: onboardingCompleted,
       refreshToken: authResponse.refreshToken,
       expiresIn: authResponse.expiresIn,
       matrixAccessToken: authResponse.matrixAccessToken,

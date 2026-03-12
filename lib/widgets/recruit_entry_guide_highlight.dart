@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/guide_bubble_layout.dart';
 
 class RecruitEntryGuideHighlight extends StatefulWidget {
   final Widget child;
@@ -112,6 +113,17 @@ class _RecruitEntryGuideHighlightState
   }
 
   Widget _buildOverlayEntry(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final scrimColor = theme.colorScheme.scrim.withValues(
+      alpha: isDark ? 0.82 : 0.72,
+    );
+    final guideAccentColor = theme.colorScheme.primary.withValues(
+      alpha: isDark ? 0.9 : 0.78,
+    );
+    final guideGlowColor = theme.colorScheme.primary.withValues(
+      alpha: isDark ? 0.32 : 0.2,
+    );
     final overlayState = Overlay.of(context, rootOverlay: true);
     final overlayBox = overlayState.context.findRenderObject();
     final targetContext = _targetKey.currentContext;
@@ -135,7 +147,7 @@ class _RecruitEntryGuideHighlightState
     final overlaySize = overlayBox.size;
     final bubbleSize = _resolveGuideBubbleSize(
       availableSize: overlaySize,
-      theme: Theme.of(context),
+      theme: theme,
       title: widget.title,
       description: widget.description,
     );
@@ -154,7 +166,7 @@ class _RecruitEntryGuideHighlightState
               child: CustomPaint(
                 painter: _RecruitGuideScrimPainter(
                   highlightRect: highlightRect,
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: scrimColor,
                 ),
               ),
             ),
@@ -166,7 +178,7 @@ class _RecruitEntryGuideHighlightState
                 painter: _RecruitGuideConnectorPainter(
                   start: bubbleLayout.connectorStart,
                   end: bubbleLayout.connectorEnd,
-                  color: Colors.white.withValues(alpha: 0.92),
+                  color: guideAccentColor,
                 ),
               ),
             ),
@@ -182,10 +194,10 @@ class _RecruitEntryGuideHighlightState
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: guideAccentColor, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: guideGlowColor,
                       blurRadius: 18,
                       spreadRadius: 2,
                     ),
@@ -247,51 +259,18 @@ class _RecruitEntryGuideHighlightState
     );
   }
 
-  _RecruitGuideBubbleLayout _buildGuideBubbleLayout(
+  GuideBubbleLayoutResult _buildGuideBubbleLayout(
     Size size,
     Rect highlightRect,
     Size bubbleSize,
   ) {
-    final bubbleWidth = bubbleSize.width;
-    final bubbleHeight = bubbleSize.height;
-    final spaceAbove =
-        highlightRect.top - _guideScreenPadding - _guideConnectorGap;
-    final spaceBelow =
-        size.height - highlightRect.bottom - _guideScreenPadding - _guideConnectorGap;
-    final showAbove = spaceAbove >= bubbleHeight
-        ? true
-        : (spaceBelow >= bubbleHeight ? false : spaceAbove > spaceBelow);
-    final maxLeft = max(
-      _guideScreenPadding,
-      size.width - bubbleWidth - _guideScreenPadding,
-    );
-    final left = (highlightRect.center.dx - (bubbleWidth / 2))
-        .clamp(_guideScreenPadding, maxLeft)
-        .toDouble();
-    final top = showAbove
-        ? max(
-            _guideScreenPadding,
-            highlightRect.top - bubbleHeight - _guideConnectorGap,
-          ).toDouble()
-        : min(
-            size.height - bubbleHeight - _guideScreenPadding,
-            highlightRect.bottom + _guideConnectorGap,
-          ).toDouble();
-    final connectorX = highlightRect.center.dx
-        .clamp(left + 28, left + bubbleWidth - 28)
-        .toDouble();
-
-    return _RecruitGuideBubbleLayout(
-      left: left,
-      top: top,
-      connectorStart: Offset(
-        connectorX,
-        showAbove ? top + bubbleHeight : top,
-      ),
-      connectorEnd: Offset(
-        highlightRect.center.dx,
-        showAbove ? highlightRect.top : highlightRect.bottom,
-      ),
+    return GuideBubbleLayoutResolver.resolve(
+      containerSize: size,
+      highlightRect: highlightRect,
+      bubbleSize: bubbleSize,
+      screenPadding: _guideScreenPadding,
+      connectorGap: _guideConnectorGap,
+      preferredPlacement: GuideBubblePlacement.above,
     );
   }
 
@@ -302,9 +281,12 @@ class _RecruitEntryGuideHighlightState
     required String description,
   }) {
     final isDesktop = PlatformInfos.isDesktop;
-    final maxWidth = max(240.0, availableSize.width - (_guideScreenPadding * 2));
+    final maxWidth =
+        max(240.0, availableSize.width - (_guideScreenPadding * 2));
     final preferredWidth = isDesktop ? 500.0 : _guideBubbleWidth;
     final width = min(preferredWidth, maxWidth);
+    final titleColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.colorScheme.onSurfaceVariant;
     const horizontalPadding = 36.0;
     final titleWidth = max(120.0, width - horizontalPadding);
     final bodyWidth = max(120.0, width - horizontalPadding);
@@ -313,7 +295,7 @@ class _RecruitEntryGuideHighlightState
       maxWidth: titleWidth,
       style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF111827),
+            color: titleColor,
           ) ??
           const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
     );
@@ -321,23 +303,25 @@ class _RecruitEntryGuideHighlightState
       text: description,
       maxWidth: bodyWidth,
       style: theme.textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFF374151),
+            color: bodyColor,
             height: 1.45,
             fontWeight: FontWeight.w500,
           ) ??
-          const TextStyle(fontSize: 14, height: 1.45, fontWeight: FontWeight.w500),
+          const TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ),
     );
-    final preferredHeight = 18.0 +
-        max(titleHeight, 22.0) +
-        14.0 +
-        bodyHeight +
-        16.0 +
-        52.0 +
-        16.0;
+    final preferredHeight =
+        18.0 + max(titleHeight, 22.0) + 14.0 + bodyHeight + 16.0 + 52.0 + 16.0;
     final minHeight = isDesktop ? 208.0 : _guideBubbleHeight;
     final maxHeight = max(
       minHeight,
-      min(isDesktop ? 300.0 : 260.0, availableSize.height - (_guideScreenPadding * 2)),
+      min(
+        isDesktop ? 300.0 : 260.0,
+        availableSize.height - (_guideScreenPadding * 2),
+      ),
     );
     final height = preferredHeight.clamp(minHeight, maxHeight).toDouble();
     return Size(width, height);
@@ -358,17 +342,30 @@ class _RecruitEntryGuideHighlightState
 
   Widget _buildGuideBubble() {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bubbleColor = isDark
+        ? theme.colorScheme.surfaceContainerHigh
+        : theme.colorScheme.surface;
+    final titleColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.colorScheme.onSurfaceVariant;
+    final borderColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.48 : 0.72,
+    );
+    final shadowColor = theme.colorScheme.shadow.withValues(
+      alpha: isDark ? 0.34 : 0.18,
+    );
 
     return Material(
       color: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bubbleColor,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.22),
+              color: shadowColor,
               blurRadius: 28,
               offset: const Offset(0, 12),
             ),
@@ -384,7 +381,7 @@ class _RecruitEntryGuideHighlightState
                     widget.title,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF111827),
+                      color: titleColor,
                     ),
                   ),
                 ),
@@ -396,7 +393,7 @@ class _RecruitEntryGuideHighlightState
                 child: Text(
                   widget.description,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF374151),
+                    color: bodyColor,
                     height: 1.45,
                     fontWeight: FontWeight.w500,
                   ),
@@ -411,7 +408,7 @@ class _RecruitEntryGuideHighlightState
                   onPressed: _handleAction,
                   style: FilledButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -432,20 +429,6 @@ class _RecruitEntryGuideHighlightState
       ),
     );
   }
-}
-
-class _RecruitGuideBubbleLayout {
-  final double left;
-  final double top;
-  final Offset connectorStart;
-  final Offset connectorEnd;
-
-  const _RecruitGuideBubbleLayout({
-    required this.left,
-    required this.top,
-    required this.connectorStart,
-    required this.connectorEnd,
-  });
 }
 
 class _RecruitGuideScrimPainter extends CustomPainter {
