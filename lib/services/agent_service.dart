@@ -167,14 +167,14 @@ class AgentService {
 
   /// 按 Matrix User ID 解析展示名称
   /// 优先级：自己的员工名称 > 服务端解析缓存 > Matrix profile 缓存 > fallback
-  String resolveDisplayNameByMatrixUserId(
+  String? tryResolveDisplayNameByMatrixUserId(
     String? matrixUserId, {
     String? fallbackDisplayName,
   }) {
     _ensureResolvedMemberCacheLoaded();
     final key = matrixUserId?.trim() ?? '';
     if (key.isEmpty) {
-      return '';
+      return null;
     }
 
     final agent = _matrixUserIdToAgent[key];
@@ -200,6 +200,28 @@ class AgentService {
     final fallback = _normalizeDisplayNameCandidate(fallbackDisplayName, key);
     if (fallback != null) {
       return fallback;
+    }
+
+    return null;
+  }
+
+  /// 按 Matrix User ID 解析展示名称
+  /// 优先级：自己的员工名称 > 服务端解析缓存 > Matrix profile 缓存 > fallback > localpart
+  String resolveDisplayNameByMatrixUserId(
+    String? matrixUserId, {
+    String? fallbackDisplayName,
+  }) {
+    final key = matrixUserId?.trim() ?? '';
+    if (key.isEmpty) {
+      return '';
+    }
+
+    final resolved = tryResolveDisplayNameByMatrixUserId(
+      key,
+      fallbackDisplayName: fallbackDisplayName,
+    );
+    if (resolved != null) {
+      return resolved;
     }
 
     return key.localpart ?? key;

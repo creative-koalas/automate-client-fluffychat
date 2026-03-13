@@ -186,15 +186,15 @@ class ChatEventList extends StatelessWidget {
               },
               onSwipe: () => controller.replyAction(replyTo: event),
               onInfoTab: controller.showEventInfo,
-                onMention: () => controller.insertMentionText(
-                  event.senderFromMemoryOrFallback.mention,
-                ),
-                avatarKey: mentionGuideAvatarEventId == event.eventId
-                    ? controller.mentionGuideKey
-                    : null,
-                onAvatarGuideTap: controller.handleGroupMentionGuideAvatarTap,
-                highlightMarker:
-                    controller.scrollToEventIdMarker == event.eventId,
+              onMention: () => controller.insertMentionTextForUser(
+                event.senderFromMemoryOrFallback,
+              ),
+              avatarKey: mentionGuideAvatarEventId == event.eventId
+                  ? controller.mentionGuideKey
+                  : null,
+              onAvatarGuideTap: controller.handleGroupMentionGuideAvatarTap,
+              highlightMarker:
+                  controller.scrollToEventIdMarker == event.eventId,
               onSelect: controller.onSelectMessage,
               scrollToEventId: (String eventId) =>
                   controller.scrollToEventId(eventId),

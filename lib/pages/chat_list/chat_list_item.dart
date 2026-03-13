@@ -8,6 +8,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/unread_bubble.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/room_status_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -473,8 +474,9 @@ class _ChatListItemState extends State<ChatListItem> {
                                       directChatMatrixId !=
                                           room.lastEvent?.senderId),
                                 ),
-                                builder: (context, snapshot) => Text(
-                                  room.membership == Membership.invite
+                                builder: (context, snapshot) {
+                                  final subtitleText = room.membership ==
+                                          Membership.invite
                                       ? room
                                               .getState(
                                                 EventTypes.RoomMember,
@@ -487,19 +489,27 @@ class _ChatListItemState extends State<ChatListItem> {
                                               : L10n.of(context)
                                                   .inviteGroupChat)
                                       : snapshot.data ??
-                                          L10n.of(context).noMessagesYet,
-                                  softWrap: false,
-                                  maxLines: room.notificationCount >= 1 ? 2 : 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: unread || room.hasNewMessages
-                                        ? theme.colorScheme.onSurface
-                                        : theme.colorScheme.outline,
-                                    decoration: room.lastEvent?.redacted == true
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                  ),
-                                ),
+                                          L10n.of(context).noMessagesYet;
+                                  return Text(
+                                    renderMatrixMentionsWithDisplayName(
+                                      text: subtitleText,
+                                      room: room,
+                                    ),
+                                    softWrap: false,
+                                    maxLines:
+                                        room.notificationCount >= 1 ? 2 : 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: unread || room.hasNewMessages
+                                          ? theme.colorScheme.onSurface
+                                          : theme.colorScheme.outline,
+                                      decoration:
+                                          room.lastEvent?.redacted == true
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                    ),
+                                  );
+                                },
                               ),
                   ),
                   const SizedBox(width: 8),

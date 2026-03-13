@@ -9,6 +9,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/mxc_image.dart';
@@ -164,6 +165,10 @@ class InputBar extends StatelessWidget {
         AgentService.instance.ensureMatrixProfilePresentation(user);
         final resolvedDisplayName = AgentService.instance.resolveDisplayName(user);
         final resolvedAvatar = AgentService.instance.resolveAvatarUri(user);
+        final mentionText = buildInputMentionByUser(
+          room: room,
+          user: user,
+        );
         if ((resolvedDisplayName.toLowerCase().contains(userSearch) ||
                 slugify(resolvedDisplayName.toLowerCase())
                     .contains(userSearch)) ||
@@ -171,7 +176,7 @@ class InputBar extends StatelessWidget {
           ret.add({
             'type': 'user',
             'mxid': user.id,
-            'mention': user.mention,
+            'mention': mentionText,
             'displayname': resolvedDisplayName,
             'avatar_url': resolvedAvatar?.toString(),
           });

@@ -4,6 +4,8 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import '../../../config/app_config.dart';
 
@@ -64,8 +66,13 @@ class ReplyContent extends StatelessWidget {
                   initialData: displayEvent.senderFromMemoryOrFallback,
                   future: displayEvent.fetchSenderUser(),
                   builder: (context, snapshot) {
+                    final sender =
+                        snapshot.data ?? displayEvent.senderFromMemoryOrFallback;
+                    AgentService.instance.ensureMatrixProfilePresentation(sender);
+                    final senderDisplayName =
+                        AgentService.instance.resolveDisplayName(sender);
                     return Text(
-                      '${snapshot.data?.calcDisplayname() ?? displayEvent.senderFromMemoryOrFallback.calcDisplayname()}:',
+                      '$senderDisplayName:',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -77,10 +84,13 @@ class ReplyContent extends StatelessWidget {
                   },
                 ),
                 Text(
-                  displayEvent.calcLocalizedBodyFallback(
-                    MatrixLocals(L10n.of(context)),
-                    withSenderNamePrefix: false,
-                    hideReply: true,
+                  renderMatrixMentionsWithDisplayName(
+                    text: displayEvent.calcLocalizedBodyFallback(
+                      MatrixLocals(L10n.of(context)),
+                      withSenderNamePrefix: false,
+                      hideReply: true,
+                    ),
+                    room: displayEvent.room,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,

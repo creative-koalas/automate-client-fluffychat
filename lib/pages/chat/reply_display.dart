@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'chat.dart';
 import 'events/reply_content.dart';
@@ -109,10 +110,13 @@ class _EditContent extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          event.calcLocalizedBodyFallback(
-            MatrixLocals(L10n.of(context)),
-            withSenderNamePrefix: false,
-            hideReply: true,
+          renderMatrixMentionsWithDisplayName(
+            text: event.calcLocalizedBodyFallback(
+              MatrixLocals(L10n.of(context)),
+              withSenderNamePrefix: false,
+              hideReply: true,
+            ),
+            room: event.room,
           ),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,

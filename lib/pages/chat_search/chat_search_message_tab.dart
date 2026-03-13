@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/url_launcher.dart';
@@ -160,15 +161,18 @@ class _MessageSearchResultListTile extends StatelessWidget {
           decorationColor: theme.colorScheme.primary,
         ),
         onOpen: (url) => UrlLauncher(context, url.url).launchUrl(),
-        text: event
-            .calcLocalizedBodyFallback(
-              plaintextBody: true,
-              removeMarkdown: true,
-              MatrixLocals(
-                L10n.of(context),
-              ),
-            )
-            .trim(),
+        text: renderMatrixMentionsWithDisplayName(
+          text: event
+              .calcLocalizedBodyFallback(
+                plaintextBody: true,
+                removeMarkdown: true,
+                MatrixLocals(
+                  L10n.of(context),
+                ),
+              )
+              .trim(),
+          room: room,
+        ),
         maxLines: 7,
         overflow: TextOverflow.ellipsis,
       ),

@@ -7,9 +7,11 @@ import 'package:highlight/highlight.dart' show highlight;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as parser;
 import 'package:matrix/matrix.dart';
+import 'package:psygo/services/agent_service.dart';
 
 import 'package:psygo/utils/code_highlight_theme.dart';
 import 'package:psygo/utils/event_checkbox_extension.dart';
+import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/mxc_image.dart';
@@ -164,6 +166,9 @@ class HtmlMessage extends StatelessWidget {
       var text = node.text ?? '';
       // Single linebreak nodes between Elements are ignored:
       if (text == '\n') text = '';
+      if (text.isNotEmpty) {
+        text = renderMatrixMentionsWithDisplayName(text: text, room: room);
+      }
 
       return LinkifySpan(
         text: text,
@@ -188,11 +193,30 @@ class HtmlMessage extends StatelessWidget {
         if (matrixId != null) {
           if (matrixId.sigil == '@') {
             final user = room.unsafeGetUserFromMemoryOrFallback(matrixId);
+            final nodeText = node.text.trim();
+            final fallbackDisplayName =
+                nodeText.isEmpty ? user.calcDisplayname() : nodeText;
+            AgentService.instance.ensureMatrixProfilePresentationById(
+              client: room.client,
+              matrixUserId: matrixId,
+              fallbackDisplayName: fallbackDisplayName,
+              fallbackAvatarUri: user.avatarUrl,
+            );
+            final displayName =
+                AgentService.instance.tryResolveDisplayNameByMatrixUserId(
+              matrixId,
+              fallbackDisplayName: fallbackDisplayName,
+            ) ??
+                fallbackDisplayName;
+            final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
+              matrixId,
+              fallbackAvatarUri: user.avatarUrl,
+            );
             return WidgetSpan(
               child: MatrixPill(
                 key: Key('user_pill_$matrixId'),
-                name: user.calcDisplayname(),
-                avatar: user.avatarUrl,
+                name: displayName,
+                avatar: avatar,
                 uri: href,
                 outerContext: context,
                 fontSize: fontSize,

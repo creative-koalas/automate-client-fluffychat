@@ -40,6 +40,7 @@ import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
@@ -1228,9 +1229,13 @@ class ChatController extends State<ChatPageWithRoom>
       parseCommands = false;
     }
 
+    final outgoingText = replaceInputMentionsWithMatrixIds(
+      room: room,
+      text: sendController.text,
+    );
     // ignore: unawaited_futures
     room.sendTextEvent(
-      sendController.text,
+      outgoingText,
       inReplyTo: replyEvent,
       editEventId: editEvent?.eventId,
       parseCommands: parseCommands,
@@ -2182,6 +2187,14 @@ class ChatController extends State<ChatPageWithRoom>
     }
   }
 
+  void insertMentionTextForUser(User user) {
+    final mention = buildInputMentionByUser(
+      room: room,
+      user: user,
+    );
+    insertMentionText(mention);
+  }
+
   void sendEmployeeWorkTemplateMessage(String text) {
     final trimmedText = text.trim();
     if (trimmedText.isEmpty) return;
@@ -2190,8 +2203,12 @@ class ChatController extends State<ChatPageWithRoom>
       closeWebEntry();
     }
 
+    final outgoingText = replaceInputMentionsWithMatrixIds(
+      room: room,
+      text: trimmedText,
+    );
     room.sendTextEvent(
-      trimmedText,
+      outgoingText,
       parseCommands: false,
       threadRootEventId: activeThreadId,
     );
