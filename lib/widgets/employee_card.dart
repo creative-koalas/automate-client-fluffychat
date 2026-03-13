@@ -718,7 +718,7 @@ class _EmployeeCardState extends State<EmployeeCard>
       case 'slacking':
         return '🐟 ${l10n.employeeSlacking}';
       default:
-        return '😴 ${l10n.employeeSleeping}';
+        return '⏸️ ${l10n.employeeSleeping}';
     }
   }
 
