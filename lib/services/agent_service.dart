@@ -350,8 +350,13 @@ class AgentService {
     }
 
     try {
+      debugPrint(
+          '[AgentService] Resolving ${requestIds.length} members via backend');
       final resolvedMembers =
           await _repository.resolveMembersByMatrixUserIds(requestIds);
+      debugPrint(
+        '[AgentService] Backend resolved ${resolvedMembers.length}/${requestIds.length} members',
+      );
       final resolvedById = <String, ResolvedAgentMember>{
         for (final member in resolvedMembers)
           member.matrixUserId.trim(): member,
