@@ -8,6 +8,7 @@ import 'package:open_file/open_file.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
@@ -173,8 +174,7 @@ class SendFileDialogState extends State<SendFileDialog> {
       }
       scaffoldMessenger.showLoadingSnackBar(l10n.prepareSendingAttachment);
       Navigator.of(context, rootNavigator: false).pop();
-      final clientConfig = await widget.room.client.getConfig();
-      final maxUploadSize = clientConfig.mUploadSize ?? 100 * 1000 * 1000;
+      const maxUploadSize = kChatAttachmentMaxUploadBytes;
 
       for (final xfile in widget.files) {
         final MatrixFile file;
@@ -422,7 +422,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                                           itemCount: widget.files.length,
                                           itemBuilder: (context, i) => Padding(
                                             padding: const EdgeInsets.only(
-                                                right: 8.0),
+                                              right: 8.0,
+                                            ),
                                             child: FutureBuilder(
                                               future:
                                                   widget.files[i].readAsBytes(),

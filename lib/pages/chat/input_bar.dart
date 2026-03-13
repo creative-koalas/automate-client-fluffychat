@@ -9,6 +9,8 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/chat_upload_limits.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -419,6 +421,19 @@ class InputBar extends StatelessWidget {
             }
             final data = content.data;
             if (data == null) return;
+            if (data.length > kChatAttachmentMaxUploadBytes) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    FileTooBigMatrixException(
+                      data.length,
+                      kChatAttachmentMaxUploadBytes,
+                    ).toLocalizedString(context),
+                  ),
+                ),
+              );
+              return;
+            }
 
             if (onSubmitImage != null) {
               onSubmitImage!(data);

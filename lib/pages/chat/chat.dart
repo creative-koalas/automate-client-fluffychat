@@ -37,6 +37,7 @@ import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/file_selector.dart';
+import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
@@ -1140,6 +1141,14 @@ class ChatController extends State<ChatPageWithRoom>
       );
       return;
     }
+    if (data.length > kChatAttachmentMaxUploadBytes) {
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      _showAttachmentError(
+        scaffoldMessenger,
+        FileTooBigMatrixException(data.length, kChatAttachmentMaxUploadBytes),
+      );
+      return;
+    }
     final file = MatrixFile(
       mimeType: content.mimeType,
       bytes: data,
@@ -1267,8 +1276,7 @@ class ChatController extends State<ChatPageWithRoom>
       }
 
       _showLoadingSnackBar(scaffoldMessenger, l10n.prepareSendingAttachment);
-      final clientConfig = await room.client.getConfig();
-      final maxUploadSize = clientConfig.mUploadSize ?? 100 * 1000 * 1000;
+      const maxUploadSize = kChatAttachmentMaxUploadBytes;
 
       final attachments = List<PendingAttachment>.from(_pendingAttachments);
       for (var i = 0; i < attachments.length; i++) {
@@ -1513,6 +1521,13 @@ class ChatController extends State<ChatPageWithRoom>
     );
     final bytes = bytesResult.result;
     if (bytes == null) return;
+    if (bytes.length > kChatAttachmentMaxUploadBytes) {
+      _showAttachmentError(
+        scaffoldMessenger,
+        FileTooBigMatrixException(bytes.length, kChatAttachmentMaxUploadBytes),
+      );
+      return;
+    }
 
     final file = MatrixAudioFile(
       bytes: bytes,
@@ -1999,8 +2014,6 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void onAddPopupMenuButtonSelected(AddPopupMenuActions choice) {
-    room.client.getConfig();
-
     switch (choice) {
       case AddPopupMenuActions.image:
         sendFileAction(type: FileSelectorType.images);

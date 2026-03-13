@@ -46,7 +46,6 @@ class RecordingViewModelState extends State<RecordingViewModel> {
   bool isPaused = false;
 
   Future<void> startRecording(Room room) async {
-    room.client.getConfig(); // Preload server file configuration.
     if (PlatformInfos.isAndroid) {
       final info = await DeviceInfoPlugin().androidInfo;
       if (info.version.sdkInt < 19) {
