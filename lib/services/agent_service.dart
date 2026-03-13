@@ -379,6 +379,7 @@ class AgentService {
       };
 
       var changed = false;
+      var cacheTouched = false;
       for (final matrixUserId in requestIds) {
         final member = resolvedById[matrixUserId];
         if (member == null) {
@@ -397,6 +398,9 @@ class AgentService {
         final previous = _resolvedMemberPresentationByUserId[matrixUserId];
         if (previous?.displayName == displayName &&
             previous?.avatarUrl == avatarUrl) {
+          // Value unchanged: still refresh updated_at so TTL is extended.
+          _resolvedMemberUpdatedAtByUserId[matrixUserId] = now;
+          cacheTouched = true;
           continue;
         }
 
@@ -405,12 +409,16 @@ class AgentService {
           displayName: displayName,
           avatarUrl: avatarUrl,
         );
-        _resolvedMemberUpdatedAtByUserId[matrixUserId] = now;
         changed = true;
+        cacheTouched = true;
+        _resolvedMemberUpdatedAtByUserId[matrixUserId] = now;
+        continue;
       }
 
-      if (changed) {
+      if (cacheTouched) {
         _schedulePersistResolvedMemberCache();
+      }
+      if (changed) {
         _notifyChanged();
       }
     } catch (e) {
