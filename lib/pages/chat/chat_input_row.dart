@@ -777,6 +777,7 @@ void _showAttachmentBottomSheet(
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
+    showDragHandle: false,
     builder: (context) => Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
