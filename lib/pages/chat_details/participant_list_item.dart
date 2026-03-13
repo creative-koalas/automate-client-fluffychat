@@ -16,9 +16,8 @@ class ParticipantListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    AgentService.instance.ensureMatrixProfilePresentation(user);
     final avatarUrl = AgentService.instance.resolveAvatarUri(user);
-    final displayname = AgentService.instance.resolveDisplayName(user);
+    final displayname = AgentService.instance.resolveStrictDisplayName(user);
 
     final membershipBatch = switch (user.membership) {
       Membership.ban => L10n.of(context).banned,

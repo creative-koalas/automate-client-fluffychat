@@ -18,9 +18,8 @@ void showMemberActionsPopupMenu({
 }) async {
   final theme = Theme.of(context);
   final isMe = user.room.client.userID == user.id;
-  AgentService.instance.ensureMatrixProfilePresentation(user);
   final avatarUrl = AgentService.instance.resolveAvatarUri(user);
-  final displayname = AgentService.instance.resolveDisplayName(user);
+  final displayname = AgentService.instance.resolveStrictDisplayName(user);
 
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 

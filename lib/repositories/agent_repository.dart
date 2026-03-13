@@ -48,38 +48,6 @@ class AgentRepository {
     return AgentPage.fromJson(response.data!);
   }
 
-  /// 根据 Matrix User ID 批量解析成员展示信息
-  Future<List<ResolvedAgentMember>> resolveMembersByMatrixUserIds(
-    List<String> matrixUserIds,
-  ) async {
-    final normalized = matrixUserIds
-        .map((id) => id.trim())
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
-    if (normalized.isEmpty) {
-      return const <ResolvedAgentMember>[];
-    }
-
-    final response = await _apiClient.post<Map<String, dynamic>>(
-      '/api/agents/resolve-members',
-      body: {'matrix_user_ids': normalized},
-      fromJsonT: (data) =>
-          data is Map<String, dynamic> ? data : <String, dynamic>{},
-    );
-
-    final rawItems = response.data?['items'];
-    if (rawItems is! List) {
-      return const <ResolvedAgentMember>[];
-    }
-
-    return rawItems
-        .whereType<Map<String, dynamic>>()
-        .map(ResolvedAgentMember.fromJson)
-        .where((item) => item.matrixUserId.isNotEmpty)
-        .toList(growable: false);
-  }
-
   /// 获取 Agent 统计信息
   ///
   /// [agentId] Agent ID
@@ -148,7 +116,9 @@ class AgentRepository {
       if (status == 'failed') {
         final error = (data['error'] as String?)?.trim();
         throw ApiException(
-            -1, error?.isNotEmpty == true ? error! : 'Operation failed');
+          -1,
+          error?.isNotEmpty == true ? error! : 'Operation failed',
+        );
       }
 
       await Future.delayed(const Duration(seconds: 1));
@@ -220,29 +190,5 @@ class AgentRepository {
   /// 释放资源
   void dispose() {
     _apiClient.dispose();
-  }
-}
-
-class ResolvedAgentMember {
-  final String matrixUserId;
-  final String? agentId;
-  final String? displayName;
-  final String? avatarUrl;
-
-  const ResolvedAgentMember({
-    required this.matrixUserId,
-    this.agentId,
-    this.displayName,
-    this.avatarUrl,
-  });
-
-  factory ResolvedAgentMember.fromJson(Map<String, dynamic> json) {
-    final matrixUserId = (json['matrix_user_id'] as String?)?.trim() ?? '';
-    return ResolvedAgentMember(
-      matrixUserId: matrixUserId,
-      agentId: (json['agent_id'] as String?)?.trim(),
-      displayName: (json['display_name'] as String?)?.trim(),
-      avatarUrl: (json['avatar_url'] as String?)?.trim(),
-    );
   }
 }

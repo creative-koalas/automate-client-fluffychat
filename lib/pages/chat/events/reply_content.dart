@@ -68,9 +68,8 @@ class ReplyContent extends StatelessWidget {
                   builder: (context, snapshot) {
                     final sender =
                         snapshot.data ?? displayEvent.senderFromMemoryOrFallback;
-                    AgentService.instance.ensureMatrixProfilePresentation(sender);
                     final senderDisplayName =
-                        AgentService.instance.resolveDisplayName(sender);
+                        AgentService.instance.resolveStrictDisplayName(sender);
                     return Text(
                       '$senderDisplayName:',
                       maxLines: 1,

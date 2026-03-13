@@ -42,20 +42,15 @@ class UserDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final client = Matrix.of(context).client;
     final dmRoomId = client.getDirectChatFromUserId(profile.userId);
-    AgentService.instance.ensureMatrixProfilePresentationById(
-      client: client,
-      matrixUserId: profile.userId,
-      fallbackDisplayName: profile.displayName,
-      fallbackAvatarUri: profile.avatarUrl,
-    );
     final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
       profile.userId,
       fallbackAvatarUri: profile.avatarUrl,
     );
-    final displayname = AgentService.instance.resolveDisplayNameByMatrixUserId(
+    final displayname = AgentService.instance.resolveStrictDisplayNameByMatrixUserId(
       profile.userId,
       fallbackDisplayName:
           profile.displayName ?? profile.userId.localpart ?? L10n.of(context).user,
+      selfMatrixUserId: client.userID,
     );
 
     var copied = false;
@@ -95,7 +90,7 @@ class UserDialog extends StatelessWidget {
                       onTap: avatar != null
                           ? () => showDialog(
                                 context: context,
-                                builder: (_) => MxcImageViewer(avatar!),
+                                builder: (_) => MxcImageViewer(avatar),
                               )
                           : null,
                     ),

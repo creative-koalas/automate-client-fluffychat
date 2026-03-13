@@ -85,9 +85,8 @@ class Message extends StatelessWidget {
 
   ({Uri? avatarUrl, String displayName, bool isWorkingEmployee})
       _resolveSenderPresentation(User user) {
-    AgentService.instance.ensureMatrixProfilePresentation(user);
     final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
-    final displayName = AgentService.instance.resolveDisplayName(user);
+    final displayName = AgentService.instance.resolveStrictDisplayName(user);
     final avatarUri = AgentService.instance.resolveAvatarUri(user);
 
     return (
@@ -380,65 +379,79 @@ class Message extends StatelessWidget {
                                     // PC 端选择模式下，自己的消息不显示头像占位
                                     const SizedBox.shrink()
                                   else if (!ownMessage && !longPressSelect)
-                                    FutureBuilder<User?>(
-                                      future: event.fetchSenderUser(),
-                                      builder: (context, snapshot) {
-                                        final user = snapshot.data ??
-                                            event.senderFromMemoryOrFallback;
-                                        final sender =
-                                            _resolveSenderPresentation(user);
-                                        return KeyedSubtree(
-                                          key: avatarKey,
-                                          child: Avatar(
-                                            mxContent: sender.avatarUrl,
-                                            name: sender.displayName,
-                                            showWorkingPulse:
-                                                sender.isWorkingEmployee,
-                                            onTap: () =>
-                                                showSenderMenu(context, user),
-                                            presenceUserId: user.stateKey,
-                                            presenceBackgroundColor:
-                                                wallpaperMode
-                                                    ? Colors.transparent
-                                                    : null,
-                                          ),
-                                        );
-                                      },
+                                    ValueListenableBuilder(
+                                      valueListenable:
+                                          AgentService.instance.agentsNotifier,
+                                      builder: (context, _, __) =>
+                                          FutureBuilder<User?>(
+                                        future: event.fetchSenderUser(),
+                                        builder: (context, snapshot) {
+                                          final user = snapshot.data ??
+                                              event.senderFromMemoryOrFallback;
+                                          final sender =
+                                              _resolveSenderPresentation(user);
+                                          return KeyedSubtree(
+                                            key: avatarKey,
+                                            child: Avatar(
+                                              mxContent: sender.avatarUrl,
+                                              name: sender.displayName,
+                                              showWorkingPulse:
+                                                  sender.isWorkingEmployee,
+                                              onTap: () => showSenderMenu(
+                                                context,
+                                                user,
+                                              ),
+                                              presenceUserId: user.stateKey,
+                                              presenceBackgroundColor:
+                                                  wallpaperMode
+                                                      ? Colors.transparent
+                                                      : null,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     )
                                   else if (!ownMessage && longPressSelect)
                                     // PC 端选择模式下，别人的消息也不显示头像（勾选框在外层）
                                     // 移动端保持原有逻辑
                                     PlatformInfos.isDesktop
                                         ? const SizedBox.shrink()
-                                        : FutureBuilder<User?>(
-                                            future: event.fetchSenderUser(),
-                                            builder: (context, snapshot) {
-                                              final user = snapshot.data ??
-                                                  event
-                                                      .senderFromMemoryOrFallback;
-                                              final sender =
-                                                  _resolveSenderPresentation(
-                                                user,
-                                              );
-                                              return KeyedSubtree(
-                                                key: avatarKey,
-                                                child: Avatar(
-                                                  mxContent: sender.avatarUrl,
-                                                  name: sender.displayName,
-                                                  showWorkingPulse: sender
-                                                      .isWorkingEmployee,
-                                                  onTap: () => showSenderMenu(
-                                                    context,
-                                                    user,
+                                        : ValueListenableBuilder(
+                                            valueListenable: AgentService
+                                                .instance.agentsNotifier,
+                                            builder: (context, _, __) =>
+                                                FutureBuilder<User?>(
+                                              future: event.fetchSenderUser(),
+                                              builder: (context, snapshot) {
+                                                final user = snapshot.data ??
+                                                    event
+                                                        .senderFromMemoryOrFallback;
+                                                final sender =
+                                                    _resolveSenderPresentation(
+                                                  user,
+                                                );
+                                                return KeyedSubtree(
+                                                  key: avatarKey,
+                                                  child: Avatar(
+                                                    mxContent: sender.avatarUrl,
+                                                    name: sender.displayName,
+                                                    showWorkingPulse: sender
+                                                        .isWorkingEmployee,
+                                                    onTap: () =>
+                                                        showSenderMenu(
+                                                      context,
+                                                      user,
+                                                    ),
+                                                    presenceUserId:
+                                                        user.stateKey,
+                                                    presenceBackgroundColor:
+                                                        wallpaperMode
+                                                            ? Colors.transparent
+                                                            : null,
                                                   ),
-                                                  presenceUserId: user.stateKey,
-                                                  presenceBackgroundColor:
-                                                      wallpaperMode
-                                                          ? Colors.transparent
-                                                          : null,
-                                                ),
-                                              );
-                                            },
+                                                );
+                                              },
+                                            ),
                                           ),
                                   Expanded(
                                     child: Column(
@@ -455,54 +468,60 @@ class Message extends StatelessWidget {
                                             child: ownMessage ||
                                                     event.room.isDirectChat
                                                 ? const SizedBox(height: 12)
-                                                : FutureBuilder<User?>(
-                                                    future:
-                                                        event.fetchSenderUser(),
+                                                : ValueListenableBuilder(
+                                                    valueListenable:
+                                                        AgentService.instance
+                                                            .agentsNotifier,
                                                     builder:
-                                                        (context, snapshot) {
-                                                      final user = snapshot
-                                                              .data ??
-                                                          event
-                                                              .senderFromMemoryOrFallback;
-                                                      final displayname =
-                                                          _resolveSenderPresentation(
-                                                        user,
-                                                      ).displayName;
-                                                      return Text(
-                                                        displayname,
-                                                        style: TextStyle(
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: (theme.brightness ==
-                                                                  Brightness
-                                                                      .light
-                                                              ? displayname
-                                                                  .color
-                                                              : displayname
-                                                                  .lightColorText),
-                                                          shadows:
-                                                              !wallpaperMode
-                                                                  ? null
-                                                                  : [
-                                                                      const Shadow(
-                                                                        offset:
-                                                                            Offset(
-                                                                          0.0,
-                                                                          0.0,
+                                                        (context, _, __) =>
+                                                            FutureBuilder<User?>(
+                                                      future: event
+                                                          .fetchSenderUser(),
+                                                      builder:
+                                                          (context, snapshot) {
+                                                        final user =
+                                                            snapshot.data ??
+                                                                event.senderFromMemoryOrFallback;
+                                                        final displayname =
+                                                            _resolveSenderPresentation(
+                                                          user,
+                                                        ).displayName;
+                                                        return Text(
+                                                          displayname,
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: (theme.brightness ==
+                                                                    Brightness
+                                                                        .light
+                                                                ? displayname
+                                                                    .color
+                                                                : displayname
+                                                                    .lightColorText),
+                                                            shadows:
+                                                                !wallpaperMode
+                                                                    ? null
+                                                                    : [
+                                                                        const Shadow(
+                                                                          offset:
+                                                                              Offset(
+                                                                            0.0,
+                                                                            0.0,
+                                                                          ),
+                                                                          blurRadius:
+                                                                              3,
+                                                                          color:
+                                                                              Colors.black,
                                                                         ),
-                                                                        blurRadius:
-                                                                            3,
-                                                                        color: Colors
-                                                                            .black,
-                                                                      ),
-                                                                    ],
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      );
-                                                    },
+                                                                      ],
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        );
+                                                      },
+                                                    ),
                                                   ),
                                           ),
                                         Container(
