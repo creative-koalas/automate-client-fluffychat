@@ -32,6 +32,9 @@ class EmployeeDetailSheet extends StatefulWidget {
 }
 
 class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
+  // 技能区暂时隐藏，后续需要展示时改为 true。
+  static const bool _showSkillsSection = false;
+
   final PluginRepository _pluginRepository = PluginRepository();
   final AgentRepository _agentRepository = AgentRepository();
 
@@ -49,7 +52,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
   @override
   void initState() {
     super.initState();
-    _loadPlugins();
+    if (_showSkillsSection) {
+      _loadPlugins();
+    }
     _loadStyles();
   }
 
@@ -392,8 +397,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         ),
       ),
 
-      // 已掌握技能列表
-      if (employee.isReady) ...[
+      // 已掌握技能列表（临时隐藏）
+      if (_showSkillsSection && employee.isReady) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
           child: Row(
