@@ -2496,7 +2496,7 @@
     "@deviceKeys": {},
     "report": "报错",
     "@report": {},
-    "fileIsTooBigForServer": "无法发送！服务器只支持最大 {max} 的文件。",
+    "fileIsTooBigForServer": "无法发送！文件大小超出限制，最大 {max}。",
     "@fileIsTooBigForServer": {},
     "noOtherDevicesFound": "未找到其它设备",
     "@noOtherDevicesFound": {},

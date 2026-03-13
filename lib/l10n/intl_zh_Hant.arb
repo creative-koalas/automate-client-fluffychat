@@ -2745,7 +2745,7 @@
     "@disableEncryptionWarning": {},
     "deviceKeys": "裝置密鑰：",
     "@deviceKeys": {},
-    "fileIsTooBigForServer": "無法發送！該伺服器僅支援最大到 {max} 的附件。",
+    "fileIsTooBigForServer": "無法發送！檔案大小超出限制，最大 {max}。",
     "@fileIsTooBigForServer": {},
     "fileHasBeenSavedAt": "文件已保存在 {path}",
     "@fileHasBeenSavedAt": {
