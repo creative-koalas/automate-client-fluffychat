@@ -41,6 +41,7 @@ class AgentService {
   final Set<String> _pendingResolvedMemberLookupUserIds = {};
   bool _resolvedMemberLookupScheduled = false;
   static const Duration _resolvedMemberLookupCooldown = Duration(minutes: 1);
+  static const Duration _resolvedMemberCacheTtl = Duration(days: 30);
   static const String _resolvedMemberCacheStorageKey =
       'automate_resolved_members_cache_v1';
   static const int _resolvedMemberCacheMaxEntries = 1000;
@@ -304,16 +305,17 @@ class AgentService {
   }
 
   void _queueResolvedMemberLookup(String matrixUserId) {
+    final now = DateTime.now().toUtc();
     if (_matrixUserIdToAgent.containsKey(matrixUserId)) {
       return;
     }
-    if (_resolvedMemberPresentationByUserId.containsKey(matrixUserId)) {
+    if (_hasResolvedMemberPresentation(matrixUserId) &&
+        _isResolvedMemberCacheFresh(matrixUserId, now)) {
       return;
     }
     if (_resolvedMemberLookupInFlight.contains(matrixUserId)) {
       return;
     }
-    final now = DateTime.now();
     final lastAttemptAt = _resolvedMemberLookupLastAttemptAt[matrixUserId];
     if (lastAttemptAt != null &&
         now.difference(lastAttemptAt) < _resolvedMemberLookupCooldown) {
@@ -336,13 +338,14 @@ class AgentService {
     final queued = _pendingResolvedMemberLookupUserIds.toList(growable: false);
     _pendingResolvedMemberLookupUserIds.clear();
 
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final requestIds = <String>[];
     for (final matrixUserId in queued) {
       if (_matrixUserIdToAgent.containsKey(matrixUserId)) {
         continue;
       }
-      if (_resolvedMemberPresentationByUserId.containsKey(matrixUserId)) {
+      if (_hasResolvedMemberPresentation(matrixUserId) &&
+          _isResolvedMemberCacheFresh(matrixUserId, now)) {
         continue;
       }
       if (_resolvedMemberLookupInFlight.contains(matrixUserId)) {
@@ -402,7 +405,7 @@ class AgentService {
           displayName: displayName,
           avatarUrl: avatarUrl,
         );
-        _resolvedMemberUpdatedAtByUserId[matrixUserId] = DateTime.now().toUtc();
+        _resolvedMemberUpdatedAtByUserId[matrixUserId] = now;
         changed = true;
       }
 
@@ -425,6 +428,18 @@ class AgentService {
     } catch (_) {
       return null;
     }
+  }
+
+  bool _hasResolvedMemberPresentation(String matrixUserId) {
+    return _resolvedMemberPresentationByUserId.containsKey(matrixUserId);
+  }
+
+  bool _isResolvedMemberCacheFresh(String matrixUserId, DateTime nowUtc) {
+    final updatedAt = _resolvedMemberUpdatedAtByUserId[matrixUserId];
+    if (updatedAt == null) {
+      return false;
+    }
+    return nowUtc.difference(updatedAt.toUtc()) < _resolvedMemberCacheTtl;
   }
 
   void _ensureResolvedMemberCacheLoaded() {
