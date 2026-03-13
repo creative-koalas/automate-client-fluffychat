@@ -26,11 +26,21 @@ class AgentService {
 
   /// Matrix User ID -> Agent 的映射缓存
   final Map<String, Agent> _matrixUserIdToAgent = {};
+  final Map<String, _MatrixProfilePresentation>
+      _resolvedMemberPresentationByUserId = {};
   final Map<String, _MatrixProfilePresentation> _profilePresentationByUserId =
       {};
+  final Set<String> _resolvedMemberLookupInFlight = {};
+  final Map<String, DateTime> _resolvedMemberLookupLastAttemptAt = {};
+  final Set<String> _pendingResolvedMemberLookupUserIds = {};
+  bool _resolvedMemberLookupScheduled = false;
+  static const Duration _resolvedMemberLookupCooldown = Duration(minutes: 1);
   final Set<String> _profileLookupInFlight = {};
   final Map<String, DateTime> _profileLookupLastAttemptAt = {};
   static const Duration _profileLookupCooldown = Duration(minutes: 1);
+  int _liveStatusWatcherCount = 0;
+  Timer? _liveStatusPollingTimer;
+  static const Duration _liveStatusPollingInterval = Duration(seconds: 10);
 
   /// 是否已初始化
   bool _initialized = false;
@@ -63,13 +73,17 @@ class AgentService {
   }
 
   /// 加载所有员工（处理分页）
-  Future<void> _loadAllAgents() async {
+  Future<void> _loadAllAgents({bool forceRefresh = false}) async {
     final allAgents = <Agent>[];
     int? cursor;
     var hasMore = true;
 
     while (hasMore) {
-      final page = await _repository.getUserAgents(cursor: cursor, limit: 50);
+      final page = await _repository.getUserAgents(
+        cursor: cursor,
+        limit: 50,
+        forceRefresh: forceRefresh,
+      );
       allAgents.addAll(page.agents);
       cursor = page.nextCursor;
       hasMore = page.hasNextPage;
@@ -93,17 +107,43 @@ class AgentService {
   }
 
   /// 刷新员工列表
-  Future<void> refresh() async {
+  Future<void> refresh({bool forceRefresh = false}) async {
     if (_isLoading) return;
 
     _isLoading = true;
     try {
-      await _loadAllAgents();
+      await _loadAllAgents(forceRefresh: forceRefresh);
     } catch (e) {
       debugPrint('[AgentService] Refresh failed: $e');
     } finally {
       _isLoading = false;
     }
+  }
+
+  /// 群聊工作状态实时刷新订阅：
+  /// 当至少有一个群聊页面激活时，后台轮询刷新自己的员工状态。
+  void attachLiveStatusWatcher() {
+    _liveStatusWatcherCount++;
+    if (_liveStatusWatcherCount != 1) {
+      return;
+    }
+    unawaited(refresh(forceRefresh: true));
+    _liveStatusPollingTimer ??= Timer.periodic(
+      _liveStatusPollingInterval,
+      (_) => unawaited(refresh(forceRefresh: true)),
+    );
+  }
+
+  void detachLiveStatusWatcher() {
+    if (_liveStatusWatcherCount <= 0) {
+      return;
+    }
+    _liveStatusWatcherCount--;
+    if (_liveStatusWatcherCount > 0) {
+      return;
+    }
+    _liveStatusPollingTimer?.cancel();
+    _liveStatusPollingTimer = null;
   }
 
   /// 根据 Matrix User ID 查找员工
@@ -115,7 +155,7 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示名称
-  /// 优先级：自己的员工名称 > 远端 profile 缓存 > fallback
+  /// 优先级：自己的员工名称 > 服务端解析缓存 > Matrix profile 缓存 > fallback
   String resolveDisplayNameByMatrixUserId(
     String? matrixUserId, {
     String? fallbackDisplayName,
@@ -129,6 +169,13 @@ class AgentService {
     final ownName = _normalizeDisplayNameCandidate(agent?.displayName, key);
     if (ownName != null) {
       return ownName;
+    }
+
+    final resolved = _resolvedMemberPresentationByUserId[key];
+    final resolvedName =
+        _normalizeDisplayNameCandidate(resolved?.displayName, key);
+    if (resolvedName != null) {
+      return resolvedName;
     }
 
     final remote = _profilePresentationByUserId[key];
@@ -147,7 +194,7 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示头像
-  /// 优先级：自己的员工头像 > 远端 profile 缓存 > fallback
+  /// 优先级：自己的员工头像 > 服务端解析缓存 > Matrix profile 缓存 > fallback
   Uri? resolveAvatarUriByMatrixUserId(
     String? matrixUserId, {
     Uri? fallbackAvatarUri,
@@ -161,6 +208,12 @@ class AgentService {
     final ownAvatar = parseAvatarUri(agent?.avatarUrl);
     if (ownAvatar != null) {
       return ownAvatar;
+    }
+
+    final resolved = _resolvedMemberPresentationByUserId[key];
+    final resolvedAvatar = parseAvatarUri(resolved?.avatarUrl);
+    if (resolvedAvatar != null) {
+      return resolvedAvatar;
     }
 
     final remote = _profilePresentationByUserId[key];
@@ -212,6 +265,10 @@ class AgentService {
     if (_matrixUserIdToAgent.containsKey(key)) {
       return;
     }
+    _queueResolvedMemberLookup(key);
+    if (_resolvedMemberPresentationByUserId.containsKey(key)) {
+      return;
+    }
     if (_profileLookupInFlight.contains(key)) {
       return;
     }
@@ -233,6 +290,115 @@ class AgentService {
     );
   }
 
+  void _queueResolvedMemberLookup(String matrixUserId) {
+    if (_matrixUserIdToAgent.containsKey(matrixUserId)) {
+      return;
+    }
+    if (_resolvedMemberPresentationByUserId.containsKey(matrixUserId)) {
+      return;
+    }
+    if (_resolvedMemberLookupInFlight.contains(matrixUserId)) {
+      return;
+    }
+    final now = DateTime.now();
+    final lastAttemptAt = _resolvedMemberLookupLastAttemptAt[matrixUserId];
+    if (lastAttemptAt != null &&
+        now.difference(lastAttemptAt) < _resolvedMemberLookupCooldown) {
+      return;
+    }
+    _pendingResolvedMemberLookupUserIds.add(matrixUserId);
+    if (_resolvedMemberLookupScheduled) {
+      return;
+    }
+    _resolvedMemberLookupScheduled = true;
+    scheduleMicrotask(_flushQueuedResolvedMemberLookups);
+  }
+
+  Future<void> _flushQueuedResolvedMemberLookups() async {
+    _resolvedMemberLookupScheduled = false;
+    if (_pendingResolvedMemberLookupUserIds.isEmpty) {
+      return;
+    }
+
+    final queued = _pendingResolvedMemberLookupUserIds.toList(growable: false);
+    _pendingResolvedMemberLookupUserIds.clear();
+
+    final now = DateTime.now();
+    final requestIds = <String>[];
+    for (final matrixUserId in queued) {
+      if (_matrixUserIdToAgent.containsKey(matrixUserId)) {
+        continue;
+      }
+      if (_resolvedMemberPresentationByUserId.containsKey(matrixUserId)) {
+        continue;
+      }
+      if (_resolvedMemberLookupInFlight.contains(matrixUserId)) {
+        continue;
+      }
+      final lastAttemptAt = _resolvedMemberLookupLastAttemptAt[matrixUserId];
+      if (lastAttemptAt != null &&
+          now.difference(lastAttemptAt) < _resolvedMemberLookupCooldown) {
+        continue;
+      }
+      _resolvedMemberLookupLastAttemptAt[matrixUserId] = now;
+      _resolvedMemberLookupInFlight.add(matrixUserId);
+      requestIds.add(matrixUserId);
+    }
+
+    if (requestIds.isEmpty) {
+      return;
+    }
+
+    try {
+      final resolvedMembers =
+          await _repository.resolveMembersByMatrixUserIds(requestIds);
+      final resolvedById = <String, ResolvedAgentMember>{
+        for (final member in resolvedMembers)
+          member.matrixUserId.trim(): member,
+      };
+
+      var changed = false;
+      for (final matrixUserId in requestIds) {
+        final member = resolvedById[matrixUserId];
+        if (member == null) {
+          continue;
+        }
+
+        final displayName = _normalizeDisplayNameCandidate(
+          member.displayName,
+          matrixUserId,
+        );
+        final avatarUrl = _normalizeAvatarUrl(member.avatarUrl);
+        if (displayName == null && avatarUrl == null) {
+          continue;
+        }
+
+        final previous = _resolvedMemberPresentationByUserId[matrixUserId];
+        if (previous?.displayName == displayName &&
+            previous?.avatarUrl == avatarUrl) {
+          continue;
+        }
+
+        _resolvedMemberPresentationByUserId[matrixUserId] =
+            _MatrixProfilePresentation(
+          displayName: displayName,
+          avatarUrl: avatarUrl,
+        );
+        changed = true;
+      }
+
+      if (changed) {
+        _notifyChanged();
+      }
+    } catch (e) {
+      debugPrint('[AgentService] Resolve members failed: $e');
+    } finally {
+      for (final matrixUserId in requestIds) {
+        _resolvedMemberLookupInFlight.remove(matrixUserId);
+      }
+    }
+  }
+
   Future<void> _loadMatrixProfilePresentation({
     required Client client,
     required String matrixUserId,
@@ -252,6 +418,9 @@ class AgentService {
           _normalizeAvatarUrl(fallbackAvatarUri?.toString());
 
       if (displayName == null && avatarUrl == null) {
+        return;
+      }
+      if (_resolvedMemberPresentationByUserId.containsKey(matrixUserId)) {
         return;
       }
 
@@ -414,6 +583,14 @@ class AgentService {
 
   /// 释放资源
   void dispose() {
+    _liveStatusWatcherCount = 0;
+    _liveStatusPollingTimer?.cancel();
+    _liveStatusPollingTimer = null;
+    _resolvedMemberPresentationByUserId.clear();
+    _resolvedMemberLookupInFlight.clear();
+    _resolvedMemberLookupLastAttemptAt.clear();
+    _pendingResolvedMemberLookupUserIds.clear();
+    _resolvedMemberLookupScheduled = false;
     _profilePresentationByUserId.clear();
     _profileLookupInFlight.clear();
     _profileLookupLastAttemptAt.clear();
