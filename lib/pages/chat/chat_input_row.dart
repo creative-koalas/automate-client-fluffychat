@@ -203,12 +203,10 @@ class ChatInputRow extends StatelessWidget {
                 color: controller.isAgentResting
                     ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
                     : theme.colorScheme.onPrimaryContainer,
-                onPressed: controller.isAgentResting
-                    ? null
-                    : () => _showAttachmentBottomSheet(
-                          context,
-                          controller,
-                        ),
+                onPressed: () {
+                  if (controller.blockFileIfResting()) return;
+                  _showAttachmentBottomSheet(context, controller);
+                },
               ),
             ),
             if (PlatformInfos.isMobile)
@@ -223,11 +221,12 @@ class ChatInputRow extends StatelessWidget {
                 // 禁用录像功能，点击相机按钮直接拍照
                 child: IconButton(
                   icon: const Icon(Icons.camera_alt_outlined),
-                  onPressed: controller.isAgentResting
-                      ? null
-                      : () => controller.onAddPopupMenuButtonSelected(
-                            AddPopupMenuActions.photoCamera,
-                          ),
+                  onPressed: () {
+                    if (controller.blockFileIfResting()) return;
+                    controller.onAddPopupMenuButtonSelected(
+                      AddPopupMenuActions.photoCamera,
+                    );
+                  },
                   iconSize: height * 0.5,
                   color: controller.isAgentResting
                       ? theme.colorScheme.onSurface.withValues(alpha: 0.38)

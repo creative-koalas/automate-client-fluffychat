@@ -204,6 +204,8 @@ class ChatController extends State<ChatPageWithRoom>
     return true;
   }
 
+  bool blockFileIfResting() => _blockFileIfResting();
+
   Agent? get webEntryAgent {
     final directChatMatrixID = room.directChatMatrixID;
     return AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
@@ -1414,6 +1416,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void openCameraAction() async {
+    if (_blockFileIfResting()) return;
     // Make sure the textfield is unfocused before opening the camera
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickImage(source: ImageSource.camera);
@@ -1432,6 +1435,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void openVideoCameraAction() async {
+    if (_blockFileIfResting()) return;
     // Make sure the textfield is unfocused before opening the camera
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickVideo(
