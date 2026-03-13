@@ -472,7 +472,6 @@ class PsygoApiClient {
         data: requestData,
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
-          contentType: useMultipart ? 'multipart/form-data' : null,
         ),
       );
     });
