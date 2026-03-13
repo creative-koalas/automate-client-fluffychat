@@ -678,7 +678,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       case 'slacking':
         return '🐟 ${l10n.employeeSlacking}';
       default:
-        return '😴 ${l10n.employeeSleeping}';
+        return '⏸️ ${l10n.employeeSleeping}';
     }
   }
 

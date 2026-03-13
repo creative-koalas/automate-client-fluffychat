@@ -163,7 +163,9 @@ class ChatController extends State<ChatPageWithRoom>
   bool _webEntryLoading = false;
   String? _webEntryUrl;
   DateTime? _lastWebEntryHintAt;
+  DateTime? _lastRestingFeatureHintAt;
   static const Duration _webEntryHintCooldown = Duration(seconds: 2);
+  static const Duration _restingFeatureHintCooldown = Duration(seconds: 2);
   final GlobalKey chatRoomGuideContainerKey = GlobalKey();
   final GlobalKey workStatusGuideKey = GlobalKey();
   final GlobalKey webEntryGuideKey = GlobalKey();
@@ -196,12 +198,7 @@ class ChatController extends State<ChatPageWithRoom>
 
   bool _blockFileIfResting() {
     if (!isAgentResting) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(L10n.of(context).guideRestingFeatureUnavailable),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    _showRestingFeatureUnavailableHint();
     return true;
   }
 
@@ -230,6 +227,17 @@ class ChatController extends State<ChatPageWithRoom>
       return true;
     }
     _lastWebEntryHintAt = now;
+    return false;
+  }
+
+  bool _shouldThrottleRestingFeatureHint() {
+    final now = DateTime.now();
+    final lastHintAt = _lastRestingFeatureHintAt;
+    if (lastHintAt != null &&
+        now.difference(lastHintAt) < _restingFeatureHintCooldown) {
+      return true;
+    }
+    _lastRestingFeatureHintAt = now;
     return false;
   }
 
@@ -314,12 +322,32 @@ class ChatController extends State<ChatPageWithRoom>
       ..showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 2),
-          content: PlatformInfos.isMobile
-              ? InkWell(
-                  onTap: messenger.hideCurrentSnackBar,
-                  child: Text(message),
-                )
-              : Text(message),
+          behavior: SnackBarBehavior.floating,
+          content: InkWell(
+            onTap: messenger.hideCurrentSnackBar,
+            child: Text(message),
+          ),
+        ),
+      );
+  }
+
+  void _showRestingFeatureUnavailableHint() {
+    if (_shouldThrottleRestingFeatureHint()) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          content: InkWell(
+            onTap: messenger.hideCurrentSnackBar,
+            child: Text(L10n.of(context).guideRestingFeatureUnavailable),
+          ),
         ),
       );
   }

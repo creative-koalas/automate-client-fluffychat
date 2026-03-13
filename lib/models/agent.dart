@@ -174,7 +174,7 @@ class Agent {
   /// 规则：
   /// - work_status=busy/working/running → 工作中
   /// - work_status=idle → 摸鱼中
-  /// - 其他状态 → 休息中
+  /// - 其他状态 → 待机中
   String get computedWorkStatus {
     final normalized = workStatus.trim().toLowerCase();
     if (normalized == 'busy' ||
@@ -194,7 +194,7 @@ class Agent {
   /// 是否摸鱼中（基于计算的状态）
   bool get isSlacking => computedWorkStatus == 'slacking';
 
-  /// 是否休息中（基于计算的状态）
+  /// 是否待机中（基于计算的状态）
   bool get isResting => computedWorkStatus == 'resting';
 
   /// 获取工作状态显示文本的 key（基于计算的状态）

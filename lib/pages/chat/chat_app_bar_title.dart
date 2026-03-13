@@ -339,16 +339,43 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                   color: dotColor.withAlpha(30),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  statusText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: dotColor,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      statusText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: dotColor,
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 14,
+                      height: 14,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: dotColor.withAlpha(26),
+                        border: Border.all(
+                          color: dotColor.withAlpha(120),
+                        ),
+                      ),
+                      child: Text(
+                        'i',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: dotColor,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -396,7 +423,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       case 'slacking':
         return '🐟 ${l10n.employeeSlacking}';
       default:
-        return '😴 ${l10n.employeeSleeping}';
+        return '⏸️ ${l10n.employeeSleeping}';
     }
   }
 
