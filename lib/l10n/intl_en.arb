@@ -4271,6 +4271,16 @@
   "@enterInvitationCodeHint": {},
   "invitationCodeInvalid": "Please enter an 8-character code",
   "@invitationCodeInvalid": {},
+  "invitationErrorSelfBind": "You cannot bind your own invitation code.",
+  "@invitationErrorSelfBind": {},
+  "invitationErrorAlreadyBound": "This invitation code has already been bound.",
+  "@invitationErrorAlreadyBound": {},
+  "invitationErrorMutualBinding": "An invitation relationship already exists between you.",
+  "@invitationErrorMutualBinding": {},
+  "invitationErrorNotFound": "Invitation code not found. Please check and try again.",
+  "@invitationErrorNotFound": {},
+  "invitationErrorTemporarilyUnavailable": "Invitation code is temporarily unavailable. Please try again later.",
+  "@invitationErrorTemporarilyUnavailable": {},
   "invitationBindSuccess": "Bound! {nickname} earned {credits} credits",
   "@invitationBindSuccess": {
     "placeholders": {

@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/backend/api_client.dart';
+import 'package:psygo/utils/backend_error_message.dart';
+import 'package:psygo/utils/tap_dismiss_snackbar.dart';
 
 import 'order_page.dart';
 
@@ -82,22 +84,31 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
-  Future<void> _loadInvitationInfo() async {
-    if (!mounted) return;
+  Future<bool> _loadInvitationInfo({bool showError = false}) async {
+    if (!mounted) return false;
+    setState(() => _invitationLoading = true);
     try {
       final apiClient = context.read<PsygoApiClient>();
       final info = await apiClient.getInvitationInfo();
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _invitationInfo = info;
         _invitationLoading = false;
       });
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _invitationLoading = false);
+      if (showError) {
+        showTapDismissSnackBar(
+          context,
+          friendlyBackendErrorMessage(e, L10n.of(context)),
+        );
+      }
       if (kDebugMode) {
         print('Failed to load invitation info: $e');
       }
+      return false;
     }
   }
 
@@ -230,11 +241,10 @@ class _WalletPageState extends State<WalletPage> {
     // 以下代码暂时注销（公测阶段）
     // ignore: dead_code
     if (_customAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(L10n.of(context).walletEnterValidAmount),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showTapDismissSnackBar(
+        context,
+        L10n.of(context).walletEnterValidAmount,
+        behavior: SnackBarBehavior.floating,
       );
       return;
     }
@@ -252,13 +262,12 @@ class _WalletPageState extends State<WalletPage> {
       await _loadUserBalance();
       // 显示成功提示
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(L10n.of(context).orderPaymentSuccess),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: _primaryGreen,
-            duration: const Duration(seconds: 3),
-          ),
+        showTapDismissSnackBar(
+          context,
+          L10n.of(context).orderPaymentSuccess,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: _primaryGreen,
+          duration: const Duration(seconds: 3),
         );
       }
     }
@@ -827,6 +836,7 @@ class _WalletPageState extends State<WalletPage> {
   Widget _buildInvitationCard(ThemeData theme, L10n l10n) {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final isNarrowScreen = MediaQuery.sizeOf(context).width < 380;
     final outline =
         colorScheme.outlineVariant.withValues(alpha: isDark ? 0.55 : 0.35);
 
@@ -916,42 +926,94 @@ class _WalletPageState extends State<WalletPage> {
               ),
             ],
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      onPressed: _showMyInvitationCode,
-                      icon: const Icon(Icons.qr_code_rounded, size: 18),
-                      label: Text(L10n.of(context).viewInvitationCode, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (_invitationInfo?.isFull ?? false) ? Colors.grey : _primaryGreen,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
+            if (isNarrowScreen) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: _showMyInvitationCode,
+                  icon: const Icon(Icons.qr_code_rounded, size: 18),
+                  label: Text(
+                    L10n.of(context).viewInvitationCode,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: _showBindInvitationDialog,
+                  icon: const Icon(Icons.input_rounded, size: 18),
+                  label: Text(
+                    L10n.of(context).enterInvitationCodeButton,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _primaryGreen,
+                    side: const BorderSide(color: _primaryGreen),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ] else
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        onPressed: _showMyInvitationCode,
+                        icon: const Icon(Icons.qr_code_rounded, size: 18),
+                        label: Text(
+                          L10n.of(context).viewInvitationCode,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: (_invitationInfo?.isFull ?? false) ? null : _showBindInvitationDialog,
-                      icon: const Icon(Icons.input_rounded, size: 18),
-                      label: Text(L10n.of(context).enterInvitationCodeButton, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: (_invitationInfo?.isFull ?? false) ? Colors.grey : _primaryGreen,
-                        side: BorderSide(color: (_invitationInfo?.isFull ?? false) ? Colors.grey : _primaryGreen),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: _showBindInvitationDialog,
+                        icon: const Icon(Icons.input_rounded, size: 18),
+                        label: Text(
+                          L10n.of(context).enterInvitationCodeButton,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primaryGreen,
+                          side: const BorderSide(color: _primaryGreen),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ],
       ),
@@ -961,44 +1023,81 @@ class _WalletPageState extends State<WalletPage> {
   void _showMyInvitationCode() async {
     // 如果没有缓存，先拉取
     if (_invitationInfo == null) {
-      await _loadInvitationInfo();
+      final loaded = await _loadInvitationInfo(showError: true);
+      if (!loaded) return;
     }
     final info = _invitationInfo;
     if (info == null || !mounted) return;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final colorScheme = theme.colorScheme;
+        final progress = info.maxInvitees <= 0
+            ? 0.0
+            : (info.currentInvitees / info.maxInvitees).clamp(0.0, 1.0);
+
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           title: Row(
             children: [
-              const Icon(Icons.card_giftcard_rounded, color: _primaryGreen),
-              const SizedBox(width: 8),
-              Text(L10n.of(context).myInvitationCode, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: _lightGreen,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.card_giftcard_rounded, color: _primaryGreen, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                L10n.of(context).myInvitationCode,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 decoration: BoxDecoration(
-                  color: _lightGreen,
-                  borderRadius: BorderRadius.circular(12),
+                  color: _tint(colorScheme.surface, _lightGreen, 0.78),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _primaryGreen.withValues(alpha: 0.25)),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      info.invitationCode,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 4, color: Color(0xFF2E7D32)),
+                    Expanded(
+                      child: Text(
+                        info.invitationCode,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 4,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 12),
                     IconButton(
-                      icon: const Icon(Icons.copy, size: 20, color: _primaryGreen),
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.9),
+                        foregroundColor: _primaryGreen,
+                      ),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: info.invitationCode));
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(content: Text(L10n.of(context).invitationCodeCopied), duration: const Duration(seconds: 1)),
+                        showTapDismissSnackBar(
+                          ctx,
+                          L10n.of(context).invitationCodeCopied,
+                          duration: const Duration(seconds: 1),
                         );
                       },
                     ),
@@ -1008,95 +1107,174 @@ class _WalletPageState extends State<WalletPage> {
               const SizedBox(height: 12),
               Text(
                 L10n.of(context).invitedProgress(info.currentInvitees, info.maxInvitees),
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: progress,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  valueColor: const AlwaysStoppedAnimation<Color>(_primaryGreen),
+                ),
               ),
               if (info.isFull)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: 10),
                   child: Text(
                     L10n.of(context).invitationQuotaFull,
-                    style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w500),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
                   ),
                 ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(L10n.of(context).close, style: const TextStyle(color: _primaryGreen)),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: _primaryGreen,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: Text(L10n.of(context).close, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
             ),
           ],
-        ),
-      );
+        );
+      },
+    );
   }
 
   void _showBindInvitationDialog() {
     final codeController = TextEditingController();
+    var codeLength = 0;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(L10n.of(context).enterInvitationCodeButton, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-        content: TextField(
-          controller: codeController,
-          textCapitalization: TextCapitalization.characters,
-          maxLength: 8,
-          decoration: InputDecoration(
-            hintText: L10n.of(context).enterInvitationCodeHint,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _primaryGreen, width: 2),
-            ),
-          ),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-            TextInputFormatter.withFunction((oldValue, newValue) {
-              return newValue.copyWith(text: newValue.text.toUpperCase());
-            }),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(L10n.of(context).cancel, style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final code = codeController.text.trim();
-              if (code.length != 8) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text(L10n.of(context).invitationCodeInvalid)),
-                );
-                return;
-              }
-              Navigator.of(ctx).pop();
-              try {
-                final apiClient = context.read<PsygoApiClient>();
-                final result = await apiClient.bindInvitation(code);
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(L10n.of(context).invitationBindSuccess(result.inviterNickname, result.rewardCredits)),
-                    backgroundColor: _primaryGreen,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final canSubmit = codeLength == 8;
+          return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            title: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: _lightGreen,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                );
-                _loadInvitationInfo();
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$e')),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryGreen,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.input_rounded, color: _primaryGreen, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  L10n.of(context).enterInvitationCodeButton,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
             ),
-            child: Text(L10n.of(context).confirmBind),
-          ),
-        ],
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  L10n.of(context).enterInvitationCodeHint,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: codeController,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  textCapitalization: TextCapitalization.characters,
+                  maxLength: 8,
+                  style: const TextStyle(fontSize: 24, letterSpacing: 4, fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
+                    counterText: '$codeLength/8',
+                    filled: true,
+                    fillColor: _lightGreen.withValues(alpha: 0.5),
+                    hintText: '········',
+                    hintStyle: TextStyle(color: Colors.grey[400], letterSpacing: 4),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: _primaryGreen, width: 2),
+                    ),
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      return newValue.copyWith(text: newValue.text.toUpperCase());
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() => codeLength = value.trim().length);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(L10n.of(context).cancel, style: TextStyle(color: Colors.grey[600])),
+              ),
+              FilledButton(
+                onPressed: canSubmit
+                    ? () async {
+                        final code = codeController.text.trim();
+                        if (code.length != 8) {
+                          showTapDismissSnackBar(
+                            ctx,
+                            L10n.of(context).invitationCodeInvalid,
+                          );
+                          return;
+                        }
+                        Navigator.of(ctx).pop();
+                        try {
+                          final apiClient = context.read<PsygoApiClient>();
+                          final result = await apiClient.bindInvitation(code);
+                          if (!mounted) return;
+                          showTapDismissSnackBar(
+                            context,
+                            L10n.of(context).invitationBindSuccess(result.inviterNickname, result.rewardCredits),
+                            backgroundColor: _primaryGreen,
+                          );
+                          _loadInvitationInfo();
+                        } catch (e) {
+                          if (!mounted) return;
+                          showTapDismissSnackBar(
+                            context,
+                            friendlyBackendErrorMessage(e, L10n.of(context)),
+                          );
+                        }
+                      }
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _primaryGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                child: Text(L10n.of(context).confirmBind),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

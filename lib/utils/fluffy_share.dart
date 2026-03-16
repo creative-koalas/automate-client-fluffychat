@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/tap_dismiss_snackbar.dart';
 import '../widgets/matrix.dart';
 
 abstract class FluffyShare {
@@ -26,8 +27,9 @@ abstract class FluffyShare {
     await Clipboard.setData(
       ClipboardData(text: text),
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(L10n.of(context).copiedToClipboard)),
+    showTapDismissSnackBar(
+      context,
+      L10n.of(context).copiedToClipboard,
     );
     return;
   }

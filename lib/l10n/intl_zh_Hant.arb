@@ -3359,6 +3359,16 @@
             }
         }
     },
+    "invitationErrorSelfBind": "不能綁定自己的邀請碼",
+    "@invitationErrorSelfBind": {},
+    "invitationErrorAlreadyBound": "邀請碼已綁定，請勿重複操作",
+    "@invitationErrorAlreadyBound": {},
+    "invitationErrorMutualBinding": "你們之間已存在邀請關係",
+    "@invitationErrorMutualBinding": {},
+    "invitationErrorNotFound": "邀請碼不存在，請確認後再試",
+    "@invitationErrorNotFound": {},
+    "invitationErrorTemporarilyUnavailable": "邀請碼暫時不可用，請稍後再試",
+    "@invitationErrorTemporarilyUnavailable": {},
     "employeeWorking": "工作中",
     "@employeeWorking": {},
     "employeeSlacking": "摸魚中",

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:matrix/matrix.dart';
-import 'package:provider/provider.dart';
 
-import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
 import 'package:psygo/services/agent_service.dart';
@@ -41,13 +38,6 @@ class InvitationSelectionView extends StatelessWidget {
         leading: const Center(child: BackButton()),
         titleSpacing: 0,
         title: Text(L10n.of(context).inviteContact),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.card_giftcard_rounded),
-            tooltip: L10n.of(context).myInvitationCode,
-            onPressed: () => _showInvitationCodeDialog(context),
-          ),
-        ],
       ),
       body: MaxWidthBody(
         innerPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -150,79 +140,6 @@ class InvitationSelectionView extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-void _showInvitationCodeDialog(BuildContext context) async {
-  final apiClient = context.read<PsygoApiClient>();
-  try {
-    final info = await apiClient.getInvitationInfo();
-    if (!context.mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.card_giftcard_rounded, color: Color(0xFF4CAF50)),
-            const SizedBox(width: 8),
-            Text(L10n.of(context).myInvitationCode, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    info.invitationCode,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 4,
-                      color: Color(0xFF2E7D32),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 20, color: Color(0xFF4CAF50)),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: info.invitationCode));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(L10n.of(context).invitationCodeCopied), duration: const Duration(seconds: 1)),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              L10n.of(context).invitedProgress(info.currentInvitees, info.maxInvitees),
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(L10n.of(context).close, style: const TextStyle(color: Color(0xFF4CAF50))),
-          ),
-        ],
-      ),
-    );
-  } catch (e) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(L10n.of(context).getInvitationCodeFailed(e.toString()))),
     );
   }
 }
