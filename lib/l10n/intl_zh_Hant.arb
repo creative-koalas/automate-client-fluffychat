@@ -3374,5 +3374,11 @@
     "guideRestingFeatureUnavailable": "員工待機中，傳送文件與智能介面功能暫不可用",
     "@guideRestingFeatureUnavailable": {},
     "agentWebEntryUnavailable": "該員工當前未開放入口",
-    "@agentWebEntryUnavailable": {}
+    "@agentWebEntryUnavailable": {},
+    "maintenanceBlockedTitle": "服務維護中",
+    "@maintenanceBlockedTitle": {},
+    "maintenanceBlockedMessage": "PsyGo 目前正在維護，待發布完成後會重新開放使用。",
+    "@maintenanceBlockedMessage": {},
+    "maintenanceBlockedReasonLabel": "維護通知",
+    "@maintenanceBlockedReasonLabel": {}
 }

@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/maintenance_status.dart';
+import '../services/maintenance_status_bus.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
@@ -27,7 +29,13 @@ class PsygoApiClient {
   /// 构建认证拦截器，支持 401 自动重试
   InterceptorsWrapper _buildAuthInterceptor() {
     return InterceptorsWrapper(
+      onResponse: (response, handler) {
+        _captureMaintenanceFromResponse(response);
+        handler.next(response);
+      },
       onError: (error, handler) async {
+        _captureMaintenanceFromResponse(error.response);
+
         // 只处理 401 错误
         if (error.response?.statusCode != 401) {
           return handler.next(error);
@@ -86,6 +94,32 @@ class PsygoApiClient {
     await auth.load();
   }
 
+  bool _isMaintenanceStatusPath(String path) {
+    final normalizedPath = Uri.tryParse(path)?.path ?? path;
+    return normalizedPath.endsWith('/api/maintenance/status') ||
+        normalizedPath.endsWith('/api/v1/maintenance/status');
+  }
+
+  void _captureMaintenanceFromResponse(Response<dynamic>? response) {
+    if (response == null) {
+      return;
+    }
+
+    MaintenanceStatusSnapshot? status;
+    if (_isMaintenanceStatusPath(response.requestOptions.path)) {
+      status =
+          MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
+    } else if (response.statusCode == 503) {
+      status = MaintenanceStatusSnapshot.tryParseClosedErrorPayload(
+        response.data,
+      );
+    }
+
+    if (status != null) {
+      MaintenanceStatusBus.instance.publish(status);
+    }
+  }
+
   int? _readBusinessCode(Response<Map<String, dynamic>> response) {
     final code = (response.data ?? const {})['code'];
     if (code is int) {
@@ -99,6 +133,26 @@ class PsygoApiClient {
 
   bool _isUnauthorizedCode(int? code) {
     return code != null && _unauthorizedCodes.contains(code);
+  }
+
+  Future<MaintenanceStatusSnapshot> _fetchMaintenanceStatusAt(
+    String path,
+  ) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}$path',
+    );
+
+    final status =
+        MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
+    if (res.statusCode != 200 || status == null) {
+      throw AutomateBackendException(
+        'Failed to get maintenance status',
+        statusCode: res.statusCode,
+      );
+    }
+
+    MaintenanceStatusBus.instance.publish(status);
+    return status;
   }
 
   String _authDevicePlatform() {
@@ -227,6 +281,18 @@ class PsygoApiClient {
         statusCode: res.statusCode,
       );
     }
+  }
+
+  Future<MaintenanceStatusSnapshot> getMaintenanceStatus() async {
+    try {
+      return await _fetchMaintenanceStatusAt('/api/maintenance/status');
+    } on DioException catch (e) {
+      if (e.response?.statusCode != 404) {
+        rethrow;
+      }
+    }
+
+    return _fetchMaintenanceStatusAt('/api/v1/maintenance/status');
   }
 
   /// 短信验证码登录
