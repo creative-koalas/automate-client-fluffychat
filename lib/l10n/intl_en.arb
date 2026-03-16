@@ -4237,5 +4237,53 @@
   "appUpdateInstallNow": "Install now",
   "@appUpdateInstallNow": {},
   "appUpdateDownloadInBrowser": "Download in browser",
-  "@appUpdateDownloadInBrowser": {}
+  "@appUpdateDownloadInBrowser": {},
+  "inviteFriends": "Invite Friends",
+  "@inviteFriends": {},
+  "inviteRewardRule": "Earn {credits} credits per invite ({current}/{max} invited)",
+  "@inviteRewardRule": {
+    "placeholders": {
+      "credits": {"type": "int"},
+      "current": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "inviteRewardRuleSimple": "Earn credits for each friend invited",
+  "@inviteRewardRuleSimple": {},
+  "invitationQuotaFull": "Invitation quota full",
+  "@invitationQuotaFull": {},
+  "viewInvitationCode": "View Code",
+  "@viewInvitationCode": {},
+  "enterInvitationCodeButton": "Enter Code",
+  "@enterInvitationCodeButton": {},
+  "myInvitationCode": "My Invitation Code",
+  "@myInvitationCode": {},
+  "invitationCodeCopied": "Invitation code copied",
+  "@invitationCodeCopied": {},
+  "invitedProgress": "Invited {current}/{max}",
+  "@invitedProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "enterInvitationCodeHint": "Enter 8-character invitation code",
+  "@enterInvitationCodeHint": {},
+  "invitationCodeInvalid": "Please enter an 8-character code",
+  "@invitationCodeInvalid": {},
+  "invitationBindSuccess": "Bound! {nickname} earned {credits} credits",
+  "@invitationBindSuccess": {
+    "placeholders": {
+      "nickname": {"type": "String"},
+      "credits": {"type": "int"}
+    }
+  },
+  "confirmBind": "Confirm",
+  "@confirmBind": {},
+  "getInvitationCodeFailed": "Failed to get invitation code: {error}",
+  "@getInvitationCodeFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  }
 }
