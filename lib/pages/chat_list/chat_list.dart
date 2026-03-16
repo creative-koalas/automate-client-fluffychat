@@ -326,10 +326,7 @@ class ChatListController extends State<ChatList>
     );
   }
 
-  Future<void> dismissAnnouncement(
-    Announcement announcement, {
-    bool skipAcknowledge = false,
-  }) async {
+  Future<void> acknowledgeAnnouncement(Announcement announcement) async {
     if (mounted) {
       setState(() {
         if (activeAnnouncement?.id == announcement.id) {
@@ -337,13 +334,7 @@ class ChatListController extends State<ChatList>
         }
       });
     }
-    if (!skipAcknowledge && announcement.requireAck) {
-      await AnnouncementService.instance.trackAcknowledge(
-        announcementId: announcement.id,
-        scene: 'chat_list',
-      );
-    }
-    await AnnouncementService.instance.trackDismiss(
+    await AnnouncementService.instance.trackAcknowledge(
       announcementId: announcement.id,
       scene: 'chat_list',
     );
@@ -351,24 +342,32 @@ class ChatListController extends State<ChatList>
     await loadActiveAnnouncement();
   }
 
-  Future<void> onAnnouncementActionTap(Announcement announcement) async {
-    final actionUrl = announcement.actionUrl?.trim();
-    if (actionUrl == null || actionUrl.isEmpty) return;
-
-    await AnnouncementService.instance.trackClick(
-      announcementId: announcement.id,
-      scene: 'chat_list',
-    );
-    if (announcement.requireAck) {
-      await AnnouncementService.instance.trackAcknowledge(
-        announcementId: announcement.id,
-        scene: 'chat_list',
-      );
-    }
+  Future<void> showAnnouncementDetail(Announcement announcement) async {
     if (!mounted) return;
-    UrlLauncher(context, actionUrl).launchUrl();
-    if (!mounted || !announcement.requireAck) return;
-    await dismissAnnouncement(announcement, skipAcknowledge: true);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: Text(announcement.title),
+          content: SingleChildScrollView(
+            child: Text(
+              announcement.body,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await acknowledgeAnnouncement(announcement);
+              },
+              child: const Text('我知道了'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _processIncomingSharedMedia(List<SharedMediaFile> files) {

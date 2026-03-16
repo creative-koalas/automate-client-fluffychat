@@ -106,10 +106,10 @@ class ChatListViewBody extends StatelessWidget {
                         announcement: announcement,
                         onImpression: () =>
                             controller.onAnnouncementImpression(announcement),
-                        onActionTap: () =>
-                            controller.onAnnouncementActionTap(announcement),
-                        onDismiss: () =>
-                            controller.dismissAnnouncement(announcement),
+                        onAcknowledge: () =>
+                            controller.acknowledgeAnnouncement(announcement),
+                        onContentTap: () =>
+                            controller.showAnnouncementDetail(announcement),
                       ),
                     // Remove the contact banner in the chat list;
                     // this is ugly and a distraction on mobile.
