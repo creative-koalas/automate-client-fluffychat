@@ -100,6 +100,7 @@ dependencies:
     path: third_party/system_tray  # 系统托盘支持（本地补丁）
   xdg_status_notifier_item: ^0.0.1  # Linux 托盘点击事件
   connectivity_plus: ^7.0.0
+  censor_it: ^2.1.0
 
 dev_dependencies:
   flutter_lints: ^3.0.0

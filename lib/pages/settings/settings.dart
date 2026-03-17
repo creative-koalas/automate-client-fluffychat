@@ -10,6 +10,7 @@ import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/core/token_manager.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/profanity_checker.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
@@ -52,6 +53,13 @@ class SettingsController extends State<Settings> {
           profile?.displayName ?? Matrix.of(context).client.userID!.localpart,
     );
     if (input == null) return;
+    if (containsProfanity(input)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L10n.of(context).nameContainsProfanity)),
+      );
+      return;
+    }
     final matrix = Matrix.of(context);
     final success = await showFutureLoadingDialog(
       context: context,

@@ -3789,6 +3789,8 @@
   "@back": {},
   "employeeNameCannotBeNumeric": "Name cannot be numbers only",
   "@employeeNameCannotBeNumeric": {},
+  "nameContainsProfanity": "Name contains inappropriate content, please choose another",
+  "@nameContainsProfanity": {},
   "loadingPlugins": "Loading plugins...",
   "@loadingPlugins": {},
   "optional": "Optional",

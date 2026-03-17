@@ -185,6 +185,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.2"
+  censor_it:
+    dependency: "direct main"
+    description:
+      name: censor_it
+      sha256: "2760fbad7ab8d7b963c5fdb52ea126ea14c4dd83f566c3c1e8e71bfb7ab57e8a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.0"
   characters:
     dependency: transitive
     description:

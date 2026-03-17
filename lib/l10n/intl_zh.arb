@@ -3814,6 +3814,8 @@
     "@back": {},
     "employeeNameCannotBeNumeric": "名称不能只包含数字",
     "@employeeNameCannotBeNumeric": {},
+    "nameContainsProfanity": "名称包含不当内容，请换一个",
+    "@nameContainsProfanity": {},
     "loadingPlugins": "加载技能中...",
     "@loadingPlugins": {},
     "optional": "可选",
