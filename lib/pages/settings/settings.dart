@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
+import 'package:psygo/core/config.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
@@ -10,6 +13,7 @@ import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
+import 'package:psygo/widgets/dicebear_avatar_picker.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import 'package:psygo/widgets/layouts/desktop_layout.dart';
@@ -59,6 +63,49 @@ class SettingsController extends State<Settings> {
     );
     if (success.error == null) {
       updateProfile();
+    }
+  }
+
+  void setAvatarAction() async {
+    final selectedUrl = await showDialog<String>(
+      context: context,
+      builder: (context) => _AvatarPickerDialog(),
+    );
+
+    if (selectedUrl == null || !mounted) return;
+
+    final avatarUrl = selectedUrl;
+    final matrix = Matrix.of(context);
+    final client = matrix.client;
+    final l10n = L10n.of(context);
+
+    final success = await showFutureLoadingDialog(
+      context: context,
+      future: () async {
+        final response = await http.get(Uri.parse(avatarUrl));
+        if (response.statusCode != 200) {
+          throw Exception(l10n.avatarDownloadFailed);
+        }
+        final mxcUri = await client.uploadContent(
+          response.bodyBytes,
+          filename: 'avatar.png',
+        );
+        await client.setProfileField(
+          client.userID!,
+          'avatar_url',
+          {'avatar_url': mxcUri.toString()},
+        );
+      },
+    );
+
+    if (success.error == null && mounted) {
+      updateProfile();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.avatarUpdated),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -438,5 +485,92 @@ class SettingsController extends State<Settings> {
       profileFuture ??= client.getProfileFromUserId(userID);
     }
     return SettingsView(this);
+  }
+}
+
+class _AvatarPickerDialog extends StatefulWidget {
+  @override
+  State<_AvatarPickerDialog> createState() => _AvatarPickerDialogState();
+}
+
+class _AvatarPickerDialogState extends State<_AvatarPickerDialog> {
+  late String _selectedUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedUrl = _generateRandomAvatarUrl();
+  }
+
+  static String _generateRandomAvatarUrl() {
+    final random = Random();
+    const styles = DiceBearStyle.values;
+    final style = styles[random.nextInt(styles.length)];
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final seed =
+        List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
+    return '${PsygoConfig.dicebearBaseUrl}/${style.apiName}/png?seed=$seed&size=256';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.changeAvatar,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 20),
+            DiceBearAvatarPicker(
+              initialAvatarUrl: _selectedUrl,
+              size: 120,
+              onAvatarChanged: (url) => _selectedUrl = url,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(l10n.cancel),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(_selectedUrl),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(l10n.confirm),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

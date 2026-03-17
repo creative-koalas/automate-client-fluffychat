@@ -4301,5 +4301,11 @@
     "placeholders": {
       "error": {"type": "String"}
     }
-  }
+  },
+  "changeAvatar": "Change avatar",
+  "@changeAvatar": {},
+  "avatarUpdated": "Avatar updated",
+  "@avatarUpdated": {},
+  "avatarDownloadFailed": "Failed to download avatar",
+  "@avatarDownloadFailed": {}
 }
