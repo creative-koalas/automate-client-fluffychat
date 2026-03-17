@@ -23,7 +23,9 @@ import 'package:psygo/widgets/theme_builder.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/agreement_check_service.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/services/maintenance_status_controller.dart';
 import '../utils/custom_scroll_behaviour.dart';
+import 'maintenance_gate.dart';
 import 'matrix.dart';
 
 class PsygoApp extends StatelessWidget {
@@ -77,16 +79,24 @@ class PsygoApp extends StatelessWidget {
               final auth = context.read<PsygoAuthState>();
               return Provider<PsygoApiClient>(
                 create: (_) => PsygoApiClient(auth),
-                child: AppLockWidget(
-                  pincode: pincode,
-                  clients: clients,
-                  child: Matrix(
-                    clients: clients,
-                    store: store,
-                    child: _AutomateAuthGate(
+                child: ChangeNotifierProvider(
+                  lazy: false,
+                  create: (context) => MaintenanceStatusController(
+                    context.read<PsygoApiClient>(),
+                  )..start(),
+                  child: MaintenanceGate(
+                    child: AppLockWidget(
+                      pincode: pincode,
                       clients: clients,
-                      store: store,
-                      child: testWidget ?? child,
+                      child: Matrix(
+                        clients: clients,
+                        store: store,
+                        child: _AutomateAuthGate(
+                          clients: clients,
+                          store: store,
+                          child: testWidget ?? child,
+                        ),
+                      ),
                     ),
                   ),
                 ),

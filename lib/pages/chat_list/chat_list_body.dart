@@ -14,6 +14,7 @@ import 'package:psygo/widgets/adaptive_dialogs/public_room_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
 import '../../config/themes.dart';
 import '../../widgets/adaptive_dialogs/user_dialog.dart';
+import '../../widgets/announcement_banner.dart';
 import '../../widgets/matrix.dart';
 import 'chat_list_header.dart';
 
@@ -37,6 +38,7 @@ class ChatListViewBody extends StatelessWidget {
     }
     final publicRooms = controller.roomSearchResult?.chunk.toList();
     final userSearchResult = controller.userSearchResult;
+    final announcement = controller.activeAnnouncement;
     const dummyChatCount = 4;
     final filter = controller.searchController.text.toLowerCase();
     return StreamBuilder(
@@ -96,6 +98,19 @@ class ChatListViewBody extends StatelessWidget {
                               ),
                       ),
                     ],
+                    if (!controller.isSearchMode && announcement != null)
+                      AnnouncementBanner(
+                        key: ValueKey(
+                          'announcement_${announcement.id}',
+                        ),
+                        announcement: announcement,
+                        onImpression: () =>
+                            controller.onAnnouncementImpression(announcement),
+                        onAcknowledge: () =>
+                            controller.acknowledgeAnnouncement(announcement),
+                        onContentTap: () =>
+                            controller.showAnnouncementDetail(announcement),
+                      ),
                     // Remove the contact banner in the chat list;
                     // this is ugly and a distraction on mobile.
                     // if (!controller.isSearchMode &&

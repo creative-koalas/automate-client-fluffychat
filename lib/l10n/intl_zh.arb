@@ -4115,6 +4115,12 @@
     "@authNeedUpdateMessage": {},
     "authCheckAgain": "重新检查",
     "@authCheckAgain": {},
+    "maintenanceBlockedTitle": "服务维护中",
+    "@maintenanceBlockedTitle": {},
+    "maintenanceBlockedMessage": "PsyGo 当前正在维护，发布完成后会重新开放使用。",
+    "@maintenanceBlockedMessage": {},
+    "maintenanceBlockedReasonLabel": "维护通知",
+    "@maintenanceBlockedReasonLabel": {},
     "authLoginFailedTitle": "登录失败",
     "@authLoginFailedTitle": {},
     "authUnknownError": "未知错误",
@@ -4272,5 +4278,63 @@
     "appUpdateInstallNow": "立即安装",
     "@appUpdateInstallNow": {},
     "appUpdateDownloadInBrowser": "浏览器下载",
-    "@appUpdateDownloadInBrowser": {}
+    "@appUpdateDownloadInBrowser": {},
+    "inviteFriends": "邀请好友",
+    "@inviteFriends": {},
+    "inviteRewardRule": "每成功邀请一位好友，获得 {credits} 积分奖励（已邀请 {current}/{max} 人）",
+    "@inviteRewardRule": {
+      "placeholders": {
+        "credits": {"type": "int"},
+        "current": {"type": "int"},
+        "max": {"type": "int"}
+      }
+    },
+    "inviteRewardRuleSimple": "每成功邀请一位好友，获得积分奖励",
+    "@inviteRewardRuleSimple": {},
+    "invitationQuotaFull": "邀请名额已满",
+    "@invitationQuotaFull": {},
+    "viewInvitationCode": "查看邀请码",
+    "@viewInvitationCode": {},
+    "enterInvitationCodeButton": "输入邀请码",
+    "@enterInvitationCodeButton": {},
+    "myInvitationCode": "我的邀请码",
+    "@myInvitationCode": {},
+    "invitationCodeCopied": "邀请码已复制",
+    "@invitationCodeCopied": {},
+    "invitedProgress": "已邀请 {current}/{max} 人",
+    "@invitedProgress": {
+      "placeholders": {
+        "current": {"type": "int"},
+        "max": {"type": "int"}
+      }
+    },
+    "enterInvitationCodeHint": "请输入8位邀请码",
+    "@enterInvitationCodeHint": {},
+    "invitationCodeInvalid": "请输入8位邀请码",
+    "@invitationCodeInvalid": {},
+    "invitationErrorSelfBind": "不能绑定自己的邀请码",
+    "@invitationErrorSelfBind": {},
+    "invitationErrorAlreadyBound": "邀请码已绑定，请勿重复操作",
+    "@invitationErrorAlreadyBound": {},
+    "invitationErrorMutualBinding": "你们之间已存在邀请关系",
+    "@invitationErrorMutualBinding": {},
+    "invitationErrorNotFound": "邀请码不存在，请确认后再试",
+    "@invitationErrorNotFound": {},
+    "invitationErrorTemporarilyUnavailable": "邀请码暂时不可用，请稍后再试",
+    "@invitationErrorTemporarilyUnavailable": {},
+    "invitationBindSuccess": "绑定成功！邀请人 {nickname} 获得 {credits} 积分",
+    "@invitationBindSuccess": {
+      "placeholders": {
+        "nickname": {"type": "String"},
+        "credits": {"type": "int"}
+      }
+    },
+    "confirmBind": "确认绑定",
+    "@confirmBind": {},
+    "getInvitationCodeFailed": "获取邀请码失败: {error}",
+    "@getInvitationCodeFailed": {
+      "placeholders": {
+        "error": {"type": "String"}
+      }
+    }
 }

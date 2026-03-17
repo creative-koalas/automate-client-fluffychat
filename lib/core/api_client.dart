@@ -10,6 +10,8 @@ import 'package:matrix/matrix.dart';
 
 import 'config.dart';
 import 'token_manager.dart';
+import '../models/maintenance_status.dart';
+import '../services/maintenance_status_bus.dart';
 import '../utils/custom_http_client.dart';
 
 /// API 响应包装
@@ -228,6 +230,8 @@ class PsygoApiClient {
       throw ApiException(-1, 'Invalid JSON response: ${response.body}');
     }
 
+    _captureMaintenanceSignal(response, json);
+
     final apiResponse = ApiResponse<T>.fromJson(json, fromJsonT);
 
     // 处理业务错误
@@ -273,5 +277,28 @@ class PsygoApiClient {
   /// 关闭客户端
   void dispose() {
     _httpClient.close();
+  }
+
+  void _captureMaintenanceSignal(
+    http.Response response,
+    Map<String, dynamic> json,
+  ) {
+    MaintenanceStatusSnapshot? status;
+    final path = response.request?.url.path ?? '';
+
+    if (_isMaintenanceStatusPath(path)) {
+      status = MaintenanceStatusSnapshot.tryParsePublicPayload(json);
+    } else if (response.statusCode == 503) {
+      status = MaintenanceStatusSnapshot.tryParseClosedErrorPayload(json);
+    }
+
+    if (status != null) {
+      MaintenanceStatusBus.instance.publish(status);
+    }
+  }
+
+  bool _isMaintenanceStatusPath(String path) {
+    return path.endsWith('/api/maintenance/status') ||
+        path.endsWith('/api/v1/maintenance/status');
   }
 }

@@ -12,6 +12,7 @@
 #define VCRedistSource "{#SourcePath}\..\..\VC_redist.x64.exe"
 #define VCRedistFileName "VC_redist.x64.exe"
 #define IconFilePath "{#SourcePath}\..\..\assets\logo.ico"
+#define ChineseLangFile AddBackslash(GetEnv("ProgramFiles(x86)")) + "Inno Setup 6\Languages\ChineseSimplified.isl"
 
 ; ---- compile-time sanity checks (recommended) ----
 #if !FileExists(AddBackslash(MySourceDir) + MyAppExeName)
@@ -50,7 +51,10 @@ WizardStyle=modern
 SetupLogging=yes
 
 [Languages]
-Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+#if FileExists(ChineseLangFile)
+Name: "chinesesimp"; MessagesFile: "{#ChineseLangFile}"
+#endif
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务"; Flags: checkedonce

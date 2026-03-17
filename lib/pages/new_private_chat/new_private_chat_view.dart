@@ -133,6 +133,17 @@ class NewPrivateChatView extends StatelessWidget {
                           ListTile(
                             leading: CircleAvatar(
                               backgroundColor:
+                                  theme.colorScheme.primaryContainer,
+                              foregroundColor:
+                                  theme.colorScheme.onPrimaryContainer,
+                              child: const Icon(Icons.card_giftcard_rounded),
+                            ),
+                            title: Text(L10n.of(context).viewInvitationCode),
+                            onTap: controller.showInvitationCodeAction,
+                          ),
+                          ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
                                   theme.colorScheme.tertiaryContainer,
                               foregroundColor:
                                   theme.colorScheme.onTertiaryContainer,

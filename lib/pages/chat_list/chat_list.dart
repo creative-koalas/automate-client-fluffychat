@@ -9,7 +9,9 @@ import 'package:matrix/matrix.dart' as sdk;
 import 'package:matrix/matrix.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/announcement.dart';
 import 'package:psygo/pages/chat_list/chat_list_view.dart';
+import 'package:psygo/services/announcement_service.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -145,6 +147,8 @@ class ChatListController extends State<ChatList>
 
   bool isSearching = false;
   static const String _serverStoreNamespace = 'com.psygo.search.server';
+  Announcement? activeAnnouncement;
+  bool _loadingAnnouncement = false;
 
   void setServer() async {
     final newServer = await showTextInputDialog(
@@ -288,6 +292,84 @@ class ChatListController extends State<ChatList>
 
   String? get activeChat => widget.activeChat;
 
+  Future<void> loadActiveAnnouncement() async {
+    if (_loadingAnnouncement) return;
+    final userId = Matrix.of(context).clientOrNull?.userID;
+    if (userId == null || userId.trim().isEmpty) {
+      return;
+    }
+
+    _loadingAnnouncement = true;
+    Announcement? announcement;
+    try {
+      announcement = await AnnouncementService.instance.fetchActiveAnnouncement(
+        userId: userId,
+        scene: 'chat_list',
+      );
+    } finally {
+      _loadingAnnouncement = false;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      activeAnnouncement = announcement;
+    });
+  }
+
+  Future<void> onAnnouncementImpression(Announcement announcement) async {
+    final userId = Matrix.of(context).clientOrNull?.userID;
+    if (userId == null || userId.trim().isEmpty) return;
+    await AnnouncementService.instance.trackImpression(
+      announcement: announcement,
+      userId: userId,
+      scene: 'chat_list',
+    );
+  }
+
+  Future<void> acknowledgeAnnouncement(Announcement announcement) async {
+    if (mounted) {
+      setState(() {
+        if (activeAnnouncement?.id == announcement.id) {
+          activeAnnouncement = null;
+        }
+      });
+    }
+    await AnnouncementService.instance.trackAcknowledge(
+      announcementId: announcement.id,
+      scene: 'chat_list',
+    );
+    if (!mounted) return;
+    await loadActiveAnnouncement();
+  }
+
+  Future<void> showAnnouncementDetail(Announcement announcement) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: Text(announcement.title),
+          content: SingleChildScrollView(
+            child: Text(
+              announcement.body,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await acknowledgeAnnouncement(announcement);
+              },
+              child: const Text('我知道了'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _processIncomingSharedMedia(List<SharedMediaFile> files) {
     if (files.isEmpty) return;
 
@@ -367,6 +449,7 @@ class ChatListController extends State<ChatList>
         // 已使用阿里云推送（AliyunPushService），禁用原有 BackgroundPush 避免重复推送
         // Matrix.of(context).backgroundPush?.setupPush();
         UpdateNotifier.showUpdateSnackBar();
+        await loadActiveAnnouncement();
       }
 
       // Workaround for system UI overlay style not applied on app start
