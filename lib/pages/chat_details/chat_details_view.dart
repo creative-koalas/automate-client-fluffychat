@@ -20,7 +20,7 @@ import '../../widgets/qr_code_viewer.dart';
 
 class ChatDetailsView extends StatelessWidget {
   // 临时隐藏群聊中的“访问和可见性 / 聊天权限”入口（保留代码，后续可恢复）
-  static const bool _showAccessAndPermissionsSection = false;
+  static const bool _showAccessAndPermissionsSection = true;
 
   final ChatDetailsController controller;
 
