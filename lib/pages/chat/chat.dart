@@ -1305,8 +1305,6 @@ class ChatController extends State<ChatPageWithRoom>
   ///   ''    — 用户选择"直接发送"
   ///   '@xx' — 用户选择了某个成员的 mention 文本
   Future<String?> _showMentionHint() async {
-    final l10n = L10n.of(context);
-    final theme = Theme.of(context);
     final selfId = room.client.userID;
 
     // 过滤自己，只列出其他成员
@@ -1317,9 +1315,91 @@ class ChatController extends State<ChatPageWithRoom>
 
     if (participants.isEmpty) return '';
 
+    if (PlatformInfos.isDesktop) {
+      return _showMentionHintDialog(participants);
+    }
+    return _showMentionHintBottomSheet(participants);
+  }
+
+  Future<String?> _showMentionHintDialog(List<User> participants) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 标题
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  child: Text(
+                    l10n.mentionHintTitle,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // 成员列表
+                Flexible(
+                  child: _buildParticipantList(participants, theme),
+                ),
+                // 底部按钮
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(l10n.cancel),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(''),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(l10n.sendDirectly),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<String?> _showMentionHintBottomSheet(List<User> participants) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1356,37 +1436,7 @@ class ChatController extends State<ChatPageWithRoom>
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.4,
                 ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: participants.length,
-                  itemBuilder: (context, index) {
-                    final user = participants[index];
-                    AgentService.instance
-                        .ensureMatrixProfilePresentation(user);
-                    final displayName =
-                        AgentService.instance.resolveDisplayName(user);
-                    final mention = buildInputMentionByUser(
-                      room: room,
-                      user: user,
-                    );
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        child: Text(
-                          displayName.isNotEmpty
-                              ? displayName[0].toUpperCase()
-                              : '?',
-                          style: TextStyle(
-                            color: theme.colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      title: Text(displayName),
-                      onTap: () => Navigator.of(context).pop(mention),
-                    );
-                  },
-                ),
+                child: _buildParticipantList(participants, theme),
               ),
               // 直接发送按钮
               Padding(
@@ -1407,6 +1457,39 @@ class ChatController extends State<ChatPageWithRoom>
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildParticipantList(List<User> participants, ThemeData theme) {
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: participants.length,
+      itemBuilder: (context, index) {
+        final user = participants[index];
+        AgentService.instance.ensureMatrixProfilePresentation(user);
+        final displayName =
+            AgentService.instance.resolveDisplayName(user);
+        final mention = buildInputMentionByUser(
+          room: room,
+          user: user,
+        );
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: theme.colorScheme.primaryContainer,
+            child: Text(
+              displayName.isNotEmpty
+                  ? displayName[0].toUpperCase()
+                  : '?',
+              style: TextStyle(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          title: Text(displayName),
+          onTap: () => Navigator.of(context).pop(mention),
         );
       },
     );
