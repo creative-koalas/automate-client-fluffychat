@@ -342,11 +342,17 @@ void showMemberActionsPopupMenu({
               (0, L10n.of(context).member),
               (50, L10n.of(context).moderator),
             ])
-              RadioListTile<int>(
-                value: entry.$1,
-                groupValue: currentLevel,
+              ListTile(
+                leading: Icon(
+                  entry.$1 == currentLevel
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: entry.$1 == currentLevel
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
                 title: Text(entry.$2),
-                onChanged: (v) => Navigator.of(context).pop(v),
+                onTap: () => Navigator.of(context).pop(entry.$1),
               ),
           ],
         ),
