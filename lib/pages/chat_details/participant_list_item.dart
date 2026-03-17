@@ -28,7 +28,7 @@ class ParticipantListItem extends StatelessWidget {
     };
 
     final permissionBatch = user.powerLevel >= 100
-        ? L10n.of(context).admin
+        ? L10n.of(context).owner
         : user.powerLevel >= 50
             ? L10n.of(context).moderator
             : '';
