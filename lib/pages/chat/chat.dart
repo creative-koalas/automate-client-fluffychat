@@ -31,6 +31,7 @@ import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
 import 'package:psygo/services/employee_work_template_visibility_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
@@ -1471,22 +1472,15 @@ class ChatController extends State<ChatPageWithRoom>
         AgentService.instance.ensureMatrixProfilePresentation(user);
         final displayName =
             AgentService.instance.resolveDisplayName(user);
+        final avatarUri = AgentService.instance.resolveAvatarUri(user);
         final mention = buildInputMentionByUser(
           room: room,
           user: user,
         );
         return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: theme.colorScheme.primaryContainer,
-            child: Text(
-              displayName.isNotEmpty
-                  ? displayName[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          leading: Avatar(
+            mxContent: avatarUri,
+            name: displayName,
           ),
           title: Text(displayName),
           onTap: () => Navigator.of(context).pop(mention),
