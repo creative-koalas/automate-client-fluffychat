@@ -43,34 +43,32 @@ class SettingsController extends State<Settings> {
 
   void setDisplaynameAction() async {
     final profile = await profileFuture;
+    final l10n = L10n.of(context);
     final input = await showTextInputDialog(
       useRootNavigator: false,
       context: context,
-      title: L10n.of(context).editDisplayname,
-      okLabel: L10n.of(context).ok,
-      cancelLabel: L10n.of(context).cancel,
+      title: l10n.editDisplayname,
+      okLabel: l10n.ok,
+      cancelLabel: l10n.cancel,
       initialText:
           profile?.displayName ?? Matrix.of(context).client.userID!.localpart,
+      validator: (input) {
+        if (containsProfanity(input)) return l10n.nameContainsProfanity;
+        return null;
+      },
     );
     if (input == null) return;
-    if (containsProfanity(input)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(L10n.of(context).nameContainsProfanity)),
-      );
-      return;
-    }
-    final matrix = Matrix.of(context);
+    final apiClient = context.read<PsygoApiClient>();
     final success = await showFutureLoadingDialog(
       context: context,
-      future: () => matrix.client.setProfileField(
-        matrix.client.userID!,
-        'displayname',
-        {'displayname': input},
-      ),
+      future: () => apiClient.submitNicknameChangeRequest(input),
     );
     if (success.error == null) {
-      updateProfile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.nicknameChangeSubmitted)),
+        );
+      }
     }
   }
 

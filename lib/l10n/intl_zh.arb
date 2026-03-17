@@ -3820,6 +3820,8 @@
     "@employeeNameCannotBeNumeric": {},
     "nameContainsProfanity": "名称包含不当内容，请换一个",
     "@nameContainsProfanity": {},
+    "nicknameChangeSubmitted": "昵称修改申请已提交，审核通过后将自动更新",
+    "@nicknameChangeSubmitted": {},
     "loadingPlugins": "加载技能中...",
     "@loadingPlugins": {},
     "optional": "可选",
