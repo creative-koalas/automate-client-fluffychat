@@ -41,6 +41,15 @@ class ChatPermissionsSettingsView extends StatelessWidget {
             final eventsPowerLevels = Map<String, int?>.from(
               powerLevelsContent.tryGetMap<String, int?>('events') ?? {},
             )..removeWhere((k, v) => v is! int);
+
+            // 只显示核心权限项
+            const coreKeys = ['invite', 'kick', 'ban', 'redact'];
+            const coreEventKeys = [
+              EventTypes.RoomName,
+              EventTypes.RoomTopic,
+              EventTypes.RoomPowerLevels,
+            ];
+
             return Column(
               children: [
                 ListTile(
@@ -62,53 +71,19 @@ class ChatPermissionsSettingsView extends StatelessWidget {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final entry in powerLevels.entries)
-                      PermissionsListTile(
-                        permissionKey: entry.key,
-                        permission: entry.value,
-                        onChanged: (level) => controller.editPowerLevel(
-                          context,
-                          entry.key,
-                          entry.value,
-                          newLevel: level,
-                        ),
-                        canEdit: room.canChangePowerLevel,
-                      ),
-                    Divider(color: theme.dividerColor),
-                    ListTile(
-                      title: Text(
-                        L10n.of(context).notifications,
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Builder(
-                      builder: (context) {
-                        const key = 'rooms';
-                        final value = powerLevelsContent
-                                .containsKey('notifications')
-                            ? powerLevelsContent
-                                    .tryGetMap<String, Object?>('notifications')
-                                    ?.tryGet<int>('rooms') ??
-                                0
-                            : 0;
-                        return PermissionsListTile(
+                    for (final key in coreKeys)
+                      if (powerLevels.containsKey(key))
+                        PermissionsListTile(
                           permissionKey: key,
-                          permission: value,
-                          category: 'notifications',
-                          canEdit: room.canChangePowerLevel,
+                          permission: powerLevels[key] as int,
                           onChanged: (level) => controller.editPowerLevel(
                             context,
                             key,
-                            value,
+                            powerLevels[key] as int,
                             newLevel: level,
-                            category: 'notifications',
                           ),
-                        );
-                      },
-                    ),
+                          canEdit: room.canChangePowerLevel,
+                        ),
                     Divider(color: theme.dividerColor),
                     ListTile(
                       title: Text(
@@ -119,20 +94,21 @@ class ChatPermissionsSettingsView extends StatelessWidget {
                         ),
                       ),
                     ),
-                    for (final entry in eventsPowerLevels.entries)
-                      PermissionsListTile(
-                        permissionKey: entry.key,
-                        category: 'events',
-                        permission: entry.value ?? 0,
-                        canEdit: room.canChangePowerLevel,
-                        onChanged: (level) => controller.editPowerLevel(
-                          context,
-                          entry.key,
-                          entry.value ?? 0,
-                          newLevel: level,
+                    for (final key in coreEventKeys)
+                      if (eventsPowerLevels.containsKey(key))
+                        PermissionsListTile(
+                          permissionKey: key,
                           category: 'events',
+                          permission: eventsPowerLevels[key] ?? 0,
+                          canEdit: room.canChangePowerLevel,
+                          onChanged: (level) => controller.editPowerLevel(
+                            context,
+                            key,
+                            eventsPowerLevels[key] ?? 0,
+                            newLevel: level,
+                            category: 'events',
+                          ),
                         ),
-                      ),
                   ],
                 ),
               ],

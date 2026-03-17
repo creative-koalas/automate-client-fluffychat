@@ -69,13 +69,32 @@ class PermissionsListTile extends StatelessWidget {
     return permissionKey;
   }
 
+  /// 将权限值映射到最近的固定级别
+  int _normalizeLevel(int level) {
+    if (level >= 100) return 100;
+    if (level >= 50) return 50;
+    return 0;
+  }
+
+  String _getLevelLabel(BuildContext context, int level) {
+    switch (level) {
+      case 100:
+        return L10n.of(context).owner;
+      case 50:
+        return L10n.of(context).moderator;
+      default:
+        return L10n.of(context).member;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final normalizedLevel = _normalizeLevel(permission);
 
-    final color = permission >= 100
+    final color = normalizedLevel >= 100
         ? Colors.orangeAccent
-        : permission >= 50
+        : normalizedLevel >= 50
             ? Colors.blueAccent
             : Colors.greenAccent;
     return ListTile(
@@ -91,32 +110,19 @@ class PermissionsListTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppConfig.borderRadius / 2),
           underline: const SizedBox.shrink(),
           onChanged: canEdit ? onChanged : null,
-          value: permission,
+          value: normalizedLevel,
           items: [
             DropdownMenuItem(
-              value: permission < 50 ? permission : 0,
-              child: Text(
-                L10n.of(context).userLevel(permission < 50 ? permission : 0),
-              ),
+              value: 0,
+              child: Text(_getLevelLabel(context, 0)),
             ),
             DropdownMenuItem(
-              value: permission < 100 && permission >= 50 ? permission : 50,
-              child: Text(
-                L10n.of(context).moderatorLevel(
-                  permission < 100 && permission >= 50 ? permission : 50,
-                ),
-              ),
+              value: 50,
+              child: Text(_getLevelLabel(context, 50)),
             ),
             DropdownMenuItem(
-              value: permission >= 100 ? permission : 100,
-              child: Text(
-                L10n.of(context)
-                    .adminLevel(permission >= 100 ? permission : 100),
-              ),
-            ),
-            DropdownMenuItem(
-              value: null,
-              child: Text(L10n.of(context).custom),
+              value: 100,
+              child: Text(_getLevelLabel(context, 100)),
             ),
           ],
         ),

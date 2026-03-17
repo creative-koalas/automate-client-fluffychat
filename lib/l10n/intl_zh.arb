@@ -1107,11 +1107,15 @@
         "type": "String",
         "placeholders": {}
     },
-    "moderator": "协管员",
+    "moderator": "管理员",
     "@moderator": {
         "type": "String",
         "placeholders": {}
     },
+    "owner": "群主",
+    "@owner": {},
+    "member": "成员",
+    "@member": {},
     "muteChat": "消息免打扰",
     "@muteChat": {
         "type": "String",

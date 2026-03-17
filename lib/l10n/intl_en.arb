@@ -1367,11 +1367,15 @@
   },
   "messagesStyle": "Messages:",
   "@messagesStyle": {},
-  "moderator": "Moderator",
+  "moderator": "Admin",
   "@moderator": {
     "type": "String",
     "placeholders": {}
   },
+  "owner": "Owner",
+  "@owner": {},
+  "member": "Member",
+  "@member": {},
   "muteChat": "Do Not Disturb",
   "@muteChat": {
     "type": "String",

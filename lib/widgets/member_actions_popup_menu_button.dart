@@ -4,7 +4,6 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
-import 'package:psygo/widgets/permission_slider_dialog.dart';
 import 'adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'adaptive_dialogs/show_text_input_dialog.dart';
 import 'adaptive_dialogs/user_dialog.dart';
@@ -153,8 +152,8 @@ void showMemberActionsPopupMenu({
             ],
           ),
         ),
+      if (!isMe && user.room.ownPowerLevel >= 100)
       PopupMenuItem(
-        enabled: user.room.canChangePowerLevel && user.canChangeUserPowerLevel,
         value: _MemberActions.setRole,
         child: Row(
           children: [
@@ -180,11 +179,11 @@ void showMemberActionsPopupMenu({
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  user.powerLevel < 50
-                      ? L10n.of(context).userLevel(user.powerLevel)
-                      : user.powerLevel < 100
-                          ? L10n.of(context).moderatorLevel(user.powerLevel)
-                          : L10n.of(context).adminLevel(user.powerLevel),
+                  user.powerLevel >= 100
+                      ? L10n.of(context).owner
+                      : user.powerLevel >= 50
+                          ? L10n.of(context).moderator
+                          : L10n.of(context).member,
                   style: TextStyle(
                     fontSize: 10,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -314,22 +313,46 @@ void showMemberActionsPopupMenu({
       onMention?.call();
       return;
     case _MemberActions.setRole:
-      final power = await showPermissionChooser(
-        context,
-        currentLevel: user.powerLevel,
-        maxLevel: user.room.ownPowerLevel,
-      );
-      if (power == null) return;
-      if (!context.mounted) return;
-      if (power >= 100) {
-        final consent = await showOkCancelAlertDialog(
-          context: context,
-          title: L10n.of(context).areYouSure,
-          message: L10n.of(context).makeAdminDescription,
+      final ownPower = user.room.ownPowerLevel;
+      // 只有群主(100)可以修改权限
+      if (ownPower < 100) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).noPermission)),
         );
-        if (consent != OkCancelResult.ok) return;
-        if (!context.mounted) return;
+        return;
       }
+      // 群主不能修改自己的权限
+      if (isMe) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).noPermission)),
+        );
+        return;
+      }
+      final currentLevel = user.powerLevel >= 100
+          ? 100
+          : user.powerLevel >= 50
+              ? 50
+              : 0;
+      final power = await showDialog<int>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: Text(L10n.of(context).chatPermissions),
+          children: [
+            for (final entry in [
+              (0, L10n.of(context).member),
+              (50, L10n.of(context).moderator),
+            ])
+              RadioListTile<int>(
+                value: entry.$1,
+                groupValue: currentLevel,
+                title: Text(entry.$2),
+                onChanged: (v) => Navigator.of(context).pop(v),
+              ),
+          ],
+        ),
+      );
+      if (power == null || power == currentLevel) return;
+      if (!context.mounted) return;
       await showFutureLoadingDialog(
         context: context,
         future: () => user.setPower(power),

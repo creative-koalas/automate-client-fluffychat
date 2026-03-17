@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
@@ -9,7 +7,6 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings_view.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';
-import 'package:psygo/widgets/permission_slider_dialog.dart';
 
 class ChatPermissionsSettings extends StatefulWidget {
   const ChatPermissionsSettings({super.key});
@@ -35,10 +32,6 @@ class ChatPermissionsSettingsController extends State<ChatPermissionsSettings> {
       );
       return;
     }
-    newLevel ??= await showPermissionChooser(
-      context,
-      currentLevel: currentLevel,
-    );
     if (newLevel == null) return;
     final content = Map<String, dynamic>.from(
       room.getState(EventTypes.RoomPowerLevels)!.content,
@@ -51,7 +44,6 @@ class ChatPermissionsSettingsController extends State<ChatPermissionsSettings> {
     } else {
       content[key] = newLevel;
     }
-    inspect(content);
     await showFutureLoadingDialog(
       context: context,
       future: () => room.client.setRoomStateWithKey(
