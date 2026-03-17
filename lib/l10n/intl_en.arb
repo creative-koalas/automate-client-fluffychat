@@ -4307,5 +4307,9 @@
   "avatarUpdated": "Avatar updated",
   "@avatarUpdated": {},
   "avatarDownloadFailed": "Failed to download avatar",
-  "@avatarDownloadFailed": {}
+  "@avatarDownloadFailed": {},
+  "mentionHintTitle": "Mention an employee?",
+  "@mentionHintTitle": {},
+  "sendDirectly": "Send directly",
+  "@sendDirectly": {}
 }

@@ -4342,5 +4342,9 @@
     "avatarUpdated": "头像已更新",
     "@avatarUpdated": {},
     "avatarDownloadFailed": "头像下载失败",
-    "@avatarDownloadFailed": {}
+    "@avatarDownloadFailed": {},
+    "mentionHintTitle": "要@某位员工吗？",
+    "@mentionHintTitle": {},
+    "sendDirectly": "直接发送",
+    "@sendDirectly": {}
 }

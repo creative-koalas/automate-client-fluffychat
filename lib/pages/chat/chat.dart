@@ -1238,6 +1238,21 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
+    // 群聊中，消息不含 @ 时弹出 mention 提示
+    final isGroupChat = room.directChatMatrixID == null;
+    if (isGroupChat && !trimmedText.contains('@')) {
+      final mention = await _showMentionHint();
+      if (mention == null) return; // 用户取消
+      if (mention.isNotEmpty) {
+        // 用户选择了成员，插入 @mention 到消息最前面
+        sendController.text = '$mention ${sendController.text}';
+        sendController.selection = TextSelection.collapsed(
+          offset: sendController.text.length,
+        );
+      }
+      // mention 为空字符串表示"直接发送"
+    }
+
     _storeInputTimeoutTimer?.cancel();
     final prefs = Matrix.of(context).store;
     prefs.remove('draft_$roomId');
@@ -1282,6 +1297,119 @@ class ChatController extends State<ChatPageWithRoom>
       editEvent = null;
       pendingText = '';
     });
+  }
+
+  /// 群聊发送时弹出 mention 提示。
+  /// 返回值：
+  ///   null  — 用户取消（不发送）
+  ///   ''    — 用户选择"直接发送"
+  ///   '@xx' — 用户选择了某个成员的 mention 文本
+  Future<String?> _showMentionHint() async {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+    final selfId = room.client.userID;
+
+    // 过滤自己，只列出其他成员
+    final participants = room
+        .getParticipants()
+        .where((u) => u.id != selfId)
+        .toList();
+
+    if (participants.isEmpty) return '';
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 拖拽指示器
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // 标题
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text(
+                  l10n.mentionHintTitle,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              // 成员列表
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: participants.length,
+                  itemBuilder: (context, index) {
+                    final user = participants[index];
+                    AgentService.instance
+                        .ensureMatrixProfilePresentation(user);
+                    final displayName =
+                        AgentService.instance.resolveDisplayName(user);
+                    final mention = buildInputMentionByUser(
+                      room: room,
+                      user: user,
+                    );
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        child: Text(
+                          displayName.isNotEmpty
+                              ? displayName[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: theme.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      title: Text(displayName),
+                      onTap: () => Navigator.of(context).pop(mention),
+                    );
+                  },
+                ),
+              ),
+              // 直接发送按钮
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(''),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(l10n.sendDirectly),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   static const int _minSizeToCompress = 20 * 1000;
