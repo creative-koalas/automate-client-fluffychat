@@ -838,7 +838,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "groupWith": "名称为 {displayname} 的群组",
+    "groupWith": "{displayname} 的群组",
     "@groupWith": {
         "type": "String",
         "placeholders": {
