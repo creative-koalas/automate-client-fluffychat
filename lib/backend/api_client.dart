@@ -614,6 +614,27 @@ class PsygoApiClient {
     return InvitationInfo.fromJson(respData);
   }
 
+  /// 提交昵称修改申请
+  Future<void> submitNicknameChangeRequest(String newNickname) async {
+    final res = await _requestWithAuthRetry((token) {
+      return _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/users/nickname-request',
+        data: {'new_nickname': newNickname},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '提交昵称修改失败',
+        statusCode: res.statusCode,
+      );
+    }
+  }
+
   /// 获取用户信息（包含余额）
   Future<UserInfo> getUserInfo() async {
     await _syncAuthState();
