@@ -360,25 +360,6 @@ class ChatDetailsView extends StatelessWidget {
                             _showAccessAndPermissionsSection) ...[
                           Divider(color: theme.dividerColor),
                           ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.surfaceContainer,
-                              foregroundColor: iconColor,
-                              child: const Icon(
-                                Icons.admin_panel_settings_outlined,
-                              ),
-                            ),
-                            title: Text(
-                              L10n.of(context).accessAndVisibility,
-                            ),
-                            subtitle: Text(
-                              L10n.of(context).accessAndVisibilityDescription,
-                            ),
-                            onTap: () => context
-                                .push('/rooms/${room.id}/details/access'),
-                            trailing: const Icon(Icons.chevron_right_outlined),
-                          ),
-                          ListTile(
                             title: Text(L10n.of(context).chatPermissions),
                             subtitle: Text(
                               L10n.of(context).whoCanPerformWhichAction,
