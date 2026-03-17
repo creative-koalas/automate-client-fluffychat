@@ -24,6 +24,7 @@ class ChatPermissionsSettingsView extends StatelessWidget {
         title: Text(l10n.chatPermissions),
       ),
       body: MaxWidthBody(
+        withScrolling: false,
         child: room == null
             ? Center(child: Text(l10n.noRoomsFound))
             : StreamBuilder(
