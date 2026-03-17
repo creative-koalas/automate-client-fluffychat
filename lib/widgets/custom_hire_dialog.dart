@@ -82,7 +82,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           .every((c) => '0123456789'.contains(c));
   bool get _isNameTooLong =>
       _nameController.text.trim().length > _maxNameLength;
-  bool get _isGuideNameSelectionLocked => _showRecruitGuide;
+  bool get _isGuideNameSelectionLocked => false;
 
   @override
   void initState() {
@@ -279,9 +279,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       _error = null;
     });
 
-    if (_showRecruitGuide && _recruitGuideStepIndex == 1) {
-      _nextRecruitGuide();
-    }
+    // 示例名字仅填充输入框，不再自动跳步
   }
 
   @override
