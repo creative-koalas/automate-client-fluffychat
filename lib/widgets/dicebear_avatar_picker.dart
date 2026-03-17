@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:psygo/l10n/l10n.dart';
 
 import '../core/config.dart';
 import 'custom_network_image.dart';
@@ -51,32 +52,32 @@ extension DiceBearStyleExtension on DiceBearStyle {
     }
   }
 
-  String get displayName {
+  String displayName(L10n l10n) {
     switch (this) {
       case DiceBearStyle.avataaars:
-        return 'Avataaars';
+        return l10n.diceBearStyleAvataaars;
       case DiceBearStyle.bottts:
-        return 'Bottts';
+        return l10n.diceBearStyleBottts;
       case DiceBearStyle.funEmoji:
-        return 'Fun Emoji';
+        return l10n.diceBearStyleFunEmoji;
       case DiceBearStyle.adventurer:
-        return 'Adventurer';
+        return l10n.diceBearStyleAdventurer;
       case DiceBearStyle.adventurerNeutral:
-        return 'Adventurer Neutral';
+        return l10n.diceBearStyleAdventurerNeutral;
       case DiceBearStyle.bigSmile:
-        return 'Big Smile';
+        return l10n.diceBearStyleBigSmile;
       case DiceBearStyle.lorelei:
-        return 'Lorelei';
+        return l10n.diceBearStyleLorelei;
       case DiceBearStyle.notionists:
-        return 'Notionists';
+        return l10n.diceBearStyleNotionists;
       case DiceBearStyle.openPeeps:
-        return 'Open Peeps';
+        return l10n.diceBearStyleOpenPeeps;
       case DiceBearStyle.personas:
-        return 'Personas';
+        return l10n.diceBearStylePersonas;
       case DiceBearStyle.pixelArt:
-        return 'Pixel Art';
+        return l10n.diceBearStylePixelArt;
       case DiceBearStyle.thumbs:
-        return 'Thumbs';
+        return l10n.diceBearStyleThumbs;
     }
   }
 }
@@ -187,6 +188,7 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = L10n.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -288,7 +290,7 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
                   padding: EdgeInsets.only(left: index > 0 ? 6 : 0),
                   child: FilterChip(
                     label: Text(
-                      style.displayName,
+                      style.displayName(l10n),
                       style: TextStyle(
                         fontSize: 11,
                         color: isSelected
