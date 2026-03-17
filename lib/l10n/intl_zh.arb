@@ -1530,6 +1530,21 @@
         "type": "String",
         "placeholders": {}
     },
+    "attachmentPickerTitle": "选择附件类型",
+    "@attachmentPickerTitle": {
+        "type": "String",
+        "placeholders": {}
+    },
+    "attachmentPickerImageSubtitle": "从相册选择图片",
+    "@attachmentPickerImageSubtitle": {
+        "type": "String",
+        "placeholders": {}
+    },
+    "attachmentPickerFileSubtitle": "选择文档或其他文件",
+    "@attachmentPickerFileSubtitle": {
+        "type": "String",
+        "placeholders": {}
+    },
     "sendFile": "发送文件",
     "@sendFile": {
         "type": "String",

@@ -804,7 +804,7 @@ void _showAttachmentBottomSheet(
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 20),
             child: Text(
-              '选择附件类型',
+              l10n.attachmentPickerTitle,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -817,7 +817,7 @@ void _showAttachmentBottomSheet(
             iconColor: const Color(0xFF2196F3),
             iconBgColor: const Color(0xFFE3F2FD),
             title: l10n.sendImage,
-            subtitle: '从相册选择图片',
+            subtitle: l10n.attachmentPickerImageSubtitle,
             onTap: () {
               Navigator.pop(context);
               controller.onAddPopupMenuButtonSelected(AddPopupMenuActions.image);
@@ -831,7 +831,7 @@ void _showAttachmentBottomSheet(
             iconColor: const Color(0xFF4CAF50),
             iconBgColor: const Color(0xFFE8F5E9),
             title: l10n.sendFile,
-            subtitle: '选择文档或其他文件',
+            subtitle: l10n.attachmentPickerFileSubtitle,
             onTap: () {
               Navigator.pop(context);
               controller.onAddPopupMenuButtonSelected(AddPopupMenuActions.file);

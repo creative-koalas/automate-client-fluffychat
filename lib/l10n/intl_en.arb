@@ -1885,6 +1885,21 @@
     "type": "String",
     "placeholders": {}
   },
+  "attachmentPickerTitle": "Select attachment type",
+  "@attachmentPickerTitle": {
+    "type": "String",
+    "placeholders": {}
+  },
+  "attachmentPickerImageSubtitle": "Choose an image from your gallery",
+  "@attachmentPickerImageSubtitle": {
+    "type": "String",
+    "placeholders": {}
+  },
+  "attachmentPickerFileSubtitle": "Choose a document or other file",
+  "@attachmentPickerFileSubtitle": {
+    "type": "String",
+    "placeholders": {}
+  },
   "sendFile": "Send file",
   "@sendFile": {
     "type": "String",
