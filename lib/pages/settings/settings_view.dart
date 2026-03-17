@@ -10,7 +10,6 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/app_update_test.dart';
 import 'package:psygo/utils/fluffy_share.dart';
-import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
@@ -301,13 +300,6 @@ class SettingsView extends StatelessWidget {
                           AppConfig.privacyUrl.toString(),
                           mode: LaunchMode.inAppBrowserView,
                         ),
-                      ),
-                      _buildDivider(theme),
-                      _buildCardListTile(
-                        theme,
-                        icon: Icons.info_outline_rounded,
-                        title: Text(L10n.of(context).about),
-                        onTap: () => PlatformInfos.showDialog(context),
                       ),
                       _buildDivider(theme),
                       Builder(
