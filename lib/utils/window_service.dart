@@ -61,7 +61,7 @@ class WindowService {
       } else if (Platform.isLinux) {
         iconPath = 'assets/app_icon.ico';
       } else {
-        iconPath = 'assets/logo_opaque.png';
+        iconPath = 'assets/logo.png';
       }
 
       if (Platform.isLinux) {
@@ -72,7 +72,7 @@ class WindowService {
             toolTip: 'PsyGo',
           );
         } catch (_) {
-          iconPath = 'assets/logo_opaque.png';
+          iconPath = 'assets/logo.png';
           await _systemTray.initSystemTray(
             title: 'PsyGo',
             iconPath: iconPath,
