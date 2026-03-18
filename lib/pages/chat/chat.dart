@@ -1274,10 +1274,12 @@ class ChatController extends State<ChatPageWithRoom>
       parseCommands = false;
     }
 
-    final outgoingText = replaceInputMentionsWithMatrixIds(
+    var outgoingText = replaceInputMentionsWithMatrixIds(
       room: room,
       text: sendController.text,
     );
+    // 将 @所有人 替换为 @room（SDK 通过 @room 设置 m.mentions.room = true）
+    outgoingText = outgoingText.replaceAll('@所有人', '@room');
     // ignore: unawaited_futures
     room.sendTextEvent(
       outgoingText,
@@ -1464,11 +1466,26 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Widget _buildParticipantList(List<User> participants, ThemeData theme) {
+    final l10n = L10n.of(context);
+    // +1 for the "@所有人" entry at the top
     return ListView.builder(
       shrinkWrap: true,
-      itemCount: participants.length,
+      itemCount: participants.length + 1,
       itemBuilder: (context, index) {
-        final user = participants[index];
+        if (index == 0) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Icon(
+                Icons.groups,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: Text(l10n.mentionEveryone),
+            onTap: () => Navigator.of(context).pop('@所有人'),
+          );
+        }
+        final user = participants[index - 1];
         AgentService.instance.ensureMatrixProfilePresentation(user);
         final displayName =
             AgentService.instance.resolveDisplayName(user);
@@ -2441,10 +2458,11 @@ class ChatController extends State<ChatPageWithRoom>
       closeWebEntry();
     }
 
-    final outgoingText = replaceInputMentionsWithMatrixIds(
+    var outgoingText = replaceInputMentionsWithMatrixIds(
       room: room,
       text: trimmedText,
     );
+    outgoingText = outgoingText.replaceAll('@所有人', '@room');
     room.sendTextEvent(
       outgoingText,
       parseCommands: false,

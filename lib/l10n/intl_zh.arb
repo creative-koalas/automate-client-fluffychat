@@ -4386,5 +4386,7 @@
     "mentionHintTitle": "要@某位员工吗？",
     "@mentionHintTitle": {},
     "sendDirectly": "直接发送",
-    "@sendDirectly": {}
+    "@sendDirectly": {},
+    "mentionEveryone": "@所有人",
+    "@mentionEveryone": {}
 }

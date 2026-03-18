@@ -684,15 +684,23 @@ class Message extends StatelessWidget {
                                                               );
                                                             },
                                                           ),
-                                                        MessageContent(
-                                                          displayEvent,
-                                                          textColor: textColor,
-                                                          linkColor: linkColor,
-                                                          onInfoTab: onInfoTab,
-                                                          borderRadius:
-                                                              borderRadius,
-                                                          timeline: timeline,
-                                                          selected: selected,
+                                                        ValueListenableBuilder(
+                                                          valueListenable:
+                                                              AgentService
+                                                                  .instance
+                                                                  .profileNotifier,
+                                                          builder:
+                                                              (context, _, __) =>
+                                                                  MessageContent(
+                                                            displayEvent,
+                                                            textColor: textColor,
+                                                            linkColor: linkColor,
+                                                            onInfoTab: onInfoTab,
+                                                            borderRadius:
+                                                                borderRadius,
+                                                            timeline: timeline,
+                                                            selected: selected,
+                                                          ),
                                                         ),
                                                         if (event
                                                             .hasAggregatedEvents(

@@ -11,7 +11,6 @@ import 'package:psygo/services/agent_service.dart';
 
 import 'package:psygo/utils/code_highlight_theme.dart';
 import 'package:psygo/utils/event_checkbox_extension.dart';
-import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/mxc_image.dart';
@@ -166,8 +165,14 @@ class HtmlMessage extends StatelessWidget {
       var text = node.text ?? '';
       // Single linebreak nodes between Elements are ignored:
       if (text == '\n') text = '';
-      if (text.isNotEmpty) {
-        text = renderMatrixMentionsWithDisplayName(text: text, room: room);
+      if (text.isEmpty) {
+        return const TextSpan();
+      }
+
+      // Try to render inline @user:domain mentions as MatrixPill widgets
+      final mentionSpans = _renderTextWithMentionPills(text, context);
+      if (mentionSpans != null) {
+        return TextSpan(children: mentionSpans);
       }
 
       return LinkifySpan(
@@ -204,10 +209,10 @@ class HtmlMessage extends StatelessWidget {
             );
             final displayName =
                 AgentService.instance.tryResolveDisplayNameByMatrixUserId(
-              matrixId,
-              fallbackDisplayName: fallbackDisplayName,
-            ) ??
-                fallbackDisplayName;
+                      matrixId,
+                      fallbackDisplayName: fallbackDisplayName,
+                    ) ??
+                    fallbackDisplayName;
             final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
               matrixId,
               fallbackAvatarUri: user.avatarUrl,
@@ -550,6 +555,130 @@ class HtmlMessage extends StatelessWidget {
           ),
         );
     }
+  }
+
+  // Matches @user:domain or @room or @所有人
+  static final RegExp _inlineMentionPattern = RegExp(
+    r'(@[A-Za-z0-9._=+\-/]+:[A-Za-z0-9.-]+(?::\d+)?|@room(?!\w)|@所有人)',
+  );
+
+  /// Splits plain text containing @user:domain / @room / @所有人 into a mix of
+  /// text spans and MatrixPill widget spans. Returns null when no mention is
+  /// found, so the caller can fall back to the normal LinkifySpan path.
+  List<InlineSpan>? _renderTextWithMentionPills(
+    String text,
+    BuildContext context,
+  ) {
+    if (!text.contains('@')) return null;
+
+    final matches = _inlineMentionPattern.allMatches(text).toList();
+    if (matches.isEmpty) return null;
+
+    final spans = <InlineSpan>[];
+    var lastEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        final plainText = text.substring(lastEnd, match.start);
+        spans.add(
+          LinkifySpan(
+            text: plainText,
+            options: const LinkifyOptions(humanize: false),
+            linkStyle: linkStyle,
+            onOpen: onOpen,
+          ),
+        );
+      }
+
+      final segment = match.group(0);
+      if (segment == null || segment.isEmpty) {
+        lastEnd = match.end;
+        continue;
+      }
+
+      // @room and @所有人 → render as broadcast pill
+      if (segment == '@room' || segment == '@所有人') {
+        spans.add(
+          WidgetSpan(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.groups,
+                  size: fontSize * 1.1,
+                  color: linkStyle.color,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '@所有人',
+                  style: TextStyle(
+                    color: linkStyle.color,
+                    decorationColor: linkStyle.color,
+                    decoration: TextDecoration.underline,
+                    fontSize: fontSize,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        lastEnd = match.end;
+        continue;
+      }
+
+      // @user:domain → render as user mention pill
+      final matrixId = segment;
+      final user = room.unsafeGetUserFromMemoryOrFallback(matrixId);
+      final fallbackDisplayName = user.calcDisplayname() == matrixId
+          ? (matrixId.localpart ?? matrixId)
+          : user.calcDisplayname();
+      AgentService.instance.ensureMatrixProfilePresentationById(
+        client: room.client,
+        matrixUserId: matrixId,
+        fallbackDisplayName: fallbackDisplayName,
+        fallbackAvatarUri: user.avatarUrl,
+      );
+      final displayName =
+          AgentService.instance.tryResolveDisplayNameByMatrixUserId(
+                matrixId,
+                fallbackDisplayName: fallbackDisplayName,
+              ) ??
+              fallbackDisplayName;
+      final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
+        matrixId,
+        fallbackAvatarUri: user.avatarUrl,
+      );
+      spans.add(
+        WidgetSpan(
+          child: MatrixPill(
+            key: Key('inline_pill_$matrixId'),
+            name: displayName,
+            avatar: avatar,
+            uri: 'https://matrix.to/#/$matrixId',
+            outerContext: context,
+            fontSize: fontSize,
+            color: linkStyle.color,
+          ),
+        ),
+      );
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      final trailingText = text.substring(lastEnd);
+      if (trailingText.isNotEmpty) {
+        spans.add(
+          LinkifySpan(
+            text: trailingText,
+            options: const LinkifyOptions(humanize: false),
+            linkStyle: linkStyle,
+            onOpen: onOpen,
+          ),
+        );
+      }
+    }
+
+    return spans;
   }
 
   @override

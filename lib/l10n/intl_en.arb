@@ -4351,5 +4351,7 @@
   "mentionHintTitle": "Mention an employee?",
   "@mentionHintTitle": {},
   "sendDirectly": "Send directly",
-  "@sendDirectly": {}
+  "@sendDirectly": {},
+  "mentionEveryone": "@Everyone",
+  "@mentionEveryone": {}
 }

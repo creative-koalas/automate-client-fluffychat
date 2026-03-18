@@ -161,8 +161,28 @@ class InputBar extends StatelessWidget {
       }
     }
     final userMatch = RegExp(r'(?:\s|^)@([-\w]+)$').firstMatch(searchText);
-    if (userMatch != null) {
-      final userSearch = userMatch[1]!.toLowerCase();
+    // Also match Chinese input like @所有人, @所有
+    final cjkMentionMatch =
+        RegExp(r'(?:\s|^)@(\S+)$').firstMatch(searchText);
+    final effectiveMatch = userMatch ?? cjkMentionMatch;
+    if (effectiveMatch != null) {
+      final userSearch = effectiveMatch[1]!.toLowerCase();
+
+      // Add "@所有人" option in group chats
+      final isGroupChat = room.directChatMatrixID == null;
+      if (isGroupChat) {
+        const everyoneAliases = ['all', 'room', '所有人', '所有', '所'];
+        if (everyoneAliases.any((alias) => alias.startsWith(userSearch))) {
+          ret.add({
+            'type': 'user',
+            'mxid': '@room',
+            'mention': '@所有人',
+            'displayname': '@所有人',
+            'avatar_url': null,
+          });
+        }
+      }
+
       for (final user in room.getParticipants()) {
         AgentService.instance.ensureMatrixProfilePresentation(user);
         final resolvedDisplayName = AgentService.instance.resolveDisplayName(user);
@@ -319,16 +339,27 @@ class InputBar extends StatelessWidget {
       );
     }
     if (suggestion['type'] == 'user' || suggestion['type'] == 'room') {
+      final isRoomMention = suggestion['mxid'] == '@room';
       final url = Uri.parse(suggestion['avatar_url'] ?? '');
       return ListTile(
         onTap: () => onSelected(suggestion),
-        leading: Avatar(
-          mxContent: url,
-          name: suggestion.tryGet<String>('displayname') ??
-              suggestion.tryGet<String>('mxid'),
-          size: size,
-          client: client,
-        ),
+        leading: isRoomMention
+            ? CircleAvatar(
+                radius: size / 2,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.groups,
+                  size: size * 0.6,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              )
+            : Avatar(
+                mxContent: url,
+                name: suggestion.tryGet<String>('displayname') ??
+                    suggestion.tryGet<String>('mxid'),
+                size: size,
+                client: client,
+              ),
         title: Text(suggestion['displayname'] ?? suggestion['mxid']!),
       );
     }
@@ -385,7 +416,7 @@ class InputBar extends StatelessWidget {
     if (suggestion['type'] == 'user') {
       insertText = '${suggestion['mention']!} ';
       startText = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@[-\w]+)$'),
+        RegExp(r'(\s|^)(@\S+)$'),
         (Match m) => '${m[1]}$insertText',
       );
     }

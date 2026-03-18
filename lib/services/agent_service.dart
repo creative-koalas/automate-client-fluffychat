@@ -47,6 +47,9 @@ class AgentService {
   /// 数据变化通知
   final ValueNotifier<List<Agent>> agentsNotifier = ValueNotifier([]);
 
+  /// Profile 加载完成通知（递增计数器，用于触发 mention pill 重建）
+  final ValueNotifier<int> profileNotifier = ValueNotifier(0);
+
   /// 获取所有员工
   List<Agent> get agents => List.unmodifiable(_agents);
 
@@ -406,6 +409,7 @@ class AgentService {
         avatarUrl: avatarUrl,
       );
       _notifyChanged();
+      profileNotifier.value++;
     } catch (e) {
       debugPrint('[AgentService] Profile lookup failed for $matrixUserId: $e');
     } finally {
@@ -568,6 +572,7 @@ class AgentService {
     _matrixLocalpartToAgent.clear();
     _repository.dispose();
     agentsNotifier.dispose();
+    profileNotifier.dispose();
   }
 }
 
