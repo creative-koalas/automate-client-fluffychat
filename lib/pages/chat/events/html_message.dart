@@ -7,6 +7,7 @@ import 'package:highlight/highlight.dart' show highlight;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as parser;
 import 'package:matrix/matrix.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 
 import 'package:psygo/utils/code_highlight_theme.dart';
@@ -196,6 +197,9 @@ class HtmlMessage extends StatelessWidget {
             ?.parseIdentifierIntoParts()
             ?.primaryIdentifier;
         if (matrixId != null) {
+          if (_isBroadcastMentionAlias(matrixId, context)) {
+            return _buildBroadcastMentionSpan(context);
+          }
           if (matrixId.sigil == '@') {
             final user = room.unsafeGetUserFromMemoryOrFallback(matrixId);
             final nodeText = node.text.trim();
@@ -557,10 +561,54 @@ class HtmlMessage extends StatelessWidget {
     }
   }
 
-  // Matches @user:domain or @room or @所有人
-  static final RegExp _inlineMentionPattern = RegExp(
-    r'(@[A-Za-z0-9._=+\-/]+:[A-Za-z0-9.-]+(?::\d+)?|@room(?!\w)|@所有人)',
-  );
+  Set<String> _broadcastMentionAliases(BuildContext context) {
+    final localized = _normalizedEveryoneMentionLabel(
+      L10n.of(context).mentionEveryone,
+    );
+    return <String>{
+      '@room',
+      '@所有人', // legacy compatibility
+      localized,
+    };
+  }
+
+  bool _isBroadcastMentionAlias(String token, BuildContext context) =>
+      _broadcastMentionAliases(context).contains(token.trim());
+
+  String _normalizedEveryoneMentionLabel(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return '@room';
+    return trimmed.startsWith('@') ? trimmed : '@$trimmed';
+  }
+
+  WidgetSpan _buildBroadcastMentionSpan(BuildContext context) {
+    final mentionEveryone = _normalizedEveryoneMentionLabel(
+      L10n.of(context).mentionEveryone,
+    );
+    return WidgetSpan(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.groups,
+            size: fontSize * 1.1,
+            color: linkStyle.color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            mentionEveryone,
+            style: TextStyle(
+              color: linkStyle.color,
+              decorationColor: linkStyle.color,
+              decoration: TextDecoration.underline,
+              fontSize: fontSize,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Splits plain text containing @user:domain / @room / @所有人 into a mix of
   /// text spans and MatrixPill widget spans. Returns null when no mention is
@@ -571,7 +619,12 @@ class HtmlMessage extends StatelessWidget {
   ) {
     if (!text.contains('@')) return null;
 
-    final matches = _inlineMentionPattern.allMatches(text).toList();
+    final broadcastAliases = _broadcastMentionAliases(context);
+    final inlineMentionPattern = RegExp(
+      '(@[A-Za-z0-9._=+\\-/]+:[A-Za-z0-9.-]+(?::\\d+)?|${broadcastAliases.map(RegExp.escape).join('|')})',
+    );
+
+    final matches = inlineMentionPattern.allMatches(text).toList();
     if (matches.isEmpty) return null;
 
     final spans = <InlineSpan>[];
@@ -595,33 +648,9 @@ class HtmlMessage extends StatelessWidget {
         continue;
       }
 
-      // @room and @所有人 → render as broadcast pill
-      if (segment == '@room' || segment == '@所有人') {
-        spans.add(
-          WidgetSpan(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.groups,
-                  size: fontSize * 1.1,
-                  color: linkStyle.color,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '@所有人',
-                  style: TextStyle(
-                    color: linkStyle.color,
-                    decorationColor: linkStyle.color,
-                    decoration: TextDecoration.underline,
-                    fontSize: fontSize,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+      // @room / localized @everyone aliases → render as broadcast pill
+      if (broadcastAliases.contains(segment)) {
+        spans.add(_buildBroadcastMentionSpan(context));
         lastEnd = match.end;
         continue;
       }

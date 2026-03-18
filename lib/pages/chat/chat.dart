@@ -1278,8 +1278,8 @@ class ChatController extends State<ChatPageWithRoom>
       room: room,
       text: sendController.text,
     );
-    // 将 @所有人 替换为 @room（SDK 通过 @room 设置 m.mentions.room = true）
-    outgoingText = outgoingText.replaceAll('@所有人', '@room');
+    // 将“@所有人”类本地化文案统一转换为 @room（SDK 会设置 m.mentions.room = true）
+    outgoingText = _normalizeBroadcastMentionForSending(outgoingText);
     // ignore: unawaited_futures
     room.sendTextEvent(
       outgoingText,
@@ -1311,10 +1311,8 @@ class ChatController extends State<ChatPageWithRoom>
     final selfId = room.client.userID;
 
     // 过滤自己，只列出其他成员
-    final participants = room
-        .getParticipants()
-        .where((u) => u.id != selfId)
-        .toList();
+    final participants =
+        room.getParticipants().where((u) => u.id != selfId).toList();
 
     if (participants.isEmpty) return '';
 
@@ -1467,7 +1465,9 @@ class ChatController extends State<ChatPageWithRoom>
 
   Widget _buildParticipantList(List<User> participants, ThemeData theme) {
     final l10n = L10n.of(context);
-    // +1 for the "@所有人" entry at the top
+    final mentionEveryone =
+        _normalizedEveryoneMentionLabel(l10n.mentionEveryone);
+    // +1 for the localized "@everyone" entry at the top
     return ListView.builder(
       shrinkWrap: true,
       itemCount: participants.length + 1,
@@ -1481,14 +1481,13 @@ class ChatController extends State<ChatPageWithRoom>
                 color: theme.colorScheme.onPrimaryContainer,
               ),
             ),
-            title: Text(l10n.mentionEveryone),
-            onTap: () => Navigator.of(context).pop('@所有人'),
+            title: Text(mentionEveryone),
+            onTap: () => Navigator.of(context).pop(mentionEveryone),
           );
         }
         final user = participants[index - 1];
         AgentService.instance.ensureMatrixProfilePresentation(user);
-        final displayName =
-            AgentService.instance.resolveDisplayName(user);
+        final displayName = AgentService.instance.resolveDisplayName(user);
         final avatarUri = AgentService.instance.resolveAvatarUri(user);
         final mention = buildInputMentionByUser(
           room: room,
@@ -2462,7 +2461,7 @@ class ChatController extends State<ChatPageWithRoom>
       room: room,
       text: trimmedText,
     );
-    outgoingText = outgoingText.replaceAll('@所有人', '@room');
+    outgoingText = _normalizeBroadcastMentionForSending(outgoingText);
     room.sendTextEvent(
       outgoingText,
       parseCommands: false,
@@ -2491,6 +2490,37 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   late final ValueNotifier<bool> _displayChatDetailsColumn;
+
+  String _normalizedEveryoneMentionLabel(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return '@room';
+    return trimmed.startsWith('@') ? trimmed : '@$trimmed';
+  }
+
+  String _normalizeBroadcastMentionForSending(String text) {
+    if (text.isEmpty || !text.contains('@')) return text;
+
+    final l10n = L10n.of(context);
+    final aliases = <String>{
+      _normalizedEveryoneMentionLabel(l10n.mentionEveryone),
+      '@所有人', // legacy compatibility
+    }.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    var normalized = text;
+    for (final alias in aliases) {
+      if (alias == '@room') continue;
+      final pattern = RegExp(
+        '(^|[\\s\\(\\[\\{<，。！？、；：])(${RegExp.escape(alias)})(?=\$|[\\s\\)\\]\\}>，。！？、；：,.!?])',
+        multiLine: true,
+      );
+      normalized = normalized.replaceAllMapped(
+        pattern,
+        (match) => '${match.group(1)}@room',
+      );
+    }
+    return normalized;
+  }
 
   void toggleDisplayChatDetailsColumn() async {
     await AppSettings.displayChatDetailsColumn.setItem(
