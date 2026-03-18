@@ -30,6 +30,7 @@ import 'package:psygo/utils/platform_infos.dart';
 import '../../utils/stream_extension.dart';
 import 'chat_emoji_picker.dart';
 import 'chat_input_row.dart';
+import 'employee_working_indicator.dart';
 
 enum _EventContextAction { info, report }
 
@@ -766,6 +767,14 @@ class ChatView extends StatelessWidget {
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
+                                          ValueListenableBuilder(
+                                            valueListenable: AgentService
+                                                .instance.agentsNotifier,
+                                            builder: (context, _, __) =>
+                                                EmployeeWorkingIndicator(
+                                              controller,
+                                            ),
+                                          ),
                                           Material(
                                             clipBehavior: Clip.hardEdge,
                                             color: controller
