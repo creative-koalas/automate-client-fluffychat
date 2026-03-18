@@ -169,6 +169,8 @@ class ChatController extends State<ChatPageWithRoom>
   DateTime? _lastRestingFeatureHintAt;
   static const Duration _webEntryHintCooldown = Duration(seconds: 2);
   static const Duration _restingFeatureHintCooldown = Duration(seconds: 2);
+  static const String _legacyWaitingEmployeesCleanupKey =
+      'migration_waiting_employees_cleanup_v1';
   final GlobalKey chatRoomGuideContainerKey = GlobalKey();
   final GlobalKey workStatusGuideKey = GlobalKey();
   final GlobalKey webEntryGuideKey = GlobalKey();
@@ -181,7 +183,6 @@ class ChatController extends State<ChatPageWithRoom>
   ChatRoomGuideType? _chatRoomGuideType;
   bool _employeeChatRoomGuideCompleted = false;
   bool _employeeWorkTemplateDismissed = false;
-  final Set<String> _waitingForReplyEmployeeIds = {};
 
   bool get webEntryOpen => _webEntryOpen;
   bool get webEntryLoading => _webEntryLoading;
@@ -198,7 +199,6 @@ class ChatController extends State<ChatPageWithRoom>
   bool get canDismissEmployeeWorkTemplateBar => _employeeChatRoomGuideCompleted;
   bool get employeeWorkTemplateDismissed => _employeeWorkTemplateDismissed;
   bool get isAgentResting => webEntryAgent?.isResting == true;
-  Set<String> get waitingForReplyEmployeeIds => _waitingForReplyEmployeeIds;
   String? get backendUserId => context.read<PsygoAuthState>().userId;
 
   bool _blockFileIfResting() {
@@ -723,8 +723,8 @@ class ChatController extends State<ChatPageWithRoom>
     scrollController.addListener(_updateScrollController);
     inputFocus.addListener(_inputFocusListener);
 
+    _cleanupLegacyWaitingEmployeesPrefsOnce();
     _loadDraft();
-    _loadWaitingEmployees();
     WidgetsBinding.instance.addPostFrameCallback(_shareItems);
     super.initState();
     _displayChatDetailsColumn = ValueNotifier(
@@ -959,6 +959,21 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() {});
   }
 
+  void _cleanupLegacyWaitingEmployeesPrefsOnce() {
+    final prefs = Matrix.of(context).store;
+    if (prefs.getBool(_legacyWaitingEmployeesCleanupKey) == true) {
+      return;
+    }
+    final legacyKeys = prefs
+        .getKeys()
+        .where((key) => key.startsWith('waiting_employees_'))
+        .toList(growable: false);
+    for (final key in legacyKeys) {
+      unawaited(prefs.remove(key));
+    }
+    unawaited(prefs.setBool(_legacyWaitingEmployeesCleanupKey, true));
+  }
+
   Future<void>? loadTimelineFuture;
 
   int? animateInEventIndex;
@@ -966,93 +981,6 @@ class ChatController extends State<ChatPageWithRoom>
   void onInsert(int i) {
     // setState will be called by updateView() anyway
     animateInEventIndex = i;
-
-    if (_waitingForReplyEmployeeIds.isNotEmpty && timeline != null) {
-      final events = timeline!.events;
-      if (i < events.length) {
-        final event = events[i];
-        if (!{EventTypes.Message, EventTypes.Encrypted}
-            .contains(event.type)) {
-          return;
-        }
-        final myId = Matrix.of(context).client.userID;
-        if (event.senderId == myId) return;
-        if (_waitingForReplyEmployeeIds.remove(event.senderId)) {
-          _saveWaitingEmployees();
-        }
-      }
-    }
-  }
-
-  String get _waitingEmployeesKey => 'waiting_employees_$roomId';
-
-  void _loadWaitingEmployees() {
-    final prefs = Matrix.of(context).store;
-    final saved = prefs.getStringList(_waitingEmployeesKey);
-    if (saved != null && saved.isNotEmpty) {
-      _waitingForReplyEmployeeIds.addAll(saved);
-    }
-  }
-
-  /// timeline 加载后，扫描最近消息清理已回复的员工
-  void _cleanupWaitingEmployees() {
-    if (_waitingForReplyEmployeeIds.isEmpty || timeline == null) return;
-    final myId = Matrix.of(context).client.userID;
-    final events = timeline!.events;
-    // 从最新消息往前扫，找到自己最后一条消息为止
-    for (final event in events) {
-      if (event.senderId == myId) break;
-      if (!{EventTypes.Message, EventTypes.Encrypted}
-          .contains(event.type)) {
-        continue;
-      }
-      _waitingForReplyEmployeeIds.remove(event.senderId);
-    }
-    _saveWaitingEmployees();
-  }
-
-  void _saveWaitingEmployees() {
-    final prefs = Matrix.of(context).store;
-    if (_waitingForReplyEmployeeIds.isEmpty) {
-      prefs.remove(_waitingEmployeesKey);
-    } else {
-      prefs.setStringList(
-        _waitingEmployeesKey,
-        _waitingForReplyEmployeeIds.toList(),
-      );
-    }
-  }
-
-  void _updateWaitingEmployees(String outgoingText) {
-    if (room.isDirectChat) {
-      final agent = webEntryAgent;
-      if (agent?.matrixUserId != null) {
-        _waitingForReplyEmployeeIds.add(agent!.matrixUserId!);
-      }
-      _saveWaitingEmployees();
-      return;
-    }
-    // 群聊：@room（@所有人）时等待所有员工
-    if (outgoingText.contains('@room')) {
-      final memberIds = room.getParticipants().map((u) => u.id).toSet();
-      final employeeIds = AgentService.instance.agents
-          .where((a) =>
-              a.matrixUserId != null &&
-              memberIds.contains(a.matrixUserId),)
-          .map((a) => a.matrixUserId!)
-          .toSet();
-      _waitingForReplyEmployeeIds.addAll(employeeIds);
-      _saveWaitingEmployees();
-      return;
-    }
-    // 群聊：找出消息中 @ 到的员工
-    final mentionedIds = RegExp(r'@([^:]+:[^\s]+)')
-        .allMatches(outgoingText)
-        .map((m) => '@${m.group(1)}')
-        .where(AgentService.instance.isEmployee)
-        .toSet();
-    _waitingForReplyEmployeeIds.addAll(mentionedIds);
-    _saveWaitingEmployees();
   }
 
   Future<void> _getTimeline({
@@ -1085,7 +1013,6 @@ class ChatController extends State<ChatPageWithRoom>
     }
     timeline!.requestKeys(onlineKeyBackupOnly: false);
     if (room.markedUnread) room.markUnread(false);
-    _cleanupWaitingEmployees();
 
     return;
   }
@@ -1383,9 +1310,6 @@ class ChatController extends State<ChatPageWithRoom>
       text: pendingText,
       selection: const TextSelection.collapsed(offset: 0),
     );
-
-    // 记录等待回复的员工
-    _updateWaitingEmployees(outgoingText);
 
     setState(() {
       sendController.text = pendingText;

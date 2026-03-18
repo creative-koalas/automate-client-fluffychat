@@ -16,10 +16,8 @@ class EmployeeWorkingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final waitingIds = controller.waitingForReplyEmployeeIds;
-    if (waitingIds.isEmpty) return const SizedBox.shrink();
-    final waitingAgents = _getWaitingAgents(waitingIds);
-    if (waitingAgents.isEmpty) return const SizedBox.shrink();
+    final workingAgents = _getWorkingAgents();
+    if (workingAgents.isEmpty) return const SizedBox.shrink();
 
     const avatarSize = 28.0;
     const overlapOffset = 16.0;
@@ -33,18 +31,18 @@ class EmployeeWorkingIndicator extends StatelessWidget {
           children: [
             SizedBox(
               width: avatarSize +
-                  (waitingAgents.length - 1).clamp(0, 2) * overlapOffset,
+                  (workingAgents.length - 1).clamp(0, 2) * overlapOffset,
               height: avatarSize,
               child: Stack(
                 children: [
-                  for (var i = waitingAgents.length.clamp(0, 3) - 1;
+                  for (var i = workingAgents.length.clamp(0, 3) - 1;
                       i >= 0;
                       i--)
                     Positioned(
                       left: i * overlapOffset,
                       child: Avatar(
-                        mxContent: _getAgentAvatarUri(waitingAgents[i]),
-                        name: waitingAgents[i].displayName,
+                        mxContent: _getAgentAvatarUri(workingAgents[i]),
+                        name: workingAgents[i].displayName,
                         size: avatarSize,
                       ),
                     ),
@@ -74,12 +72,26 @@ class EmployeeWorkingIndicator extends StatelessWidget {
     );
   }
 
-  List<Agent> _getWaitingAgents(Set<String> waitingIds) {
-    return AgentService.instance.agents
-        .where((a) =>
-            a.matrixUserId != null &&
-            waitingIds.contains(a.matrixUserId),)
-        .toList();
+  List<Agent> _getWorkingAgents() {
+    final directChatMatrixId = controller.room.directChatMatrixID;
+    if (directChatMatrixId != null) {
+      final directAgent =
+          AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
+      if (directAgent?.isWorking == true) {
+        return [directAgent!];
+      }
+      return const [];
+    }
+
+    final roomMemberIds =
+        controller.room.getParticipants().map((u) => u.id).toSet();
+    return AgentService.instance.agents.where((a) {
+      final matrixUserId = a.matrixUserId;
+      if (matrixUserId == null || matrixUserId.isEmpty) {
+        return false;
+      }
+      return roomMemberIds.contains(matrixUserId) && a.isWorking;
+    }).toList();
   }
 
   Uri? _getAgentAvatarUri(Agent agent) {
