@@ -2370,7 +2370,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "whoCanPerformWhichAction": "Who can perform which action",
+  "whoCanPerformWhichAction": "Manage permissions in group chat",
   "@whoCanPerformWhichAction": {
     "type": "String",
     "placeholders": {}

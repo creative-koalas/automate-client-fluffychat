@@ -382,7 +382,6 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<bool> handlePasteFilesFromClipboard(BuildContext context) async {
-    if (_blockFileIfResting()) return true;
     List<XFile> files;
     try {
       files = await _filesFromClipboard();
@@ -392,6 +391,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (files.isEmpty) {
       return false;
     }
+    if (_blockFileIfResting()) return true;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(files);
       return true;

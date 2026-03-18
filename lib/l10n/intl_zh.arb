@@ -1961,7 +1961,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "whoCanPerformWhichAction": "谁可以执行哪些操作",
+    "whoCanPerformWhichAction": "管理群聊中的权限设置",
     "@whoCanPerformWhichAction": {
         "type": "String",
         "placeholders": {}
