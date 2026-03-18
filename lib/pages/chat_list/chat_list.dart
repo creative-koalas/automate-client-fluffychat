@@ -348,12 +348,36 @@ class ChatListController extends State<ChatList>
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
+        final screenSize = MediaQuery.sizeOf(dialogContext);
+        final isDesktop = PlatformInfos.isDesktop;
+        final horizontalInset = isDesktop ? 24.0 : 16.0;
+        final verticalInset = isDesktop ? 32.0 : 24.0;
+        final availableWidth = (screenSize.width - horizontalInset * 2)
+            .clamp(220.0, 9999.0)
+            .toDouble();
+        final targetWidth = isDesktop ? 560.0 : 420.0;
+        final dialogWidth =
+            availableWidth < targetWidth ? availableWidth : targetWidth;
+        final maxDialogHeight = (screenSize.height - verticalInset * 2)
+            .clamp(220.0, isDesktop ? 640.0 : 560.0)
+            .toDouble();
         return AlertDialog(
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: horizontalInset,
+            vertical: verticalInset,
+          ),
+          constraints: BoxConstraints(
+            maxWidth: dialogWidth,
+            maxHeight: maxDialogHeight,
+          ),
           title: Text(announcement.title),
-          content: SingleChildScrollView(
-            child: Text(
-              announcement.body,
-              style: theme.textTheme.bodyMedium,
+          content: SizedBox(
+            width: dialogWidth,
+            child: SingleChildScrollView(
+              child: Text(
+                announcement.body,
+                style: theme.textTheme.bodyMedium,
+              ),
             ),
           ),
           actions: [
@@ -758,7 +782,6 @@ class ChatListController extends State<ChatList>
     setState(() {
       waitForFirstSync = true;
     });
-
   }
 
   void setActiveFilter(ActiveFilter filter) {

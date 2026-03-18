@@ -210,7 +210,8 @@ class SettingsController extends State<Settings> {
   void logoutAction() async {
     if (_logoutInProgress) {
       debugPrint(
-          '[Settings] Logout already in progress, ignoring duplicate tap');
+        '[Settings] Logout already in progress, ignoring duplicate tap',
+      );
       return;
     }
 
@@ -367,7 +368,8 @@ class SettingsController extends State<Settings> {
       await auth.load();
       if (auth.isLoggedIn) {
         debugPrint(
-            '[Settings] Logout did not clear auth state, fallback required');
+          '[Settings] Logout did not clear auth state, fallback required',
+        );
         needsFallback = true;
       }
 
@@ -529,59 +531,72 @@ class _AvatarPickerDialogState extends State<_AvatarPickerDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isDesktop = PlatformInfos.isDesktop;
+    final horizontalInset = isDesktop ? 24.0 : 16.0;
+    final maxDialogWidth = isDesktop ? 400.0 : 420.0;
+    final dialogWidth =
+        min(screenWidth - horizontalInset * 2, maxDialogWidth).toDouble();
 
     return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: horizontalInset,
+        vertical: 24,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l10n.changeAvatar,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: dialogWidth),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.changeAvatar,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            DiceBearAvatarPicker(
-              initialAvatarUrl: _selectedUrl,
-              size: 120,
-              onAvatarChanged: (url) => _selectedUrl = url,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 20),
+              DiceBearAvatarPicker(
+                initialAvatarUrl: _selectedUrl,
+                size: 120,
+                onAvatarChanged: (url) => _selectedUrl = url,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      child: Text(l10n.cancel),
                     ),
-                    child: Text(l10n.cancel),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(_selectedUrl),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(_selectedUrl),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      child: Text(l10n.confirm),
                     ),
-                    child: Text(l10n.confirm),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:provider/provider.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'package:universal_html/html.dart' as html;
@@ -391,7 +392,34 @@ class ChatController extends State<ChatPageWithRoom>
       return false;
     }
     if (files.isEmpty) {
-      return false;
+      final imageData = await _imageFromClipboard();
+      if (imageData == null || imageData.isEmpty) {
+        return false;
+      }
+      if (_blockFileIfResting()) return true;
+      if (PlatformInfos.isDesktop) {
+        addPendingAttachments(
+          [
+            XFile.fromData(
+              imageData,
+              name: 'clipboard_image.png',
+              mimeType: 'image/png',
+            ),
+          ],
+        );
+        return true;
+      }
+      await showAdaptiveDialog(
+        context: context,
+        builder: (c) => SendFileDialog(
+          files: [XFile.fromData(imageData, mimeType: 'image/png')],
+          room: room,
+          outerContext: context,
+          threadRootEventId: activeThreadId,
+          threadLastEventId: threadLastEventId,
+        ),
+      );
+      return true;
     }
     if (_blockFileIfResting()) return true;
     if (PlatformInfos.isDesktop) {
@@ -409,6 +437,15 @@ class ChatController extends State<ChatPageWithRoom>
       ),
     );
     return true;
+  }
+
+  Future<Uint8List?> _imageFromClipboard() async {
+    if (!PlatformInfos.isDesktop) return null;
+    try {
+      return await Pasteboard.image;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<XFile>> _filesFromClipboard() async {
