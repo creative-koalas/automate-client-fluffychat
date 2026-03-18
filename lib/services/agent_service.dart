@@ -34,7 +34,7 @@ class AgentService {
   static const Duration _profileLookupCooldown = Duration(minutes: 1);
   int _liveStatusWatcherCount = 0;
   Timer? _liveStatusPollingTimer;
-  static const Duration _liveStatusPollingInterval = Duration(seconds: 10);
+  static const Duration _liveStatusPollingInterval = Duration(seconds: 2);
 
   /// 是否已初始化
   bool _initialized = false;

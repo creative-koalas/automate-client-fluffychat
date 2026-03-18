@@ -49,7 +49,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   static const Duration _statusHintCooldown = Duration(seconds: 2);
 
   /// 轮询间隔
-  static const _pollingInterval = Duration(seconds: 10);
+  static const _pollingInterval = Duration(seconds: 2);
 
   /// Agent 仓库
   final AgentRepository _repository = AgentRepository();
