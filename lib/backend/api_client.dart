@@ -629,7 +629,7 @@ class PsygoApiClient {
     if (res.statusCode != 200 || respCode != 0) {
       await _handleAuthError(respCode);
       throw AutomateBackendException(
-        data['message']?.toString() ?? '提交昵称修改失败',
+        data['message']?.toString() ?? 'Failed to submit nickname change',
         statusCode: res.statusCode,
       );
     }

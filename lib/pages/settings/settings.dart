@@ -53,15 +53,22 @@ class SettingsController extends State<Settings> {
       initialText:
           profile?.displayName ?? Matrix.of(context).client.userID!.localpart,
       validator: (input) {
-        if (containsProfanity(input)) return l10n.nameContainsProfanity;
+        final trimmed = input.trim();
+        if (trimmed.isEmpty) return l10n.nicknameEmpty;
+        if (trimmed.length > 10) return l10n.nicknameTooLong;
+        if (!RegExp(r'^[\u4e00-\u9fa5a-zA-Z0-9_]+$').hasMatch(trimmed)) {
+          return l10n.nicknameInvalidChars;
+        }
+        if (containsProfanity(trimmed)) return l10n.nameContainsProfanity;
         return null;
       },
     );
     if (input == null) return;
+    final trimmed = input.trim();
     final apiClient = context.read<PsygoApiClient>();
     final success = await showFutureLoadingDialog(
       context: context,
-      future: () => apiClient.submitNicknameChangeRequest(input),
+      future: () => apiClient.submitNicknameChangeRequest(trimmed),
     );
     if (success.error == null) {
       if (mounted) {
