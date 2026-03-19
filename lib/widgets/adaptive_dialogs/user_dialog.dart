@@ -40,169 +40,188 @@ class UserDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final agentService = AgentService.instance;
     final client = Matrix.of(context).client;
-    final dmRoomId = client.getDirectChatFromUserId(profile.userId);
-    final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
-      profile.userId,
+    agentService.ensureMatrixProfilePresentationById(
+      client: client,
+      matrixUserId: profile.userId,
+      fallbackDisplayName: profile.displayName ?? profile.userId.localpart,
       fallbackAvatarUri: profile.avatarUrl,
     );
-    final displayname = AgentService.instance.resolveStrictDisplayNameByMatrixUserId(
-      profile.userId,
-      fallbackDisplayName:
-          profile.displayName ?? profile.userId.localpart ?? L10n.of(context).user,
-      selfMatrixUserId: client.userID,
-    );
+    final senderPresentationListenable = Listenable.merge([
+      agentService.agentsNotifier,
+      agentService.profileNotifier,
+    ]);
+    final dmRoomId = client.getDirectChatFromUserId(profile.userId);
 
     var copied = false;
     final theme = Theme.of(context);
-    return AlertDialog.adaptive(
-      title: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 256),
-        child: Center(child: Text(displayname, textAlign: TextAlign.center)),
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 256, maxHeight: 256),
-        child: PresenceBuilder(
-          userId: profile.userId,
-          client: Matrix.of(context).client,
-          builder: (context, presence) {
-            if (presence == null) return const SizedBox.shrink();
-            final statusMsg = presence.statusMsg;
-            final lastActiveTimestamp = presence.lastActiveTimestamp;
-            final presenceText = presence.currentlyActive == true
-                ? L10n.of(context).currentlyActive
-                : lastActiveTimestamp != null
-                    ? L10n.of(context).lastActiveAgo(
-                        lastActiveTimestamp.localizedTimeShort(context),
-                      )
-                    : null;
-            return SingleChildScrollView(
-              child: Column(
-                spacing: 8,
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Avatar(
-                      mxContent: avatar,
-                      name: displayname,
-                      size: Avatar.defaultSize * 2,
-                      onTap: avatar != null
-                          ? () => showDialog(
-                                context: context,
-                                builder: (_) => MxcImageViewer(avatar),
-                              )
-                          : null,
-                    ),
-                  ),
-                  HoverBuilder(
-                    builder: (context, hovered) => StatefulBuilder(
-                      builder: (context, setState) => MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () {
-                            Clipboard.setData(
-                              ClipboardData(text: profile.userId),
-                            );
-                            setState(() {
-                              copied = true;
-                            });
-                          },
-                          child: RichText(
-                            text: TextSpan(
-                              children: [
-                                WidgetSpan(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 4.0),
-                                    child: AnimatedScale(
-                                      duration: FluffyThemes.animationDuration,
-                                      curve: FluffyThemes.animationCurve,
-                                      scale: hovered
-                                          ? 1.33
-                                          : copied
-                                              ? 1.25
-                                              : 1.0,
-                                      child: Icon(
-                                        copied
-                                            ? Icons.check_circle
-                                            : Icons.copy,
-                                        size: 12,
-                                        color: copied ? Colors.green : null,
+    return ListenableBuilder(
+      listenable: senderPresentationListenable,
+      builder: (context, _) {
+        final avatar = agentService.resolveAvatarUriByMatrixUserId(
+          profile.userId,
+          fallbackAvatarUri: profile.avatarUrl,
+        );
+        final displayname = agentService.resolveDisplayNameByMatrixUserId(
+          profile.userId,
+          fallbackDisplayName: profile.displayName ??
+              profile.userId.localpart ??
+              L10n.of(context).user,
+        );
+        return AlertDialog.adaptive(
+          title: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 256),
+            child:
+                Center(child: Text(displayname, textAlign: TextAlign.center)),
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 256, maxHeight: 256),
+            child: PresenceBuilder(
+              userId: profile.userId,
+              client: Matrix.of(context).client,
+              builder: (context, presence) {
+                if (presence == null) return const SizedBox.shrink();
+                final statusMsg = presence.statusMsg;
+                final lastActiveTimestamp = presence.lastActiveTimestamp;
+                final presenceText = presence.currentlyActive == true
+                    ? L10n.of(context).currentlyActive
+                    : lastActiveTimestamp != null
+                        ? L10n.of(context).lastActiveAgo(
+                            lastActiveTimestamp.localizedTimeShort(context),
+                          )
+                        : null;
+                return SingleChildScrollView(
+                  child: Column(
+                    spacing: 8,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Avatar(
+                          mxContent: avatar,
+                          name: displayname,
+                          size: Avatar.defaultSize * 2,
+                          onTap: avatar != null
+                              ? () => showDialog(
+                                    context: context,
+                                    builder: (_) => MxcImageViewer(avatar),
+                                  )
+                              : null,
+                        ),
+                      ),
+                      HoverBuilder(
+                        builder: (context, hovered) => StatefulBuilder(
+                          builder: (context, setState) => MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: profile.userId),
+                                );
+                                setState(() {
+                                  copied = true;
+                                });
+                              },
+                              child: RichText(
+                                text: TextSpan(
+                                  children: [
+                                    WidgetSpan(
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 4.0),
+                                        child: AnimatedScale(
+                                          duration:
+                                              FluffyThemes.animationDuration,
+                                          curve: FluffyThemes.animationCurve,
+                                          scale: hovered
+                                              ? 1.33
+                                              : copied
+                                                  ? 1.25
+                                                  : 1.0,
+                                          child: Icon(
+                                            copied
+                                                ? Icons.check_circle
+                                                : Icons.copy,
+                                            size: 12,
+                                            color: copied ? Colors.green : null,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                    TextSpan(text: profile.userId),
+                                  ],
+                                  style: theme.textTheme.bodyMedium
+                                      ?.copyWith(fontSize: 10),
                                 ),
-                                TextSpan(text: profile.userId),
-                              ],
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(fontSize: 10),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
-                    ),
+                      if (presenceText != null)
+                        Text(
+                          presenceText,
+                          style: const TextStyle(fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      if (statusMsg != null)
+                        SelectableLinkify(
+                          text: statusMsg,
+                          textScaleFactor:
+                              MediaQuery.textScalerOf(context).scale(1),
+                          textAlign: TextAlign.center,
+                          options: const LinkifyOptions(humanize: false),
+                          linkStyle: TextStyle(
+                            color: theme.colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: theme.colorScheme.primary,
+                          ),
+                          onOpen: (url) =>
+                              UrlLauncher(context, url.url).launchUrl(),
+                        ),
+                    ],
                   ),
-                  if (presenceText != null)
-                    Text(
-                      presenceText,
-                      style: const TextStyle(fontSize: 10),
-                      textAlign: TextAlign.center,
-                    ),
-                  if (statusMsg != null)
-                    SelectableLinkify(
-                      text: statusMsg,
-                      textScaleFactor:
-                          MediaQuery.textScalerOf(context).scale(1),
-                      textAlign: TextAlign.center,
-                      options: const LinkifyOptions(humanize: false),
-                      linkStyle: TextStyle(
-                        color: theme.colorScheme.primary,
-                        decoration: TextDecoration.underline,
-                        decorationColor: theme.colorScheme.primary,
-                      ),
-                      onOpen: (url) =>
-                          UrlLauncher(context, url.url).launchUrl(),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-      actions: [
-        if (client.userID != profile.userId) ...[
-          AdaptiveDialogAction(
-            borderRadius: AdaptiveDialogAction.topRadius,
-            bigButtons: true,
-            onPressed: () async {
-              final router = GoRouter.of(context);
-              final roomIdResult = await showFutureLoadingDialog(
-                context: context,
-                future: () => client.startDirectChat(
-                  profile.userId,
-                  enableEncryption: false,
-                ),
-              );
-              final roomId = roomIdResult.result;
-              if (roomId == null) return;
-              if (context.mounted) Navigator.of(context).pop();
-              router.go('/rooms/$roomId');
-            },
-            child: Text(
-              dmRoomId == null
-                  ? L10n.of(context).startConversation
-                  : L10n.of(context).sendAMessage,
+                );
+              },
             ),
           ),
-        ],
-        AdaptiveDialogAction(
-          bigButtons: true,
-          borderRadius: AdaptiveDialogAction.bottomRadius,
-          onPressed: Navigator.of(context).pop,
-          child: Text(L10n.of(context).close),
-        ),
-      ],
+          actions: [
+            if (client.userID != profile.userId) ...[
+              AdaptiveDialogAction(
+                borderRadius: AdaptiveDialogAction.topRadius,
+                bigButtons: true,
+                onPressed: () async {
+                  final router = GoRouter.of(context);
+                  final roomIdResult = await showFutureLoadingDialog(
+                    context: context,
+                    future: () => client.startDirectChat(
+                      profile.userId,
+                      enableEncryption: false,
+                    ),
+                  );
+                  final roomId = roomIdResult.result;
+                  if (roomId == null) return;
+                  if (context.mounted) Navigator.of(context).pop();
+                  router.go('/rooms/$roomId');
+                },
+                child: Text(
+                  dmRoomId == null
+                      ? L10n.of(context).startConversation
+                      : L10n.of(context).sendAMessage,
+                ),
+              ),
+            ],
+            AdaptiveDialogAction(
+              bigButtons: true,
+              borderRadius: AdaptiveDialogAction.bottomRadius,
+              onPressed: Navigator.of(context).pop,
+              child: Text(L10n.of(context).close),
+            ),
+          ],
+        );
+      },
     );
   }
 }
