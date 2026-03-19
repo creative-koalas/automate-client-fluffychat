@@ -40,6 +40,10 @@ class ReplyContent extends StatelessWidget {
         : ownMessage
             ? theme.colorScheme.tertiaryContainer
             : theme.colorScheme.tertiary;
+    final senderPresentationListenable = Listenable.merge([
+      AgentService.instance.agentsNotifier,
+      AgentService.instance.profileNotifier,
+    ]);
 
     return Material(
       color: Colors.transparent,
@@ -62,25 +66,31 @@ class ReplyContent extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                FutureBuilder<User?>(
-                  initialData: displayEvent.senderFromMemoryOrFallback,
-                  future: displayEvent.fetchSenderUser(),
-                  builder: (context, snapshot) {
-                    final sender =
-                        snapshot.data ?? displayEvent.senderFromMemoryOrFallback;
-                    final senderDisplayName =
-                        AgentService.instance.resolveStrictDisplayName(sender);
-                    return Text(
-                      '$senderDisplayName:',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                        fontSize: fontSize,
-                      ),
-                    );
-                  },
+                ListenableBuilder(
+                  listenable: senderPresentationListenable,
+                  builder: (context, _) => FutureBuilder<User?>(
+                    initialData: displayEvent.senderFromMemoryOrFallback,
+                    future: displayEvent.fetchSenderUser(),
+                    builder: (context, snapshot) {
+                      final sender = snapshot.data ??
+                          displayEvent.senderFromMemoryOrFallback;
+                      AgentService.instance.ensureMatrixProfilePresentation(
+                        sender,
+                      );
+                      final senderDisplayName =
+                          AgentService.instance.resolveDisplayName(sender);
+                      return Text(
+                        '$senderDisplayName:',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontSize: fontSize,
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 Text(
                   renderMatrixMentionsWithDisplayName(

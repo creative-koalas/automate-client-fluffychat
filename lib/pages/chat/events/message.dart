@@ -85,9 +85,11 @@ class Message extends StatelessWidget {
 
   ({Uri? avatarUrl, String displayName, bool isWorkingEmployee})
       _resolveSenderPresentation(User user) {
-    final agent = AgentService.instance.getAgentByMatrixUserId(user.id);
-    final displayName = AgentService.instance.resolveStrictDisplayName(user);
-    final avatarUri = AgentService.instance.resolveAvatarUri(user);
+    final agentService = AgentService.instance;
+    agentService.ensureMatrixProfilePresentation(user);
+    final agent = agentService.getAgentByMatrixUserId(user.id);
+    final displayName = agentService.resolveDisplayName(user);
+    final avatarUri = agentService.resolveAvatarUri(user);
 
     return (
       avatarUrl: avatarUri ?? user.avatarUrl,
@@ -207,6 +209,10 @@ class Message extends StatelessWidget {
         singleSelected && event.room.canSendDefaultMessages;
 
     final enterThread = this.enterThread;
+    final senderPresentationListenable = Listenable.merge([
+      AgentService.instance.agentsNotifier,
+      AgentService.instance.profileNotifier,
+    ]);
 
     void showSenderMenu(BuildContext context, User user) {
       onAvatarGuideTap?.call();
@@ -379,10 +385,9 @@ class Message extends StatelessWidget {
                                     // PC 端选择模式下，自己的消息不显示头像占位
                                     const SizedBox.shrink()
                                   else if (!ownMessage && !longPressSelect)
-                                    ValueListenableBuilder(
-                                      valueListenable:
-                                          AgentService.instance.agentsNotifier,
-                                      builder: (context, _, __) =>
+                                    ListenableBuilder(
+                                      listenable: senderPresentationListenable,
+                                      builder: (context, _) =>
                                           FutureBuilder<User?>(
                                         future: event.fetchSenderUser(),
                                         builder: (context, snapshot) {
@@ -416,10 +421,10 @@ class Message extends StatelessWidget {
                                     // 移动端保持原有逻辑
                                     PlatformInfos.isDesktop
                                         ? const SizedBox.shrink()
-                                        : ValueListenableBuilder(
-                                            valueListenable: AgentService
-                                                .instance.agentsNotifier,
-                                            builder: (context, _, __) =>
+                                        : ListenableBuilder(
+                                            listenable:
+                                                senderPresentationListenable,
+                                            builder: (context, _) =>
                                                 FutureBuilder<User?>(
                                               future: event.fetchSenderUser(),
                                               builder: (context, snapshot) {
@@ -437,8 +442,7 @@ class Message extends StatelessWidget {
                                                     name: sender.displayName,
                                                     showWorkingPulse: sender
                                                         .isWorkingEmployee,
-                                                    onTap: () =>
-                                                        showSenderMenu(
+                                                    onTap: () => showSenderMenu(
                                                       context,
                                                       user,
                                                     ),
@@ -468,20 +472,19 @@ class Message extends StatelessWidget {
                                             child: ownMessage ||
                                                     event.room.isDirectChat
                                                 ? const SizedBox(height: 12)
-                                                : ValueListenableBuilder(
-                                                    valueListenable:
-                                                        AgentService.instance
-                                                            .agentsNotifier,
-                                                    builder:
-                                                        (context, _, __) =>
-                                                            FutureBuilder<User?>(
+                                                : ListenableBuilder(
+                                                    listenable:
+                                                        senderPresentationListenable,
+                                                    builder: (context, _) =>
+                                                        FutureBuilder<User?>(
                                                       future: event
                                                           .fetchSenderUser(),
                                                       builder:
                                                           (context, snapshot) {
-                                                        final user =
-                                                            snapshot.data ??
-                                                                event.senderFromMemoryOrFallback;
+                                                        final user = snapshot
+                                                                .data ??
+                                                            event
+                                                                .senderFromMemoryOrFallback;
                                                         final displayname =
                                                             _resolveSenderPresentation(
                                                           user,
@@ -492,7 +495,8 @@ class Message extends StatelessWidget {
                                                             fontSize: 11,
                                                             fontWeight:
                                                                 FontWeight.bold,
-                                                            color: (theme.brightness ==
+                                                            color: (theme
+                                                                        .brightness ==
                                                                     Brightness
                                                                         .light
                                                                 ? displayname
@@ -689,13 +693,19 @@ class Message extends StatelessWidget {
                                                               AgentService
                                                                   .instance
                                                                   .profileNotifier,
-                                                          builder:
-                                                              (context, _, __) =>
-                                                                  MessageContent(
+                                                          builder: (
+                                                            context,
+                                                            _,
+                                                            __,
+                                                          ) =>
+                                                              MessageContent(
                                                             displayEvent,
-                                                            textColor: textColor,
-                                                            linkColor: linkColor,
-                                                            onInfoTab: onInfoTab,
+                                                            textColor:
+                                                                textColor,
+                                                            linkColor:
+                                                                linkColor,
+                                                            onInfoTab:
+                                                                onInfoTab,
                                                             borderRadius:
                                                                 borderRadius,
                                                             timeline: timeline,
