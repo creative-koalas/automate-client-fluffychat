@@ -106,7 +106,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
 
     setState(() => _isForwarding = true);
     try {
-      if (!await room.ensureOtherPartyCanReceiveMessages()) {
+      if (!room.otherPartyCanReceiveMessages) {
         throw OtherPartyCanNotReceiveMessages();
       }
       for (final item in widget.items) {

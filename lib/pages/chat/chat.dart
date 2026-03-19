@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:psygo/utils/resize_video.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:flutter/foundation.dart';
@@ -392,7 +393,9 @@ class ChatController extends State<ChatPageWithRoom>
       return false;
     }
     if (files.isEmpty) {
-      final imageData = await _imageFromClipboard();
+      final imageData = await _normalizedClipboardImageData(
+        await _imageFromClipboard(),
+      );
       if (imageData == null || imageData.isEmpty) {
         return false;
       }
@@ -445,6 +448,28 @@ class ChatController extends State<ChatPageWithRoom>
       return await Pasteboard.image;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<Uint8List?> _normalizedClipboardImageData(
+    Uint8List? imageData,
+  ) async {
+    if (imageData == null || imageData.isEmpty) return imageData;
+    ui.Codec? codec;
+    ui.FrameInfo? frame;
+    try {
+      codec = await ui.instantiateImageCodec(imageData);
+      frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      if (byteData == null) return imageData;
+      return byteData.buffer.asUint8List();
+    } catch (_) {
+      return imageData;
+    } finally {
+      frame?.image.dispose();
+      codec?.dispose();
     }
   }
 
@@ -1209,27 +1234,41 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() => pendingAttachmentsCompress = value);
   }
 
-  void handleKeyboardInsertedContent(KeyboardInsertedContent content) {
+  void handleKeyboardInsertedContent(KeyboardInsertedContent content) async {
     final data = content.data;
     if (data == null) return;
+    final isImageData = content.mimeType?.startsWith('image/') ?? false;
+    final normalizedData = isImageData
+        ? (await _normalizedClipboardImageData(data) ?? data)
+        : data;
+    final normalizedMimeType = isImageData ? 'image/png' : content.mimeType;
     if (PlatformInfos.isDesktop) {
       final name = _fileNameFromInsertedContent(content.uri);
       addPendingAttachments(
-        [XFile.fromData(data, name: name, mimeType: content.mimeType)],
+        [
+          XFile.fromData(
+            normalizedData,
+            name: name,
+            mimeType: normalizedMimeType,
+          ),
+        ],
       );
       return;
     }
-    if (data.length > kChatAttachmentMaxUploadBytes) {
+    if (normalizedData.length > kChatAttachmentMaxUploadBytes) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       _showAttachmentError(
         scaffoldMessenger,
-        FileTooBigMatrixException(data.length, kChatAttachmentMaxUploadBytes),
+        FileTooBigMatrixException(
+          normalizedData.length,
+          kChatAttachmentMaxUploadBytes,
+        ),
       );
       return;
     }
     final file = MatrixFile(
-      mimeType: content.mimeType,
-      bytes: data,
+      mimeType: normalizedMimeType,
+      bytes: normalizedData,
       name: _fileNameFromInsertedContent(content.uri),
     );
     room.sendFileEvent(
@@ -1744,17 +1783,31 @@ class ChatController extends State<ChatPageWithRoom>
 
   void sendImageFromClipBoard(Uint8List? image) async {
     if (image == null) return;
+    final normalizedImage = await _normalizedClipboardImageData(image);
+    if (normalizedImage == null || normalizedImage.isEmpty) return;
     if (_blockFileIfResting()) return;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(
-        [XFile.fromData(image, name: 'clipboard_image.png')],
+        [
+          XFile.fromData(
+            normalizedImage,
+            name: 'clipboard_image.png',
+            mimeType: 'image/png',
+          ),
+        ],
       );
       return;
     }
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
-        files: [XFile.fromData(image)],
+        files: [
+          XFile.fromData(
+            normalizedImage,
+            name: 'clipboard_image.png',
+            mimeType: 'image/png',
+          ),
+        ],
         room: room,
         outerContext: context,
         threadRootEventId: activeThreadId,

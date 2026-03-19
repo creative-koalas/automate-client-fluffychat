@@ -60,6 +60,10 @@ class MxcImage extends StatefulWidget {
 class _MxcImageState extends State<MxcImage> {
   static final Map<String, Uint8List> _imageDataCache = {};
   Uint8List? _imageDataNoCache;
+  static const Set<String> _imageMessageTypes = {
+    MessageTypes.Image,
+    MessageTypes.Sticker,
+  };
 
   /// 清除所有图片缓存（退出登录时调用）
   static void clearCache() {
@@ -129,15 +133,38 @@ class _MxcImageState extends State<MxcImage> {
     }
 
     if (event != null) {
-      final data = await event.downloadAndDecryptAttachment(
-        getThumbnail: widget.isThumbnail,
-      );
-      if (data.detectFileType is MatrixImageFile || widget.isThumbnail) {
+      final isImageEvent = _imageMessageTypes.contains(event.messageType);
+      try {
+        final data = await event.downloadAndDecryptAttachment(
+          getThumbnail: widget.isThumbnail,
+        );
         if (!mounted) return;
-        setState(() {
-          _imageData = data.bytes;
-        });
+        if (isImageEvent ||
+            data.detectFileType is MatrixImageFile ||
+            widget.isThumbnail) {
+          setState(() {
+            _imageData = data.bytes;
+          });
+        }
         return;
+      } catch (e, s) {
+        Logs().w('Unable to load event attachment image', e, s);
+      }
+
+      // In the viewer we prefer showing a thumbnail fallback instead of
+      // rendering a blank page if full image loading fails.
+      if (!widget.isThumbnail && isImageEvent) {
+        try {
+          final thumbnailData = await event.downloadAndDecryptAttachment(
+            getThumbnail: true,
+          );
+          if (!mounted || thumbnailData.bytes.isEmpty) return;
+          setState(() {
+            _imageData = thumbnailData.bytes;
+          });
+        } catch (e, s) {
+          Logs().w('Unable to load event thumbnail fallback', e, s);
+        }
       }
     }
   }
@@ -152,6 +179,8 @@ class _MxcImageState extends State<MxcImage> {
       if (!mounted) return;
       await Future.delayed(widget.retryDuration);
       _tryLoad();
+    } catch (e, s) {
+      Logs().w('Unable to load image data', e, s);
     }
   }
 
