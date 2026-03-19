@@ -917,6 +917,9 @@
 							com.apple.ApplicationGroups = {
 								enabled = 1;
 							};
+							com.apple.Push = {
+								enabled = 1;
+							};
 						};
 					};
 					C1005C41261071B5002F4F32 = {
