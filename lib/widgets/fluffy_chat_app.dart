@@ -782,6 +782,31 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
   }
 
+  void _schedulePushPermissionRequest(MatrixState matrixState, Client client) {
+    if (!PlatformInfos.isMobile) return;
+    Future.delayed(const Duration(seconds: 1), () {
+      unawaited(_requestPushPermissionAndRetryPush(matrixState, client));
+    });
+  }
+
+  Future<void> _requestPushPermissionAndRetryPush(
+      MatrixState matrixState, Client client) async {
+    try {
+      final granted = await PermissionService.instance.requestPushPermissions();
+      if (!granted) {
+        debugPrint(
+            '[AuthGate] Notification permission not granted, skip push re-register');
+        return;
+      }
+      await matrixState.ensureAliyunPushRegistered(client);
+      await Future.delayed(const Duration(seconds: 3));
+      await matrixState.ensureAliyunPushRegistered(client);
+    } catch (e) {
+      debugPrint(
+          '[AuthGate] Failed to request push permission / retry registration: $e');
+    }
+  }
+
   Future<void> _loginMatrixAndProceed() async {
     final auth = context.read<PsygoAuthState>();
     final matrixAccessToken = auth.matrixAccessToken;
@@ -886,11 +911,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           unawaited(_ensurePostLoginDestination());
         });
 
-        if (PlatformInfos.isMobile) {
-          Future.delayed(const Duration(seconds: 1), () {
-            PermissionService.instance.requestPushPermissions();
-          });
-        }
+        _schedulePushPermissionRequest(matrix, client);
         return;
       }
 
@@ -928,11 +949,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         unawaited(_ensurePostLoginDestination());
       });
 
-      if (PlatformInfos.isMobile) {
-        Future.delayed(const Duration(seconds: 1), () {
-          PermissionService.instance.requestPushPermissions();
-        });
-      }
+      _schedulePushPermissionRequest(matrix, client);
     } catch (e, stackTrace) {
       debugPrint('[AuthGate] Matrix login failed: $e');
       debugPrint('[AuthGate] Stack trace: $stackTrace');

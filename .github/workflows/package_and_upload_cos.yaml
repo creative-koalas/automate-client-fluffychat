@@ -151,7 +151,30 @@ jobs:
           echo "file_name=$file_name" >> "$GITHUB_OUTPUT"
       - name: Install Inno Setup
         shell: powershell
-        run: choco install innosetup --no-progress -y
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+              choco install innosetup --no-progress -y
+              break
+            } catch {
+              if ($attempt -eq 3) {
+                throw
+              }
+              Start-Sleep -Seconds (10 * $attempt)
+            }
+          }
+
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            throw "ISCC not found after install: $iscc"
+          }
+
+          $zhLang = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\Languages\ChineseSimplified.isl"
+          if (-not (Test-Path $zhLang)) {
+            throw "Chinese language file not found: $zhLang"
+          }
       - name: Download VC++ Redistributable
         shell: powershell
         run: |
@@ -189,6 +212,18 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
+          $requiredPaths = @(
+            "installer.iss",
+            "build\windows\x64\runner\Release\psygo.exe",
+            "VC_redist.x64.exe"
+          )
+
+          foreach ($path in $requiredPaths) {
+            if (-not (Test-Path $path)) {
+              throw "Required file not found: $path"
+            }
+          }
+
           New-Item -ItemType Directory -Force -Path "dist/windows" | Out-Null
           $fileName = "${{ steps.meta.outputs.file_name }}"
           $baseName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)

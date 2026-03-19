@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
@@ -9,7 +7,6 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings_view.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';
-import 'package:psygo/widgets/permission_slider_dialog.dart';
 
 class ChatPermissionsSettings extends StatefulWidget {
   const ChatPermissionsSettings({super.key});
@@ -19,57 +16,82 @@ class ChatPermissionsSettings extends StatefulWidget {
       ChatPermissionsSettingsController();
 }
 
-class ChatPermissionsSettingsController extends State<ChatPermissionsSettings> {
+class ChatPermissionsSettingsController
+    extends State<ChatPermissionsSettings> {
   String? get roomId => GoRouterState.of(context).pathParameters['roomid'];
-  void editPowerLevel(
-    BuildContext context,
-    String key,
-    int currentLevel, {
-    int? newLevel,
-    String? category,
-  }) async {
-    final room = Matrix.of(context).client.getRoomById(roomId!)!;
-    if (!room.canSendEvent(EventTypes.RoomPowerLevels)) {
+
+  Room? get room {
+    final id = roomId;
+    if (id == null || id.isEmpty) return null;
+    return Matrix.of(context).client.getRoomById(id);
+  }
+
+  bool get isOwner => room != null && room!.ownPowerLevel >= 100;
+
+  /// 同步获取成员列表（和聊天详情页一样的方式）
+  List<User> getMembers() {
+    final r = room;
+    if (r == null) return [];
+    return r.getParticipants().toList()
+      ..sort((b, a) => a.powerLevel.compareTo(b.powerLevel));
+  }
+
+  /// 修改成员权限等级
+  void setMemberPowerLevel(User user, int newLevel) async {
+    final r = room;
+    if (r == null) return;
+
+    if (r.ownPowerLevel < 100) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(L10n.of(context).noPermission)),
       );
       return;
     }
-    newLevel ??= await showPermissionChooser(
-      context,
-      currentLevel: currentLevel,
-    );
-    if (newLevel == null) return;
-    final content = Map<String, dynamic>.from(
-      room.getState(EventTypes.RoomPowerLevels)!.content,
-    );
-    if (category != null) {
-      if (!content.containsKey(category)) {
-        content[category] = <String, dynamic>{};
-      }
-      content[category][key] = newLevel;
-    } else {
-      content[key] = newLevel;
+
+    if (user.id == r.client.userID) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L10n.of(context).noPermission)),
+      );
+      return;
     }
-    inspect(content);
+
     await showFutureLoadingDialog(
       context: context,
-      future: () => room.client.setRoomStateWithKey(
-        room.id,
-        EventTypes.RoomPowerLevels,
-        '',
-        content,
-      ),
+      future: () => user.setPower(newLevel),
     );
   }
 
-  Stream get onChanged => Matrix.of(context).client.onSync.stream.where(
-        (e) =>
-            (e.rooms?.join?.containsKey(roomId) ?? false) &&
-            (e.rooms!.join![roomId!]?.timeline?.events
-                    ?.any((s) => s.type == EventTypes.RoomPowerLevels) ??
-                false),
-      );
+  /// 显示权限选择弹窗
+  void showRoleDialog(User user) async {
+    final currentLevel = user.powerLevel >= 50 ? 50 : 0;
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(L10n.of(context).chatPermissions),
+        children: [
+          for (final entry in [
+            (0, L10n.of(context).member),
+            (50, L10n.of(context).moderator),
+          ])
+            ListTile(
+              leading: Icon(
+                entry.$1 == currentLevel
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: entry.$1 == currentLevel
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+              ),
+              title: Text(entry.$2),
+              onTap: () => Navigator.of(context).pop(entry.$1),
+            ),
+        ],
+      ),
+    );
+    if (selected == null || selected == currentLevel) return;
+    if (!mounted) return;
+    setMemberPowerLevel(user, selected);
+  }
 
   @override
   Widget build(BuildContext context) => ChatPermissionsSettingsView(this);

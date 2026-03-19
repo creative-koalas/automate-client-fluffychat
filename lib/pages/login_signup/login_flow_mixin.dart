@@ -2,6 +2,8 @@
 /// 一键登录和验证码登录共用：Matrix 登录、登录后跳转
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -120,8 +122,15 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
 
       // 登录成功后异步请求推送权限（不阻塞跳转）
       if (PlatformInfos.isMobile) {
-        Future.delayed(const Duration(seconds: 1), () {
-          PermissionService.instance.requestPushPermissions();
+        unawaited(matrix.ensureAliyunPushRegistered(client));
+        Future.delayed(const Duration(seconds: 1), () async {
+          final granted =
+              await PermissionService.instance.requestPushPermissions();
+          if (granted) {
+            await matrix.ensureAliyunPushRegistered(client);
+            await Future.delayed(const Duration(seconds: 3));
+            await matrix.ensureAliyunPushRegistered(client);
+          }
         });
       }
 

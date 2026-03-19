@@ -11,7 +11,6 @@
 #define VcRedistExeName "VC_redist.x64.exe"
 #define BuildOutputDir "build\windows\x64\runner\Release"
 #define IconFilePath "assets\logo.ico"
-#define ChineseLangFile AddBackslash(GetEnv("ProgramFiles(x86)")) + "Inno Setup 6\Languages\ChineseSimplified.isl"
 
 #if !FileExists(AddBackslash(BuildOutputDir) + MyAppExeName)
   #error "psygo.exe not found. Run flutter build windows --release first."
@@ -57,6 +56,9 @@ UsePreviousPrivileges=no
 ; 界面设置
 WizardStyle=modern
 DisableProgramGroupPage=yes
+ShowLanguageDialog=yes
+UsePreviousLanguage=no
+LanguageDetectionMethod=uilanguage
 
 ; 64位设置
 ArchitecturesAllowed=x64compatible
@@ -64,10 +66,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 
 [Languages]
+Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
-#if FileExists(ChineseLangFile)
-Name: "chinesesimp"; MessagesFile: "{#ChineseLangFile}"
-#endif
 
 
 [Tasks]

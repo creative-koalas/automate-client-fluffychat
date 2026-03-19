@@ -21,14 +21,16 @@ class PermissionService {
   /// 在登录成功后调用，会按顺序请求：
   /// 1. 通知权限（Android 13+ / iOS）
   /// 2. 电池优化白名单（Android）
-  Future<void> requestPushPermissions() async {
+  Future<bool> requestPushPermissions() async {
     // 请求通知权限
-    await requestNotificationPermission();
+    final notificationGranted = await requestNotificationPermission();
 
     // Android 请求电池优化白名单
     if (Platform.isAndroid) {
       await requestBatteryOptimization();
     }
+
+    return notificationGranted;
   }
 
   /// 请求通知权限
