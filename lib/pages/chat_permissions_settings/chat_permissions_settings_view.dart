@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:matrix/matrix.dart';
-
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
-import 'package:psygo/pages/chat_permissions_settings/permission_list_tile.dart';
+import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
-import 'package:psygo/widgets/matrix.dart';
+
+import 'package:matrix/matrix.dart';
 
 class ChatPermissionsSettingsView extends StatelessWidget {
   final ChatPermissionsSettingsController controller;
@@ -15,131 +15,174 @@ class ChatPermissionsSettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final room = controller.room;
 
     return Scaffold(
       appBar: AppBar(
         leading: const Center(child: BackButton()),
-        title: Text(L10n.of(context).chatPermissions),
+        title: Text(l10n.chatPermissions),
       ),
       body: MaxWidthBody(
-        child: StreamBuilder(
-          stream: controller.onChanged,
-          builder: (context, _) {
-            final roomId = controller.roomId;
-            final room = roomId == null
-                ? null
-                : Matrix.of(context).client.getRoomById(roomId);
-            if (room == null) {
-              return Center(child: Text(L10n.of(context).noRoomsFound));
-            }
-            final powerLevelsContent = Map<String, Object?>.from(
-              room.getState(EventTypes.RoomPowerLevels)?.content ?? {},
-            );
-            final powerLevels = Map<String, dynamic>.from(powerLevelsContent)
-              ..removeWhere((k, v) => v is! int);
-            final eventsPowerLevels = Map<String, int?>.from(
-              powerLevelsContent.tryGetMap<String, int?>('events') ?? {},
-            )..removeWhere((k, v) => v is! int);
-            return Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outlined),
-                  subtitle: Text(
-                    L10n.of(context).chatPermissionsDescription,
-                  ),
-                ),
-                Divider(color: theme.dividerColor),
-                ListTile(
-                  title: Text(
-                    L10n.of(context).chatPermissions,
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final entry in powerLevels.entries)
-                      PermissionsListTile(
-                        permissionKey: entry.key,
-                        permission: entry.value,
-                        onChanged: (level) => controller.editPowerLevel(
-                          context,
-                          entry.key,
-                          entry.value,
-                          newLevel: level,
+        withScrolling: false,
+        child: room == null
+            ? Center(child: Text(l10n.noRoomsFound))
+            : StreamBuilder(
+                stream: room.client.onRoomState.stream
+                    .where((update) => update.roomId == room.id),
+                builder: (context, _) {
+                  final members = controller.getMembers();
+
+                  // 按权限等级分组
+                  final owners =
+                      members.where((u) => u.powerLevel >= 100).toList();
+                  final admins = members
+                      .where(
+                        (u) => u.powerLevel >= 50 && u.powerLevel < 100,
+                      )
+                      .toList();
+                  final normalMembers =
+                      members.where((u) => u.powerLevel < 50).toList();
+
+                  return ListView(
+                    children: [
+                      if (owners.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: l10n.owner,
+                          count: owners.length,
+                          color: Colors.orangeAccent,
                         ),
-                        canEdit: room.canChangePowerLevel,
-                      ),
-                    Divider(color: theme.dividerColor),
-                    ListTile(
-                      title: Text(
-                        L10n.of(context).notifications,
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Builder(
-                      builder: (context) {
-                        const key = 'rooms';
-                        final value = powerLevelsContent
-                                .containsKey('notifications')
-                            ? powerLevelsContent
-                                    .tryGetMap<String, Object?>('notifications')
-                                    ?.tryGet<int>('rooms') ??
-                                0
-                            : 0;
-                        return PermissionsListTile(
-                          permissionKey: key,
-                          permission: value,
-                          category: 'notifications',
-                          canEdit: room.canChangePowerLevel,
-                          onChanged: (level) => controller.editPowerLevel(
-                            context,
-                            key,
-                            value,
-                            newLevel: level,
-                            category: 'notifications',
+                        for (final user in owners)
+                          _MemberTile(
+                            user: user,
+                            canEdit: false,
+                            onEditRole: null,
                           ),
-                        );
-                      },
-                    ),
-                    Divider(color: theme.dividerColor),
-                    ListTile(
-                      title: Text(
-                        L10n.of(context).configureChat,
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
+                      ],
+                      if (admins.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: l10n.moderator,
+                          count: admins.length,
+                          color: Colors.blueAccent,
                         ),
-                      ),
-                    ),
-                    for (final entry in eventsPowerLevels.entries)
-                      PermissionsListTile(
-                        permissionKey: entry.key,
-                        category: 'events',
-                        permission: entry.value ?? 0,
-                        canEdit: room.canChangePowerLevel,
-                        onChanged: (level) => controller.editPowerLevel(
-                          context,
-                          entry.key,
-                          entry.value ?? 0,
-                          newLevel: level,
-                          category: 'events',
+                        for (final user in admins)
+                          _MemberTile(
+                            user: user,
+                            canEdit: controller.isOwner,
+                            onEditRole: controller.isOwner
+                                ? () => controller.showRoleDialog(user)
+                                : null,
+                          ),
+                      ],
+                      if (normalMembers.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: l10n.member,
+                          count: normalMembers.length,
+                          color: Colors.greenAccent,
                         ),
-                      ),
-                  ],
-                ),
-              ],
-            );
-          },
+                        for (final user in normalMembers)
+                          _MemberTile(
+                            user: user,
+                            canEdit: controller.isOwner,
+                            onEditRole: controller.isOwner
+                                ? () => controller.showRoleDialog(user)
+                                : null,
+                          ),
+                      ],
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final int count;
+  final Color color;
+
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$title ($count)',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MemberTile extends StatelessWidget {
+  final User user;
+  final bool canEdit;
+  final VoidCallback? onEditRole;
+
+  const _MemberTile({
+    required this.user,
+    required this.canEdit,
+    this.onEditRole,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final avatarUrl = AgentService.instance.resolveAvatarUri(user);
+    final displayname = AgentService.instance.resolveStrictDisplayName(user);
+    final isMe = user.room.client.userID == user.id;
+
+    return ListTile(
+      leading: Avatar(
+        mxContent: avatarUrl,
+        name: displayname,
+        presenceUserId: user.stateKey,
+      ),
+      title: Text(
+        displayname,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        user.id,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
+      trailing: canEdit && !isMe
+          ? IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: L10n.of(context).chatPermissions,
+              onPressed: onEditRole,
+            )
+          : null,
     );
   }
 }

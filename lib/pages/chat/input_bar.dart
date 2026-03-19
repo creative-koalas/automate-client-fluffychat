@@ -55,11 +55,17 @@ class InputBar extends StatelessWidget {
     super.key,
   });
 
-  List<Map<String, String?>> getSuggestions(TextEditingValue text) {
+  List<Map<String, String?>> getSuggestions(
+    TextEditingValue text,
+    BuildContext context,
+  ) {
     if (text.selection.baseOffset != text.selection.extentOffset ||
         text.selection.baseOffset < 0) {
       return []; // no entries if there is selected text
     }
+    final l10n = L10n.of(context);
+    final mentionEveryone =
+        _normalizedEveryoneMentionLabel(l10n.mentionEveryone);
     final searchText = text.text.substring(0, text.selection.baseOffset);
     final ret = <Map<String, String?>>[];
     const maxResults = 30;
@@ -161,11 +167,44 @@ class InputBar extends StatelessWidget {
       }
     }
     final userMatch = RegExp(r'(?:\s|^)@([-\w]+)$').firstMatch(searchText);
-    if (userMatch != null) {
-      final userSearch = userMatch[1]!.toLowerCase();
+    // Also match CJK/localized input like @所有人
+    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S+)$').firstMatch(searchText);
+    final effectiveMatch = userMatch ?? cjkMentionMatch;
+    if (effectiveMatch != null) {
+      final userSearch = effectiveMatch[1]!.toLowerCase();
+
+      // Add localized "@everyone" option in group chats
+      final isGroupChat = room.directChatMatrixID == null;
+      if (isGroupChat) {
+        final everyoneAliases = <String>{
+          'all',
+          'everyone',
+          'room',
+          '所有人',
+          '所有',
+          '所',
+        };
+        final localizedAlias = mentionEveryone.startsWith('@')
+            ? mentionEveryone.substring(1)
+            : mentionEveryone;
+        if (localizedAlias.isNotEmpty) {
+          everyoneAliases.add(localizedAlias.toLowerCase());
+        }
+        if (everyoneAliases.any((alias) => alias.startsWith(userSearch))) {
+          ret.add({
+            'type': 'user',
+            'mxid': '@room',
+            'mention': mentionEveryone,
+            'displayname': mentionEveryone,
+            'avatar_url': null,
+          });
+        }
+      }
+
       for (final user in room.getParticipants()) {
         AgentService.instance.ensureMatrixProfilePresentation(user);
-        final resolvedDisplayName = AgentService.instance.resolveDisplayName(user);
+        final resolvedDisplayName =
+            AgentService.instance.resolveDisplayName(user);
         final resolvedAvatar = AgentService.instance.resolveAvatarUri(user);
         final mentionText = buildInputMentionByUser(
           room: room,
@@ -319,16 +358,27 @@ class InputBar extends StatelessWidget {
       );
     }
     if (suggestion['type'] == 'user' || suggestion['type'] == 'room') {
+      final isRoomMention = suggestion['mxid'] == '@room';
       final url = Uri.parse(suggestion['avatar_url'] ?? '');
       return ListTile(
         onTap: () => onSelected(suggestion),
-        leading: Avatar(
-          mxContent: url,
-          name: suggestion.tryGet<String>('displayname') ??
-              suggestion.tryGet<String>('mxid'),
-          size: size,
-          client: client,
-        ),
+        leading: isRoomMention
+            ? CircleAvatar(
+                radius: size / 2,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.groups,
+                  size: size * 0.6,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              )
+            : Avatar(
+                mxContent: url,
+                name: suggestion.tryGet<String>('displayname') ??
+                    suggestion.tryGet<String>('mxid'),
+                size: size,
+                client: client,
+              ),
         title: Text(suggestion['displayname'] ?? suggestion['mxid']!),
       );
     }
@@ -385,7 +435,7 @@ class InputBar extends StatelessWidget {
     if (suggestion['type'] == 'user') {
       insertText = '${suggestion['mention']!} ';
       startText = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@[-\w]+)$'),
+        RegExp(r'(\s|^)(@\S+)$'),
         (Match m) => '${m[1]}$insertText',
       );
     }
@@ -400,78 +450,86 @@ class InputBar extends StatelessWidget {
     return startText + afterText;
   }
 
+  String _normalizedEveryoneMentionLabel(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return '@room';
+    return trimmed.startsWith('@') ? trimmed : '@$trimmed';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Autocomplete<Map<String, String?>>(
       focusNode: focusNode,
       textEditingController: controller,
-      optionsBuilder: getSuggestions,
-      fieldViewBuilder: (context, textController, autocompleteFocusNode, onFieldSubmitted) {
+      optionsBuilder: (text) => getSuggestions(text, context),
+      fieldViewBuilder:
+          (context, textController, autocompleteFocusNode, onFieldSubmitted) {
         final textField = TextField(
           controller: textController,
           focusNode: focusNode ?? autocompleteFocusNode,
           readOnly: readOnly,
-        contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, textController),
-        contentInsertionConfiguration: ContentInsertionConfiguration(
-          onContentInserted: (KeyboardInsertedContent content) {
-            if (onContentInserted != null) {
-              onContentInserted!(content);
-              return;
-            }
-            final data = content.data;
-            if (data == null) return;
-            if (data.length > kChatAttachmentMaxUploadBytes) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    FileTooBigMatrixException(
-                      data.length,
-                      kChatAttachmentMaxUploadBytes,
-                    ).toLocalizedString(context),
+          contextMenuBuilder: (c, e) =>
+              markdownContextBuilder(c, e, textController),
+          contentInsertionConfiguration: ContentInsertionConfiguration(
+            onContentInserted: (KeyboardInsertedContent content) {
+              if (onContentInserted != null) {
+                onContentInserted!(content);
+                return;
+              }
+              final data = content.data;
+              if (data == null) return;
+              if (data.length > kChatAttachmentMaxUploadBytes) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      FileTooBigMatrixException(
+                        data.length,
+                        kChatAttachmentMaxUploadBytes,
+                      ).toLocalizedString(context),
+                    ),
                   ),
-                ),
+                );
+                return;
+              }
+
+              if (onSubmitImage != null) {
+                onSubmitImage!(data);
+                return;
+              }
+
+              final file = MatrixFile(
+                mimeType: content.mimeType,
+                bytes: data,
+                name: content.uri.split('/').last,
               );
-              return;
-            }
-
-            if (onSubmitImage != null) {
-              onSubmitImage!(data);
-              return;
-            }
-
-            final file = MatrixFile(
-              mimeType: content.mimeType,
-              bytes: data,
-              name: content.uri.split('/').last,
-            );
-            room.sendFileEvent(
-              file,
-              shrinkImageMaxDimension: 1600,
-            );
+              room.sendFileEvent(
+                file,
+                shrinkImageMaxDimension: 1600,
+              );
+            },
+          ),
+          minLines: minLines,
+          maxLines: maxLines,
+          keyboardType: keyboardType!,
+          textInputAction: textInputAction,
+          autofocus: autofocus!,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter((maxPDUSize / 3).floor()),
+          ],
+          onSubmitted: (text) {
+            // fix for library for now
+            // it sets the types for the callback incorrectly
+            onSubmitted!(text);
           },
-        ),
-        minLines: minLines,
-        maxLines: maxLines,
-        keyboardType: keyboardType!,
-        textInputAction: textInputAction,
-        autofocus: autofocus!,
-        inputFormatters: [
-          LengthLimitingTextInputFormatter((maxPDUSize / 3).floor()),
-        ],
-        onSubmitted: (text) {
-          // fix for library for now
-          // it sets the types for the callback incorrectly
-          onSubmitted!(text);
-        },
-        maxLength: AppSettings.textMessageMaxLength.value,
-        decoration: decoration,
-        onChanged: (text) {
-          // fix for the library for now
-          // it sets the types for the callback incorrectly
-          onChanged!(text);
-        },
-        textCapitalization: TextCapitalization.sentences,
+          maxLength: AppSettings.textMessageMaxLength.value,
+          decoration: decoration,
+          onChanged: (text) {
+            // fix for the library for now
+            // it sets the types for the callback incorrectly
+            onChanged!(text);
+          },
+          textCapitalization: TextCapitalization.sentences,
         );
 
         // PC 端：按 Enter 发送消息（Shift+Enter 换行）

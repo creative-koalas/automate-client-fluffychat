@@ -10,11 +10,9 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/app_update_test.dart';
 import 'package:psygo/utils/fluffy_share.dart';
-import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
-import '../../widgets/mxc_image_viewer.dart';
 import 'settings.dart';
 
 class SettingsView extends StatelessWidget {
@@ -101,37 +99,62 @@ class SettingsView extends StatelessWidget {
                         child: Row(
                           children: [
                             // 头像带装饰环
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    theme.colorScheme.primary,
-                                    theme.colorScheme.tertiary,
-                                  ],
-                                ),
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: theme.colorScheme.surface,
-                                ),
-                                child: Avatar(
-                                  mxContent: avatar,
-                                  name: displayname,
-                                  size: Avatar.defaultSize * 2,
-                                  onTap: avatar != null
-                                      ? () => showDialog(
-                                            context: context,
-                                            builder: (_) =>
-                                                MxcImageViewer(avatar),
-                                          )
-                                      : null,
-                                ),
+                            GestureDetector(
+                              onTap: controller.setAvatarAction,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          theme.colorScheme.primary,
+                                          theme.colorScheme.tertiary,
+                                        ],
+                                      ),
+                                    ),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: theme.colorScheme.surface,
+                                      ),
+                                      child: Avatar(
+                                        mxContent: avatar,
+                                        name: displayname,
+                                        size: Avatar.defaultSize * 2,
+                                      ),
+                                    ),
+                                  ),
+                                  // 编辑图标
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primary,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: theme.colorScheme.shadow
+                                                .withValues(alpha: 0.2),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        Icons.edit_rounded,
+                                        size: 14,
+                                        color: theme.colorScheme.onPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -140,16 +163,34 @@ class SettingsView extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // 显示昵称
-                                  Text(
-                                    displayname,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: theme.colorScheme.onSurface,
-                                      letterSpacing: -0.3,
+                                  // 显示昵称（点击可编辑）
+                                  GestureDetector(
+                                    onTap: controller.setDisplaynameAction,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            displayname,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700,
+                                              color:
+                                                  theme.colorScheme.onSurface,
+                                              letterSpacing: -0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Icon(
+                                          Icons.edit_rounded,
+                                          size: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(height: 6),
@@ -277,13 +318,6 @@ class SettingsView extends StatelessWidget {
                           AppConfig.privacyUrl.toString(),
                           mode: LaunchMode.inAppBrowserView,
                         ),
-                      ),
-                      _buildDivider(theme),
-                      _buildCardListTile(
-                        theme,
-                        icon: Icons.info_outline_rounded,
-                        title: Text(L10n.of(context).about),
-                        onTap: () => PlatformInfos.showDialog(context),
                       ),
                       _buildDivider(theme),
                       Builder(

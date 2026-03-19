@@ -4,7 +4,6 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
-import 'package:psygo/widgets/permission_slider_dialog.dart';
 import 'adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'adaptive_dialogs/show_text_input_dialog.dart';
 import 'adaptive_dialogs/user_dialog.dart';
@@ -16,10 +15,14 @@ void showMemberActionsPopupMenu({
   required User user,
   void Function()? onMention,
 }) async {
+  final agentService = AgentService.instance;
+  agentService.ensureMatrixProfilePresentation(user);
+  final senderPresentationListenable = Listenable.merge([
+    agentService.agentsNotifier,
+    agentService.profileNotifier,
+  ]);
   final theme = Theme.of(context);
   final isMe = user.room.client.userID == user.id;
-  final avatarUrl = AgentService.instance.resolveAvatarUri(user);
-  final displayname = AgentService.instance.resolveStrictDisplayName(user);
 
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
@@ -45,61 +48,68 @@ void showMemberActionsPopupMenu({
     items: <PopupMenuEntry<_MemberActions>>[
       PopupMenuItem(
         value: _MemberActions.info,
-        child: Row(
-          spacing: 12.0,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primary.withAlpha(80),
-                    theme.colorScheme.tertiary.withAlpha(60),
+        child: ListenableBuilder(
+          listenable: senderPresentationListenable,
+          builder: (context, _) {
+            final avatarUrl = agentService.resolveAvatarUri(user);
+            final displayname = agentService.resolveDisplayName(user);
+            return Row(
+              spacing: 12.0,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        theme.colorScheme.primary.withAlpha(80),
+                        theme.colorScheme.tertiary.withAlpha(60),
+                      ],
+                    ),
+                  ),
+                  child: Avatar(
+                    name: displayname,
+                    mxContent: avatarUrl,
+                    presenceUserId: user.id,
+                    presenceBackgroundColor: theme.colorScheme.surfaceContainer,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 128),
+                      child: Text(
+                        displayname,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 128),
+                      child: Text(
+                        user.id,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              child: Avatar(
-                name: displayname,
-                mxContent: avatarUrl,
-                presenceUserId: user.id,
-                presenceBackgroundColor: theme.colorScheme.surfaceContainer,
-              ),
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 128),
-                  child: Text(
-                    displayname,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 128),
-                  child: Text(
-                    user.id,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
       const PopupMenuDivider(),
@@ -153,48 +163,48 @@ void showMemberActionsPopupMenu({
             ],
           ),
         ),
-      PopupMenuItem(
-        enabled: user.room.canChangePowerLevel && user.canChangeUserPowerLevel,
-        value: _MemberActions.setRole,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.tertiary.withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.admin_panel_settings_rounded,
-                size: 18,
-                color: theme.colorScheme.tertiary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  L10n.of(context).chatPermissions,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+      if (!isMe && user.room.ownPowerLevel >= 100)
+        PopupMenuItem(
+          value: _MemberActions.setRole,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                Text(
-                  user.powerLevel < 50
-                      ? L10n.of(context).userLevel(user.powerLevel)
-                      : user.powerLevel < 100
-                          ? L10n.of(context).moderatorLevel(user.powerLevel)
-                          : L10n.of(context).adminLevel(user.powerLevel),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant,
+                child: Icon(
+                  Icons.admin_panel_settings_rounded,
+                  size: 18,
+                  color: theme.colorScheme.tertiary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    L10n.of(context).chatPermissions,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  Text(
+                    user.powerLevel >= 100
+                        ? L10n.of(context).owner
+                        : user.powerLevel >= 50
+                            ? L10n.of(context).moderator
+                            : L10n.of(context).member,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       if (user.canKick)
         PopupMenuItem(
           value: _MemberActions.kick,
@@ -314,22 +324,52 @@ void showMemberActionsPopupMenu({
       onMention?.call();
       return;
     case _MemberActions.setRole:
-      final power = await showPermissionChooser(
-        context,
-        currentLevel: user.powerLevel,
-        maxLevel: user.room.ownPowerLevel,
-      );
-      if (power == null) return;
-      if (!context.mounted) return;
-      if (power >= 100) {
-        final consent = await showOkCancelAlertDialog(
-          context: context,
-          title: L10n.of(context).areYouSure,
-          message: L10n.of(context).makeAdminDescription,
+      final ownPower = user.room.ownPowerLevel;
+      // 只有群主(100)可以修改权限
+      if (ownPower < 100) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).noPermission)),
         );
-        if (consent != OkCancelResult.ok) return;
-        if (!context.mounted) return;
+        return;
       }
+      // 群主不能修改自己的权限
+      if (isMe) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).noPermission)),
+        );
+        return;
+      }
+      final currentLevel = user.powerLevel >= 100
+          ? 100
+          : user.powerLevel >= 50
+              ? 50
+              : 0;
+      final power = await showDialog<int>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: Text(L10n.of(context).chatPermissions),
+          children: [
+            for (final entry in [
+              (0, L10n.of(context).member),
+              (50, L10n.of(context).moderator),
+            ])
+              ListTile(
+                leading: Icon(
+                  entry.$1 == currentLevel
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: entry.$1 == currentLevel
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                title: Text(entry.$2),
+                onTap: () => Navigator.of(context).pop(entry.$1),
+              ),
+          ],
+        ),
+      );
+      if (power == null || power == currentLevel) return;
+      if (!context.mounted) return;
       await showFutureLoadingDialog(
         context: context,
         future: () => user.setPower(power),

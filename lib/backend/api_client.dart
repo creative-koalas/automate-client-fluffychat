@@ -614,6 +614,27 @@ class PsygoApiClient {
     return InvitationInfo.fromJson(respData);
   }
 
+  /// 提交昵称修改申请
+  Future<void> submitNicknameChangeRequest(String newNickname) async {
+    final res = await _requestWithAuthRetry((token) {
+      return _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/users/nickname-request',
+        data: {'new_nickname': newNickname},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? 'Failed to submit nickname change',
+        statusCode: res.statusCode,
+      );
+    }
+  }
+
   /// 获取用户信息（包含余额）
   Future<UserInfo> getUserInfo() async {
     await _syncAuthState();
@@ -1086,6 +1107,7 @@ class BindInvitationResponse {
 /// 邀请信息
 class InvitationInfo {
   final String invitationCode;
+  final bool isBound;
   final int maxInvitees;
   final int currentInvitees;
   final int rewardPerInvite;
@@ -1093,6 +1115,7 @@ class InvitationInfo {
 
   InvitationInfo({
     required this.invitationCode,
+    required this.isBound,
     required this.maxInvitees,
     required this.currentInvitees,
     required this.rewardPerInvite,
@@ -1105,6 +1128,7 @@ class InvitationInfo {
     final inviteesList = json['invitees'] as List<dynamic>? ?? [];
     return InvitationInfo(
       invitationCode: json['invitation_code'] as String? ?? '',
+      isBound: json['is_bound'] as bool? ?? false,
       maxInvitees: (json['max_invitees'] as num?)?.toInt() ?? 10,
       currentInvitees: (json['current_invitees'] as num?)?.toInt() ?? 0,
       rewardPerInvite: (json['reward_per_invite'] as num?)?.toInt() ?? 0,

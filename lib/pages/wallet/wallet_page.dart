@@ -947,26 +947,28 @@ class _WalletPageState extends State<WalletPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: OutlinedButton.icon(
-                  onPressed: _showBindInvitationDialog,
-                  icon: const Icon(Icons.input_rounded, size: 18),
-                  label: Text(
-                    L10n.of(context).enterInvitationCodeButton,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _primaryGreen,
-                    side: const BorderSide(color: _primaryGreen),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (_invitationInfo?.isBound != true) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: _showBindInvitationDialog,
+                    icon: const Icon(Icons.input_rounded, size: 18),
+                    label: Text(
+                      L10n.of(context).enterInvitationCodeButton,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _primaryGreen,
+                      side: const BorderSide(color: _primaryGreen),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ] else
               Row(
                 children: [
@@ -991,27 +993,29 @@ class _WalletPageState extends State<WalletPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: OutlinedButton.icon(
-                        onPressed: _showBindInvitationDialog,
-                        icon: const Icon(Icons.input_rounded, size: 18),
-                        label: Text(
-                          L10n.of(context).enterInvitationCodeButton,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: const BorderSide(color: _primaryGreen),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  if (_invitationInfo?.isBound != true) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: OutlinedButton.icon(
+                          onPressed: _showBindInvitationDialog,
+                          icon: const Icon(Icons.input_rounded, size: 18),
+                          label: Text(
+                            L10n.of(context).enterInvitationCodeButton,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _primaryGreen,
+                            side: const BorderSide(color: _primaryGreen),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
           ],

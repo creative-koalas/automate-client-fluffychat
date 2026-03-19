@@ -8,6 +8,7 @@ import '../models/hire_result.dart';
 import '../repositories/agent_template_repository.dart';
 import '../utils/localized_exception_extension.dart';
 import '../utils/platform_infos.dart';
+import '../utils/profanity_checker.dart';
 import '../widgets/guide_bubble_layout.dart';
 import 'dicebear_avatar_picker.dart';
 
@@ -73,7 +74,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
   bool get _isNameValid =>
       _nameController.text.trim().isNotEmpty &&
       !_isNameNumericOnly &&
-      !_isNameTooLong;
+      !_isNameTooLong &&
+      !_isNameProfane;
   bool get _isNameNumericOnly =>
       _nameController.text.isNotEmpty &&
       _nameController.text
@@ -82,7 +84,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           .every((c) => '0123456789'.contains(c));
   bool get _isNameTooLong =>
       _nameController.text.trim().length > _maxNameLength;
-  bool get _isGuideNameSelectionLocked => _showRecruitGuide;
+  bool get _isNameProfane => containsProfanity(_nameController.text.trim());
+  bool get _isGuideNameSelectionLocked => false;
 
   @override
   void initState() {
@@ -144,6 +147,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
           _error = L10n.of(context).employeeNameCannotBeNumeric;
         } else if (_isNameTooLong) {
           _error = L10n.of(context).employeeNameTooLong;
+        } else if (_isNameProfane) {
+          _error = L10n.of(context).nameContainsProfanity;
         }
       });
       _nameFocusNode.requestFocus();
@@ -234,6 +239,8 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
               _error = l10n.employeeNameCannotBeNumeric;
             } else if (_isNameTooLong) {
               _error = l10n.employeeNameTooLong;
+            } else if (_isNameProfane) {
+              _error = l10n.nameContainsProfanity;
             }
           });
           _nameFocusNode.requestFocus();
@@ -279,9 +286,7 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
       _error = null;
     });
 
-    if (_showRecruitGuide && _recruitGuideStepIndex == 1) {
-      _nextRecruitGuide();
-    }
+    // 示例名字仅填充输入框，不再自动跳步
   }
 
   @override
@@ -875,10 +880,14 @@ class _CustomHireDialogState extends State<CustomHireDialog> {
                     ? l10n.selectEmployeeNameExample
                     : l10n.enterEmployeeName,
                 icon: Icons.badge_outlined,
-                isError: _isNameNumericOnly || _isNameTooLong,
+                isError: _isNameNumericOnly || _isNameTooLong || _isNameProfane,
                 errorText: _isNameNumericOnly
                     ? l10n.employeeNameCannotBeNumeric
-                    : (_isNameTooLong ? l10n.employeeNameTooLong : null),
+                    : _isNameTooLong
+                        ? l10n.employeeNameTooLong
+                        : _isNameProfane
+                            ? l10n.nameContainsProfanity
+                            : null,
                 enabled: !_isSubmitting,
                 readOnly: _isGuideNameSelectionLocked,
                 onChanged: _handleNameChanged,

@@ -838,7 +838,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "groupWith": "名称为 {displayname} 的群组",
+    "groupWith": "{displayname} 的群组",
     "@groupWith": {
         "type": "String",
         "placeholders": {
@@ -1107,11 +1107,15 @@
         "type": "String",
         "placeholders": {}
     },
-    "moderator": "协管员",
+    "moderator": "管理员",
     "@moderator": {
         "type": "String",
         "placeholders": {}
     },
+    "owner": "群主",
+    "@owner": {},
+    "member": "成员",
+    "@member": {},
     "muteChat": "消息免打扰",
     "@muteChat": {
         "type": "String",
@@ -1972,7 +1976,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "whoCanPerformWhichAction": "谁可以执行哪些操作",
+    "whoCanPerformWhichAction": "管理群聊中的权限设置",
     "@whoCanPerformWhichAction": {
         "type": "String",
         "placeholders": {}
@@ -3767,6 +3771,30 @@
     "@recruitGuideStepCreateTitle": {},
     "recruitGuideStepCreateBody": "点击下方按钮开始招聘。提示：最多可招聘3个员工，招满后将无法继续招聘。",
     "@recruitGuideStepCreateBody": {},
+    "diceBearStyleAvataaars": "卡通人物",
+    "@diceBearStyleAvataaars": {},
+    "diceBearStyleBottts": "机器人",
+    "@diceBearStyleBottts": {},
+    "diceBearStyleFunEmoji": "趣味表情",
+    "@diceBearStyleFunEmoji": {},
+    "diceBearStyleAdventurer": "冒险家",
+    "@diceBearStyleAdventurer": {},
+    "diceBearStyleAdventurerNeutral": "素描冒险家",
+    "@diceBearStyleAdventurerNeutral": {},
+    "diceBearStyleBigSmile": "大笑脸",
+    "@diceBearStyleBigSmile": {},
+    "diceBearStyleLorelei": "洛蕾莱",
+    "@diceBearStyleLorelei": {},
+    "diceBearStyleNotionists": "简笔画",
+    "@diceBearStyleNotionists": {},
+    "diceBearStyleOpenPeeps": "涂鸦人物",
+    "@diceBearStyleOpenPeeps": {},
+    "diceBearStylePersonas": "人物肖像",
+    "@diceBearStylePersonas": {},
+    "diceBearStylePixelArt": "像素风",
+    "@diceBearStylePixelArt": {},
+    "diceBearStyleThumbs": "点赞",
+    "@diceBearStyleThumbs": {},
     "recruitLimitReachedMessage": "已招满3个员工，暂不支持继续招聘",
     "@recruitLimitReachedMessage": {},
     "advancedOptions": "高级选项",
@@ -3805,6 +3833,18 @@
     "@back": {},
     "employeeNameCannotBeNumeric": "名称不能只包含数字",
     "@employeeNameCannotBeNumeric": {},
+    "nameContainsProfanity": "名称包含不当内容，请换一个",
+    "@nameContainsProfanity": {},
+    "nicknameChangeSubmitted": "昵称修改申请已提交，审核通过后将自动更新",
+    "@nicknameChangeSubmitted": {},
+    "nicknameEmpty": "昵称不能为空",
+    "@nicknameEmpty": {},
+    "nicknameTooLong": "昵称不能超过10个字符",
+    "@nicknameTooLong": {},
+    "nicknameInvalidChars": "昵称只能包含中文、英文字母、数字和下划线",
+    "@nicknameInvalidChars": {},
+    "nicknameSubmitFailed": "提交昵称修改失败",
+    "@nicknameSubmitFailed": {},
     "loadingPlugins": "加载技能中...",
     "@loadingPlugins": {},
     "optional": "可选",
@@ -4351,5 +4391,17 @@
       "placeholders": {
         "error": {"type": "String"}
       }
-    }
+    },
+    "changeAvatar": "更换头像",
+    "@changeAvatar": {},
+    "avatarUpdated": "头像已更新",
+    "@avatarUpdated": {},
+    "avatarDownloadFailed": "头像下载失败",
+    "@avatarDownloadFailed": {},
+    "mentionHintTitle": "要@某位员工吗？",
+    "@mentionHintTitle": {},
+    "sendDirectly": "直接发送",
+    "@sendDirectly": {},
+    "mentionEveryone": "@所有人",
+    "@mentionEveryone": {}
 }

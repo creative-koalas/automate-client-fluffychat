@@ -16,8 +16,8 @@ class ParticipantListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final avatarUrl = AgentService.instance.resolveAvatarUri(user);
-    final displayname = AgentService.instance.resolveStrictDisplayName(user);
+    final agentService = AgentService.instance;
+    agentService.ensureMatrixProfilePresentation(user);
 
     final membershipBatch = switch (user.membership) {
       Membership.ban => L10n.of(context).banned,
@@ -28,78 +28,88 @@ class ParticipantListItem extends StatelessWidget {
     };
 
     final permissionBatch = user.powerLevel >= 100
-        ? L10n.of(context).admin
+        ? L10n.of(context).owner
         : user.powerLevel >= 50
             ? L10n.of(context).moderator
             : '';
 
-    return ListTile(
-      onTap: () => showMemberActionsPopupMenu(context: context, user: user),
-      title: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              displayname,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (permissionBatch.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: user.powerLevel >= 100
-                    ? theme.colorScheme.tertiary
-                    : theme.colorScheme.tertiaryContainer,
-                borderRadius: BorderRadius.circular(
-                  AppConfig.borderRadius,
+    return ValueListenableBuilder<int>(
+      valueListenable: agentService.profileNotifier,
+      builder: (context, _, __) {
+        final avatarUrl = agentService.resolveAvatarUri(user);
+        final displayname = agentService.resolveDisplayName(user);
+
+        return ListTile(
+          onTap: () => showMemberActionsPopupMenu(context: context, user: user),
+          title: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  displayname,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              child: Text(
-                permissionBatch,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: user.powerLevel >= 100
-                      ? theme.colorScheme.onTertiary
-                      : theme.colorScheme.onTertiaryContainer,
-                ),
-              ),
-            ),
-          membershipBatch == null
-              ? const SizedBox.shrink()
-              : Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+              if (permissionBatch.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                  child: Center(
-                    child: Text(
-                      membershipBatch,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
+                  decoration: BoxDecoration(
+                    color: user.powerLevel >= 100
+                        ? theme.colorScheme.tertiary
+                        : theme.colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(
+                      AppConfig.borderRadius,
+                    ),
+                  ),
+                  child: Text(
+                    permissionBatch,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: user.powerLevel >= 100
+                          ? theme.colorScheme.onTertiary
+                          : theme.colorScheme.onTertiaryContainer,
                     ),
                   ),
                 ),
-        ],
-      ),
-      subtitle: Text(
-        user.id,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      leading: Opacity(
-        opacity: user.membership == Membership.join ? 1 : 0.5,
-        child: Avatar(
-          mxContent: avatarUrl,
-          name: displayname,
-          presenceUserId: user.stateKey,
-        ),
-      ),
+              membershipBatch == null
+                  ? const SizedBox.shrink()
+                  : Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ),
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          membershipBatch,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ),
+            ],
+          ),
+          subtitle: Text(
+            user.id,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          leading: Opacity(
+            opacity: user.membership == Membership.join ? 1 : 0.5,
+            child: Avatar(
+              mxContent: avatarUrl,
+              name: displayname,
+              presenceUserId: user.stateKey,
+            ),
+          ),
+        );
+      },
     );
   }
 }
