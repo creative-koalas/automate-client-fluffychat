@@ -7,7 +7,9 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 
@@ -41,6 +43,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
   final TextEditingController _filterController = TextEditingController();
 
   String? selectedRoomId;
+  bool _isForwarding = false;
 
   void _closeDialog() {
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -55,16 +58,82 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
     });
   }
 
+  Map<String, dynamic> _sanitizeForwardContent(Map<String, Object?> content) {
+    final forwarded = Map<String, dynamic>.from(content);
+    // Forwarded messages should be independent from source room relations.
+    forwarded.remove('m.relates_to');
+    forwarded.remove('m.new_content');
+    return forwarded;
+  }
+
+  void _showErrorSnackBar(Object error) {
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: theme.colorScheme.errorContainer,
+        closeIconColor: theme.colorScheme.onErrorContainer,
+        content: Text(
+          error.toLocalizedString(context),
+          style: TextStyle(color: theme.colorScheme.onErrorContainer),
+        ),
+        duration: const Duration(seconds: 30),
+        showCloseIcon: true,
+      ),
+    );
+  }
+
   void _forwardAction() async {
+    if (_isForwarding) return;
     final roomId = selectedRoomId;
     if (roomId == null) {
       throw Exception(
         'Started forward action before room was selected. This should never happen.',
       );
     }
+    final room = Matrix.of(context).client.getRoomById(roomId);
+    if (room == null) {
+      _showErrorSnackBar(L10n.of(context).oopsSomethingWentWrong);
+      return;
+    }
+
+    final hasFiles = widget.items.any((item) => item is FileShareItem);
+    if (hasFiles) {
+      final router = GoRouter.of(context);
+      _closeDialog();
+      router.go('/rooms/$roomId', extra: widget.items);
+      return;
+    }
+
+    setState(() => _isForwarding = true);
+    try {
+      if (!await room.ensureOtherPartyCanReceiveMessages()) {
+        throw OtherPartyCanNotReceiveMessages();
+      }
+      for (final item in widget.items) {
+        String? sentEventId;
+        if (item is TextShareItem) {
+          sentEventId = await room.sendTextEvent(item.value);
+        } else if (item is ContentShareItem) {
+          sentEventId =
+              await room.sendEvent(_sanitizeForwardContent(item.value));
+        }
+        if (sentEventId == null) {
+          throw L10n.of(context).serverError;
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorSnackBar(e);
+      return;
+    } finally {
+      if (mounted) {
+        setState(() => _isForwarding = false);
+      }
+    }
+
     final router = GoRouter.of(context);
     _closeDialog();
-    router.go('/rooms/$roomId', extra: widget.items);
+    router.go('/rooms/$roomId');
   }
 
   @override
@@ -236,8 +305,14 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: FilledButton.icon(
-                      onPressed: _forwardAction,
-                      icon: const Icon(Icons.send_rounded, size: 20),
+                      onPressed: _isForwarding ? null : _forwardAction,
+                      icon: _isForwarding
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_rounded, size: 20),
                       label: Text(
                         L10n.of(context).forward,
                         style: const TextStyle(
