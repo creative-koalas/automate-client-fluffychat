@@ -687,6 +687,18 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         Logs().v('Set background sync to', foreground);
       }
     }
+
+    // 补偿注册：App 回到前台时再尝试一次推送注册，降低 token 延迟/网络抖动导致的漏注册概率。
+    if (state == AppLifecycleState.resumed &&
+        PlatformInfos.isMobile &&
+        !_skipAliyunPushOnCurrentDevice) {
+      for (final c in widget.clients) {
+        if (c.isLogged()) {
+          unawaited(ensureAliyunPushRegistered(c));
+        }
+      }
+    }
+
     _updatePushState();
   }
 

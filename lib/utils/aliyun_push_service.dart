@@ -18,7 +18,8 @@ class AliyunPushService {
   static AliyunPushService get instance => _instance ??= AliyunPushService._();
 
   final AliyunPush _aliyunPush = AliyunPush();
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
   String? _deviceId;
@@ -86,7 +87,8 @@ class AliyunPushService {
 
   /// 阿里云推送配置（通过 --dart-define-from-file=env.json 注入）
   static const _androidAppKey = String.fromEnvironment('PUSH_ANDROID_APP_KEY');
-  static const _androidAppSecret = String.fromEnvironment('PUSH_ANDROID_APP_SECRET');
+  static const _androidAppSecret =
+      String.fromEnvironment('PUSH_ANDROID_APP_SECRET');
   static const _iosAppKey = String.fromEnvironment('PUSH_IOS_APP_KEY');
   static const _iosAppSecret = String.fromEnvironment('PUSH_IOS_APP_SECRET');
 
@@ -149,7 +151,8 @@ class AliyunPushService {
         // 获取设备 ID — 没有 deviceId 推送无法工作
         await _fetchDeviceId();
         if (_deviceId == null || _deviceId!.isEmpty) {
-          Logs().e('[AliyunPush] Device ID is null after init, push will not work');
+          Logs().e(
+              '[AliyunPush] Device ID is null after init, push will not work');
           _audit('init abort: deviceId null');
           return false;
         }
@@ -237,12 +240,37 @@ class AliyunPushService {
   Future<void> _fetchDeviceId() async {
     try {
       _deviceId = await _aliyunPush.getDeviceId();
-      Logs().i('[AliyunPush] Device ID: ${_mask(_deviceId)} (len=${_deviceId?.length ?? 0})');
+      Logs().i(
+          '[AliyunPush] Device ID: ${_mask(_deviceId)} (len=${_deviceId?.length ?? 0})');
       _audit('deviceId=${_mask(_deviceId)}');
     } catch (e) {
       Logs().w('[AliyunPush] Failed to get device ID', e);
       _audit('deviceId fetch failed $e');
     }
+  }
+
+  /// 刷新设备 ID（登录后注册前调用，确保服务端拿到最新 token）
+  ///
+  /// 一些机型/系统版本下，deviceId 可能在授权后或系统恢复后发生变化。
+  /// 这里在每次注册前强制刷新一次，确保服务端按最新 deviceId 覆盖更新。
+  Future<bool> _refreshDeviceIdForRegistration() async {
+    final previousDeviceId = _deviceId;
+    await _fetchDeviceId();
+    final latestDeviceId = _deviceId;
+    if (latestDeviceId == null || latestDeviceId.isEmpty) {
+      Logs().e('[AliyunPush] Device ID is empty before registration');
+      _audit('register abort: deviceId empty after refresh');
+      return false;
+    }
+    if (previousDeviceId != null && previousDeviceId != latestDeviceId) {
+      Logs().i(
+        '[AliyunPush] Device ID refreshed: ${_mask(previousDeviceId)} -> ${_mask(latestDeviceId)}',
+      );
+      _audit(
+        'deviceId refreshed old=${_mask(previousDeviceId)} new=${_mask(latestDeviceId)}',
+      );
+    }
+    return true;
   }
 
   /// 设置消息回调
@@ -295,8 +323,11 @@ class AliyunPushService {
 
         // 检查是否是自己发的消息
         final currentUserId = currentUserIdGetter?.call();
-        if (sender != null && currentUserId != null && sender == currentUserId) {
-          Logs().d('[AliyunPush] System notification for self message, this should not happen (backend issue)');
+        if (sender != null &&
+            currentUserId != null &&
+            sender == currentUserId) {
+          Logs().d(
+              '[AliyunPush] System notification for self message, this should not happen (backend issue)');
           // 仍然记录 event_id，防止后续重复
         }
 
@@ -306,7 +337,8 @@ class AliyunPushService {
           while (_shownEventIds.length > _maxShownEventIds) {
             _shownEventIds.remove(_shownEventIds.first);
           }
-          Logs().d('[AliyunPush] Notification shown by system, marked event: $eventId');
+          Logs().d(
+              '[AliyunPush] Notification shown by system, marked event: $eventId');
         }
       }
     } catch (e) {
@@ -387,7 +419,9 @@ class AliyunPushService {
     try {
       // 获取通知标题和内容
       final title = message['title'] as String? ?? 'PsyGo';
-      final body = message['body'] as String? ?? message['summary'] as String? ?? '你收到了一条新消息';
+      final body = message['body'] as String? ??
+          message['summary'] as String? ??
+          '你收到了一条新消息';
 
       // 解析扩展参数（可能是 Map 或 JSON 字符串）
       final extraMap = _parseExtraMap(message['extraMap']);
@@ -409,9 +443,12 @@ class AliyunPushService {
       final sender = extraMap['sender'] as String?;
       // badge 可能是 String 或 int
       final badgeValue = extraMap['badge'];
-      final badge = badgeValue is int ? badgeValue : int.tryParse(badgeValue?.toString() ?? '0') ?? 0;
+      final badge = badgeValue is int
+          ? badgeValue
+          : int.tryParse(badgeValue?.toString() ?? '0') ?? 0;
 
-      Logs().d('[AliyunPush] Matrix notification in app: room=$roomId, event=$eventId, sender=$sender, title=$title');
+      Logs().d(
+          '[AliyunPush] Matrix notification in app: room=$roomId, event=$eventId, sender=$sender, title=$title');
 
       // 检查是否是自己发的消息（不应该给自己显示通知）
       final currentUserId = currentUserIdGetter?.call();
@@ -436,8 +473,11 @@ class AliyunPushService {
       }
 
       // 检查用户是否正在导航到该房间（防止点击通知后的竞态条件）
-      if (_isAppResumed && _navigatingToRoomId != null && _navigatingToRoomId == roomId) {
-        Logs().d('[AliyunPush] User is navigating to this room, skip notification');
+      if (_isAppResumed &&
+          _navigatingToRoomId != null &&
+          _navigatingToRoomId == roomId) {
+        Logs().d(
+            '[AliyunPush] User is navigating to this room, skip notification');
         setBadgeNumber(badge);
         return;
       }
@@ -510,7 +550,8 @@ class AliyunPushService {
       final body = payload['body'] as String? ?? '你收到了一条新消息';
       final badge = payload['badge'] as int? ?? 0;
 
-      Logs().d('[AliyunPush] Matrix message: room=$roomId, event=$eventId, sender=$sender, title=$title');
+      Logs().d(
+          '[AliyunPush] Matrix message: room=$roomId, event=$eventId, sender=$sender, title=$title');
 
       // 检查是否是自己发的消息（不应该给自己显示通知）
       final currentUserId = currentUserIdGetter?.call();
@@ -535,8 +576,11 @@ class AliyunPushService {
       }
 
       // 检查用户是否正在导航到该房间（防止点击通知后的竞态条件）
-      if (_isAppResumed && _navigatingToRoomId != null && _navigatingToRoomId == roomId) {
-        Logs().d('[AliyunPush] User is navigating to this room, skip notification');
+      if (_isAppResumed &&
+          _navigatingToRoomId != null &&
+          _navigatingToRoomId == roomId) {
+        Logs().d(
+            '[AliyunPush] User is navigating to this room, skip notification');
         setBadgeNumber(badge);
         return;
       }
@@ -590,8 +634,11 @@ class AliyunPushService {
     }
 
     // 检查用户是否正在导航到该房间
-    if (_isAppResumed && _navigatingToRoomId != null && _navigatingToRoomId == roomId) {
-      Logs().d('[AliyunPush] User is navigating to this room, skip notification');
+    if (_isAppResumed &&
+        _navigatingToRoomId != null &&
+        _navigatingToRoomId == roomId) {
+      Logs()
+          .d('[AliyunPush] User is navigating to this room, skip notification');
       return;
     }
 
@@ -663,7 +710,8 @@ class AliyunPushService {
     // 更新角标
     await setBadgeNumber(badge);
 
-    Logs().i('[AliyunPush] Local notification shown: id=$notificationId, title=$title');
+    Logs().i(
+        '[AliyunPush] Local notification shown: id=$notificationId, title=$title');
   }
 
   /// 绑定账号（可选，用于精准推送）
@@ -753,7 +801,8 @@ class AliyunPushService {
   // ============================================================
 
   /// Push Gateway URL（Synapse 调用，用集群内部地址）
-  static String get _pushGatewayUrl => '${PsygoConfig.internalBaseUrl}/_matrix/push/v1/notify';
+  static String get _pushGatewayUrl =>
+      '${PsygoConfig.internalBaseUrl}/_matrix/push/v1/notify';
 
   /// 应用 ID（用于区分 iOS/Android）
   static const String _androidAppId = 'com.creativekoalas.psygo.android';
@@ -777,17 +826,27 @@ class AliyunPushService {
   /// [matrixUserID] Matrix 用户 ID（如 @username:localhost）
   /// 返回生成的 pushkey，用于后续注册到 Matrix Synapse
   Future<String?> registerPusherToBackend(String matrixUserID) async {
-    if (!_initialized || _deviceId == null) {
-      Logs().w('[AliyunPush] Not initialized or no device ID');
-      _audit('register backend skipped initialized=$_initialized deviceId=$_deviceId');
+    if (!_initialized) {
+      Logs().w('[AliyunPush] Not initialized');
+      _audit('register backend skipped initialized=$_initialized');
+      return null;
+    }
+
+    // 每次登录后注册都强制刷新一次 deviceId，确保服务端覆盖为最新值
+    final hasLatestDeviceId = await _refreshDeviceIdForRegistration();
+    if (!hasLatestDeviceId) {
       return null;
     }
 
     final pushKey = _generatePushKey();
-    Logs().i('[AliyunPush] Register pusher: baseUrl=${PsygoConfig.baseUrl}, apiUrl=${PsygoConfig.apiUrl}');
-    Logs().i('[AliyunPush] Register pusher: k8sNamespace=${PsygoConfig.k8sNamespace}, gateway=$_pushGatewayUrl');
-    Logs().i('[AliyunPush] Register payload: user=$matrixUserID deviceId=${_mask(_deviceId)} pushKey=${_mask(pushKey)} appId=$_appId platform=$_platform');
-    _audit('register backend start user=$matrixUserID pushKey=${_mask(pushKey)} deviceId=${_mask(_deviceId)}');
+    Logs().i(
+        '[AliyunPush] Register pusher: baseUrl=${PsygoConfig.baseUrl}, apiUrl=${PsygoConfig.apiUrl}');
+    Logs().i(
+        '[AliyunPush] Register pusher: k8sNamespace=${PsygoConfig.k8sNamespace}, gateway=$_pushGatewayUrl');
+    Logs().i(
+        '[AliyunPush] Register payload: user=$matrixUserID deviceId=${_mask(_deviceId)} pushKey=${_mask(pushKey)} appId=$_appId platform=$_platform');
+    _audit(
+        'register backend start user=$matrixUserID pushKey=${_mask(pushKey)} deviceId=${_mask(_deviceId)}');
 
     try {
       final uri = Uri.parse('${PsygoConfig.baseUrl}/api/push/register');
@@ -806,13 +865,16 @@ class AliyunPushService {
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200) {
-        Logs().i('[AliyunPush] Pusher registered to backend: pushKey=${_mask(pushKey)}');
+        Logs().i(
+            '[AliyunPush] Pusher registered to backend: pushKey=${_mask(pushKey)}');
         _audit('register backend ok status=${response.statusCode}');
         return pushKey;
       } else {
         final errorMsg = json['error']?.toString() ?? 'unknown';
-        Logs().e('[AliyunPush] Register pusher failed: status=${response.statusCode} error=$errorMsg body=${_truncate(response.body)}');
-        _audit('register backend failed status=${response.statusCode} error=$errorMsg');
+        Logs().e(
+            '[AliyunPush] Register pusher failed: status=${response.statusCode} error=$errorMsg body=${_truncate(response.body)}');
+        _audit(
+            'register backend failed status=${response.statusCode} error=$errorMsg');
         return null;
       }
     } catch (e, s) {
@@ -834,23 +896,30 @@ class AliyunPushService {
   /// Matrix 的 append=false 只删除相同 pushkey 的 pusher，无法清理 app_id 相同但 pushkey 不同的旧记录。
   Future<bool> registerPusherToSynapse(Client client, String pushKey) async {
     try {
-      Logs().i('[AliyunPush] Register pusher to Synapse: homeserver=${PsygoConfig.matrixHomeserver}');
-      Logs().i('[AliyunPush] Register pusher to Synapse: pushKey=${_mask(pushKey)} appId=$_appId gateway=$_pushGatewayUrl');
+      Logs().i(
+          '[AliyunPush] Register pusher to Synapse: homeserver=${PsygoConfig.matrixHomeserver}');
+      Logs().i(
+          '[AliyunPush] Register pusher to Synapse: pushKey=${_mask(pushKey)} appId=$_appId gateway=$_pushGatewayUrl');
       _audit('register synapse start pushKey=${_mask(pushKey)}');
       // Step 1: 获取当前所有 pusher
       final existingPushers = await client.getPushers();
-      Logs().i('[AliyunPush] Existing pushers: ${existingPushers?.length ?? 0}');
+      Logs()
+          .i('[AliyunPush] Existing pushers: ${existingPushers?.length ?? 0}');
 
       // Step 2: 删除同一 app_id 的旧 pusher
       for (final pusher in existingPushers ?? []) {
         if (pusher.appId == _appId && pusher.pushkey != pushKey) {
-          Logs().i('[AliyunPush] Removing old pusher: pushKey=${pusher.pushkey}');
+          Logs()
+              .i('[AliyunPush] Removing old pusher: pushKey=${pusher.pushkey}');
           try {
             // 使用 deletePusher 删除（内部设置 kind=null）
             await client.deletePusher(pusher);
-            Logs().i('[AliyunPush] Old pusher removed: pushKey=${pusher.pushkey}');
+            Logs().i(
+                '[AliyunPush] Old pusher removed: pushKey=${pusher.pushkey}');
           } catch (e) {
-            Logs().w('[AliyunPush] Failed to remove old pusher: ${pusher.pushkey}', e);
+            Logs().w(
+                '[AliyunPush] Failed to remove old pusher: ${pusher.pushkey}',
+                e);
             // 继续删除其他的，不中断流程
           }
         }
@@ -891,9 +960,9 @@ class AliyunPushService {
   /// 2. 注册 pusher 到 Matrix Synapse
   /// [client] Matrix SDK Client 实例
   Future<bool> registerPush(Client client) async {
-    if (!_initialized || _deviceId == null) {
-      Logs().w('[AliyunPush] Not initialized or no device ID');
-      _audit('registerPush skipped initialized=$_initialized deviceId=$_deviceId');
+    if (!_initialized) {
+      Logs().w('[AliyunPush] Not initialized');
+      _audit('registerPush skipped initialized=$_initialized');
       return false;
     }
 
