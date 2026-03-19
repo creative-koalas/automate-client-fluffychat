@@ -133,24 +133,27 @@ class SettingsView extends StatelessWidget {
                                   Positioned(
                                     right: 0,
                                     bottom: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.primary,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: theme.colorScheme.shadow
-                                                .withValues(alpha: 0.2),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Icon(
-                                        Icons.edit_rounded,
-                                        size: 14,
-                                        color: theme.colorScheme.onPrimary,
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.primary,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: theme.colorScheme.shadow
+                                                  .withValues(alpha: 0.2),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          Icons.edit_rounded,
+                                          size: 14,
+                                          color: theme.colorScheme.onPrimary,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -184,11 +187,14 @@ class SettingsView extends StatelessWidget {
                                           ),
                                         ),
                                         const SizedBox(width: 6),
-                                        Icon(
-                                          Icons.edit_rounded,
-                                          size: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.5),
+                                        MouseRegion(
+                                          cursor: SystemMouseCursors.click,
+                                          child: Icon(
+                                            Icons.edit_rounded,
+                                            size: 16,
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.5),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -377,8 +383,10 @@ class SettingsView extends StatelessWidget {
                         subtitle: Text(
                           l10n.settingsDeleteAccountSubtitle,
                           style: TextStyle(
-                              color: theme.colorScheme.error
-                                  .withValues(alpha: 0.7)),
+                            color: theme.colorScheme.error.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
                         ),
                         onTap: controller.deleteAccountAction,
                       ),
