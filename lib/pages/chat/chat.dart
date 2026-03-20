@@ -577,6 +577,7 @@ class ChatController extends State<ChatPageWithRoom>
   final int _loadHistoryCount = 100;
 
   String pendingText = '';
+  bool _submitInProgress = false;
 
   bool showEmojiPicker = false;
 
@@ -1237,7 +1238,7 @@ class ChatController extends State<ChatPageWithRoom>
   void handleKeyboardInsertedContent(KeyboardInsertedContent content) async {
     final data = content.data;
     if (data == null) return;
-    final isImageData = content.mimeType?.startsWith('image/') ?? false;
+    final isImageData = content.mimeType.startsWith('image/');
     final normalizedData = isImageData
         ? (await _normalizedClipboardImageData(data) ?? data)
         : data;
@@ -1425,6 +1426,7 @@ class ChatController extends State<ChatPageWithRoom>
     return showDialog<String>(
       context: context,
       builder: (context) {
+        void sendDirectly() => Navigator.of(context).pop('');
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -1468,7 +1470,8 @@ class ChatController extends State<ChatPageWithRoom>
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton(
-                          onPressed: () => Navigator.of(context).pop(''),
+                          autofocus: true,
+                          onPressed: sendDirectly,
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -2359,9 +2362,21 @@ class ChatController extends State<ChatPageWithRoom>
     return index + 1;
   }
 
+  Future<void> _submitInputBarOnce() async {
+    if (_submitInProgress) return;
+    _submitInProgress = true;
+    try {
+      await send();
+    } finally {
+      _submitInProgress = false;
+      if (mounted) {
+        FocusScope.of(context).requestFocus(inputFocus);
+      }
+    }
+  }
+
   void onInputBarSubmitted(_) {
-    send();
-    FocusScope.of(context).requestFocus(inputFocus);
+    unawaited(_submitInputBarOnce());
   }
 
   void onAddPopupMenuButtonSelected(AddPopupMenuActions choice) {

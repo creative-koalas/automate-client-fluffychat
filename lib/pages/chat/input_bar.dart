@@ -537,10 +537,14 @@ class InputBar extends StatelessWidget {
         if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
           return Focus(
             onKeyEvent: (node, event) {
-              if (event is KeyDownEvent &&
+              final isPlainEnter =
                   (event.logicalKey == LogicalKeyboardKey.enter ||
-                      event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
-                  !HardwareKeyboard.instance.isShiftPressed) {
+                          event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+                      !HardwareKeyboard.instance.isShiftPressed &&
+                      !HardwareKeyboard.instance.isControlPressed &&
+                      !HardwareKeyboard.instance.isAltPressed &&
+                      !HardwareKeyboard.instance.isMetaPressed;
+              if (event is KeyDownEvent && isPlainEnter) {
                 final text = textController.text.trim();
                 if (text.isNotEmpty) {
                   onSubmitted?.call(text);
