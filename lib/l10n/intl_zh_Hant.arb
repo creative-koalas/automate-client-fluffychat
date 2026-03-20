@@ -3374,6 +3374,8 @@
     "@invitationErrorNotFound": {},
     "invitationErrorTemporarilyUnavailable": "邀請碼暫時不可用，請稍後再試",
     "@invitationErrorTemporarilyUnavailable": {},
+    "mentionHintTitle": "需要@某位成員嗎？",
+    "@mentionHintTitle": {},
     "employeeWorking": "工作中",
     "@employeeWorking": {},
     "employeeSlacking": "摸魚中",

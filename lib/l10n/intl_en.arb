@@ -4374,7 +4374,7 @@
   "@avatarUpdated": {},
   "avatarDownloadFailed": "Failed to download avatar",
   "@avatarDownloadFailed": {},
-  "mentionHintTitle": "Mention an employee?",
+  "mentionHintTitle": "Need to @ a member?",
   "@mentionHintTitle": {},
   "sendDirectly": "Send directly",
   "@sendDirectly": {},

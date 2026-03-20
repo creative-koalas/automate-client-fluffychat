@@ -4409,7 +4409,7 @@
     "@avatarUpdated": {},
     "avatarDownloadFailed": "头像下载失败",
     "@avatarDownloadFailed": {},
-    "mentionHintTitle": "要@某位员工吗？",
+    "mentionHintTitle": "需要@某位成员吗？",
     "@mentionHintTitle": {},
     "sendDirectly": "直接发送",
     "@sendDirectly": {},
