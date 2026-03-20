@@ -23,6 +23,10 @@ class AliyunPushService {
 
   bool _initialized = false;
   String? _deviceId;
+  final Map<String, Future<bool>> _registerPushTasks = {};
+  final Map<String, DateTime> _lastSuccessfulRegisterAt = {};
+  final Map<String, String> _lastSuccessfulPushKeyByUser = {};
+  static const Duration _registerSuccessCooldown = Duration(seconds: 20);
 
   /// 获取当前活跃房间 ID 的回调（由 MatrixState 设置）
   String? Function()? activeRoomIdGetter;
@@ -973,26 +977,60 @@ class AliyunPushService {
       return false;
     }
 
+    final inFlight = _registerPushTasks[matrixUserID];
+    if (inFlight != null) {
+      _audit('registerPush join in-flight user=$matrixUserID');
+      return inFlight;
+    }
+
+    final task = _registerPushInternal(client, matrixUserID);
+    _registerPushTasks[matrixUserID] = task;
+    try {
+      return await task;
+    } finally {
+      if (identical(_registerPushTasks[matrixUserID], task)) {
+        _registerPushTasks.remove(matrixUserID);
+      }
+    }
+  }
+
+  Future<bool> _registerPushInternal(Client client, String matrixUserID) async {
+    final currentPushKey = pushKey;
+    final lastRegisterAt = _lastSuccessfulRegisterAt[matrixUserID];
+    final lastSuccessfulPushKey = _lastSuccessfulPushKeyByUser[matrixUserID];
+    if (currentPushKey != null &&
+        lastRegisterAt != null &&
+        DateTime.now().difference(lastRegisterAt) < _registerSuccessCooldown &&
+        currentPushKey == lastSuccessfulPushKey) {
+      _audit(
+          'registerPush skipped recent success user=$matrixUserID pushKey=${_mask(currentPushKey)}');
+      return true;
+    }
+
     _audit('registerPush start user=$matrixUserID');
 
     // Step 1: 注册到后端
-    final pushKey = await registerPusherToBackend(matrixUserID);
-    if (pushKey == null) {
+    final backendPushKey = await registerPusherToBackend(matrixUserID);
+    if (backendPushKey == null) {
       _audit('registerPush abort: backend failed');
       return false;
     }
 
     // Step 2: 注册到 Synapse（失败时重试一次，间隔 2 秒）
-    var synapseOk = await registerPusherToSynapse(client, pushKey);
+    var synapseOk = await registerPusherToSynapse(client, backendPushKey);
     if (!synapseOk) {
       _audit('registerPush synapse failed, retry in 2s');
       await Future.delayed(const Duration(seconds: 2));
-      synapseOk = await registerPusherToSynapse(client, pushKey);
+      synapseOk = await registerPusherToSynapse(client, backendPushKey);
     }
     if (!synapseOk) {
       _audit('registerPush synapse retry also failed');
+      return false;
     }
-    return synapseOk;
+
+    _lastSuccessfulRegisterAt[matrixUserID] = DateTime.now();
+    _lastSuccessfulPushKeyByUser[matrixUserID] = backendPushKey;
+    return true;
   }
 
   /// 注销推送
