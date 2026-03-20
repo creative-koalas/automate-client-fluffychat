@@ -711,7 +711,9 @@ class ChatController extends State<ChatPageWithRoom>
     }
     for (final item in shareItems) {
       if (item is FileShareItem) continue;
-      if (item is TextShareItem) room.sendTextEvent(item.value);
+      if (item is TextShareItem) {
+        room.sendTextEvent(item.value, parseCommands: false);
+      }
       if (item is ContentShareItem) room.sendEvent(item.value);
     }
     final files = shareItems
@@ -1354,22 +1356,6 @@ class ChatController extends State<ChatPageWithRoom>
     _storeInputTimeoutTimer?.cancel();
     final prefs = Matrix.of(context).store;
     prefs.remove('draft_$roomId');
-    var parseCommands = true;
-
-    final commandMatch = RegExp(r'^\/(\w+)').firstMatch(sendController.text);
-    if (commandMatch != null &&
-        !sendingClient.commands.keys.contains(commandMatch[1]!.toLowerCase())) {
-      final l10n = L10n.of(context);
-      final dialogResult = await showOkCancelAlertDialog(
-        context: context,
-        title: l10n.commandInvalid,
-        message: l10n.commandMissing(commandMatch[0]!),
-        okLabel: l10n.sendAsText,
-        cancelLabel: l10n.cancel,
-      );
-      if (dialogResult == OkCancelResult.cancel) return;
-      parseCommands = false;
-    }
 
     var outgoingText = replaceInputMentionsWithMatrixIds(
       room: room,
@@ -1382,7 +1368,7 @@ class ChatController extends State<ChatPageWithRoom>
       outgoingText,
       inReplyTo: replyEvent,
       editEventId: editEvent?.eventId,
-      parseCommands: parseCommands,
+      parseCommands: false,
       threadRootEventId: activeThreadId,
     );
     sendController.value = TextEditingValue(

@@ -70,20 +70,6 @@ class InputBar extends StatelessWidget {
     final ret = <Map<String, String?>>[];
     const maxResults = 30;
 
-    final commandMatch = RegExp(r'^/(\w*)$').firstMatch(searchText);
-    if (commandMatch != null) {
-      final commandSearch = commandMatch[1]!.toLowerCase();
-      for (final command in room.client.commands.keys) {
-        if (command.contains(commandSearch)) {
-          ret.add({
-            'type': 'command',
-            'name': command,
-          });
-        }
-
-        if (ret.length > maxResults) return ret;
-      }
-    }
     final emojiMatch = RegExp(
       r'(?:\s|^):(?:([\p{L}\p{N}_-]+)~)?([\p{L}\p{N}_-]+)$',
       unicode: true,

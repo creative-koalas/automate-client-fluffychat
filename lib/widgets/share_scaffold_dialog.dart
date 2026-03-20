@@ -112,7 +112,10 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
       for (final item in widget.items) {
         String? sentEventId;
         if (item is TextShareItem) {
-          sentEventId = await room.sendTextEvent(item.value);
+          sentEventId = await room.sendTextEvent(
+            item.value,
+            parseCommands: false,
+          );
         } else if (item is ContentShareItem) {
           sentEventId =
               await room.sendEvent(_sanitizeForwardContent(item.value));
