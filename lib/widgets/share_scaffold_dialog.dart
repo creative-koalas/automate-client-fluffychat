@@ -147,8 +147,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
         .rooms
         .where(
           (room) =>
-              room.canSendDefaultMessages &&
-              room.membership == Membership.join,
+              room.canSendDefaultMessages && room.membership == Membership.join,
         )
         .toList();
     final filter = _filterController.text.trim().toLowerCase();
@@ -186,7 +185,8 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
                 ),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withAlpha(200),
+                  fillColor:
+                      theme.colorScheme.surfaceContainerHighest.withAlpha(200),
                   border: OutlineInputBorder(
                     borderSide: BorderSide.none,
                     borderRadius: BorderRadius.circular(16),
