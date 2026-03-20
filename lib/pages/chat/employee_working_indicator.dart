@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:psygo/config/themes.dart';
+import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/agent.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/services/agent_service.dart';
@@ -62,8 +62,8 @@ class EmployeeWorkingIndicator extends StatelessWidget {
                   ),
                 ),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                child: const _TypingDots(),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: const _WorkingHintText(),
               ),
             ),
           ],
@@ -106,32 +106,33 @@ class EmployeeWorkingIndicator extends StatelessWidget {
   }
 }
 
-class _TypingDots extends StatefulWidget {
-  const _TypingDots();
+class _WorkingHintText extends StatefulWidget {
+  const _WorkingHintText();
 
   @override
-  State<_TypingDots> createState() => _TypingDotsState();
+  State<_WorkingHintText> createState() => _WorkingHintTextState();
 }
 
-class _TypingDotsState extends State<_TypingDots> {
-  int _tick = 0;
+enum _HintPhase { typing, holding, deleting }
 
+class _WorkingHintTextState extends State<_WorkingHintText> {
+  static const Duration _characterInterval = Duration(milliseconds: 85);
+  static const Duration _holdDuration = Duration(milliseconds: 900);
+
+  int _hintIndex = 0;
+  int _visibleChars = 0;
+  int _holdTick = 0;
+  _HintPhase _phase = _HintPhase.typing;
   late final Timer _timer;
 
-  static const Duration animationDuration = Duration(milliseconds: 300);
+  int get _maxHoldTicks =>
+      (_holdDuration.inMilliseconds / _characterInterval.inMilliseconds)
+          .round();
 
   @override
   void initState() {
-    _timer = Timer.periodic(
-      animationDuration,
-      (_) {
-        if (!mounted) return;
-        setState(() {
-          _tick = (_tick + 1) % 4;
-        });
-      },
-    );
     super.initState();
+    _timer = Timer.periodic(_characterInterval, (_) => _onTick());
   }
 
   @override
@@ -140,30 +141,72 @@ class _TypingDotsState extends State<_TypingDots> {
     super.dispose();
   }
 
+  List<String> _localizedHints() {
+    final l10n = L10n.of(context);
+    return <String>[
+      l10n.employeeWorkingNotice1,
+      l10n.employeeWorkingNotice2,
+      l10n.employeeWorkingNotice3,
+    ];
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    final hints = _localizedHints();
+    if (hints.isEmpty) return;
+    final current = hints[_hintIndex % hints.length];
+    final maxChars = current.length;
+
+    setState(() {
+      if (_visibleChars > maxChars) {
+        _visibleChars = maxChars;
+      }
+
+      switch (_phase) {
+        case _HintPhase.typing:
+          if (_visibleChars < maxChars) {
+            _visibleChars += 1;
+          } else {
+            _phase = _HintPhase.holding;
+            _holdTick = 0;
+          }
+          break;
+        case _HintPhase.holding:
+          if (_holdTick < _maxHoldTicks) {
+            _holdTick += 1;
+          } else {
+            _phase = _HintPhase.deleting;
+          }
+          break;
+        case _HintPhase.deleting:
+          if (_visibleChars > 0) {
+            _visibleChars -= 1;
+          } else {
+            _hintIndex = (_hintIndex + 1) % hints.length;
+            _phase = _HintPhase.typing;
+          }
+          break;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const size = 8.0;
+    final hints = _localizedHints();
+    final current = hints[_hintIndex % hints.length];
+    final safeLength = _visibleChars.clamp(0, current.length);
+    final visibleText = current.substring(0, safeLength);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 1; i <= 3; i++)
-          AnimatedContainer(
-            duration: animationDuration * 1.5,
-            curve: FluffyThemes.curveStandard,
-            width: size,
-            height: _tick == i ? size * 2 : size,
-            margin: EdgeInsets.symmetric(
-              horizontal: 2,
-              vertical: _tick == i ? 4 : 8,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(size * 2),
-              color: theme.colorScheme.secondary,
-            ),
-          ),
-      ],
+    return Text(
+      visibleText,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodySmall?.copyWith(
+        fontSize: 13,
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 }
