@@ -503,6 +503,11 @@
         "type": "String",
         "placeholders": {}
     },
+    "userAlreadyInGroup": "该用户已在群聊中",
+    "@userAlreadyInGroup": {
+        "type": "String",
+        "placeholders": {}
+    },
     "containsDisplayName": "包含昵称",
     "@containsDisplayName": {
         "type": "String",

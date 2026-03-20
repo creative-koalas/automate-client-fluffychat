@@ -669,6 +669,11 @@
     "type": "String",
     "placeholders": {}
   },
+  "userAlreadyInGroup": "This user is already in the group chat",
+  "@userAlreadyInGroup": {
+    "type": "String",
+    "placeholders": {}
+  },
   "containsDisplayName": "Contains display name",
   "@containsDisplayName": {
     "type": "String",

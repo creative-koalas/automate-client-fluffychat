@@ -406,6 +406,11 @@
         "type": "String",
         "placeholders": {}
     },
+    "userAlreadyInGroup": "該使用者已在群聊中",
+    "@userAlreadyInGroup": {
+        "type": "String",
+        "placeholders": {}
+    },
     "containsDisplayName": "包含顯示名稱",
     "@containsDisplayName": {
         "type": "String",
