@@ -20,6 +20,8 @@ import 'package:provider/provider.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:window_to_front/window_to_front.dart';
 
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/setting_keys.dart';
@@ -29,6 +31,7 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/agent.dart';
 import 'package:psygo/pages/chat/chat_view.dart';
 import 'package:psygo/pages/chat/event_info_dialog.dart';
+import 'package:psygo/pages/chat/screenshot_cropper_dialog.dart';
 import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
@@ -41,6 +44,7 @@ import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/utils/chat_upload_limits.dart';
+import 'package:psygo/utils/desktop_screenshot_capture.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
@@ -130,6 +134,30 @@ class PendingAttachment {
   }
 }
 
+class PendingScreenshotReview {
+  PendingScreenshotReview({
+    required this.file,
+    this.previewScale = 1.0,
+    this.confirmed = false,
+  });
+
+  final XFile file;
+  final double previewScale;
+  final bool confirmed;
+
+  PendingScreenshotReview copyWith({
+    XFile? file,
+    double? previewScale,
+    bool? confirmed,
+  }) {
+    return PendingScreenshotReview(
+      file: file ?? this.file,
+      previewScale: previewScale ?? this.previewScale,
+      confirmed: confirmed ?? this.confirmed,
+    );
+  }
+}
+
 enum ChatRoomGuideType {
   employee,
   groupMention,
@@ -137,6 +165,27 @@ enum ChatRoomGuideType {
 
 class ChatController extends State<ChatPageWithRoom>
     with WidgetsBindingObserver {
+  static String get screenshotShortcutLabel {
+    if (PlatformInfos.isMacOS) return 'Cmd+Alt+S';
+    if (PlatformInfos.isWindows) return 'Ctrl+Alt+S';
+    return '';
+  }
+
+  bool _isScreenshotShortcut(KeyEvent evt) {
+    if (evt is! KeyDownEvent) return false;
+    if (evt.physicalKey != PhysicalKeyboardKey.keyS) return false;
+
+    if (PlatformInfos.isMacOS) {
+      return HardwareKeyboard.instance.isMetaPressed &&
+          HardwareKeyboard.instance.isAltPressed;
+    }
+    if (PlatformInfos.isWindows) {
+      return HardwareKeyboard.instance.isControlPressed &&
+          HardwareKeyboard.instance.isAltPressed;
+    }
+    return false;
+  }
+
   Room get room => sendingClient.getRoomById(roomId) ?? widget.room;
 
   late Client sendingClient;
@@ -731,6 +780,10 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   KeyEventResult _customEnterKeyHandling(FocusNode node, KeyEvent evt) {
+    if (_isScreenshotShortcut(evt)) {
+      unawaited(captureScreenshotAction());
+      return KeyEventResult.handled;
+    }
     if (!HardwareKeyboard.instance.isShiftPressed &&
         evt.logicalKey.keyLabel == 'Enter' &&
         AppSettings.sendOnEnter.value) {
@@ -1152,10 +1205,16 @@ class ChatController extends State<ChatPageWithRoom>
   final List<PendingAttachment> _pendingAttachments = [];
   int _pendingAttachmentSerial = 0;
   bool pendingAttachmentsCompress = true;
+  PendingScreenshotReview? _pendingScreenshotReview;
 
   List<PendingAttachment> get pendingAttachments =>
       List.unmodifiable(_pendingAttachments);
   bool get hasPendingAttachments => _pendingAttachments.isNotEmpty;
+  PendingScreenshotReview? get pendingScreenshotReview =>
+      _pendingScreenshotReview;
+  bool get hasPendingScreenshotReview => _pendingScreenshotReview != null;
+  bool get hasConfirmedScreenshotToSend =>
+      _pendingScreenshotReview?.confirmed == true;
   bool get hasCompressiblePendingAttachments =>
       _pendingAttachments.any(_isCompressibleAttachment);
 
@@ -1179,6 +1238,24 @@ class ChatController extends State<ChatPageWithRoom>
       attachment.dispose();
     }
     _pendingAttachments.clear();
+    _deletePendingScreenshotReviewFile();
+    _pendingScreenshotReview = null;
+  }
+
+  Future<void> _deleteFileIfExists(String path) async {
+    if (path.isEmpty) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+  }
+
+  void _deletePendingScreenshotReviewFile() {
+    final file = _pendingScreenshotReview?.file;
+    if (file == null || file.path.isEmpty) return;
+    unawaited(_deleteFileIfExists(file.path));
   }
 
   void addPendingAttachments(List<XFile> files) {
@@ -1194,6 +1271,42 @@ class ChatController extends State<ChatPageWithRoom>
       }
       _syncPendingAttachmentOrderControllers();
     });
+  }
+
+  void setPendingScreenshotReview(XFile file) {
+    final previousPath = _pendingScreenshotReview?.file.path;
+    setState(() {
+      _pendingScreenshotReview = PendingScreenshotReview(file: file);
+    });
+    if (previousPath != null && previousPath != file.path) {
+      unawaited(_deleteFileIfExists(previousPath));
+    }
+  }
+
+  void setPendingScreenshotReviewScale(double value) {
+    final review = _pendingScreenshotReview;
+    if (review == null) return;
+    setState(() {
+      _pendingScreenshotReview = review.copyWith(previewScale: value);
+    });
+  }
+
+  void confirmPendingScreenshotReview() {
+    final review = _pendingScreenshotReview;
+    if (review == null) return;
+    setState(() {
+      _pendingScreenshotReview = review.copyWith(confirmed: true);
+    });
+  }
+
+  void cancelPendingScreenshotReview() {
+    final path = _pendingScreenshotReview?.file.path;
+    setState(() {
+      _pendingScreenshotReview = null;
+    });
+    if (path != null) {
+      unawaited(_deleteFileIfExists(path));
+    }
   }
 
   void removePendingAttachment(PendingAttachment attachment) {
@@ -1244,6 +1357,7 @@ class ChatController extends State<ChatPageWithRoom>
     final normalizedMimeType = isImageData ? 'image/png' : content.mimeType;
     if (PlatformInfos.isDesktop) {
       final name = _fileNameFromInsertedContent(content.uri);
+      cancelPendingScreenshotReview();
       addPendingAttachments(
         [
           XFile.fromData(
@@ -1323,11 +1437,15 @@ class ChatController extends State<ChatPageWithRoom>
     final trimmedText = sendController.text.trim();
     final hasPending =
         PlatformInfos.isDesktop && _pendingAttachments.isNotEmpty;
-    if (!hasPending && trimmedText.isEmpty) return;
+    final hasPendingScreenshot =
+        PlatformInfos.isDesktop && hasConfirmedScreenshotToSend;
+    if (!hasPending && !hasPendingScreenshot && trimmedText.isEmpty) return;
 
-    if (hasPending) {
+    if (hasPending || hasPendingScreenshot) {
       if (_blockFileIfResting()) return;
-      final sent = await _sendPendingAttachments();
+      final sent = await _sendPendingAttachments(
+        includeConfirmedScreenshot: hasPendingScreenshot,
+      );
       if (!sent) return;
     }
 
@@ -1603,7 +1721,9 @@ class ChatController extends State<ChatPageWithRoom>
 
   static const int _minSizeToCompress = 20 * 1000;
 
-  Future<bool> _sendPendingAttachments() async {
+  Future<bool> _sendPendingAttachments({
+    bool includeConfirmedScreenshot = false,
+  }) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final l10n = L10n.of(context);
 
@@ -1616,6 +1736,18 @@ class ChatController extends State<ChatPageWithRoom>
       const maxUploadSize = kChatAttachmentMaxUploadBytes;
 
       final attachments = List<PendingAttachment>.from(_pendingAttachments);
+      final confirmedScreenshot = _pendingScreenshotReview;
+      if (includeConfirmedScreenshot &&
+          confirmedScreenshot != null &&
+          confirmedScreenshot.confirmed) {
+        attachments.insert(
+          0,
+          PendingAttachment(
+            id: 'pending_${_pendingAttachmentSerial++}',
+            file: confirmedScreenshot.file,
+          ),
+        );
+      }
       for (var i = 0; i < attachments.length; i++) {
         final attachment = attachments[i];
         final xfile = attachment.file;
@@ -1700,7 +1832,16 @@ class ChatController extends State<ChatPageWithRoom>
           );
         }
 
-        removePendingAttachment(attachment);
+        if (_pendingAttachments.contains(attachment)) {
+          removePendingAttachment(attachment);
+        } else if (confirmedScreenshot != null &&
+            attachment.file.path == confirmedScreenshot.file.path) {
+          final path = confirmedScreenshot.file.path;
+          setState(() {
+            _pendingScreenshotReview = null;
+          });
+          unawaited(_deleteFileIfExists(path));
+        }
       }
 
       scaffoldMessenger.clearSnackBars();
@@ -1855,6 +1996,74 @@ class ChatController extends State<ChatPageWithRoom>
         threadLastEventId: threadLastEventId,
       ),
     );
+  }
+
+  Future<void> captureScreenshotAction({
+    bool hideWindow = false,
+    bool openEditor = true,
+  }) async {
+    if (_blockFileIfResting()) return;
+    if (!PlatformInfos.isMacOS && !PlatformInfos.isWindows) return;
+
+    FocusScope.of(context).requestFocus(FocusNode());
+    if (hideWindow && PlatformInfos.isDesktop) {
+      await windowManager.hide();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+    final result = await DesktopScreenshotCapture.captureSelection();
+    if (!mounted) return;
+
+    if (hideWindow && PlatformInfos.isDesktop) {
+      await windowManager.show();
+      await windowManager.restore();
+      await windowManager.focus();
+      await WindowToFront.activate();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+    }
+
+    switch (result.status) {
+      case DesktopScreenshotCaptureStatus.success:
+        if (!openEditor) {
+          addPendingAttachments([result.file!]);
+          inputFocus.requestFocus();
+          return;
+        }
+        final cropped = await showScreenshotCropperDialog(
+          context,
+          file: result.file!,
+        );
+        if (cropped == null) {
+          if (result.file!.path != cropped?.path) {
+            unawaited(_deleteFileIfExists(result.file!.path));
+          }
+          inputFocus.requestFocus();
+          return;
+        }
+        if (cropped.path != result.file!.path) {
+          unawaited(_deleteFileIfExists(result.file!.path));
+        }
+        addPendingAttachments([cropped]);
+        inputFocus.requestFocus();
+        return;
+      case DesktopScreenshotCaptureStatus.cancelled:
+        inputFocus.requestFocus();
+        return;
+      case DesktopScreenshotCaptureStatus.permissionDenied:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(L10n.of(context).macOsScreenshotPermissionDenied),
+          ),
+        );
+        return;
+      case DesktopScreenshotCaptureStatus.failed:
+        debugPrint(
+          '[Screenshot] captureScreenshotAction failed: ${result.error}',
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).macOsScreenshotFailed)),
+        );
+        return;
+    }
   }
 
   Future<void> onVoiceMessageSend(
@@ -2375,6 +2584,9 @@ class ChatController extends State<ChatPageWithRoom>
       case AddPopupMenuActions.file:
         sendFileAction();
         return;
+      case AddPopupMenuActions.screenshot:
+        captureScreenshotAction();
+        return;
       case AddPopupMenuActions.poll:
         showAdaptiveBottomSheet(
           context: context,
@@ -2686,6 +2898,7 @@ enum AddPopupMenuActions {
   image,
   video,
   file,
+  screenshot,
   poll,
   photoCamera,
   videoCamera,

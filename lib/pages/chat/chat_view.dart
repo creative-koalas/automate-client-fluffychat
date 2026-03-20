@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:badges/badges.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:matrix/matrix.dart';
@@ -33,6 +34,10 @@ import 'chat_input_row.dart';
 import 'employee_working_indicator.dart';
 
 enum _EventContextAction { info, report }
+
+class _CaptureScreenshotIntent extends Intent {
+  const _CaptureScreenshotIntent();
+}
 
 class ChatView extends StatelessWidget {
   final ChatController controller;
@@ -523,29 +528,56 @@ class ChatView extends StatelessWidget {
           controller.closeThread();
         }
       },
-      child: StreamBuilder(
-        stream: controller.room.client.onRoomState.stream
-            .where((update) => update.roomId == controller.room.id)
-            .rateLimit(const Duration(seconds: 1)),
-        builder: (context, snapshot) => FutureBuilder(
-          future: controller.loadTimelineFuture,
-          builder: (BuildContext context, snapshot) {
-            var appbarBottomHeight = 0.0;
-            final activeThreadId = controller.activeThreadId;
-            if (activeThreadId != null) {
-              appbarBottomHeight += ChatAppBarListTile.fixedHeight;
-            }
-            if (controller.room.pinnedEventIds.isNotEmpty &&
-                activeThreadId == null) {
-              appbarBottomHeight += ChatAppBarListTile.fixedHeight;
-            }
-            if (scrollUpBannerEventId != null && activeThreadId == null) {
-              appbarBottomHeight += ChatAppBarListTile.fixedHeight;
-            }
-            return Stack(
-              key: controller.chatRoomGuideContainerKey,
-              children: [
-                Scaffold(
+      child: Shortcuts(
+        shortcuts: PlatformInfos.isMacOS
+            ? const <ShortcutActivator, Intent>{
+                SingleActivator(
+                  LogicalKeyboardKey.keyS,
+                  meta: true,
+                  alt: true,
+                ): _CaptureScreenshotIntent(),
+              }
+            : PlatformInfos.isWindows
+                ? const <ShortcutActivator, Intent>{
+                    SingleActivator(
+                      LogicalKeyboardKey.keyS,
+                      control: true,
+                      alt: true,
+                    ): _CaptureScreenshotIntent(),
+                  }
+                : const <ShortcutActivator, Intent>{},
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            _CaptureScreenshotIntent: CallbackAction<_CaptureScreenshotIntent>(
+              onInvoke: (_) {
+                controller.captureScreenshotAction();
+                return null;
+              },
+            ),
+          },
+          child: StreamBuilder(
+            stream: controller.room.client.onRoomState.stream
+                .where((update) => update.roomId == controller.room.id)
+                .rateLimit(const Duration(seconds: 1)),
+            builder: (context, snapshot) => FutureBuilder(
+              future: controller.loadTimelineFuture,
+              builder: (BuildContext context, snapshot) {
+                var appbarBottomHeight = 0.0;
+                final activeThreadId = controller.activeThreadId;
+                if (activeThreadId != null) {
+                  appbarBottomHeight += ChatAppBarListTile.fixedHeight;
+                }
+                if (controller.room.pinnedEventIds.isNotEmpty &&
+                    activeThreadId == null) {
+                  appbarBottomHeight += ChatAppBarListTile.fixedHeight;
+                }
+                if (scrollUpBannerEventId != null && activeThreadId == null) {
+                  appbarBottomHeight += ChatAppBarListTile.fixedHeight;
+                }
+                return Stack(
+                  key: controller.chatRoomGuideContainerKey,
+                  children: [
+                    Scaffold(
                   appBar: AppBar(
                     actionsIconTheme: IconThemeData(
                       color: controller.selectedEvents.isEmpty
@@ -877,10 +909,12 @@ class ChatView extends StatelessWidget {
                     ),
                   ),
                 ),
-                _buildChatRoomGuide(context),
-              ],
-            );
-          },
+                    _buildChatRoomGuide(context),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
