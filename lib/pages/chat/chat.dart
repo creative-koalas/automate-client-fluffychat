@@ -138,12 +138,10 @@ enum ChatRoomGuideType {
 class _QuickTipRewriteState {
   final String intentId;
   final String title;
-  final String serverPrompt;
 
   const _QuickTipRewriteState({
     required this.intentId,
     required this.title,
-    required this.serverPrompt,
   });
 }
 
@@ -1194,10 +1192,11 @@ class ChatController extends State<ChatPageWithRoom>
   bool get hasCompressiblePendingAttachments =>
       _pendingAttachments.any(_isCompressibleAttachment);
   bool get canSendCurrentDraft {
-    final hasText = sendController.text.trim().isNotEmpty;
     if (hasActiveQuickTipIntent) {
-      return hasText;
+      final segments = _splitQuickTipInputSegments(sendController.text);
+      return segments.userInput.trim().isNotEmpty;
     }
+    final hasText = sendController.text.trim().isNotEmpty;
     return hasText || hasPendingAttachments;
   }
 
@@ -2531,21 +2530,21 @@ class ChatController extends State<ChatPageWithRoom>
       return null;
     }
     final normalizedIntentId = pending.intentId.trim();
-    final normalizedPrompt = pending.serverPrompt.trim();
     final segments = _splitQuickTipInputSegments(outgoingText);
     final normalizedInput = segments.userInput.trim();
     final normalizedMentionPrefix = segments.mentionPrefix.trim();
-    if (normalizedIntentId.isEmpty ||
-        normalizedPrompt.isEmpty ||
-        normalizedInput.isEmpty) {
+    if (normalizedIntentId.isEmpty || normalizedInput.isEmpty) {
       return null;
     }
 
     final metadata = <String, dynamic>{
       'intent_id': normalizedIntentId,
-      'server_prompt': normalizedPrompt,
       'user_input': normalizedInput,
     };
+    final localeTag = _currentQuickTipLocaleTag();
+    if (localeTag.isNotEmpty) {
+      metadata['locale'] = localeTag;
+    }
     if (normalizedMentionPrefix.isNotEmpty) {
       metadata['mention_prefix'] = normalizedMentionPrefix;
     }
@@ -2555,7 +2554,6 @@ class ChatController extends State<ChatPageWithRoom>
   void applyQuickTipWithIntent({
     required String intentId,
     required String title,
-    required String serverPrompt,
   }) {
     final normalizedIntentId = intentId.trim();
     if (normalizedIntentId.isEmpty) {
@@ -2568,8 +2566,7 @@ class ChatController extends State<ChatPageWithRoom>
     }
 
     final normalizedTitle = title.trim();
-    final rewritten = serverPrompt.trim();
-    if (normalizedTitle.isEmpty || rewritten.isEmpty) {
+    if (normalizedTitle.isEmpty) {
       return;
     }
 
@@ -2577,7 +2574,6 @@ class ChatController extends State<ChatPageWithRoom>
       _pendingQuickTipRewrite = _QuickTipRewriteState(
         intentId: normalizedIntentId,
         title: normalizedTitle,
-        serverPrompt: rewritten,
       );
     });
 
@@ -2653,6 +2649,12 @@ class ChatController extends State<ChatPageWithRoom>
       if (localpart == normalizedLocalpart) return true;
     }
     return false;
+  }
+
+  String _currentQuickTipLocaleTag() {
+    final locale = Localizations.maybeLocaleOf(context);
+    final tag = locale?.toLanguageTag().trim() ?? '';
+    return tag;
   }
 
   bool _inputTextIsEmpty = true;

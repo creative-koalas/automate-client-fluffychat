@@ -453,25 +453,21 @@ class ChatQuickTipsBar extends StatelessWidget {
       icon: Icons.bolt_rounded,
       titleBuilder: (l10n) => l10n.inputQuickTipPlanTitle,
       intentId: 'build_game_with_godot',
-      serverPromptBuilder: (l10n) => l10n.inputQuickTipPlanServerPrompt,
     ),
     _InputQuickTipDefinition(
       icon: Icons.description_outlined,
       titleBuilder: (l10n) => l10n.inputQuickTipWordTitle,
       intentId: 'create_word_document',
-      serverPromptBuilder: (l10n) => l10n.inputQuickTipWordServerPrompt,
     ),
     _InputQuickTipDefinition(
       icon: Icons.auto_awesome_outlined,
       titleBuilder: (l10n) => l10n.inputQuickTipRiskTitle,
       intentId: 'risk_check',
-      serverPromptBuilder: (l10n) => l10n.inputQuickTipRiskMessage,
     ),
     _InputQuickTipDefinition(
       icon: Icons.camera_alt_outlined,
       titleBuilder: (l10n) => l10n.inputQuickTipNextStepTitle,
       intentId: 'next_step_plan',
-      serverPromptBuilder: (l10n) => l10n.inputQuickTipNextStepMessage,
     ),
   ];
 
@@ -484,13 +480,11 @@ class ChatQuickTipsBar extends StatelessWidget {
 
   void _applyQuickTip(_InputQuickTipItem tip) {
     final intentId = tip.intentId.trim();
-    final serverPrompt = tip.serverPrompt.trim();
-    if (intentId.isEmpty || serverPrompt.isEmpty) return;
+    if (intentId.isEmpty) return;
 
     controller.applyQuickTipWithIntent(
       intentId: intentId,
       title: tip.title,
-      serverPrompt: serverPrompt,
     );
   }
 
@@ -517,13 +511,11 @@ class _InputQuickTipDefinition {
   final IconData icon;
   final _L10nTextBuilder titleBuilder;
   final String intentId;
-  final _L10nTextBuilder serverPromptBuilder;
 
   const _InputQuickTipDefinition({
     required this.icon,
     required this.titleBuilder,
     required this.intentId,
-    required this.serverPromptBuilder,
   });
 
   _InputQuickTipItem resolve(L10n l10n) {
@@ -531,7 +523,6 @@ class _InputQuickTipDefinition {
       icon: icon,
       title: titleBuilder(l10n),
       intentId: intentId,
-      serverPrompt: serverPromptBuilder(l10n),
     );
   }
 }
@@ -540,13 +531,11 @@ class _InputQuickTipItem {
   final IconData icon;
   final String title;
   final String intentId;
-  final String serverPrompt;
 
   const _InputQuickTipItem({
     required this.icon,
     required this.title,
     required this.intentId,
-    required this.serverPrompt,
   });
 }
 
