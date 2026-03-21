@@ -546,7 +546,9 @@ class ChatQuickTipsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDirectChat = controller.room.directChatMatrixID != null;
     if (controller.selectMode ||
+        !isDirectChat ||
         !controller.hasOwnEmployeeInRoom ||
         !controller.room.otherPartyCanReceiveMessages ||
         controller.room.isAbandonedDMRoom == true) {
