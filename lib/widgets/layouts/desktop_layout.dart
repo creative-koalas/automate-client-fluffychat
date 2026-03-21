@@ -12,7 +12,8 @@ import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
-import 'package:psygo/pages/wallet/wallet_page.dart';
+// 钱包入口临时隐藏，恢复时取消注释。
+// import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
@@ -677,6 +678,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     }
   }
 
+  /* 钱包入口临时隐藏，恢复时取消此注释。
   Future<void> _openWalletDialog() async {
     await showDialog<void>(
       context: context,
@@ -695,6 +697,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       ),
     );
   }
+  */
 
   Widget _buildTopNavigation(ThemeData theme, L10n l10n) {
     return LayoutBuilder(
@@ -792,6 +795,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                     ),
                   ),
                 ),
+                /* 钱包入口临时隐藏，恢复时取消此注释。
                 IconButton(
                   tooltip: l10n.walletTitle,
                   onPressed: _openWalletDialog,
@@ -801,6 +805,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                */
                 SizedBox(
                   width: showProfileText ? 224 : 56,
                   child: _buildAdaptiveHeader(),

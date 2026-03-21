@@ -14,8 +14,9 @@ import 'package:psygo/services/recruit_guide_service.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/custom_hire_dialog.dart';
 import 'package:psygo/widgets/recruit_entry_guide_highlight.dart';
+// 钱包入口临时隐藏，恢复时取消注释。
+// import 'package:psygo/pages/wallet/wallet_page.dart';
 
-import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 
 /// Team main page
@@ -349,6 +350,7 @@ class TeamPageView extends StatelessWidget {
         ),
         centerTitle: false,
         elevation: 0,
+        /* 钱包入口临时隐藏，恢复时取消此注释。
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 12),
@@ -374,6 +376,7 @@ class TeamPageView extends StatelessWidget {
             ),
           ),
         ],
+        */
       ),
       body: EmployeesTab(
         key: controller._employeesTabKey,

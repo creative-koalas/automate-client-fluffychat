@@ -70,6 +70,99 @@ class _ChatListItemState extends State<ChatListItem> {
     if (mounted) setState(() {});
   }
 
+  String _resolveDisplayNameForMatrixUserId({
+    required String? matrixUserId,
+    required MatrixLocals matrixLocals,
+  }) {
+    final key = matrixUserId?.trim() ?? '';
+    if (key.isEmpty) {
+      return '';
+    }
+    final agent = AgentService.instance.getAgentByMatrixUserId(key);
+    final agentName = agent?.displayName.trim() ?? '';
+    if (agentName.isNotEmpty) {
+      return agentName;
+    }
+    final user = room.unsafeGetUserFromMemoryOrFallback(key);
+    return user.calcDisplayname(i18n: matrixLocals);
+  }
+
+  String _resolveRoomDisplayName(BuildContext context) {
+    final l10n = L10n.of(context);
+    final matrixLocals = MatrixLocals(l10n);
+
+    if (room.name.isNotEmpty) {
+      return room.name;
+    }
+
+    final canonicalAlias = room.canonicalAlias.localpart;
+    if (canonicalAlias != null && canonicalAlias.isNotEmpty) {
+      return canonicalAlias;
+    }
+
+    final directChatMatrixId = room.directChatMatrixID;
+    final heroIds = <String>[...?room.summary.mHeroes];
+    if (directChatMatrixId != null && heroIds.isEmpty) {
+      heroIds.add(directChatMatrixId);
+    }
+
+    final names = <String>[];
+    for (final heroId in heroIds) {
+      if (heroId.isEmpty || heroId == room.client.userID) {
+        continue;
+      }
+      final resolvedName = _resolveDisplayNameForMatrixUserId(
+        matrixUserId: heroId,
+        matrixLocals: matrixLocals,
+      ).trim();
+      if (resolvedName.isNotEmpty) {
+        names.add(resolvedName);
+      }
+    }
+
+    if (names.isNotEmpty) {
+      final joinedNames = names.join(', ');
+      if (room.isAbandonedDMRoom) {
+        return l10n.wasDirectChatDisplayName(joinedNames);
+      }
+      return room.isDirectChat ? joinedNames : l10n.groupWith(joinedNames);
+    }
+
+    return room.getLocalizedDisplayname(matrixLocals);
+  }
+
+  String _resolveSubtitleText({
+    required String baseText,
+    required Event? lastEvent,
+    required bool isDirectChat,
+    required String? directChatMatrixId,
+    required MatrixLocals matrixLocals,
+  }) {
+    if (baseText.isEmpty || lastEvent == null) {
+      return baseText;
+    }
+
+    final shouldPrefixSender = lastEvent.type == EventTypes.Message &&
+        textOnlyMessageTypes.contains(lastEvent.messageType) &&
+        (!isDirectChat || directChatMatrixId != lastEvent.senderId);
+    if (!shouldPrefixSender) {
+      return baseText;
+    }
+
+    final senderDisplayName = lastEvent.senderId == room.client.userID
+        ? L10n.of(context).you
+        : _resolveDisplayNameForMatrixUserId(
+            matrixUserId: lastEvent.senderId,
+            matrixLocals: matrixLocals,
+          );
+    final normalizedSenderDisplayName = senderDisplayName.trim();
+    if (normalizedSenderDisplayName.isEmpty) {
+      return baseText;
+    }
+
+    return '$normalizedSenderDisplayName: $baseText';
+  }
+
   Widget _buildEmployeeAvatar({
     required String avatarUrl,
     required String name,
@@ -96,6 +189,8 @@ class _ChatListItemState extends State<ChatListItem> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDesktop = FluffyThemes.isColumnMode(context);
+    final l10n = L10n.of(context);
+    final matrixLocals = MatrixLocals(l10n);
 
     final isMuted = room.pushRuleState != PushRuleState.notify;
     final typingText = room.getLocalizedTypingText(context);
@@ -107,9 +202,7 @@ class _ChatListItemState extends State<ChatListItem> {
     final hasNotifications = room.notificationCount > 0;
     final backgroundColor =
         activeChat ? theme.colorScheme.secondaryContainer : null;
-    final displayname = room.getLocalizedDisplayname(
-      MatrixLocals(L10n.of(context)),
-    );
+    final displayname = _resolveRoomDisplayName(context);
     final currentFilter = filter;
     if (currentFilter != null && !displayname.toLowerCase().contains(currentFilter)) {
       return const SizedBox.shrink();
@@ -262,7 +355,10 @@ class _ChatListItemState extends State<ChatListItem> {
                                     borderRadius: null,
                                     mxContent: user.avatarUrl,
                                     size: avatarSize,
-                                    name: user.calcDisplayname(),
+                                    name: _resolveDisplayNameForMatrixUserId(
+                                      matrixUserId: directChatMatrixId,
+                                      matrixLocals: matrixLocals,
+                                    ),
                                     presenceUserId: directChatMatrixId,
                                     presenceBackgroundColor: backgroundColor,
                                     onTap: () => onLongPress?.call(context),
@@ -453,29 +549,25 @@ class _ChatListItemState extends State<ChatListItem> {
                                 ),
                                 future: needLastEventSender
                                     ? lastEvent.calcLocalizedBody(
-                                        MatrixLocals(L10n.of(context)),
+                                        matrixLocals,
                                         hideReply: true,
                                         hideEdit: true,
                                         plaintextBody: true,
                                         removeMarkdown: true,
-                                        withSenderNamePrefix: (!isDirectChat ||
-                                            directChatMatrixId !=
-                                                room.lastEvent?.senderId),
+                                        withSenderNamePrefix: false,
                                       )
                                     : null,
                                 initialData:
                                     lastEvent?.calcLocalizedBodyFallback(
-                                  MatrixLocals(L10n.of(context)),
+                                  matrixLocals,
                                   hideReply: true,
                                   hideEdit: true,
                                   plaintextBody: true,
                                   removeMarkdown: true,
-                                  withSenderNamePrefix: (!isDirectChat ||
-                                      directChatMatrixId !=
-                                          room.lastEvent?.senderId),
+                                  withSenderNamePrefix: false,
                                 ),
                                 builder: (context, snapshot) {
-                                  final subtitleText = room.membership ==
+                                  final subtitleBaseText = room.membership ==
                                           Membership.invite
                                       ? room
                                               .getState(
@@ -485,11 +577,17 @@ class _ChatListItemState extends State<ChatListItem> {
                                               ?.content
                                               .tryGet<String>('reason') ??
                                           (isDirectChat
-                                              ? L10n.of(context).newChatRequest
-                                              : L10n.of(context)
-                                                  .inviteGroupChat)
+                                              ? l10n.newChatRequest
+                                              : l10n.inviteGroupChat)
                                       : snapshot.data ??
-                                          L10n.of(context).noMessagesYet;
+                                          l10n.noMessagesYet;
+                                  final subtitleText = _resolveSubtitleText(
+                                    baseText: subtitleBaseText,
+                                    lastEvent: lastEvent,
+                                    isDirectChat: isDirectChat,
+                                    directChatMatrixId: directChatMatrixId,
+                                    matrixLocals: matrixLocals,
+                                  );
                                   return Text(
                                     renderMatrixMentionsWithDisplayName(
                                       text: subtitleText,
