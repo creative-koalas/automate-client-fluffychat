@@ -34,6 +34,11 @@ class ChatInputRow extends StatelessWidget {
       return l10n.writeAMessage;
     }
 
+    final dynamicPlaceholder = controller.activeQuickTipPlaceholder.trim();
+    if (dynamicPlaceholder.isNotEmpty) {
+      return dynamicPlaceholder;
+    }
+
     switch (controller.activeQuickTipIntentId.trim()) {
       case 'build_game_with_godot':
         return l10n.inputQuickTipPlanMessage;
@@ -463,31 +468,65 @@ class ChatQuickTipsBar extends StatelessWidget {
 
   const ChatQuickTipsBar(this.controller, {super.key});
 
+  static IconData _iconForIntentId(String intentId) {
+    switch (intentId.trim()) {
+      case 'build_game_with_godot':
+        return Icons.bolt_rounded;
+      case 'create_word_document':
+        return Icons.description_outlined;
+      case 'build_smart_webview':
+        return Icons.web_rounded;
+      case 'daily_news_report':
+        return Icons.newspaper_rounded;
+      default:
+        return Icons.tips_and_updates_outlined;
+    }
+  }
+
   static final List<_InputQuickTipDefinition> _tipDefinitions =
       <_InputQuickTipDefinition>[
     _InputQuickTipDefinition(
       icon: Icons.bolt_rounded,
       titleBuilder: (l10n) => l10n.inputQuickTipPlanTitle,
+      placeholderBuilder: (l10n) => l10n.inputQuickTipPlanMessage,
       intentId: 'build_game_with_godot',
     ),
     _InputQuickTipDefinition(
       icon: Icons.description_outlined,
       titleBuilder: (l10n) => l10n.inputQuickTipWordTitle,
+      placeholderBuilder: (l10n) => l10n.inputQuickTipWordMessage,
       intentId: 'create_word_document',
     ),
     _InputQuickTipDefinition(
       icon: Icons.web_rounded,
       titleBuilder: (l10n) => l10n.inputQuickTipRiskTitle,
+      placeholderBuilder: (l10n) => l10n.inputQuickTipRiskMessage,
       intentId: 'build_smart_webview',
     ),
     _InputQuickTipDefinition(
       icon: Icons.newspaper_rounded,
       titleBuilder: (l10n) => l10n.inputQuickTipNextStepTitle,
+      placeholderBuilder: (l10n) => l10n.inputQuickTipNextStepMessage,
       intentId: 'daily_news_report',
     ),
   ];
 
   List<_InputQuickTipItem> _inputQuickTips(BuildContext context) {
+    if (controller.quickTipTemplates.isNotEmpty) {
+      return controller.quickTipTemplates
+          .where((template) => template.enabled)
+          .map(
+            (template) => _InputQuickTipItem(
+              icon: _iconForIntentId(template.intentId),
+              title: template.title,
+              intentId: template.intentId,
+              placeholder: template.placeholder,
+              serverPrompt: template.serverPrompt,
+            ),
+          )
+          .toList(growable: false);
+    }
+
     final l10n = L10n.of(context);
     return _tipDefinitions
         .map((definition) => definition.resolve(l10n))
@@ -500,7 +539,8 @@ class ChatQuickTipsBar extends StatelessWidget {
 
     controller.applyQuickTipWithIntent(
       intentId: intentId,
-      title: tip.title,
+      placeholder: tip.placeholder,
+      serverPrompt: tip.serverPrompt,
     );
   }
 
@@ -526,11 +566,13 @@ typedef _L10nTextBuilder = String Function(L10n l10n);
 class _InputQuickTipDefinition {
   final IconData icon;
   final _L10nTextBuilder titleBuilder;
+  final _L10nTextBuilder placeholderBuilder;
   final String intentId;
 
   const _InputQuickTipDefinition({
     required this.icon,
     required this.titleBuilder,
+    required this.placeholderBuilder,
     required this.intentId,
   });
 
@@ -539,6 +581,8 @@ class _InputQuickTipDefinition {
       icon: icon,
       title: titleBuilder(l10n),
       intentId: intentId,
+      placeholder: placeholderBuilder(l10n),
+      serverPrompt: '',
     );
   }
 }
@@ -547,11 +591,15 @@ class _InputQuickTipItem {
   final IconData icon;
   final String title;
   final String intentId;
+  final String placeholder;
+  final String serverPrompt;
 
   const _InputQuickTipItem({
     required this.icon,
     required this.title,
     required this.intentId,
+    required this.placeholder,
+    required this.serverPrompt,
   });
 }
 

@@ -36,6 +36,7 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
 import 'package:psygo/services/employee_work_template_visibility_service.dart';
+import 'package:psygo/services/quick_tip_template_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/fluffy_share.dart';
@@ -137,11 +138,13 @@ enum ChatRoomGuideType {
 
 class _QuickTipRewriteState {
   final String intentId;
-  final String title;
+  final String placeholder;
+  final String serverPrompt;
 
   const _QuickTipRewriteState({
     required this.intentId,
-    required this.title,
+    required this.placeholder,
+    required this.serverPrompt,
   });
 }
 
@@ -155,9 +158,24 @@ class _QuickTipInputSegments {
   });
 }
 
+class ChatQuickTipTemplate {
+  final String intentId;
+  final String title;
+  final String placeholder;
+  final String serverPrompt;
+  final bool enabled;
+
+  const ChatQuickTipTemplate({
+    required this.intentId,
+    required this.title,
+    required this.placeholder,
+    required this.serverPrompt,
+    required this.enabled,
+  });
+}
+
 class ChatController extends State<ChatPageWithRoom>
     with WidgetsBindingObserver {
-  static const String _quickTipEventContentKey = 'com.psygo.quick_tip';
   static final RegExp _quickTipMentionTokenPattern =
       RegExp(r'@(?:\[[^\]]+\]|[^\s@]+)');
   static final RegExp _quickTipWhitespacePattern = RegExp(r'\s+');
@@ -188,6 +206,8 @@ class ChatController extends State<ChatPageWithRoom>
 
   // Agent Web entry (reverse-tunnel) state.
   final AgentRepository _webEntryRepository = AgentRepository();
+  final QuickTipTemplateService _quickTipTemplateService =
+      QuickTipTemplateService.instance;
   int _webEntryRequestId = 0;
   bool _webEntryOpen = false;
   bool _webEntryLoading = false;
@@ -210,6 +230,7 @@ class ChatController extends State<ChatPageWithRoom>
   ChatRoomGuideType? _chatRoomGuideType;
   bool _employeeChatRoomGuideCompleted = false;
   bool _employeeWorkTemplateDismissed = false;
+  List<ChatQuickTipTemplate> _quickTipTemplates = const [];
 
   bool get webEntryOpen => _webEntryOpen;
   bool get webEntryLoading => _webEntryLoading;
@@ -223,7 +244,9 @@ class ChatController extends State<ChatPageWithRoom>
       room.getParticipants().any((u) => AgentService.instance.isEmployee(u.id));
   bool get hasActiveQuickTipIntent => _pendingQuickTipRewrite != null;
   String get activeQuickTipIntentId => _pendingQuickTipRewrite?.intentId ?? '';
-  String get activeQuickTipTitle => _pendingQuickTipRewrite?.title ?? '';
+  String get activeQuickTipPlaceholder =>
+      _pendingQuickTipRewrite?.placeholder ?? '';
+  List<ChatQuickTipTemplate> get quickTipTemplates => _quickTipTemplates;
   bool get isEmployeeChatGuide =>
       _chatRoomGuideType == ChatRoomGuideType.employee;
   bool get isGroupMentionGuide =>
@@ -843,6 +866,7 @@ class ChatController extends State<ChatPageWithRoom>
     _tryLoadTimeline();
     unawaited(_loadEmployeeWorkTemplateVisibilityState());
     unawaited(_loadChatRoomGuideState());
+    unawaited(_loadQuickTipTemplates());
     if (kIsWeb) {
       onFocusSub = html.window.onFocus.listen((_) => setReadMarker());
     }
@@ -856,6 +880,44 @@ class ChatController extends State<ChatPageWithRoom>
     }
     setState(() {
       _employeeWorkTemplateDismissed = dismissed;
+    });
+  }
+
+  Future<void> _loadQuickTipTemplates() async {
+    final templates = await _quickTipTemplateService.getTemplates();
+    if (!mounted) {
+      return;
+    }
+
+    final resolvedTemplates = templates
+        .map(
+          (template) => ChatQuickTipTemplate(
+            intentId: template.intentId,
+            title: template.title,
+            placeholder: template.placeholder,
+            serverPrompt: template.serverPrompt,
+            enabled: template.enabled,
+          ),
+        )
+        .toList(growable: false);
+
+    final pending = _pendingQuickTipRewrite;
+    final matchedTemplate = pending == null
+        ? null
+        : resolvedTemplates.firstWhereOrNull(
+            (template) => template.intentId.trim() == pending.intentId.trim(),
+          );
+
+    setState(() {
+      _quickTipTemplates = resolvedTemplates;
+      if (pending == null || matchedTemplate == null) {
+        return;
+      }
+      _pendingQuickTipRewrite = _QuickTipRewriteState(
+        intentId: matchedTemplate.intentId,
+        placeholder: matchedTemplate.placeholder,
+        serverPrompt: matchedTemplate.serverPrompt,
+      );
     });
   }
 
@@ -1403,37 +1465,20 @@ class ChatController extends State<ChatPageWithRoom>
     );
     // 将“@所有人”类本地化文案统一转换为 @room（SDK 会设置 m.mentions.room = true）
     outgoingText = _normalizeBroadcastMentionForSending(outgoingText);
-    final quickTipMetadata = _buildQuickTipMetadataForEvent(outgoingText);
-    if (hasActiveQuickTipIntent && quickTipMetadata == null) {
-      return;
+    if (hasActiveQuickTipIntent) {
+      outgoingText = _renderQuickTipOutgoingText(outgoingText);
+      if (outgoingText.trim().isEmpty) {
+        return;
+      }
     }
-    if (quickTipMetadata == null) {
-      // ignore: unawaited_futures
-      room.sendTextEvent(
-        outgoingText,
-        inReplyTo: replyEvent,
-        editEventId: editEvent?.eventId,
-        parseCommands: false,
-        threadRootEventId: activeThreadId,
-      );
-    } else {
-      final mentionsContent =
-          _buildMentionsContentForOutgoingText(outgoingText);
-      // Use a custom content block so quick-tip server prompt is hidden from
-      // the visible message body while still being available to backend.
-      // ignore: unawaited_futures
-      room.sendEvent(
-        <String, dynamic>{
-          'msgtype': MessageTypes.Text,
-          'body': outgoingText,
-          _quickTipEventContentKey: quickTipMetadata,
-          if (mentionsContent != null) 'm.mentions': mentionsContent,
-        },
-        inReplyTo: replyEvent,
-        editEventId: editEvent?.eventId,
-        threadRootEventId: activeThreadId,
-      );
-    }
+    // ignore: unawaited_futures
+    room.sendTextEvent(
+      outgoingText,
+      inReplyTo: replyEvent,
+      editEventId: editEvent?.eventId,
+      parseCommands: false,
+      threadRootEventId: activeThreadId,
+    );
     sendController.value = TextEditingValue(
       text: pendingText,
       selection: const TextSelection.collapsed(offset: 0),
@@ -2528,36 +2573,45 @@ class ChatController extends State<ChatPageWithRoom>
     }
   }
 
-  Map<String, dynamic>? _buildQuickTipMetadataForEvent(String outgoingText) {
+  String _renderQuickTipOutgoingText(String outgoingText) {
     final pending = _pendingQuickTipRewrite;
     if (pending == null) {
-      return null;
-    }
-    final normalizedIntentId = pending.intentId.trim();
-    final segments = _splitQuickTipInputSegments(outgoingText);
-    final normalizedInput = segments.userInput.trim();
-    final normalizedMentionPrefix = segments.mentionPrefix.trim();
-    if (normalizedIntentId.isEmpty || normalizedInput.isEmpty) {
-      return null;
+      return outgoingText;
     }
 
-    final metadata = <String, dynamic>{
-      'intent_id': normalizedIntentId,
-      'user_input': normalizedInput,
-    };
-    final localeTag = _currentQuickTipLocaleTag();
-    if (localeTag.isNotEmpty) {
-      metadata['locale'] = localeTag;
+    final segments = _splitQuickTipInputSegments(outgoingText);
+    final mentionPrefix = segments.mentionPrefix.trim();
+    final userInput = segments.userInput.trim();
+    if (userInput.isEmpty) {
+      return '';
     }
-    if (normalizedMentionPrefix.isNotEmpty) {
-      metadata['mention_prefix'] = normalizedMentionPrefix;
+
+    final template = pending.serverPrompt.trim();
+    String renderedBody;
+    if (template.isEmpty) {
+      renderedBody = userInput;
+    } else if (template.contains('{}')) {
+      renderedBody = template.replaceFirst('{}', userInput);
+    } else if (template.contains('{{user_input}}')) {
+      renderedBody = template.replaceFirst('{{user_input}}', userInput);
+    } else {
+      renderedBody = '$template\n\n$userInput';
     }
-    return metadata;
+
+    final normalizedBody = renderedBody.trim();
+    if (mentionPrefix.isEmpty) {
+      return normalizedBody;
+    }
+    if (normalizedBody.isEmpty) {
+      return mentionPrefix;
+    }
+    return '$mentionPrefix\n\n$normalizedBody';
   }
 
   void applyQuickTipWithIntent({
     required String intentId,
-    required String title,
+    String placeholder = '',
+    String serverPrompt = '',
   }) {
     final normalizedIntentId = intentId.trim();
     if (normalizedIntentId.isEmpty) {
@@ -2569,15 +2623,14 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
-    final normalizedTitle = title.trim();
-    if (normalizedTitle.isEmpty) {
-      return;
-    }
+    final normalizedPlaceholder = placeholder.trim();
+    final normalizedServerPrompt = serverPrompt.trim();
 
     setState(() {
       _pendingQuickTipRewrite = _QuickTipRewriteState(
         intentId: normalizedIntentId,
-        title: normalizedTitle,
+        placeholder: normalizedPlaceholder,
+        serverPrompt: normalizedServerPrompt,
       );
     });
 
@@ -2652,12 +2705,6 @@ class ChatController extends State<ChatPageWithRoom>
       if (localpart == normalizedLocalpart) return true;
     }
     return false;
-  }
-
-  String _currentQuickTipLocaleTag() {
-    final locale = Localizations.maybeLocaleOf(context);
-    final tag = locale?.toLanguageTag().trim() ?? '';
-    return tag;
   }
 
   bool _inputTextIsEmpty = true;
