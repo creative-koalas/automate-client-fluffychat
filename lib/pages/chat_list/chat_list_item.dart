@@ -20,6 +20,13 @@ import '../../widgets/avatar.dart';
 
 enum ArchivedRoomAction { delete, rejoin }
 
+const Set<String> _textOnlyMessageTypes = <String>{
+  MessageTypes.Text,
+  MessageTypes.Notice,
+  MessageTypes.Emote,
+  MessageTypes.None,
+};
+
 class ChatListItem extends StatefulWidget {
   final Room room;
   final Room? space;
@@ -143,7 +150,7 @@ class _ChatListItemState extends State<ChatListItem> {
     }
 
     final shouldPrefixSender = lastEvent.type == EventTypes.Message &&
-        textOnlyMessageTypes.contains(lastEvent.messageType) &&
+        _textOnlyMessageTypes.contains(lastEvent.messageType) &&
         (!isDirectChat || directChatMatrixId != lastEvent.senderId);
     if (!shouldPrefixSender) {
       return baseText;
