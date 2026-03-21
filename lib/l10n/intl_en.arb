@@ -3898,6 +3898,45 @@
   "@walletPublicBetaDialogBody": {},
   "walletPublicBetaDialogContact": "If you need credits, please contact us by email:",
   "@walletPublicBetaDialogContact": {},
+  "walletCheckInTitle": "Daily Check-In",
+  "@walletCheckInTitle": {},
+  "walletCheckInTodayReward": "Today earned {credits} credits",
+  "@walletCheckInTodayReward": {
+    "placeholders": {
+      "credits": {}
+    }
+  },
+  "walletCheckInNextReward": "Next check-in: {credits} credits",
+  "@walletCheckInNextReward": {
+    "placeholders": {
+      "credits": {}
+    }
+  },
+  "walletCheckInProgress": "Day {current}/{max}",
+  "@walletCheckInProgress": {
+    "placeholders": {
+      "current": {},
+      "max": {}
+    }
+  },
+  "walletCheckInButton": "Check In Now",
+  "@walletCheckInButton": {},
+  "walletCheckInDone": "Checked In",
+  "@walletCheckInDone": {},
+  "walletCheckInLoading": "Checking In...",
+  "@walletCheckInLoading": {},
+  "walletCheckInUnavailable": "Check-in is temporarily unavailable.",
+  "@walletCheckInUnavailable": {},
+  "walletCheckInRetry": "Retry",
+  "@walletCheckInRetry": {},
+  "walletCheckInSuccess": "Checked in successfully and earned {credits} credits",
+  "@walletCheckInSuccess": {
+    "placeholders": {
+      "credits": {}
+    }
+  },
+  "walletCheckInAlreadyDone": "You have already checked in today",
+  "@walletCheckInAlreadyDone": {},
   "orderTitle": "Confirm Order",
   "@orderTitle": {},
   "orderInfo": "Order Details",

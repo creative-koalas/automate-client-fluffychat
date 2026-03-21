@@ -11,6 +11,7 @@ import 'package:psygo/utils/backend_error_message.dart';
 import 'package:psygo/utils/tap_dismiss_snackbar.dart';
 
 import 'order_page.dart';
+import 'wallet_check_in_card.dart';
 
 /// 钱包充值页面
 /// 按照新 UI 设计重构
@@ -41,6 +42,14 @@ class _WalletPageState extends State<WalletPage> {
   InvitationInfo? _invitationInfo;
   bool _invitationLoading = true;
 
+  // 签到奖励信息
+  RewardCenter? _rewardCenter;
+  bool _rewardLoading = true;
+  bool _rewardHasError = false;
+  bool _checkInSubmitting = false;
+  int _checkInAnimationToken = 0;
+  int _lastCheckInRewardPoints = 0;
+
   // 自动刷新定时器（每5秒刷新余额）
   Timer? _refreshTimer;
 
@@ -53,6 +62,7 @@ class _WalletPageState extends State<WalletPage> {
     super.initState();
     _customAmount = _presetAmounts[_selectedPresetIndex];
     _loadUserBalance();
+    _loadRewardCenter();
     _loadInvitationInfo();
     // 启动定时器，每5秒自动刷新余额
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -112,6 +122,91 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
+  Future<bool> _loadRewardCenter({bool showError = false}) async {
+    if (!mounted) return false;
+    setState(() {
+      _rewardLoading = true;
+      _rewardHasError = false;
+    });
+    try {
+      final apiClient = context.read<PsygoApiClient>();
+      final center = await apiClient.getRewardCenter();
+      if (!mounted) return false;
+      setState(() {
+        _rewardCenter = center;
+        _rewardLoading = false;
+        _rewardHasError = false;
+        _balanceCredits = center.summary.balance;
+      });
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      setState(() {
+        _rewardLoading = false;
+        _rewardHasError = true;
+      });
+      if (showError) {
+        showTapDismissSnackBar(
+          context,
+          friendlyBackendErrorMessage(e, L10n.of(context)),
+        );
+      }
+      if (kDebugMode) {
+        print('Failed to load reward center: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<void> _onCheckIn() async {
+    if (_checkInSubmitting) return;
+    final checkIn = _rewardCenter?.checkIn;
+    if (checkIn == null || checkIn.checkedInToday) {
+      return;
+    }
+
+    setState(() => _checkInSubmitting = true);
+    try {
+      final apiClient = context.read<PsygoApiClient>();
+      final result = await apiClient.checkInReward();
+      if (!mounted) return;
+
+      setState(() {
+        _checkInSubmitting = false;
+        _rewardCenter = result.center;
+        _rewardLoading = false;
+        _rewardHasError = false;
+        _balanceCredits = result.center.summary.balance;
+        if (!result.alreadyCheckedIn && result.grantedPoints > 0) {
+          _lastCheckInRewardPoints = result.grantedPoints;
+          _checkInAnimationToken++;
+        }
+      });
+
+      showTapDismissSnackBar(
+        context,
+        result.alreadyCheckedIn
+            ? L10n.of(context).walletCheckInAlreadyDone
+            : L10n.of(context).walletCheckInSuccess(result.grantedPoints),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: result.alreadyCheckedIn ? null : _primaryGreen,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _checkInSubmitting = false);
+      showTapDismissSnackBar(
+        context,
+        friendlyBackendErrorMessage(e, L10n.of(context)),
+      );
+    }
+  }
+
+  void _refreshWalletOverview() {
+    unawaited(_loadUserBalance());
+    unawaited(_loadRewardCenter());
+    unawaited(_loadInvitationInfo());
+  }
+
   void _onPresetTap(int index) {
     setState(() {
       _selectedPresetIndex = index;
@@ -145,8 +240,11 @@ class _WalletPageState extends State<WalletPage> {
         final theme = Theme.of(context);
         final colorScheme = theme.colorScheme;
         final isDark = theme.brightness == Brightness.dark;
-        final accentSurface =
-            _tint(colorScheme.surface, _lightGreen, isDark ? 0.2 : 0.7);
+        final accentSurface = _tint(
+          colorScheme.surface,
+          _lightGreen,
+          isDark ? 0.2 : 0.7,
+        );
         var copied = false;
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
@@ -158,14 +256,23 @@ class _WalletPageState extends State<WalletPage> {
               children: [
                 const Icon(Icons.info_outline, color: _primaryGreen, size: 28),
                 const SizedBox(width: 12),
-                Text(l10n.walletPublicBetaDialogTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                Text(
+                  l10n.walletPublicBetaDialogTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l10n.walletPublicBetaDialogBody, style: const TextStyle(fontSize: 15, height: 1.5)),
+                Text(
+                  l10n.walletPublicBetaDialogBody,
+                  style: const TextStyle(fontSize: 15, height: 1.5),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   l10n.walletPublicBetaDialogContact,
@@ -183,11 +290,16 @@ class _WalletPageState extends State<WalletPage> {
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
                         onTap: () {
-                          Clipboard.setData(const ClipboardData(text: 'psygofeedback@163.com'));
+                          Clipboard.setData(
+                            const ClipboardData(text: 'psygofeedback@163.com'),
+                          );
                           setDialogState(() => copied = true);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: accentSurface,
                             borderRadius: BorderRadius.circular(8),
@@ -195,12 +307,20 @@ class _WalletPageState extends State<WalletPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.email_outlined, size: 18, color: _primaryGreen),
+                              const Icon(
+                                Icons.email_outlined,
+                                size: 18,
+                                color: _primaryGreen,
+                              ),
                               const SizedBox(width: 8),
                               const Flexible(
                                 child: Text(
                                   'psygofeedback@163.com',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _primaryGreen),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: _primaryGreen,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -219,7 +339,10 @@ class _WalletPageState extends State<WalletPage> {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           '✓ ${l10n.copiedToClipboard}',
-                          style: const TextStyle(fontSize: 12, color: _primaryGreen),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: _primaryGreen,
+                          ),
                         ),
                       ),
                   ],
@@ -229,7 +352,13 @@ class _WalletPageState extends State<WalletPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.appUpdateGotIt, style: const TextStyle(color: _primaryGreen, fontWeight: FontWeight.w600)),
+                child: Text(
+                  l10n.appUpdateGotIt,
+                  style: const TextStyle(
+                    color: _primaryGreen,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -251,9 +380,7 @@ class _WalletPageState extends State<WalletPage> {
 
     // 跳转到订单页面
     final payResult = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => OrderPage(amount: _customAmount),
-      ),
+      MaterialPageRoute(builder: (context) => OrderPage(amount: _customAmount)),
     );
 
     // 如果支付成功，刷新余额并显示提示
@@ -299,9 +426,7 @@ class _WalletPageState extends State<WalletPage> {
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: widget.showBackButton,
         flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: appBarGradient,
-          ),
+          decoration: BoxDecoration(gradient: appBarGradient),
         ),
         iconTheme: IconThemeData(color: colorScheme.onSurface),
         title: Row(
@@ -313,10 +438,7 @@ class _WalletPageState extends State<WalletPage> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    _primaryGreen,
-                    Color(0xFF66BB6A),
-                  ],
+                  colors: [_primaryGreen, Color(0xFF66BB6A)],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
@@ -356,6 +478,19 @@ class _WalletPageState extends State<WalletPage> {
             _buildBalanceCard(theme, l10n),
             const SizedBox(height: 20),
 
+            // 签到卡片
+            WalletCheckInCard(
+              center: _rewardCenter,
+              loading: _rewardLoading,
+              hasError: _rewardHasError,
+              isSubmitting: _checkInSubmitting,
+              celebrationRewardPoints: _lastCheckInRewardPoints,
+              celebrationToken: _checkInAnimationToken,
+              onCheckIn: _onCheckIn,
+              onRetry: () => _loadRewardCenter(showError: true),
+            ),
+            const SizedBox(height: 20),
+
             // 邀请好友卡片
             _buildInvitationCard(theme, l10n),
             const SizedBox(height: 20),
@@ -374,8 +509,9 @@ class _WalletPageState extends State<WalletPage> {
     final isDark = theme.brightness == Brightness.dark;
     final baseSurface = colorScheme.surfaceContainerHigh;
     final textSecondary = colorScheme.onSurfaceVariant;
-    final textMuted =
-        colorScheme.onSurfaceVariant.withValues(alpha: isDark ? 0.75 : 0.85);
+    final textMuted = colorScheme.onSurfaceVariant.withValues(
+      alpha: isDark ? 0.75 : 0.85,
+    );
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(28),
@@ -444,9 +580,12 @@ class _WalletPageState extends State<WalletPage> {
                 ],
               ),
               GestureDetector(
-                onTap: _loadUserBalance,
+                onTap: _refreshWalletOverview,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerHighest.withValues(
                       alpha: isDark ? 0.55 : 0.8,
@@ -499,9 +638,9 @@ class _WalletPageState extends State<WalletPage> {
               children: [
                 Text(
                   _balanceCredits.toString().replaceAllMapped(
-                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                        (Match m) => '${m[1]},',
-                      ),
+                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                    (Match m) => '${m[1]},',
+                  ),
                   style: TextStyle(
                     fontSize: 48,
                     fontWeight: FontWeight.w800,
@@ -527,10 +666,7 @@ class _WalletPageState extends State<WalletPage> {
           // 人民币换算
           Text(
             '${l10n.walletEquivalent} ¥${(_balanceCredits / 100).toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: 13,
-              color: textMuted,
-            ),
+            style: TextStyle(fontSize: 13, color: textMuted),
           ),
           const SizedBox(height: 12),
 
@@ -546,18 +682,11 @@ class _WalletPageState extends State<WalletPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: textMuted,
-                ),
+                Icon(Icons.info_outline, size: 14, color: textMuted),
                 const SizedBox(width: 4),
                 Text(
                   l10n.walletExchangeRate,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textMuted,
-                  ),
+                  style: TextStyle(fontSize: 12, color: textMuted),
                 ),
               ],
             ),
@@ -571,10 +700,12 @@ class _WalletPageState extends State<WalletPage> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final textSecondary = colorScheme.onSurfaceVariant;
-    final textMuted =
-        colorScheme.onSurfaceVariant.withValues(alpha: isDark ? 0.75 : 0.85);
-    final outline =
-        colorScheme.outlineVariant.withValues(alpha: isDark ? 0.55 : 0.35);
+    final textMuted = colorScheme.onSurfaceVariant.withValues(
+      alpha: isDark ? 0.75 : 0.85,
+    );
+    final outline = colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.55 : 0.35,
+    );
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(28),
@@ -584,14 +715,13 @@ class _WalletPageState extends State<WalletPage> {
           end: Alignment.bottomRight,
           colors: [
             colorScheme.surfaceContainerHigh,
-            colorScheme.surfaceContainerLow.withValues(alpha: isDark ? 0.8 : 0.6),
+            colorScheme.surfaceContainerLow.withValues(
+              alpha: isDark ? 0.8 : 0.6,
+            ),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: outline,
-          width: 1.5,
-        ),
+        border: Border.all(color: outline, width: 1.5),
         boxShadow: [
           BoxShadow(
             color: _primaryGreen.withValues(alpha: isDark ? 0.12 : 0.08),
@@ -613,7 +743,10 @@ class _WalletPageState extends State<WalletPage> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: _tint(
                     colorScheme.surface,
@@ -625,11 +758,7 @@ class _WalletPageState extends State<WalletPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.bolt,
-                      size: 16,
-                      color: _primaryGreen,
-                    ),
+                    const Icon(Icons.bolt, size: 16, color: _primaryGreen),
                     const SizedBox(width: 4),
                     Text(
                       l10n.walletCustomRecharge,
@@ -647,20 +776,14 @@ class _WalletPageState extends State<WalletPage> {
           const SizedBox(height: 4),
           Text(
             l10n.walletFlexibleRecharge,
-            style: TextStyle(
-              fontSize: 13,
-              color: textMuted,
-            ),
+            style: TextStyle(fontSize: 13, color: textMuted),
           ),
           const SizedBox(height: 20),
 
           // 快捷金额标签
           Text(
             l10n.walletQuickAmount,
-            style: TextStyle(
-              fontSize: 13,
-              color: textSecondary,
-            ),
+            style: TextStyle(fontSize: 13, color: textSecondary),
           ),
           const SizedBox(height: 10),
 
@@ -701,10 +824,16 @@ class _WalletPageState extends State<WalletPage> {
                     ),
                     child: Center(
                       child: Text(
-                        amount < 1 ? '¥${amount.toStringAsFixed(2)}' : '¥${amount.toInt()}',
+                        amount < 1
+                            ? '¥${amount.toStringAsFixed(2)}'
+                            : '¥${amount.toInt()}',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : colorScheme.onSurface,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : colorScheme.onSurface,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           fontSize: 14,
                         ),
                       ),
@@ -719,10 +848,7 @@ class _WalletPageState extends State<WalletPage> {
           // 自定义金额标签
           Text(
             l10n.walletCustomAmount,
-            style: TextStyle(
-              fontSize: 13,
-              color: textSecondary,
-            ),
+            style: TextStyle(fontSize: 13, color: textSecondary),
           ),
           const SizedBox(height: 14),
 
@@ -732,10 +858,7 @@ class _WalletPageState extends State<WalletPage> {
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: outline,
-                width: 1,
-              ),
+              border: Border.all(color: outline, width: 1),
             ),
             child: Row(
               children: [
@@ -754,14 +877,13 @@ class _WalletPageState extends State<WalletPage> {
                       children: [
                         Text(
                           '¥',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 16, color: textSecondary),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _customAmount < 1 ? _customAmount.toStringAsFixed(2) : _customAmount.toInt().toString(),
+                          _customAmount < 1
+                              ? _customAmount.toStringAsFixed(2)
+                              : _customAmount.toInt().toString(),
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -788,10 +910,7 @@ class _WalletPageState extends State<WalletPage> {
           Center(
             child: Text(
               '${l10n.walletWillGet} ${(_customAmount * 100).toInt()}${l10n.walletCreditsUnit}',
-              style: TextStyle(
-                fontSize: 13,
-                color: _primaryGreen,
-              ),
+              style: TextStyle(fontSize: 13, color: _primaryGreen),
             ),
           ),
           const SizedBox(height: 28),
@@ -809,7 +928,9 @@ class _WalletPageState extends State<WalletPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 0,
-                shadowColor: _primaryGreen.withValues(alpha: isDark ? 0.3 : 0.35),
+                shadowColor: _primaryGreen.withValues(
+                  alpha: isDark ? 0.3 : 0.35,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -837,8 +958,9 @@ class _WalletPageState extends State<WalletPage> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final isNarrowScreen = MediaQuery.sizeOf(context).width < 380;
-    final outline =
-        colorScheme.outlineVariant.withValues(alpha: isDark ? 0.55 : 0.35);
+    final outline = colorScheme.outlineVariant.withValues(
+      alpha: isDark ? 0.55 : 0.35,
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -849,7 +971,11 @@ class _WalletPageState extends State<WalletPage> {
           end: Alignment.bottomRight,
           colors: [
             colorScheme.surfaceContainerHigh,
-            _tint(colorScheme.surfaceContainerLow, _lightGreen, isDark ? 0.1 : 0.3),
+            _tint(
+              colorScheme.surfaceContainerLow,
+              _lightGreen,
+              isDark ? 0.1 : 0.3,
+            ),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
@@ -868,19 +994,34 @@ class _WalletPageState extends State<WalletPage> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: _tint(colorScheme.surface, _lightGreen, isDark ? 0.18 : 0.8),
+                  color: _tint(
+                    colorScheme.surface,
+                    _lightGreen,
+                    isDark ? 0.18 : 0.8,
+                  ),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.card_giftcard_rounded, size: 16, color: _primaryGreen),
+                    const Icon(
+                      Icons.card_giftcard_rounded,
+                      size: 16,
+                      color: _primaryGreen,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       L10n.of(context).inviteFriends,
-                      style: const TextStyle(color: _primaryGreen, fontWeight: FontWeight.w600, fontSize: 14),
+                      style: const TextStyle(
+                        color: _primaryGreen,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -892,7 +1033,14 @@ class _WalletPageState extends State<WalletPage> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
-                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _primaryGreen)),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _primaryGreen,
+                  ),
+                ),
               ),
             )
           else ...[
@@ -905,12 +1053,19 @@ class _WalletPageState extends State<WalletPage> {
                       _invitationInfo!.maxInvitees,
                     )
                   : L10n.of(context).inviteRewardRuleSimple,
-              style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant, height: 1.5),
+              style: TextStyle(
+                fontSize: 13,
+                color: colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
             if (_invitationInfo != null && _invitationInfo!.isFull) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -918,9 +1073,20 @@ class _WalletPageState extends State<WalletPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.info_outline, size: 14, color: Colors.orange),
+                    const Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: Colors.orange,
+                    ),
                     const SizedBox(width: 4),
-                    Text(L10n.of(context).invitationQuotaFull, style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w500)),
+                    Text(
+                      L10n.of(context).invitationQuotaFull,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -937,12 +1103,17 @@ class _WalletPageState extends State<WalletPage> {
                     L10n.of(context).viewInvitationCode,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryGreen,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -958,12 +1129,17 @@ class _WalletPageState extends State<WalletPage> {
                     L10n.of(context).enterInvitationCodeButton,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _primaryGreen,
                     side: const BorderSide(color: _primaryGreen),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -980,12 +1156,17 @@ class _WalletPageState extends State<WalletPage> {
                           L10n.of(context).viewInvitationCode,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primaryGreen,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 0,
                         ),
                       ),
@@ -1002,12 +1183,17 @@ class _WalletPageState extends State<WalletPage> {
                           L10n.of(context).enterInvitationCodeButton,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _primaryGreen,
                           side: const BorderSide(color: _primaryGreen),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -1038,8 +1224,13 @@ class _WalletPageState extends State<WalletPage> {
             : (info.currentInvitees / info.maxInvitees).clamp(0.0, 1.0);
 
         return AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
           contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1052,12 +1243,19 @@ class _WalletPageState extends State<WalletPage> {
                   color: _lightGreen,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.card_giftcard_rounded, color: _primaryGreen, size: 18),
+                child: const Icon(
+                  Icons.card_giftcard_rounded,
+                  color: _primaryGreen,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
               Text(
                 L10n.of(context).myInvitationCode,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -1066,11 +1264,16 @@ class _WalletPageState extends State<WalletPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: _tint(colorScheme.surface, _lightGreen, 0.78),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _primaryGreen.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: _primaryGreen.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -1093,7 +1296,9 @@ class _WalletPageState extends State<WalletPage> {
                         foregroundColor: _primaryGreen,
                       ),
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: info.invitationCode));
+                        Clipboard.setData(
+                          ClipboardData(text: info.invitationCode),
+                        );
                         showTapDismissSnackBar(
                           ctx,
                           L10n.of(context).invitationCodeCopied,
@@ -1106,7 +1311,9 @@ class _WalletPageState extends State<WalletPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                L10n.of(context).invitedProgress(info.currentInvitees, info.maxInvitees),
+                L10n.of(
+                  context,
+                ).invitedProgress(info.currentInvitees, info.maxInvitees),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -1121,7 +1328,9 @@ class _WalletPageState extends State<WalletPage> {
                   minHeight: 6,
                   value: progress,
                   backgroundColor: colorScheme.surfaceContainerHighest,
-                  valueColor: const AlwaysStoppedAnimation<Color>(_primaryGreen),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    _primaryGreen,
+                  ),
                 ),
               ),
               if (info.isFull)
@@ -1130,7 +1339,11 @@ class _WalletPageState extends State<WalletPage> {
                   child: Text(
                     L10n.of(context).invitationQuotaFull,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.orange,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
             ],
@@ -1144,7 +1357,10 @@ class _WalletPageState extends State<WalletPage> {
                   foregroundColor: _primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                child: Text(L10n.of(context).close, style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(
+                  L10n.of(context).close,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -1162,8 +1378,13 @@ class _WalletPageState extends State<WalletPage> {
         builder: (ctx, setDialogState) {
           final canSubmit = codeLength == 8;
           return AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 24,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1176,12 +1397,19 @@ class _WalletPageState extends State<WalletPage> {
                     color: _lightGreen,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.input_rounded, color: _primaryGreen, size: 18),
+                  child: const Icon(
+                    Icons.input_rounded,
+                    color: _primaryGreen,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text(
                   L10n.of(context).enterInvitationCodeButton,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -1200,26 +1428,38 @@ class _WalletPageState extends State<WalletPage> {
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.characters,
                   maxLength: 8,
-                  style: const TextStyle(fontSize: 24, letterSpacing: 4, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    letterSpacing: 4,
+                    fontWeight: FontWeight.w700,
+                  ),
                   decoration: InputDecoration(
                     counterText: '$codeLength/8',
                     filled: true,
                     fillColor: _lightGreen.withValues(alpha: 0.5),
                     hintText: '········',
-                    hintStyle: TextStyle(color: Colors.grey[400], letterSpacing: 4),
+                    hintStyle: TextStyle(
+                      color: Colors.grey[400],
+                      letterSpacing: 4,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey[300]!),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _primaryGreen, width: 2),
+                      borderSide: const BorderSide(
+                        color: _primaryGreen,
+                        width: 2,
+                      ),
                     ),
                   ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
                     TextInputFormatter.withFunction((oldValue, newValue) {
-                      return newValue.copyWith(text: newValue.text.toUpperCase());
+                      return newValue.copyWith(
+                        text: newValue.text.toUpperCase(),
+                      );
                     }),
                   ],
                   onChanged: (value) {
@@ -1231,7 +1471,10 @@ class _WalletPageState extends State<WalletPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: Text(L10n.of(context).cancel, style: TextStyle(color: Colors.grey[600])),
+                child: Text(
+                  L10n.of(context).cancel,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
               ),
               FilledButton(
                 onPressed: canSubmit
@@ -1251,7 +1494,10 @@ class _WalletPageState extends State<WalletPage> {
                           if (!mounted) return;
                           showTapDismissSnackBar(
                             context,
-                            L10n.of(context).invitationBindSuccess(result.inviterNickname, result.rewardCredits),
+                            L10n.of(context).invitationBindSuccess(
+                              result.inviterNickname,
+                              result.rewardCredits,
+                            ),
                             backgroundColor: _primaryGreen,
                           );
                           _loadInvitationInfo();
@@ -1267,8 +1513,13 @@ class _WalletPageState extends State<WalletPage> {
                 style: FilledButton.styleFrom(
                   backgroundColor: _primaryGreen,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
                 child: Text(L10n.of(context).confirmBind),
               ),

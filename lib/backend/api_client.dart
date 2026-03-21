@@ -12,15 +12,11 @@ import '../core/config.dart';
 import '../core/token_manager.dart';
 import '../utils/custom_http_client.dart';
 
-enum TokenRefreshOutcome {
-  success,
-  transientFailure,
-  invalidSession,
-}
+enum TokenRefreshOutcome { success, transientFailure, invalidSession }
 
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio})
-      : _dio = dio ?? CustomHttpClient.createDio() {
+    : _dio = dio ?? CustomHttpClient.createDio() {
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(_buildAuthInterceptor());
@@ -55,11 +51,13 @@ class PsygoApiClient {
         if (refreshOutcome != TokenRefreshOutcome.success) {
           if (refreshOutcome == TokenRefreshOutcome.invalidSession) {
             debugPrint(
-                '[API] Token refresh failed with invalid session, logging out');
+              '[API] Token refresh failed with invalid session, logging out',
+            );
             await auth.markLoggedOut();
           } else {
             debugPrint(
-                '[API] Token refresh failed due to transient error, keep session');
+              '[API] Token refresh failed due to transient error, keep session',
+            );
           }
           return handler.next(error);
         }
@@ -107,8 +105,7 @@ class PsygoApiClient {
 
     MaintenanceStatusSnapshot? status;
     if (_isMaintenanceStatusPath(response.requestOptions.path)) {
-      status =
-          MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
+      status = MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
     } else if (response.statusCode == 503) {
       status = MaintenanceStatusSnapshot.tryParseClosedErrorPayload(
         response.data,
@@ -142,8 +139,7 @@ class PsygoApiClient {
       '${PsygoConfig.baseUrl}$path',
     );
 
-    final status =
-        MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
+    final status = MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
     if (res.statusCode != 200 || status == null) {
       throw AutomateBackendException(
         'Failed to get maintenance status',
@@ -209,7 +205,8 @@ class PsygoApiClient {
     }
 
     debugPrint(
-        '[API] Unauthorized code=$firstCode, attempting token refresh...');
+      '[API] Unauthorized code=$firstCode, attempting token refresh...',
+    );
     final refreshOutcome = await refreshAccessTokenWithOutcome();
     if (refreshOutcome != TokenRefreshOutcome.success) {
       if (refreshOutcome == TokenRefreshOutcome.invalidSession) {
@@ -368,8 +365,8 @@ class PsygoApiClient {
     final onboardingCompleted = rawOnboardingCompleted is bool
         ? rawOnboardingCompleted
         : (rawOnboardingCompleted is num
-            ? rawOnboardingCompleted != 0
-            : rawOnboardingCompleted?.toString().toLowerCase() == 'true');
+              ? rawOnboardingCompleted != 0
+              : rawOnboardingCompleted?.toString().toLowerCase() == 'true');
 
     await auth.save(
       primaryToken: authResponse.token,
@@ -523,10 +520,7 @@ class PsygoApiClient {
           formData.files.add(
             MapEntry(
               'files',
-              MultipartFile.fromBytes(
-                await file.readAsBytes(),
-                filename: name,
-              ),
+              MultipartFile.fromBytes(await file.readAsBytes(), filename: name),
             ),
           );
         }
@@ -536,9 +530,7 @@ class PsygoApiClient {
       return _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/feedback',
         data: requestData,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     });
 
@@ -612,6 +604,60 @@ class PsygoApiClient {
     }
 
     return InvitationInfo.fromJson(respData);
+  }
+
+  /// 获取奖励中心
+  Future<RewardCenter> getRewardCenter() async {
+    final res = await _requestWithAuthRetry((token) {
+      return _dio.get<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/rewards/center',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '获取奖励中心失败',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return RewardCenter.fromJson(respData);
+  }
+
+  /// 执行签到
+  Future<RewardCheckInResult> checkInReward() async {
+    final res = await _requestWithAuthRetry((token) {
+      return _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/rewards/check-in',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '签到失败',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return RewardCheckInResult.fromJson(respData);
   }
 
   /// 获取用户信息（包含余额）
@@ -841,15 +887,15 @@ class AuthResponse {
   });
 
   Map<String, dynamic> toJson() => {
-        'token': token,
-        'refreshToken': refreshToken,
-        'expiresIn': expiresIn,
-        'userId': userId,
-        'phone': phone,
-        'matrixAccessToken': matrixAccessToken,
-        'matrixUserId': matrixUserId,
-        'matrixDeviceId': matrixDeviceId,
-      };
+    'token': token,
+    'refreshToken': refreshToken,
+    'expiresIn': expiresIn,
+    'userId': userId,
+    'phone': phone,
+    'matrixAccessToken': matrixAccessToken,
+    'matrixUserId': matrixUserId,
+    'matrixDeviceId': matrixDeviceId,
+  };
 }
 
 /// 充值订单创建请求
@@ -860,9 +906,9 @@ class CreateRechargeOrderRequest {
   CreateRechargeOrderRequest({required this.userId, required this.totalAmount});
 
   Map<String, dynamic> toJson() => {
-        'user_id': userId,
-        'total_amount': totalAmount,
-      };
+    'user_id': userId,
+    'total_amount': totalAmount,
+  };
 }
 
 /// 充值订单响应
@@ -1116,6 +1162,203 @@ class InvitationInfo {
   }
 }
 
+/// 奖励中心
+class RewardCenter {
+  final RewardCenterSummary summary;
+  final RewardCheckInView? checkIn;
+  final List<RewardGrantView> recentGrants;
+
+  const RewardCenter({
+    required this.summary,
+    this.checkIn,
+    required this.recentGrants,
+  });
+
+  factory RewardCenter.fromJson(Map<String, dynamic> json) {
+    final grantsList = json['recent_grants'] as List<dynamic>? ?? [];
+    return RewardCenter(
+      summary: RewardCenterSummary.fromJson(
+        json['summary'] as Map<String, dynamic>? ?? const {},
+      ),
+      checkIn: (json['check_in'] as Map<String, dynamic>?) != null
+          ? RewardCheckInView.fromJson(json['check_in'] as Map<String, dynamic>)
+          : null,
+      recentGrants: grantsList
+          .whereType<Map<String, dynamic>>()
+          .map((e) => RewardGrantView.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+/// 奖励中心摘要
+class RewardCenterSummary {
+  final int balance;
+  final double balanceYuan;
+  final bool checkedInToday;
+  final int todayRewardPoints;
+
+  const RewardCenterSummary({
+    required this.balance,
+    required this.balanceYuan,
+    required this.checkedInToday,
+    required this.todayRewardPoints,
+  });
+
+  factory RewardCenterSummary.fromJson(Map<String, dynamic> json) {
+    return RewardCenterSummary(
+      balance: _jsonInt(json['balance']),
+      balanceYuan: (json['balance_yuan'] as num?)?.toDouble() ?? 0,
+      checkedInToday: json['checked_in_today'] as bool? ?? false,
+      todayRewardPoints: _jsonInt(json['today_reward_points']),
+    );
+  }
+}
+
+/// 签到视图
+class RewardCheckInView {
+  final String taskCode;
+  final String name;
+  final String description;
+  final String status;
+  final int cycleDays;
+  final int baseRewardPoints;
+  final int incrementRewardPoints;
+  final bool checkedInToday;
+  final int currentStreak;
+  final int currentCycleDay;
+  final int todayRewardPoints;
+  final int nextRewardPoints;
+  final List<RewardCheckInDayView> schedule;
+
+  const RewardCheckInView({
+    required this.taskCode,
+    required this.name,
+    required this.description,
+    required this.status,
+    required this.cycleDays,
+    required this.baseRewardPoints,
+    required this.incrementRewardPoints,
+    required this.checkedInToday,
+    required this.currentStreak,
+    required this.currentCycleDay,
+    required this.todayRewardPoints,
+    required this.nextRewardPoints,
+    required this.schedule,
+  });
+
+  int get availableDay {
+    for (final item in schedule) {
+      if (item.isAvailable) return item.day;
+    }
+    if (checkedInToday && currentCycleDay > 0) {
+      return currentCycleDay;
+    }
+    return 1;
+  }
+
+  int get activeDay => checkedInToday ? currentCycleDay : availableDay;
+
+  factory RewardCheckInView.fromJson(Map<String, dynamic> json) {
+    final scheduleList = json['schedule'] as List<dynamic>? ?? [];
+    return RewardCheckInView(
+      taskCode: json['task_code'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      cycleDays: _jsonInt(json['cycle_days'], fallback: 7),
+      baseRewardPoints: _jsonInt(json['base_reward_points']),
+      incrementRewardPoints: _jsonInt(json['increment_reward_points']),
+      checkedInToday: json['checked_in_today'] as bool? ?? false,
+      currentStreak: _jsonInt(json['current_streak']),
+      currentCycleDay: _jsonInt(json['current_cycle_day']),
+      todayRewardPoints: _jsonInt(json['today_reward_points']),
+      nextRewardPoints: _jsonInt(json['next_reward_points']),
+      schedule: scheduleList
+          .whereType<Map<String, dynamic>>()
+          .map((e) => RewardCheckInDayView.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+/// 单日签到视图
+class RewardCheckInDayView {
+  final int day;
+  final int rewardPoints;
+  final String status;
+
+  const RewardCheckInDayView({
+    required this.day,
+    required this.rewardPoints,
+    required this.status,
+  });
+
+  bool get isCompleted => status == 'completed';
+  bool get isAvailable => status == 'available';
+
+  factory RewardCheckInDayView.fromJson(Map<String, dynamic> json) {
+    return RewardCheckInDayView(
+      day: _jsonInt(json['day'], fallback: 1),
+      rewardPoints: _jsonInt(json['reward_points']),
+      status: json['status'] as String? ?? 'upcoming',
+    );
+  }
+}
+
+/// 奖励流水
+class RewardGrantView {
+  final String taskCode;
+  final int points;
+  final String sourceType;
+  final String sourceID;
+  final DateTime? actionDate;
+  final DateTime? createdAt;
+
+  const RewardGrantView({
+    required this.taskCode,
+    required this.points,
+    required this.sourceType,
+    required this.sourceID,
+    this.actionDate,
+    this.createdAt,
+  });
+
+  factory RewardGrantView.fromJson(Map<String, dynamic> json) {
+    return RewardGrantView(
+      taskCode: json['task_code'] as String? ?? '',
+      points: _jsonInt(json['points']),
+      sourceType: json['source_type'] as String? ?? '',
+      sourceID: json['source_id'] as String? ?? '',
+      actionDate: _parseDateTime(json['action_date']),
+      createdAt: _parseDateTime(json['created_at']),
+    );
+  }
+}
+
+/// 签到响应
+class RewardCheckInResult {
+  final bool alreadyCheckedIn;
+  final int grantedPoints;
+  final RewardCenter center;
+
+  const RewardCheckInResult({
+    required this.alreadyCheckedIn,
+    required this.grantedPoints,
+    required this.center,
+  });
+
+  factory RewardCheckInResult.fromJson(Map<String, dynamic> json) {
+    return RewardCheckInResult(
+      alreadyCheckedIn: json['already_checked_in'] as bool? ?? false,
+      grantedPoints: _jsonInt(json['granted_points']),
+      center: RewardCenter.fromJson(
+        json['center'] as Map<String, dynamic>? ?? const {},
+      ),
+    );
+  }
+}
+
 /// 被邀请人信息
 class InviteeInfo {
   final String nickname;
@@ -1131,6 +1374,26 @@ class InviteeInfo {
           : null,
     );
   }
+}
+
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  return DateTime.tryParse(value.toString());
+}
+
+int _jsonInt(dynamic value, {int fallback = 0}) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  if (value is String) {
+    return int.tryParse(value) ?? fallback;
+  }
+  return fallback;
 }
 
 /// 单个协议的接受状态

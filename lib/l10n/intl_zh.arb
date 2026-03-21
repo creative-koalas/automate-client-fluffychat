@@ -3923,6 +3923,45 @@
     "@walletPublicBetaDialogBody": {},
     "walletPublicBetaDialogContact": "如有积分需求，请通过邮箱联系我们：",
     "@walletPublicBetaDialogContact": {},
+    "walletCheckInTitle": "每日签到",
+    "@walletCheckInTitle": {},
+    "walletCheckInTodayReward": "今日已得 {credits} 积分",
+    "@walletCheckInTodayReward": {
+        "placeholders": {
+            "credits": {}
+        }
+    },
+    "walletCheckInNextReward": "下次签到可得 {credits} 积分",
+    "@walletCheckInNextReward": {
+        "placeholders": {
+            "credits": {}
+        }
+    },
+    "walletCheckInProgress": "第 {current}/{max} 天",
+    "@walletCheckInProgress": {
+        "placeholders": {
+            "current": {},
+            "max": {}
+        }
+    },
+    "walletCheckInButton": "立即签到",
+    "@walletCheckInButton": {},
+    "walletCheckInDone": "今日已签到",
+    "@walletCheckInDone": {},
+    "walletCheckInLoading": "签到中...",
+    "@walletCheckInLoading": {},
+    "walletCheckInUnavailable": "签到功能暂时不可用",
+    "@walletCheckInUnavailable": {},
+    "walletCheckInRetry": "重试",
+    "@walletCheckInRetry": {},
+    "walletCheckInSuccess": "签到成功，获得 {credits} 积分",
+    "@walletCheckInSuccess": {
+        "placeholders": {
+            "credits": {}
+        }
+    },
+    "walletCheckInAlreadyDone": "今天已经签到过了",
+    "@walletCheckInAlreadyDone": {},
     "orderTitle": "确认订单",
     "@orderTitle": {},
     "orderInfo": "订单详情",
