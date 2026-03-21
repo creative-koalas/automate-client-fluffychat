@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -89,7 +89,10 @@ class ChatInputRow extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              const Icon(Icons.delete_forever_outlined, size: 18),
+                              const Icon(
+                                Icons.delete_forever_outlined,
+                                size: 18,
+                              ),
                               const SizedBox(width: 2),
                               Text(L10n.of(context).delete),
                             ],
@@ -102,7 +105,10 @@ class ChatInputRow extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              const Icon(Icons.keyboard_arrow_left_outlined, size: 18),
+                              const Icon(
+                                Icons.keyboard_arrow_left_outlined,
+                                size: 18,
+                              ),
                               Text(L10n.of(context).forward),
                             ],
                           ),
@@ -161,7 +167,10 @@ class ChatInputRow extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 Text(L10n.of(context).reply),
-                                const Icon(Icons.keyboard_arrow_right, size: 18),
+                                const Icon(
+                                  Icons.keyboard_arrow_right,
+                                  size: 18,
+                                ),
                               ],
                             ),
                           )
@@ -183,224 +192,573 @@ class ChatInputRow extends StatelessWidget {
             ],
           );
         }
+        final canSend = controller.canSendCurrentDraft;
 
         // 正常输入模式
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            const SizedBox(width: 4),
-            AnimatedContainer(
-              duration: FluffyThemes.animationDuration,
-              curve: FluffyThemes.animationCurve,
-              width: controller.sendController.text.isNotEmpty ? 0 : height,
-              height: height,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(),
-              clipBehavior: Clip.hardEdge,
-              child: IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                color: controller.isAgentResting
-                    ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-                    : theme.colorScheme.onPrimaryContainer,
-                onPressed: () {
-                  if (controller.blockFileIfResting()) return;
-                  _showAttachmentBottomSheet(context, controller);
-                },
-              ),
-            ),
-            if (PlatformInfos.isMobile)
-              AnimatedContainer(
-                duration: FluffyThemes.animationDuration,
-                curve: FluffyThemes.animationCurve,
-                width: controller.sendController.text.isNotEmpty ? 0 : height,
-                height: height,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(),
-                clipBehavior: Clip.hardEdge,
-                // 禁用录像功能，点击相机按钮直接拍照
-                child: IconButton(
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  onPressed: () {
-                    if (controller.blockFileIfResting()) return;
-                    controller.onAddPopupMenuButtonSelected(
-                      AddPopupMenuActions.photoCamera,
-                    );
-                  },
-                  iconSize: height * 0.5,
-                  color: controller.isAgentResting
-                      ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-                      : theme.colorScheme.onPrimaryContainer,
-                ),
-                // child: PopupMenuButton(
-                //   useRootNavigator: true,
-                //   icon: const Icon(Icons.camera_alt_outlined),
-                //   onSelected: controller.onAddPopupMenuButtonSelected,
-                //   iconColor: theme.colorScheme.onPrimaryContainer,
-                //   itemBuilder: (context) => [
-                //     PopupMenuItem(
-                //       value: AddPopupMenuActions.videoCamera,
-                //       child: ListTile(
-                //         leading: CircleAvatar(
-                //           backgroundColor:
-                //               theme.colorScheme.onPrimaryContainer,
-                //           foregroundColor:
-                //               theme.colorScheme.primaryContainer,
-                //           child: const Icon(Icons.videocam_outlined),
-                //         ),
-                //         title: Text(L10n.of(context).recordAVideo),
-                //         contentPadding: const EdgeInsets.all(0),
-                //       ),
-                //     ),
-                //     PopupMenuItem(
-                //       value: AddPopupMenuActions.photoCamera,
-                //       child: ListTile(
-                //         leading: CircleAvatar(
-                //           backgroundColor:
-                //               theme.colorScheme.onPrimaryContainer,
-                //           foregroundColor:
-                //               theme.colorScheme.primaryContainer,
-                //           child: const Icon(Icons.camera_alt_outlined),
-                //         ),
-                //         title: Text(L10n.of(context).takeAPhoto),
-                //         contentPadding: const EdgeInsets.all(0),
-                //       ),
-                //     ),
-                //   ],
-                // ),
-              ),
-            Container(
-              height: height,
-              width: height,
-              alignment: Alignment.center,
-              child: IconButton(
-                tooltip: L10n.of(context).emojis,
-                color: theme.colorScheme.onPrimaryContainer,
-                icon: PageTransitionSwitcher(
-                  transitionBuilder: (
-                    Widget child,
-                    Animation<double> primaryAnimation,
-                    Animation<double> secondaryAnimation,
-                  ) {
-                    return SharedAxisTransition(
-                      animation: primaryAnimation,
-                      secondaryAnimation: secondaryAnimation,
-                      transitionType: SharedAxisTransitionType.scaled,
-                      fillColor: Colors.transparent,
-                      child: child,
-                    );
-                  },
-                  child: Icon(
-                    controller.showEmojiPicker
-                        ? Icons.keyboard
-                        : Icons.add_reaction_outlined,
-                    key: ValueKey(controller.showEmojiPicker),
+        return SizedBox(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (controller.hasActiveQuickTipIntent)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 6,
+                    bottom: 6,
                   ),
+                  child: _ActiveQuickTipPanel(controller: controller),
                 ),
-                onPressed: controller.emojiPickerAction,
-              ),
-            ),
-            if (Matrix.of(context).isMultiAccount &&
-                Matrix.of(context).hasComplexBundles &&
-                Matrix.of(context).currentBundle.length > 1)
-              Container(
-                height: height,
-                width: height,
-                alignment: Alignment.center,
-                child: _ChatAccountPicker(controller),
-              ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 0.0),
-                child: Actions(
-                  actions: <Type, Action<Intent>>{
-                    PasteTextIntent: _PasteFilesAction(controller),
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasPendingAttachments)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: _PendingAttachmentsBar(controller),
-                        ),
-                      InputBar(
-                        room: controller.room,
-                        minLines: 1,
-                        maxLines: 8,
-                        autofocus: !PlatformInfos.isMobile,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: AppSettings.sendOnEnter.value == true &&
-                                PlatformInfos.isMobile
-                            ? TextInputAction.send
-                            : null,
-                        onSubmitted: controller.onInputBarSubmitted,
-                        onContentInserted:
-                            controller.handleKeyboardInsertedContent,
-                        focusNode: controller.inputFocus,
-                        controller: controller.sendController,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.only(
-                            left: 6.0,
-                            right: 6.0,
-                            bottom: 6.0,
-                            top: 3.0,
-                          ),
-                          counter: const SizedBox.shrink(),
-                          hintText: L10n.of(context).writeAMessage,
-                          hintMaxLines: 1,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          filled: false,
-                        ),
-                        onChanged: controller.onInputBarChanged,
-                        suggestionEmojis: getDefaultEmojiLocale(
-                          AppSettings.emojiSuggestionLocale.value.isNotEmpty
-                              ? Locale(AppSettings.emojiSuggestionLocale.value)
-                              : Localizations.localeOf(context),
-                        ).fold(
-                          [],
-                          (emojis, category) => emojis..addAll(category.emoji),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  const SizedBox(width: 4),
+                  AnimatedContainer(
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
+                    width:
+                        controller.sendController.text.isNotEmpty ? 0 : height,
+                    height: height,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(),
+                    clipBehavior: Clip.hardEdge,
+                    child: IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: controller.isAgentResting
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                          : theme.colorScheme.onPrimaryContainer,
+                      onPressed: () {
+                        if (controller.blockFileIfResting()) return;
+                        _showAttachmentBottomSheet(context, controller);
+                      },
+                    ),
+                  ),
+                  if (PlatformInfos.isMobile)
+                    AnimatedContainer(
+                      duration: FluffyThemes.durationFast,
+                      curve: FluffyThemes.curveStandard,
+                      width: controller.sendController.text.isNotEmpty
+                          ? 0
+                          : height,
+                      height: height,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(),
+                      clipBehavior: Clip.hardEdge,
+                      // 禁用录像功能，点击相机按钮直接拍照
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        onPressed: () {
+                          if (controller.blockFileIfResting()) return;
+                          controller.onAddPopupMenuButtonSelected(
+                            AddPopupMenuActions.photoCamera,
+                          );
+                        },
+                        iconSize: height * 0.5,
+                        color: controller.isAgentResting
+                            ? theme.colorScheme.onSurface
+                                .withValues(alpha: 0.38)
+                            : theme.colorScheme.onPrimaryContainer,
+                      ),
+                      // child: PopupMenuButton(
+                      //   useRootNavigator: true,
+                      //   icon: const Icon(Icons.camera_alt_outlined),
+                      //   onSelected: controller.onAddPopupMenuButtonSelected,
+                      //   iconColor: theme.colorScheme.onPrimaryContainer,
+                      //   itemBuilder: (context) => [
+                      //     PopupMenuItem(
+                      //       value: AddPopupMenuActions.videoCamera,
+                      //       child: ListTile(
+                      //         leading: CircleAvatar(
+                      //           backgroundColor:
+                      //               theme.colorScheme.onPrimaryContainer,
+                      //           foregroundColor:
+                      //               theme.colorScheme.primaryContainer,
+                      //           child: const Icon(Icons.videocam_outlined),
+                      //         ),
+                      //         title: Text(L10n.of(context).recordAVideo),
+                      //         contentPadding: const EdgeInsets.all(0),
+                      //       ),
+                      //     ),
+                      //     PopupMenuItem(
+                      //       value: AddPopupMenuActions.photoCamera,
+                      //       child: ListTile(
+                      //         leading: CircleAvatar(
+                      //           backgroundColor:
+                      //               theme.colorScheme.onPrimaryContainer,
+                      //           foregroundColor:
+                      //               theme.colorScheme.primaryContainer,
+                      //           child: const Icon(Icons.camera_alt_outlined),
+                      //         ),
+                      //         title: Text(L10n.of(context).takeAPhoto),
+                      //         contentPadding: const EdgeInsets.all(0),
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
+                    ),
+                  Container(
+                    height: height,
+                    width: height,
+                    alignment: Alignment.center,
+                    child: IconButton(
+                      tooltip: L10n.of(context).emojis,
+                      color: theme.colorScheme.onPrimaryContainer,
+                      icon: PageTransitionSwitcher(
+                        transitionBuilder: (
+                          Widget child,
+                          Animation<double> primaryAnimation,
+                          Animation<double> secondaryAnimation,
+                        ) {
+                          return SharedAxisTransition(
+                            animation: primaryAnimation,
+                            secondaryAnimation: secondaryAnimation,
+                            transitionType: SharedAxisTransitionType.scaled,
+                            fillColor: Colors.transparent,
+                            child: child,
+                          );
+                        },
+                        child: Icon(
+                          controller.showEmojiPicker
+                              ? Icons.keyboard
+                              : Icons.add_reaction_outlined,
+                          key: ValueKey(controller.showEmojiPicker),
                         ),
                       ),
-                    ],
+                      onPressed: controller.emojiPickerAction,
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: AnimatedContainer(
-                duration: FluffyThemes.animationDuration,
-                curve: FluffyThemes.animationCurve,
-                height: height,
-                width: height,
-                alignment: Alignment.center,
-                child: AnimatedScale(
-                  duration: FluffyThemes.animationDuration,
-                  curve: FluffyThemes.animationCurveBounce,
-                  scale: controller.sendController.text.isNotEmpty ||
-                          hasPendingAttachments
-                      ? 1.0
-                      : 0.9,
-                  child: IconButton(
-                    tooltip: L10n.of(context).send,
-                    onPressed: controller.send,
-                    style: IconButton.styleFrom(
-                      backgroundColor: theme.bubbleColor,
-                      foregroundColor: theme.onBubbleColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  if (Matrix.of(context).isMultiAccount &&
+                      Matrix.of(context).hasComplexBundles &&
+                      Matrix.of(context).currentBundle.length > 1)
+                    Container(
+                      height: height,
+                      width: height,
+                      alignment: Alignment.center,
+                      child: _ChatAccountPicker(controller),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 0.0),
+                      child: Actions(
+                        actions: <Type, Action<Intent>>{
+                          PasteTextIntent: _PasteFilesAction(controller),
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasPendingAttachments)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: _PendingAttachmentsBar(controller),
+                              ),
+                            InputBar(
+                              room: controller.room,
+                              minLines: 1,
+                              maxLines: 8,
+                              autofocus: !PlatformInfos.isMobile,
+                              keyboardType: TextInputType.multiline,
+                              textInputAction:
+                                  AppSettings.sendOnEnter.value == true &&
+                                          PlatformInfos.isMobile
+                                      ? TextInputAction.send
+                                      : null,
+                              onSubmitted: controller.onInputBarSubmitted,
+                              onContentInserted:
+                                  controller.handleKeyboardInsertedContent,
+                              focusNode: controller.inputFocus,
+                              controller: controller.sendController,
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.only(
+                                  left: 6.0,
+                                  right: 6.0,
+                                  bottom: 6.0,
+                                  top: 3.0,
+                                ),
+                                counter: const SizedBox.shrink(),
+                                hintText: controller.hasActiveQuickTipIntent
+                                    ? L10n.of(context)
+                                        .inputQuickTipModePlaceholder
+                                    : L10n.of(context).writeAMessage,
+                                hintMaxLines: 1,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                filled: false,
+                              ),
+                              onChanged: controller.onInputBarChanged,
+                              suggestionEmojis: getDefaultEmojiLocale(
+                                AppSettings
+                                        .emojiSuggestionLocale.value.isNotEmpty
+                                    ? Locale(
+                                        AppSettings.emojiSuggestionLocale.value,
+                                      )
+                                    : Localizations.localeOf(context),
+                              ).fold(
+                                [],
+                                (emojis, category) =>
+                                    emojis..addAll(category.emoji),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    icon: const Icon(Icons.send_rounded, size: 22),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: AnimatedContainer(
+                      duration: FluffyThemes.durationFast,
+                      curve: FluffyThemes.curveStandard,
+                      height: height,
+                      width: height,
+                      alignment: Alignment.center,
+                      child: AnimatedScale(
+                        duration: FluffyThemes.durationFast,
+                        curve: FluffyThemes.curveBounce,
+                        scale: canSend ? 1.0 : 0.9,
+                        child: IconButton(
+                          tooltip: L10n.of(context).send,
+                          onPressed: canSend ? controller.send : null,
+                          style: IconButton.styleFrom(
+                            backgroundColor: theme.bubbleColor,
+                            foregroundColor: theme.onBubbleColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          icon: const Icon(Icons.send_rounded, size: 22),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ChatQuickTipsBar extends StatelessWidget {
+  final ChatController controller;
+
+  const ChatQuickTipsBar(this.controller, {super.key});
+
+  static final List<_InputQuickTipDefinition> _tipDefinitions =
+      <_InputQuickTipDefinition>[
+    _InputQuickTipDefinition(
+      icon: Icons.bolt_rounded,
+      titleBuilder: (l10n) => l10n.inputQuickTipPlanTitle,
+      intentId: 'build_game_with_godot',
+    ),
+    _InputQuickTipDefinition(
+      icon: Icons.description_outlined,
+      titleBuilder: (l10n) => l10n.inputQuickTipWordTitle,
+      intentId: 'create_word_document',
+    ),
+    _InputQuickTipDefinition(
+      icon: Icons.auto_awesome_outlined,
+      titleBuilder: (l10n) => l10n.inputQuickTipRiskTitle,
+      intentId: 'risk_check',
+    ),
+    _InputQuickTipDefinition(
+      icon: Icons.camera_alt_outlined,
+      titleBuilder: (l10n) => l10n.inputQuickTipNextStepTitle,
+      intentId: 'next_step_plan',
+    ),
+  ];
+
+  List<_InputQuickTipItem> _inputQuickTips(BuildContext context) {
+    final l10n = L10n.of(context);
+    return _tipDefinitions
+        .map((definition) => definition.resolve(l10n))
+        .toList(growable: false);
+  }
+
+  void _applyQuickTip(_InputQuickTipItem tip) {
+    final intentId = tip.intentId.trim();
+    if (intentId.isEmpty) return;
+
+    controller.applyQuickTipWithIntent(
+      intentId: intentId,
+      title: tip.title,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.selectMode ||
+        controller.hasActiveQuickTipIntent ||
+        !controller.hasOwnEmployeeInRoom ||
+        !controller.room.otherPartyCanReceiveMessages ||
+        controller.room.isAbandonedDMRoom == true) {
+      return const SizedBox.shrink();
+    }
+
+    return _InputQuickTipsBar(
+      tips: _inputQuickTips(context),
+      onTipTap: _applyQuickTip,
+    );
+  }
+}
+
+typedef _L10nTextBuilder = String Function(L10n l10n);
+
+class _InputQuickTipDefinition {
+  final IconData icon;
+  final _L10nTextBuilder titleBuilder;
+  final String intentId;
+
+  const _InputQuickTipDefinition({
+    required this.icon,
+    required this.titleBuilder,
+    required this.intentId,
+  });
+
+  _InputQuickTipItem resolve(L10n l10n) {
+    return _InputQuickTipItem(
+      icon: icon,
+      title: titleBuilder(l10n),
+      intentId: intentId,
+    );
+  }
+}
+
+class _InputQuickTipItem {
+  final IconData icon;
+  final String title;
+  final String intentId;
+
+  const _InputQuickTipItem({
+    required this.icon,
+    required this.title,
+    required this.intentId,
+  });
+}
+
+class _InputQuickTipsBar extends StatefulWidget {
+  final List<_InputQuickTipItem> tips;
+  final ValueChanged<_InputQuickTipItem> onTipTap;
+
+  const _InputQuickTipsBar({
+    required this.tips,
+    required this.onTipTap,
+  });
+
+  @override
+  State<_InputQuickTipsBar> createState() => _InputQuickTipsBarState();
+}
+
+class _InputQuickTipsBarState extends State<_InputQuickTipsBar> {
+  static const Duration _revealInterval = Duration(milliseconds: 90);
+
+  Timer? _revealTimer;
+  int _visibleCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAnimations();
+  }
+
+  @override
+  void didUpdateWidget(covariant _InputQuickTipsBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tips.length != widget.tips.length) {
+      _restartAnimations();
+    }
+  }
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    super.dispose();
+  }
+
+  void _restartAnimations() {
+    _revealTimer?.cancel();
+    _visibleCount = 0;
+    _startAnimations();
+  }
+
+  void _startAnimations() {
+    final count = widget.tips.length;
+    if (count == 0) return;
+    _visibleCount = 1;
+    _revealTimer = Timer.periodic(_revealInterval, (timer) {
+      if (!mounted) return;
+      if (_visibleCount >= count) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _visibleCount += 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.tips.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: widget.tips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final tip = widget.tips[index];
+          final isVisible = index < _visibleCount;
+
+          return AnimatedSlide(
+            offset: isVisible ? Offset.zero : const Offset(0.12, 0),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            child: AnimatedOpacity(
+              opacity: isVisible ? 1 : 0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              child: _InputQuickTipCard(
+                tip: tip,
+                onTap: () => widget.onTipTap(tip),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _InputQuickTipCard extends StatelessWidget {
+  final _InputQuickTipItem tip;
+  final VoidCallback onTap;
+
+  const _InputQuickTipCard({
+    required this.tip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = theme.colorScheme.surfaceContainerLow
+        .withValues(alpha: isDark ? 0.76 : 0.92);
+    final cardBorderColor =
+        theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.44 : 0.6);
+    final iconBackgroundColor =
+        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9);
+
+    return Material(
+      color: cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(11),
+        side: BorderSide(color: cardBorderColor),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(11),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: PlatformInfos.isDesktop ? 104 : 92,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: iconBackgroundColor,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Icon(
+                    tip.icon,
+                    size: 12,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    tip.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActiveQuickTipPanel extends StatelessWidget {
+  final ChatController controller;
+
+  const _ActiveQuickTipPanel({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final chipColor = theme.colorScheme.surfaceContainerLow;
+    final borderColor =
+        theme.colorScheme.outlineVariant.withValues(alpha: 0.55);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 240),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: chipColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Text(
+                  controller.activeQuickTipTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 28,
+          height: 28,
+          child: InkWell(
+            onTap: controller.clearActiveQuickTipIntent,
+            borderRadius: BorderRadius.circular(14),
+            child: Icon(
+              Icons.close_rounded,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -492,12 +850,13 @@ class _PendingAttachmentItem extends StatelessWidget {
   }
 
   Future<String> _ensurePreviewPath() async {
-    var path = attachment.file.path;
+    final path = attachment.file.path;
     if (path.isNotEmpty) return path;
 
     final bytes = await attachment.file.readAsBytes();
     final tempDir = await getTemporaryDirectory();
-    final fileName = _displayName().trim().isEmpty ? 'attachment' : _displayName().trim();
+    final fileName =
+        _displayName().trim().isEmpty ? 'attachment' : _displayName().trim();
     final tempPath = path_lib.join(
       tempDir.path,
       '${DateTime.now().millisecondsSinceEpoch}_$fileName',
@@ -559,9 +918,8 @@ class _PendingAttachmentItem extends StatelessWidget {
     try {
       final result = await OpenFile.open(path);
       if (result.type != ResultType.done) {
-        final message = result.message.isNotEmpty
-            ? result.message
-            : L10n.of(context).open;
+        final message =
+            result.message.isNotEmpty ? result.message : L10n.of(context).open;
         scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (_) {
@@ -686,9 +1044,10 @@ class _ChatAccountPicker extends StatelessWidget {
   const _ChatAccountPicker(this.controller);
 
   void _popupMenuButtonSelected(String mxid, BuildContext context) {
-    final client = Matrix.of(context)
-        .currentBundle
-        .firstWhere((cl) => cl.userID == mxid, orElse: () => Matrix.of(context).client);
+    final client = Matrix.of(context).currentBundle.firstWhere(
+          (cl) => cl.userID == mxid,
+          orElse: () => Matrix.of(context).client,
+        );
     if (client.userID != mxid) {
       Logs().w('Attempted to switch to a non-existing client $mxid');
       return;
@@ -745,7 +1104,7 @@ class _PasteFilesAction extends ContextAction<PasteTextIntent> {
 
   @override
   Future<void> invoke(PasteTextIntent intent, [BuildContext? context]) async {
-    final Action<PasteTextIntent>? fallback = callingAction;
+    final fallback = callingAction;
     if (context != null) {
       final handled = await controller.handlePasteFilesFromClipboard(context);
       if (handled) {
@@ -795,7 +1154,8 @@ void _showAttachmentBottomSheet(
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                color:
+                    theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -820,7 +1180,8 @@ void _showAttachmentBottomSheet(
             subtitle: l10n.attachmentPickerImageSubtitle,
             onTap: () {
               Navigator.pop(context);
-              controller.onAddPopupMenuButtonSelected(AddPopupMenuActions.image);
+              controller
+                  .onAddPopupMenuButtonSelected(AddPopupMenuActions.image);
             },
           ),
           const SizedBox(height: 12),

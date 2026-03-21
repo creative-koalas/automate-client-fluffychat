@@ -135,8 +135,33 @@ enum ChatRoomGuideType {
   groupMention,
 }
 
+class _QuickTipRewriteState {
+  final String intentId;
+  final String title;
+
+  const _QuickTipRewriteState({
+    required this.intentId,
+    required this.title,
+  });
+}
+
+class _QuickTipInputSegments {
+  final String mentionPrefix;
+  final String userInput;
+
+  const _QuickTipInputSegments({
+    required this.mentionPrefix,
+    required this.userInput,
+  });
+}
+
 class ChatController extends State<ChatPageWithRoom>
     with WidgetsBindingObserver {
+  static const String _quickTipEventContentKey = 'com.psygo.quick_tip';
+  static final RegExp _quickTipMentionTokenPattern =
+      RegExp(r'@(?:\[[^\]]+\]|[^\s@]+)');
+  static final RegExp _quickTipWhitespacePattern = RegExp(r'\s+');
+
   Room get room => sendingClient.getRoomById(roomId) ?? widget.room;
 
   late Client sendingClient;
@@ -194,6 +219,10 @@ class ChatController extends State<ChatPageWithRoom>
   ChatRoomGuideType? get chatRoomGuideType => _chatRoomGuideType;
   bool get isEmployeeChat =>
       room.directChatMatrixID != null && webEntryAgent != null;
+  bool get hasOwnEmployeeInRoom =>
+      room.getParticipants().any((u) => AgentService.instance.isEmployee(u.id));
+  bool get hasActiveQuickTipIntent => _pendingQuickTipRewrite != null;
+  String get activeQuickTipTitle => _pendingQuickTipRewrite?.title ?? '';
   bool get isEmployeeChatGuide =>
       _chatRoomGuideType == ChatRoomGuideType.employee;
   bool get isGroupMentionGuide =>
@@ -1152,6 +1181,7 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   TextEditingController sendController = TextEditingController();
+  _QuickTipRewriteState? _pendingQuickTipRewrite;
   final List<PendingAttachment> _pendingAttachments = [];
   int _pendingAttachmentSerial = 0;
   bool pendingAttachmentsCompress = true;
@@ -1161,6 +1191,14 @@ class ChatController extends State<ChatPageWithRoom>
   bool get hasPendingAttachments => _pendingAttachments.isNotEmpty;
   bool get hasCompressiblePendingAttachments =>
       _pendingAttachments.any(_isCompressibleAttachment);
+  bool get canSendCurrentDraft {
+    if (hasActiveQuickTipIntent) {
+      final segments = _splitQuickTipInputSegments(sendController.text);
+      return segments.userInput.trim().isNotEmpty;
+    }
+    final hasText = sendController.text.trim().isNotEmpty;
+    return hasText || hasPendingAttachments;
+  }
 
   bool _isCompressibleAttachment(PendingAttachment attachment) {
     final path = attachment.file.path.isNotEmpty
@@ -1324,6 +1362,7 @@ class ChatController extends State<ChatPageWithRoom>
     }
 
     final trimmedText = sendController.text.trim();
+    if (hasActiveQuickTipIntent && trimmedText.isEmpty) return;
     final hasPending =
         PlatformInfos.isDesktop && _pendingAttachments.isNotEmpty;
     if (!hasPending && trimmedText.isEmpty) return;
@@ -1363,14 +1402,37 @@ class ChatController extends State<ChatPageWithRoom>
     );
     // 将“@所有人”类本地化文案统一转换为 @room（SDK 会设置 m.mentions.room = true）
     outgoingText = _normalizeBroadcastMentionForSending(outgoingText);
-    // ignore: unawaited_futures
-    room.sendTextEvent(
-      outgoingText,
-      inReplyTo: replyEvent,
-      editEventId: editEvent?.eventId,
-      parseCommands: false,
-      threadRootEventId: activeThreadId,
-    );
+    final quickTipMetadata = _buildQuickTipMetadataForEvent(outgoingText);
+    if (hasActiveQuickTipIntent && quickTipMetadata == null) {
+      return;
+    }
+    if (quickTipMetadata == null) {
+      // ignore: unawaited_futures
+      room.sendTextEvent(
+        outgoingText,
+        inReplyTo: replyEvent,
+        editEventId: editEvent?.eventId,
+        parseCommands: false,
+        threadRootEventId: activeThreadId,
+      );
+    } else {
+      final mentionsContent =
+          _buildMentionsContentForOutgoingText(outgoingText);
+      // Use a custom content block so quick-tip server prompt is hidden from
+      // the visible message body while still being available to backend.
+      // ignore: unawaited_futures
+      room.sendEvent(
+        <String, dynamic>{
+          'msgtype': MessageTypes.Text,
+          'body': outgoingText,
+          _quickTipEventContentKey: quickTipMetadata,
+          if (mentionsContent != null) 'm.mentions': mentionsContent,
+        },
+        inReplyTo: replyEvent,
+        editEventId: editEvent?.eventId,
+        threadRootEventId: activeThreadId,
+      );
+    }
     sendController.value = TextEditingValue(
       text: pendingText,
       selection: const TextSelection.collapsed(offset: 0),
@@ -1379,6 +1441,7 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() {
       sendController.text = pendingText;
       _inputTextIsEmpty = pendingText.isEmpty;
+      _pendingQuickTipRewrite = null;
       replyEvent = null;
       editEvent = null;
       pendingText = '';
@@ -2464,6 +2527,139 @@ class ChatController extends State<ChatPageWithRoom>
     }
   }
 
+  Map<String, dynamic>? _buildQuickTipMetadataForEvent(String outgoingText) {
+    final pending = _pendingQuickTipRewrite;
+    if (pending == null) {
+      return null;
+    }
+    final normalizedIntentId = pending.intentId.trim();
+    final segments = _splitQuickTipInputSegments(outgoingText);
+    final normalizedInput = segments.userInput.trim();
+    final normalizedMentionPrefix = segments.mentionPrefix.trim();
+    if (normalizedIntentId.isEmpty || normalizedInput.isEmpty) {
+      return null;
+    }
+
+    final metadata = <String, dynamic>{
+      'intent_id': normalizedIntentId,
+      'user_input': normalizedInput,
+    };
+    final localeTag = _currentQuickTipLocaleTag();
+    if (localeTag.isNotEmpty) {
+      metadata['locale'] = localeTag;
+    }
+    if (normalizedMentionPrefix.isNotEmpty) {
+      metadata['mention_prefix'] = normalizedMentionPrefix;
+    }
+    return metadata;
+  }
+
+  void applyQuickTipWithIntent({
+    required String intentId,
+    required String title,
+  }) {
+    final normalizedIntentId = intentId.trim();
+    if (normalizedIntentId.isEmpty) {
+      return;
+    }
+
+    if (_pendingQuickTipRewrite?.intentId == normalizedIntentId) {
+      clearActiveQuickTipIntent();
+      return;
+    }
+
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _pendingQuickTipRewrite = _QuickTipRewriteState(
+        intentId: normalizedIntentId,
+        title: normalizedTitle,
+      );
+    });
+
+    sendController.value = const TextEditingValue(
+      text: '',
+      selection: TextSelection.collapsed(offset: 0),
+    );
+    onInputBarChanged('');
+    inputFocus.requestFocus();
+  }
+
+  void clearActiveQuickTipIntent() {
+    if (_pendingQuickTipRewrite == null) return;
+    setState(() {
+      _pendingQuickTipRewrite = null;
+    });
+    inputFocus.requestFocus();
+  }
+
+  _QuickTipInputSegments _splitQuickTipInputSegments(String text) {
+    final normalized = text.trim();
+    if (normalized.isEmpty) {
+      return const _QuickTipInputSegments(
+        mentionPrefix: '',
+        userInput: '',
+      );
+    }
+
+    final mentions = <String>[];
+    var cursor = 0;
+    while (cursor < normalized.length) {
+      final mentionMatch =
+          _quickTipMentionTokenPattern.matchAsPrefix(normalized, cursor);
+      if (mentionMatch == null) break;
+
+      final token = mentionMatch.group(0)?.trim() ?? '';
+      if (!_isQuickTipMentionToken(token)) break;
+      mentions.add(token);
+      cursor = mentionMatch.end;
+
+      final whitespaceMatch =
+          _quickTipWhitespacePattern.matchAsPrefix(normalized, cursor);
+      if (whitespaceMatch == null) {
+        break;
+      }
+      cursor = whitespaceMatch.end;
+    }
+
+    return _QuickTipInputSegments(
+      mentionPrefix: mentions.join(' '),
+      userInput: normalized.substring(cursor).trim(),
+    );
+  }
+
+  bool _isQuickTipMentionToken(String token) {
+    final normalized = token.trim().toLowerCase();
+    if (!normalized.startsWith('@') || normalized.length < 2) return false;
+    if (normalized == '@room') return true;
+    if (normalized.startsWith('@[') && normalized.endsWith(']')) {
+      return normalized.length > 3;
+    }
+    if (normalized.contains(':')) return true;
+
+    final normalizedLocalpart = normalized.substring(1);
+    for (final participant in room.getParticipants()) {
+      final participantId = participant.id.trim().toLowerCase();
+      if (participantId.isEmpty || !participantId.startsWith('@')) continue;
+
+      if (participantId == normalized) return true;
+      final separatorIndex = participantId.indexOf(':');
+      if (separatorIndex < 0) continue;
+      final localpart = participantId.substring(1, separatorIndex);
+      if (localpart == normalizedLocalpart) return true;
+    }
+    return false;
+  }
+
+  String _currentQuickTipLocaleTag() {
+    final locale = Localizations.maybeLocaleOf(context);
+    final tag = locale?.toLanguageTag().trim() ?? '';
+    return tag;
+  }
+
   bool _inputTextIsEmpty = true;
 
   bool get isArchived =>
@@ -2631,6 +2827,39 @@ class ChatController extends State<ChatPageWithRoom>
       );
     }
     return normalized;
+  }
+
+  Map<String, dynamic>? _buildMentionsContentForOutgoingText(String text) {
+    if (text.isEmpty || !text.contains('@')) return null;
+
+    final mentions = <String, dynamic>{};
+    final roomMentionPattern = RegExp(
+      r'(^|[\s\(\[\{<，。！？、；：])(@room)(?=$|[\s\)\]\}>，。！？、；：,.!?])',
+      multiLine: true,
+    );
+    if (roomMentionPattern.hasMatch(text)) {
+      mentions['room'] = true;
+    }
+
+    final userIds = <String>{};
+    for (final participant in room.getParticipants()) {
+      final userId = participant.id.trim();
+      if (userId.isEmpty) continue;
+      final pattern = RegExp(
+        '(^|[\\s\\(\\[\\{<，。！？、；：])(${RegExp.escape(userId)})(?=\$|[\\s\\)\\]\\}>，。！？、；：,.!?])',
+        multiLine: true,
+      );
+      if (pattern.hasMatch(text)) {
+        userIds.add(userId);
+      }
+    }
+    if (userIds.isNotEmpty) {
+      final normalizedUserIds = userIds.toList()..sort();
+      mentions['user_ids'] = normalizedUserIds;
+    }
+
+    if (mentions.isEmpty) return null;
+    return mentions;
   }
 
   void toggleDisplayChatDetailsColumn() async {
