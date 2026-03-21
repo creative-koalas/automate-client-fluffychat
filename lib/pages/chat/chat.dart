@@ -222,6 +222,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool get hasOwnEmployeeInRoom =>
       room.getParticipants().any((u) => AgentService.instance.isEmployee(u.id));
   bool get hasActiveQuickTipIntent => _pendingQuickTipRewrite != null;
+  String get activeQuickTipIntentId => _pendingQuickTipRewrite?.intentId ?? '';
   String get activeQuickTipTitle => _pendingQuickTipRewrite?.title ?? '';
   bool get isEmployeeChatGuide =>
       _chatRoomGuideType == ChatRoomGuideType.employee;

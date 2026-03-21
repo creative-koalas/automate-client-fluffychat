@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -201,15 +200,6 @@ class ChatInputRow extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (controller.hasActiveQuickTipIntent)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 10,
-                    right: 6,
-                    bottom: 6,
-                  ),
-                  child: _ActiveQuickTipPanel(controller: controller),
-                ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -491,7 +481,6 @@ class ChatQuickTipsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.selectMode ||
-        controller.hasActiveQuickTipIntent ||
         !controller.hasOwnEmployeeInRoom ||
         !controller.room.otherPartyCanReceiveMessages ||
         controller.room.isAbandonedDMRoom == true) {
@@ -501,6 +490,7 @@ class ChatQuickTipsBar extends StatelessWidget {
     return _InputQuickTipsBar(
       tips: _inputQuickTips(context),
       onTipTap: _applyQuickTip,
+      activeIntentId: controller.activeQuickTipIntentId,
     );
   }
 }
@@ -539,92 +529,36 @@ class _InputQuickTipItem {
   });
 }
 
-class _InputQuickTipsBar extends StatefulWidget {
+class _InputQuickTipsBar extends StatelessWidget {
   final List<_InputQuickTipItem> tips;
   final ValueChanged<_InputQuickTipItem> onTipTap;
+  final String activeIntentId;
 
   const _InputQuickTipsBar({
     required this.tips,
     required this.onTipTap,
+    required this.activeIntentId,
   });
 
   @override
-  State<_InputQuickTipsBar> createState() => _InputQuickTipsBarState();
-}
-
-class _InputQuickTipsBarState extends State<_InputQuickTipsBar> {
-  static const Duration _revealInterval = Duration(milliseconds: 90);
-
-  Timer? _revealTimer;
-  int _visibleCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _startAnimations();
-  }
-
-  @override
-  void didUpdateWidget(covariant _InputQuickTipsBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.tips.length != widget.tips.length) {
-      _restartAnimations();
-    }
-  }
-
-  @override
-  void dispose() {
-    _revealTimer?.cancel();
-    super.dispose();
-  }
-
-  void _restartAnimations() {
-    _revealTimer?.cancel();
-    _visibleCount = 0;
-    _startAnimations();
-  }
-
-  void _startAnimations() {
-    final count = widget.tips.length;
-    if (count == 0) return;
-    _visibleCount = 1;
-    _revealTimer = Timer.periodic(_revealInterval, (timer) {
-      if (!mounted) return;
-      if (_visibleCount >= count) {
-        timer.cancel();
-        return;
-      }
-      setState(() => _visibleCount += 1);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.tips.isEmpty) return const SizedBox.shrink();
+    if (tips.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: widget.tips.length,
+        itemCount: tips.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final tip = widget.tips[index];
-          final isVisible = index < _visibleCount;
-
-          return AnimatedSlide(
-            offset: isVisible ? Offset.zero : const Offset(0.12, 0),
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            child: AnimatedOpacity(
-              opacity: isVisible ? 1 : 0,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              child: _InputQuickTipCard(
-                tip: tip,
-                onTap: () => widget.onTipTap(tip),
-              ),
-            ),
+          final tip = tips[index];
+          final isSelected =
+              tip.intentId.trim() == activeIntentId.trim() &&
+              activeIntentId.trim().isNotEmpty;
+          return _InputQuickTipCard(
+            tip: tip,
+            selected: isSelected,
+            onTap: () => onTipTap(tip),
           );
         },
       ),
@@ -634,10 +568,12 @@ class _InputQuickTipsBarState extends State<_InputQuickTipsBar> {
 
 class _InputQuickTipCard extends StatelessWidget {
   final _InputQuickTipItem tip;
+  final bool selected;
   final VoidCallback onTap;
 
   const _InputQuickTipCard({
     required this.tip,
+    required this.selected,
     required this.onTap,
   });
 
@@ -645,12 +581,19 @@ class _InputQuickTipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final cardColor = theme.colorScheme.surfaceContainerLow
-        .withValues(alpha: isDark ? 0.76 : 0.92);
-    final cardBorderColor =
-        theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.44 : 0.6);
-    final iconBackgroundColor =
-        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9);
+    final cardColor = selected
+        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.95)
+        : theme.colorScheme.surfaceContainerLow
+            .withValues(alpha: isDark ? 0.76 : 0.92);
+    final cardBorderColor = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.44 : 0.6);
+    final iconBackgroundColor = selected
+        ? theme.colorScheme.primary.withValues(alpha: 0.18)
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9);
+    final iconColor = theme.colorScheme.primary;
+    final textColor =
+        selected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface;
 
     return Material(
       color: cardColor,
@@ -661,6 +604,9 @@ class _InputQuickTipCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(11),
         onTap: onTap,
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
         child: ConstrainedBox(
           constraints: BoxConstraints(
             minWidth: PlatformInfos.isDesktop ? 104 : 92,
@@ -680,7 +626,7 @@ class _InputQuickTipCard extends StatelessWidget {
                   child: Icon(
                     tip.icon,
                     size: 12,
-                    color: theme.colorScheme.primary,
+                    color: iconColor,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -691,7 +637,7 @@ class _InputQuickTipCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
+                      color: textColor,
                       height: 1.1,
                     ),
                   ),
@@ -701,64 +647,6 @@ class _InputQuickTipCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ActiveQuickTipPanel extends StatelessWidget {
-  final ChatController controller;
-
-  const _ActiveQuickTipPanel({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final chipColor = theme.colorScheme.surfaceContainerLow;
-    final borderColor =
-        theme.colorScheme.outlineVariant.withValues(alpha: 0.55);
-
-    return Row(
-      children: [
-        Expanded(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 240),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: chipColor,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Text(
-                  controller.activeQuickTipTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 28,
-          height: 28,
-          child: InkWell(
-            onTap: controller.clearActiveQuickTipIntent,
-            borderRadius: BorderRadius.circular(14),
-            child: Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
