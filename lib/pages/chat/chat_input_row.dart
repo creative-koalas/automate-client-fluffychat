@@ -271,7 +271,9 @@ class ChatInputRow extends StatelessWidget {
                 //   ],
                 // ),
               ),
-            if (PlatformInfos.isMacOS || PlatformInfos.isWindows)
+            if (PlatformInfos.isMacOS ||
+                PlatformInfos.isWindows ||
+                PlatformInfos.isLinux)
               AnimatedContainer(
                 duration: FluffyThemes.animationDuration,
                 curve: FluffyThemes.animationCurve,

@@ -50,7 +50,7 @@ class DesktopScreenshotCapture {
   );
 
   static Future<DesktopScreenshotCaptureResult> captureSelection() async {
-    if (!Platform.isMacOS && !Platform.isWindows) {
+    if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
       return const DesktopScreenshotCaptureResult.failed();
     }
 

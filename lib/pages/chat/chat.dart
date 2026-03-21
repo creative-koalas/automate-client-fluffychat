@@ -2003,7 +2003,11 @@ class ChatController extends State<ChatPageWithRoom>
     bool openEditor = true,
   }) async {
     if (_blockFileIfResting()) return;
-    if (!PlatformInfos.isMacOS && !PlatformInfos.isWindows) return;
+    if (!PlatformInfos.isMacOS &&
+        !PlatformInfos.isWindows &&
+        !PlatformInfos.isLinux) {
+      return;
+    }
 
     FocusScope.of(context).requestFocus(FocusNode());
     if (hideWindow && PlatformInfos.isDesktop) {

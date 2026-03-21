@@ -105,7 +105,7 @@ dependencies:
   censor_it: ^2.1.0
 
 dev_dependencies:
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.7
   flutter_test:
