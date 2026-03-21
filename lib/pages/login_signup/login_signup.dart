@@ -4,8 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
@@ -122,6 +124,11 @@ class LoginSignupController extends State<LoginSignup>
       return;
     }
 
+    if (!PsygoConfig.hasAliyunOneClickLoginSecret) {
+      context.go('/login/phone');
+      return;
+    }
+
     setState(() {
       phoneError = null;
       loading = true;
@@ -129,16 +136,11 @@ class LoginSignupController extends State<LoginSignup>
     });
 
     try {
-      // 阿里云控制台获取的密钥
-      // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
-      const secretKey =
-          String.fromEnvironment('ALIYUN_SECRET_KEY', defaultValue: '');
-
       debugPrint('=== 使用官方 SDK 进行一键登录 ===');
 
       // 执行完整的一键登录流程，获取 fusion_token
       final fusionToken = await OneClickLoginService.performOneClickLogin(
-        secretKey: secretKey,
+        secretKey: PsygoConfig.aliyunOneClickSecretKey,
         timeout: 10000,
       );
 

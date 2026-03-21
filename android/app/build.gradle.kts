@@ -17,6 +17,29 @@ fun getDartDefine(key: String): String? {
         ?.substringAfter("=")
 }
 
+fun normalizeAndroidApplicationIdSuffix(raw: String?): String {
+    val trimmed = raw?.trim().orEmpty()
+    if (trimmed.isEmpty()) {
+        return ""
+    }
+
+    val parts = trimmed
+        .replace(Regex("^[._-]+"), "")
+        .replace(Regex("[^A-Za-z0-9_]+"), ".")
+        .split(".")
+        .map { it.trim().lowercase() }
+        .filter { it.isNotEmpty() && it.first().isLetter() }
+
+    if (parts.isEmpty()) {
+        logger.warn("Ignoring invalid APP_ID_SUFFIX value for Android applicationId")
+        return ""
+    }
+
+    val normalized = parts.joinToString(separator = ".", prefix = ".")
+
+    return normalized
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -87,8 +110,8 @@ android {
     require(keystorePropertiesFile.exists()) { "Missing key.properties" }
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
-    // 从 dart-define 读取包名后缀（prod 为空，test 为 _test，dev 为 _dev）
-    val appIdSuffix = getDartDefine("APP_ID_SUFFIX") ?: ""
+    // 从 dart-define 读取包名后缀；不合法时忽略，避免打出无效 applicationId
+    val appIdSuffix = normalizeAndroidApplicationIdSuffix(getDartDefine("APP_ID_SUFFIX"))
     // 从 dart-define 读取 app 名称
     val appName = getDartDefine("APP_NAME") ?: "PsyGo"
     val vivoAppId = getDartDefine("VIVO_APP_ID") ?: ""
