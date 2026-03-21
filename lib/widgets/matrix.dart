@@ -344,8 +344,14 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       if (state == LoginState.loggedOut) {
         // 注销推送（防止登出后仍收到推送、防止换号后收到上一个用户的推送）
         if (PlatformInfos.isMobile) {
+          final loggedOutUserId = c.userID;
+          if (loggedOutUserId != null && loggedOutUserId.isNotEmpty) {
+            AliyunPushService.instance
+                .clearRegisterPushStateForUser(loggedOutUserId);
+          }
           final pushKey = AliyunPushService.instance.pushKey;
           if (pushKey != null) {
+            AliyunPushService.instance.clearRegisterPushStateByPushKey(pushKey);
             _pushAudit('unregister start pushKey=$pushKey');
             unawaited(AliyunPushService.instance.unregisterPush(pushKey));
           }

@@ -2638,7 +2638,6 @@ class ChatController extends State<ChatPageWithRoom>
     if (normalized.startsWith('@[') && normalized.endsWith(']')) {
       return normalized.length > 3;
     }
-    if (normalized.contains(':')) return true;
 
     final normalizedLocalpart = normalized.substring(1);
     for (final participant in room.getParticipants()) {

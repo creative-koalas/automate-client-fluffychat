@@ -28,6 +28,31 @@ class AliyunPushService {
   final Map<String, String> _lastSuccessfulPushKeyByUser = {};
   static const Duration _registerSuccessCooldown = Duration(seconds: 20);
 
+  void clearRegisterPushStateForUser(String matrixUserID) {
+    final userId = matrixUserID.trim();
+    if (userId.isEmpty) return;
+    _registerPushTasks.remove(userId);
+    _lastSuccessfulRegisterAt.remove(userId);
+    _lastSuccessfulPushKeyByUser.remove(userId);
+    _audit('registerPush state cleared user=$userId');
+  }
+
+  void clearRegisterPushStateByPushKey(String pushKey) {
+    final normalizedPushKey = pushKey.trim();
+    if (normalizedPushKey.isEmpty) return;
+    final usersToClear = _lastSuccessfulPushKeyByUser.entries
+        .where((entry) => entry.value == normalizedPushKey)
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    for (final userId in usersToClear) {
+      clearRegisterPushStateForUser(userId);
+    }
+    if (usersToClear.isNotEmpty) {
+      _audit(
+          'registerPush state cleared by pushKey users=${usersToClear.length}');
+    }
+  }
+
   /// 获取当前活跃房间 ID 的回调（由 MatrixState 设置）
   String? Function()? activeRoomIdGetter;
 
@@ -1037,6 +1062,7 @@ class AliyunPushService {
   ///
   /// [pushKey] 之前注册时返回的 pushkey
   Future<bool> unregisterPush(String pushKey) async {
+    clearRegisterPushStateByPushKey(pushKey);
     try {
       final uri = Uri.parse('${PsygoConfig.baseUrl}/api/push/unregister')
           .replace(queryParameters: {'push_key': pushKey});
