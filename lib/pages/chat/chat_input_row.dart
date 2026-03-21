@@ -212,6 +212,9 @@ class ChatInputRow extends StatelessWidget {
           );
         }
         final canSend = controller.canSendCurrentDraft;
+        final mobileShouldCollapseInputActions = PlatformInfos.isMobile &&
+            (controller.inputFocus.hasFocus ||
+                controller.sendController.text.isNotEmpty);
 
         // 正常输入模式
         return SizedBox(
@@ -228,8 +231,10 @@ class ChatInputRow extends StatelessWidget {
                   AnimatedContainer(
                     duration: FluffyThemes.durationFast,
                     curve: FluffyThemes.curveStandard,
-                    width:
-                        controller.sendController.text.isNotEmpty ? 0 : height,
+                    width: mobileShouldCollapseInputActions ||
+                            controller.sendController.text.isNotEmpty
+                        ? 0
+                        : height,
                     height: height,
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(),
@@ -249,7 +254,7 @@ class ChatInputRow extends StatelessWidget {
                     AnimatedContainer(
                       duration: FluffyThemes.durationFast,
                       curve: FluffyThemes.curveStandard,
-                      width: controller.sendController.text.isNotEmpty
+                      width: mobileShouldCollapseInputActions
                           ? 0
                           : height,
                       height: height,
@@ -308,10 +313,14 @@ class ChatInputRow extends StatelessWidget {
                       //   ],
                       // ),
                     ),
-                  Container(
+                  AnimatedContainer(
+                    duration: FluffyThemes.durationFast,
+                    curve: FluffyThemes.curveStandard,
                     height: height,
-                    width: height,
+                    width: mobileShouldCollapseInputActions ? 0 : height,
                     alignment: Alignment.center,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: const BoxDecoration(),
                     child: IconButton(
                       tooltip: L10n.of(context).emojis,
                       color: theme.colorScheme.onPrimaryContainer,
