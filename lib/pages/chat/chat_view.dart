@@ -32,6 +32,7 @@ import 'package:psygo/utils/platform_infos.dart';
 import '../../utils/stream_extension.dart';
 import 'chat_emoji_picker.dart';
 import 'chat_input_row.dart';
+import 'employee_working_indicator.dart';
 
 enum _EventContextAction { info, report }
 
@@ -545,7 +546,7 @@ class ChatView extends StatelessWidget {
                       alt: true,
                     ): _CaptureScreenshotIntent(),
                   }
-            : const <ShortcutActivator, Intent>{},
+                : const <ShortcutActivator, Intent>{},
         child: Actions(
           actions: <Type, Action<Intent>>{
             _CaptureScreenshotIntent: CallbackAction<_CaptureScreenshotIntent>(

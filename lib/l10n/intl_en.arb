@@ -1367,11 +1367,15 @@
   },
   "messagesStyle": "Messages:",
   "@messagesStyle": {},
-  "moderator": "Moderator",
+  "moderator": "Admin",
   "@moderator": {
     "type": "String",
     "placeholders": {}
   },
+  "owner": "Owner",
+  "@owner": {},
+  "member": "Member",
+  "@member": {},
   "muteChat": "Do Not Disturb",
   "@muteChat": {
     "type": "String",
@@ -1885,6 +1889,21 @@
     "type": "String",
     "placeholders": {}
   },
+  "attachmentPickerTitle": "Select attachment type",
+  "@attachmentPickerTitle": {
+    "type": "String",
+    "placeholders": {}
+  },
+  "attachmentPickerImageSubtitle": "Choose an image from your gallery",
+  "@attachmentPickerImageSubtitle": {
+    "type": "String",
+    "placeholders": {}
+  },
+  "attachmentPickerFileSubtitle": "Choose a document or other file",
+  "@attachmentPickerFileSubtitle": {
+    "type": "String",
+    "placeholders": {}
+  },
   "sendFile": "Send file",
   "@sendFile": {
     "type": "String",
@@ -2368,7 +2387,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "whoCanPerformWhichAction": "Who can perform which action",
+  "whoCanPerformWhichAction": "Manage permissions in group chat",
   "@whoCanPerformWhichAction": {
     "type": "String",
     "placeholders": {}
@@ -3729,6 +3748,30 @@
   "@recruitGuideStepCreateTitle": {},
   "recruitGuideStepCreateBody": "Tap the button below to start hiring. Tip: You can hire up to 3 employees. Recruiting is unavailable after reaching the limit.",
   "@recruitGuideStepCreateBody": {},
+  "diceBearStyleAvataaars": "Avataaars",
+  "@diceBearStyleAvataaars": {},
+  "diceBearStyleBottts": "Bottts",
+  "@diceBearStyleBottts": {},
+  "diceBearStyleFunEmoji": "Fun Emoji",
+  "@diceBearStyleFunEmoji": {},
+  "diceBearStyleAdventurer": "Adventurer",
+  "@diceBearStyleAdventurer": {},
+  "diceBearStyleAdventurerNeutral": "Adventurer Neutral",
+  "@diceBearStyleAdventurerNeutral": {},
+  "diceBearStyleBigSmile": "Big Smile",
+  "@diceBearStyleBigSmile": {},
+  "diceBearStyleLorelei": "Lorelei",
+  "@diceBearStyleLorelei": {},
+  "diceBearStyleNotionists": "Notionists",
+  "@diceBearStyleNotionists": {},
+  "diceBearStyleOpenPeeps": "Open Peeps",
+  "@diceBearStyleOpenPeeps": {},
+  "diceBearStylePersonas": "Personas",
+  "@diceBearStylePersonas": {},
+  "diceBearStylePixelArt": "Pixel Art",
+  "@diceBearStylePixelArt": {},
+  "diceBearStyleThumbs": "Thumbs",
+  "@diceBearStyleThumbs": {},
   "recruitLimitReachedMessage": "3-employee limit reached. Recruiting is currently unavailable.",
   "@recruitLimitReachedMessage": {},
   "advancedOptions": "Advanced Options",
@@ -3767,6 +3810,18 @@
   "@back": {},
   "employeeNameCannotBeNumeric": "Name cannot be numbers only",
   "@employeeNameCannotBeNumeric": {},
+  "nameContainsProfanity": "Name contains inappropriate content, please choose another",
+  "@nameContainsProfanity": {},
+  "nicknameChangeSubmitted": "Nickname change request submitted, it will be updated after approval",
+  "@nicknameChangeSubmitted": {},
+  "nicknameEmpty": "Nickname cannot be empty",
+  "@nicknameEmpty": {},
+  "nicknameTooLong": "Nickname cannot exceed 10 characters",
+  "@nicknameTooLong": {},
+  "nicknameInvalidChars": "Nickname can only contain Chinese, letters, numbers and underscores",
+  "@nicknameInvalidChars": {},
+  "nicknameSubmitFailed": "Failed to submit nickname change",
+  "@nicknameSubmitFailed": {},
   "loadingPlugins": "Loading plugins...",
   "@loadingPlugins": {},
   "optional": "Optional",
@@ -4094,6 +4149,12 @@
   "@authNeedUpdateMessage": {},
   "authCheckAgain": "Check again",
   "@authCheckAgain": {},
+  "maintenanceBlockedTitle": "Service temporarily unavailable",
+  "@maintenanceBlockedTitle": {},
+  "maintenanceBlockedMessage": "PsyGo is under maintenance. Access will reopen after the release is complete.",
+  "@maintenanceBlockedMessage": {},
+  "maintenanceBlockedReasonLabel": "Notice",
+  "@maintenanceBlockedReasonLabel": {},
   "authLoginFailedTitle": "Login failed",
   "@authLoginFailedTitle": {},
   "authUnknownError": "Unknown error",
@@ -4251,5 +4312,75 @@
   "appUpdateInstallNow": "Install now",
   "@appUpdateInstallNow": {},
   "appUpdateDownloadInBrowser": "Download in browser",
-  "@appUpdateDownloadInBrowser": {}
+  "@appUpdateDownloadInBrowser": {},
+  "inviteFriends": "Invite Friends",
+  "@inviteFriends": {},
+  "inviteRewardRule": "Earn {credits} credits per invite ({current}/{max} invited)",
+  "@inviteRewardRule": {
+    "placeholders": {
+      "credits": {"type": "int"},
+      "current": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "inviteRewardRuleSimple": "Earn credits for each friend invited",
+  "@inviteRewardRuleSimple": {},
+  "invitationQuotaFull": "Invitation quota full",
+  "@invitationQuotaFull": {},
+  "viewInvitationCode": "View Code",
+  "@viewInvitationCode": {},
+  "enterInvitationCodeButton": "Enter Code",
+  "@enterInvitationCodeButton": {},
+  "myInvitationCode": "My Invitation Code",
+  "@myInvitationCode": {},
+  "invitationCodeCopied": "Invitation code copied",
+  "@invitationCodeCopied": {},
+  "invitedProgress": "Invited {current}/{max}",
+  "@invitedProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "enterInvitationCodeHint": "Enter 8-character invitation code",
+  "@enterInvitationCodeHint": {},
+  "invitationCodeInvalid": "Please enter an 8-character code",
+  "@invitationCodeInvalid": {},
+  "invitationErrorSelfBind": "You cannot bind your own invitation code.",
+  "@invitationErrorSelfBind": {},
+  "invitationErrorAlreadyBound": "This invitation code has already been bound.",
+  "@invitationErrorAlreadyBound": {},
+  "invitationErrorMutualBinding": "An invitation relationship already exists between you.",
+  "@invitationErrorMutualBinding": {},
+  "invitationErrorNotFound": "Invitation code not found. Please check and try again.",
+  "@invitationErrorNotFound": {},
+  "invitationErrorTemporarilyUnavailable": "Invitation code is temporarily unavailable. Please try again later.",
+  "@invitationErrorTemporarilyUnavailable": {},
+  "invitationBindSuccess": "Bound! {nickname} earned {credits} credits",
+  "@invitationBindSuccess": {
+    "placeholders": {
+      "nickname": {"type": "String"},
+      "credits": {"type": "int"}
+    }
+  },
+  "confirmBind": "Confirm",
+  "@confirmBind": {},
+  "getInvitationCodeFailed": "Failed to get invitation code: {error}",
+  "@getInvitationCodeFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "changeAvatar": "Change avatar",
+  "@changeAvatar": {},
+  "avatarUpdated": "Avatar updated",
+  "@avatarUpdated": {},
+  "avatarDownloadFailed": "Failed to download avatar",
+  "@avatarDownloadFailed": {},
+  "mentionHintTitle": "Mention an employee?",
+  "@mentionHintTitle": {},
+  "sendDirectly": "Send directly",
+  "@sendDirectly": {},
+  "mentionEveryone": "@Everyone",
+  "@mentionEveryone": {}
 }

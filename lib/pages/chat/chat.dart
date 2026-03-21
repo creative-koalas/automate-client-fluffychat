@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:psygo/utils/resize_video.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:provider/provider.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'package:universal_html/html.dart' as html;
@@ -34,6 +36,7 @@ import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
 import 'package:psygo/services/employee_work_template_visibility_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
@@ -217,6 +220,8 @@ class ChatController extends State<ChatPageWithRoom>
   DateTime? _lastRestingFeatureHintAt;
   static const Duration _webEntryHintCooldown = Duration(seconds: 2);
   static const Duration _restingFeatureHintCooldown = Duration(seconds: 2);
+  static const String _legacyWaitingEmployeesCleanupKey =
+      'migration_waiting_employees_cleanup_v1';
   final GlobalKey chatRoomGuideContainerKey = GlobalKey();
   final GlobalKey workStatusGuideKey = GlobalKey();
   final GlobalKey webEntryGuideKey = GlobalKey();
@@ -430,7 +435,6 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   Future<bool> handlePasteFilesFromClipboard(BuildContext context) async {
-    if (_blockFileIfResting()) return true;
     List<XFile> files;
     try {
       files = await _filesFromClipboard();
@@ -438,8 +442,38 @@ class ChatController extends State<ChatPageWithRoom>
       return false;
     }
     if (files.isEmpty) {
-      return false;
+      final imageData = await _normalizedClipboardImageData(
+        await _imageFromClipboard(),
+      );
+      if (imageData == null || imageData.isEmpty) {
+        return false;
+      }
+      if (_blockFileIfResting()) return true;
+      if (PlatformInfos.isDesktop) {
+        addPendingAttachments(
+          [
+            XFile.fromData(
+              imageData,
+              name: 'clipboard_image.png',
+              mimeType: 'image/png',
+            ),
+          ],
+        );
+        return true;
+      }
+      await showAdaptiveDialog(
+        context: context,
+        builder: (c) => SendFileDialog(
+          files: [XFile.fromData(imageData, mimeType: 'image/png')],
+          room: room,
+          outerContext: context,
+          threadRootEventId: activeThreadId,
+          threadLastEventId: threadLastEventId,
+        ),
+      );
+      return true;
     }
+    if (_blockFileIfResting()) return true;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(files);
       return true;
@@ -455,6 +489,37 @@ class ChatController extends State<ChatPageWithRoom>
       ),
     );
     return true;
+  }
+
+  Future<Uint8List?> _imageFromClipboard() async {
+    if (!PlatformInfos.isDesktop) return null;
+    try {
+      return await Pasteboard.image;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Uint8List?> _normalizedClipboardImageData(
+    Uint8List? imageData,
+  ) async {
+    if (imageData == null || imageData.isEmpty) return imageData;
+    ui.Codec? codec;
+    ui.FrameInfo? frame;
+    try {
+      codec = await ui.instantiateImageCodec(imageData);
+      frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      if (byteData == null) return imageData;
+      return byteData.buffer.asUint8List();
+    } catch (_) {
+      return imageData;
+    } finally {
+      frame?.image.dispose();
+      codec?.dispose();
+    }
   }
 
   Future<List<XFile>> _filesFromClipboard() async {
@@ -775,6 +840,7 @@ class ChatController extends State<ChatPageWithRoom>
     scrollController.addListener(_updateScrollController);
     inputFocus.addListener(_inputFocusListener);
 
+    _cleanupLegacyWaitingEmployeesPrefsOnce();
     _loadDraft();
     WidgetsBinding.instance.addPostFrameCallback(_shareItems);
     super.initState();
@@ -1008,6 +1074,21 @@ class ChatController extends State<ChatPageWithRoom>
     if (!mounted) return;
     setReadMarker();
     setState(() {});
+  }
+
+  void _cleanupLegacyWaitingEmployeesPrefsOnce() {
+    final prefs = Matrix.of(context).store;
+    if (prefs.getBool(_legacyWaitingEmployeesCleanupKey) == true) {
+      return;
+    }
+    final legacyKeys = prefs
+        .getKeys()
+        .where((key) => key.startsWith('waiting_employees_'))
+        .toList(growable: false);
+    for (final key in legacyKeys) {
+      unawaited(prefs.remove(key));
+    }
+    unawaited(prefs.setBool(_legacyWaitingEmployeesCleanupKey, true));
   }
 
   Future<void>? loadTimelineFuture;
@@ -1266,28 +1347,42 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() => pendingAttachmentsCompress = value);
   }
 
-  void handleKeyboardInsertedContent(KeyboardInsertedContent content) {
+  void handleKeyboardInsertedContent(KeyboardInsertedContent content) async {
     final data = content.data;
     if (data == null) return;
+    final isImageData = content.mimeType?.startsWith('image/') ?? false;
+    final normalizedData = isImageData
+        ? (await _normalizedClipboardImageData(data) ?? data)
+        : data;
+    final normalizedMimeType = isImageData ? 'image/png' : content.mimeType;
     if (PlatformInfos.isDesktop) {
       final name = _fileNameFromInsertedContent(content.uri);
       cancelPendingScreenshotReview();
       addPendingAttachments(
-        [XFile.fromData(data, name: name, mimeType: content.mimeType)],
+        [
+          XFile.fromData(
+            normalizedData,
+            name: name,
+            mimeType: normalizedMimeType,
+          ),
+        ],
       );
       return;
     }
-    if (data.length > kChatAttachmentMaxUploadBytes) {
+    if (normalizedData.length > kChatAttachmentMaxUploadBytes) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       _showAttachmentError(
         scaffoldMessenger,
-        FileTooBigMatrixException(data.length, kChatAttachmentMaxUploadBytes),
+        FileTooBigMatrixException(
+          normalizedData.length,
+          kChatAttachmentMaxUploadBytes,
+        ),
       );
       return;
     }
     final file = MatrixFile(
-      mimeType: content.mimeType,
-      bytes: data,
+      mimeType: normalizedMimeType,
+      bytes: normalizedData,
       name: _fileNameFromInsertedContent(content.uri),
     );
     room.sendFileEvent(
@@ -1358,6 +1453,21 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
+    // 群聊中，消息不含 @ 时弹出 mention 提示
+    final isGroupChat = room.directChatMatrixID == null;
+    if (isGroupChat && !trimmedText.contains('@')) {
+      final mention = await _showMentionHint();
+      if (mention == null) return; // 用户取消
+      if (mention.isNotEmpty) {
+        // 用户选择了成员，插入 @mention 到消息最前面
+        sendController.text = '$mention ${sendController.text}';
+        sendController.selection = TextSelection.collapsed(
+          offset: sendController.text.length,
+        );
+      }
+      // mention 为空字符串表示"直接发送"
+    }
+
     _storeInputTimeoutTimer?.cancel();
     final prefs = Matrix.of(context).store;
     prefs.remove('draft_$roomId');
@@ -1378,10 +1488,12 @@ class ChatController extends State<ChatPageWithRoom>
       parseCommands = false;
     }
 
-    final outgoingText = replaceInputMentionsWithMatrixIds(
+    var outgoingText = replaceInputMentionsWithMatrixIds(
       room: room,
       text: sendController.text,
     );
+    // 将“@所有人”类本地化文案统一转换为 @room（SDK 会设置 m.mentions.room = true）
+    outgoingText = _normalizeBroadcastMentionForSending(outgoingText);
     // ignore: unawaited_futures
     room.sendTextEvent(
       outgoingText,
@@ -1402,6 +1514,209 @@ class ChatController extends State<ChatPageWithRoom>
       editEvent = null;
       pendingText = '';
     });
+  }
+
+  /// 群聊发送时弹出 mention 提示。
+  /// 返回值：
+  ///   null  — 用户取消（不发送）
+  ///   ''    — 用户选择"直接发送"
+  ///   '@xx' — 用户选择了某个成员的 mention 文本
+  Future<String?> _showMentionHint() async {
+    final selfId = room.client.userID;
+
+    // 过滤自己，只列出其他成员
+    final participants =
+        room.getParticipants().where((u) => u.id != selfId).toList();
+
+    if (participants.isEmpty) return '';
+
+    if (PlatformInfos.isDesktop) {
+      return _showMentionHintDialog(participants);
+    }
+    return _showMentionHintBottomSheet(participants);
+  }
+
+  Future<String?> _showMentionHintDialog(List<User> participants) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 标题
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  child: Text(
+                    l10n.mentionHintTitle,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // 成员列表
+                Flexible(
+                  child: _buildParticipantList(participants, theme),
+                ),
+                // 底部按钮
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(l10n.cancel),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(''),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(l10n.sendDirectly),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<String?> _showMentionHintBottomSheet(List<User> participants) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 拖拽指示器
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // 标题
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text(
+                  l10n.mentionHintTitle,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              // 成员列表
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                child: _buildParticipantList(participants, theme),
+              ),
+              // 直接发送按钮
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(''),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(l10n.sendDirectly),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildParticipantList(List<User> participants, ThemeData theme) {
+    final l10n = L10n.of(context);
+    final mentionEveryone =
+        _normalizedEveryoneMentionLabel(l10n.mentionEveryone);
+    // +1 for the localized "@everyone" entry at the top
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: participants.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Icon(
+                Icons.groups,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: Text(mentionEveryone),
+            onTap: () => Navigator.of(context).pop(mentionEveryone),
+          );
+        }
+        final user = participants[index - 1];
+        AgentService.instance.ensureMatrixProfilePresentation(user);
+        final displayName = AgentService.instance.resolveDisplayName(user);
+        final avatarUri = AgentService.instance.resolveAvatarUri(user);
+        final mention = buildInputMentionByUser(
+          room: room,
+          user: user,
+        );
+        return ListTile(
+          leading: Avatar(
+            mxContent: avatarUri,
+            name: displayName,
+          ),
+          title: Text(displayName),
+          onTap: () => Navigator.of(context).pop(mention),
+        );
+      },
+    );
   }
 
   static const int _minSizeToCompress = 20 * 1000;
@@ -1609,17 +1924,31 @@ class ChatController extends State<ChatPageWithRoom>
 
   void sendImageFromClipBoard(Uint8List? image) async {
     if (image == null) return;
+    final normalizedImage = await _normalizedClipboardImageData(image);
+    if (normalizedImage == null || normalizedImage.isEmpty) return;
     if (_blockFileIfResting()) return;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(
-        [XFile.fromData(image, name: 'clipboard_image.png')],
+        [
+          XFile.fromData(
+            normalizedImage,
+            name: 'clipboard_image.png',
+            mimeType: 'image/png',
+          ),
+        ],
       );
       return;
     }
     await showAdaptiveDialog(
       context: context,
       builder: (c) => SendFileDialog(
-        files: [XFile.fromData(image)],
+        files: [
+          XFile.fromData(
+            normalizedImage,
+            name: 'clipboard_image.png',
+            mimeType: 'image/png',
+          ),
+        ],
         room: room,
         outerContext: context,
         threadRootEventId: activeThreadId,
@@ -1674,7 +2003,11 @@ class ChatController extends State<ChatPageWithRoom>
     bool openEditor = true,
   }) async {
     if (_blockFileIfResting()) return;
-    if (!PlatformInfos.isMacOS && !PlatformInfos.isWindows) return;
+    if (!PlatformInfos.isMacOS &&
+        !PlatformInfos.isWindows &&
+        !PlatformInfos.isLinux) {
+      return;
+    }
 
     FocusScope.of(context).requestFocus(FocusNode());
     if (hideWindow && PlatformInfos.isDesktop) {
@@ -2450,10 +2783,11 @@ class ChatController extends State<ChatPageWithRoom>
       closeWebEntry();
     }
 
-    final outgoingText = replaceInputMentionsWithMatrixIds(
+    var outgoingText = replaceInputMentionsWithMatrixIds(
       room: room,
       text: trimmedText,
     );
+    outgoingText = _normalizeBroadcastMentionForSending(outgoingText);
     room.sendTextEvent(
       outgoingText,
       parseCommands: false,
@@ -2482,6 +2816,37 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   late final ValueNotifier<bool> _displayChatDetailsColumn;
+
+  String _normalizedEveryoneMentionLabel(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return '@room';
+    return trimmed.startsWith('@') ? trimmed : '@$trimmed';
+  }
+
+  String _normalizeBroadcastMentionForSending(String text) {
+    if (text.isEmpty || !text.contains('@')) return text;
+
+    final l10n = L10n.of(context);
+    final aliases = <String>{
+      _normalizedEveryoneMentionLabel(l10n.mentionEveryone),
+      '@所有人', // legacy compatibility
+    }.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    var normalized = text;
+    for (final alias in aliases) {
+      if (alias == '@room') continue;
+      final pattern = RegExp(
+        '(^|[\\s\\(\\[\\{<，。！？、；：])(${RegExp.escape(alias)})(?=\$|[\\s\\)\\]\\}>，。！？、；：,.!?])',
+        multiLine: true,
+      );
+      normalized = normalized.replaceAllMapped(
+        pattern,
+        (match) => '${match.group(1)}@room',
+      );
+    }
+    return normalized;
+  }
 
   void toggleDisplayChatDetailsColumn() async {
     await AppSettings.displayChatDetailsColumn.setItem(

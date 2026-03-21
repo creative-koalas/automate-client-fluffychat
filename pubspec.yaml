@@ -4,7 +4,7 @@ publish_to: none
 # On version bump please also increase:
 # 1. The build number (for F-Droid)
 # 2. The version in /snap/snapcraft.yaml
-version: 0.1.2+14
+version: 0.1.4+16
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -64,6 +64,7 @@ dependencies:
   native_imaging: ^0.2.0
   opus_caf_converter_dart: ^1.0.1
   package_info_plus: ^8.3.1
+  pasteboard: ^0.4.0
   path: ^1.9.0
   path_provider: ^2.1.2
   permission_handler: ^12.0.1
@@ -101,9 +102,10 @@ dependencies:
     path: third_party/system_tray  # 系统托盘支持（本地补丁）
   xdg_status_notifier_item: ^0.0.1  # Linux 托盘点击事件
   connectivity_plus: ^7.0.0
+  censor_it: ^2.1.0
 
 dev_dependencies:
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.7
   flutter_test:
