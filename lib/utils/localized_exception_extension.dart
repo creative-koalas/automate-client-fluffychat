@@ -21,8 +21,8 @@ extension LocalizedExceptionExtension on Object {
     final numString = round < 10
         ? num.toStringAsFixed(2)
         : round < 100
-            ? num.toStringAsFixed(1)
-            : round.toString();
+        ? num.toStringAsFixed(1)
+        : round.toString();
     return '$numString ${'kMGTPEZY'[i - 1]}B';
   }
 
@@ -34,15 +34,53 @@ extension LocalizedExceptionExtension on Object {
     return L10n.of(context).tooManyRequestsWarning;
   }
 
+  static String? _verifyCodeMessage(
+    BuildContext context,
+    String backendMessage,
+  ) {
+    final message = backendMessage.trim().toLowerCase();
+    if (message.isEmpty) {
+      return null;
+    }
+
+    if (_containsAny(message, const [
+      'invalid verification code',
+      '验证码错误',
+      '验证码无效',
+    ])) {
+      return L10n.of(context).authCodeInvalid;
+    }
+
+    if (_containsAny(message, const [
+      'verification code expired or not found',
+      '验证码已过期',
+      '验证码过期',
+      '验证码不存在',
+    ])) {
+      return L10n.of(context).authCodeExpired;
+    }
+
+    return null;
+  }
+
+  static bool _containsAny(String source, List<String> patterns) {
+    for (final pattern in patterns) {
+      if (source.contains(pattern)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   String toLocalizedString(
     BuildContext context, [
     ExceptionContext? exceptionContext,
   ]) {
     if (this is FileTooBigMatrixException) {
       final exception = this as FileTooBigMatrixException;
-      return L10n.of(context).fileIsTooBigForServer(
-        _formatFileSize(exception.maxFileSize),
-      );
+      return L10n.of(
+        context,
+      ).fileIsTooBigForServer(_formatFileSize(exception.maxFileSize));
     }
     if (this is OtherPartyCanNotReceiveMessages) {
       return L10n.of(context).otherPartyNotLoggedIn;
@@ -54,6 +92,15 @@ extension LocalizedExceptionExtension on Object {
       }
       if (exceptionContext == ExceptionContext.requestVerifyCode) {
         return _smsCodeBusyMessage(context);
+      }
+      if (exceptionContext == ExceptionContext.verifyCode) {
+        final verifyCodeMessage = _verifyCodeMessage(
+          context,
+          exception.message,
+        );
+        if (verifyCodeMessage != null) {
+          return verifyCodeMessage;
+        }
       }
       return L10n.of(context).serverError;
     }
