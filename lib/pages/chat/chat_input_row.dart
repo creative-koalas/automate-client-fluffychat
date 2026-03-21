@@ -450,9 +450,9 @@ class ChatQuickTipsBar extends StatelessWidget {
       intentId: 'create_word_document',
     ),
     _InputQuickTipDefinition(
-      icon: Icons.auto_awesome_outlined,
-      titleBuilder: (l10n) => l10n.inputQuickTipRiskTitle,
-      intentId: 'risk_check',
+      icon: Icons.web_rounded,
+      titleBuilder: (_) => '制作智能界面',
+      intentId: 'build_smart_webview',
     ),
     _InputQuickTipDefinition(
       icon: Icons.camera_alt_outlined,
