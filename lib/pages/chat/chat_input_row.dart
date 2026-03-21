@@ -28,6 +28,26 @@ class ChatInputRow extends StatelessWidget {
 
   const ChatInputRow(this.controller, {super.key});
 
+  String _quickTipInputHintText(BuildContext context) {
+    final l10n = L10n.of(context);
+    if (!controller.hasActiveQuickTipIntent) {
+      return l10n.writeAMessage;
+    }
+
+    switch (controller.activeQuickTipIntentId.trim()) {
+      case 'build_game_with_godot':
+        return l10n.inputQuickTipPlanMessage;
+      case 'create_word_document':
+        return l10n.inputQuickTipWordMessage;
+      case 'build_smart_webview':
+        return l10n.inputQuickTipRiskMessage;
+      case 'daily_news_report':
+        return l10n.inputQuickTipNextStepMessage;
+      default:
+        return l10n.inputQuickTipModePlaceholder;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -367,10 +387,7 @@ class ChatInputRow extends StatelessWidget {
                                   top: 3.0,
                                 ),
                                 counter: const SizedBox.shrink(),
-                                hintText: controller.hasActiveQuickTipIntent
-                                    ? L10n.of(context)
-                                        .inputQuickTipModePlaceholder
-                                    : L10n.of(context).writeAMessage,
+                                hintText: _quickTipInputHintText(context),
                                 hintMaxLines: 1,
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
@@ -441,22 +458,22 @@ class ChatQuickTipsBar extends StatelessWidget {
       <_InputQuickTipDefinition>[
     _InputQuickTipDefinition(
       icon: Icons.bolt_rounded,
-      titleBuilder: (_) => '游戏开发',
+      titleBuilder: (l10n) => l10n.inputQuickTipPlanTitle,
       intentId: 'build_game_with_godot',
     ),
     _InputQuickTipDefinition(
       icon: Icons.description_outlined,
-      titleBuilder: (_) => '文档撰写',
+      titleBuilder: (l10n) => l10n.inputQuickTipWordTitle,
       intentId: 'create_word_document',
     ),
     _InputQuickTipDefinition(
       icon: Icons.web_rounded,
-      titleBuilder: (_) => '制作智能界面',
+      titleBuilder: (l10n) => l10n.inputQuickTipRiskTitle,
       intentId: 'build_smart_webview',
     ),
     _InputQuickTipDefinition(
       icon: Icons.newspaper_rounded,
-      titleBuilder: (_) => '每日报道',
+      titleBuilder: (l10n) => l10n.inputQuickTipNextStepTitle,
       intentId: 'daily_news_report',
     ),
   ];
