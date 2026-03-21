@@ -441,12 +441,12 @@ class ChatQuickTipsBar extends StatelessWidget {
       <_InputQuickTipDefinition>[
     _InputQuickTipDefinition(
       icon: Icons.bolt_rounded,
-      titleBuilder: (l10n) => l10n.inputQuickTipPlanTitle,
+      titleBuilder: (_) => '游戏开发',
       intentId: 'build_game_with_godot',
     ),
     _InputQuickTipDefinition(
       icon: Icons.description_outlined,
-      titleBuilder: (l10n) => l10n.inputQuickTipWordTitle,
+      titleBuilder: (_) => '文档撰写',
       intentId: 'create_word_document',
     ),
     _InputQuickTipDefinition(
@@ -455,9 +455,9 @@ class ChatQuickTipsBar extends StatelessWidget {
       intentId: 'build_smart_webview',
     ),
     _InputQuickTipDefinition(
-      icon: Icons.camera_alt_outlined,
-      titleBuilder: (l10n) => l10n.inputQuickTipNextStepTitle,
-      intentId: 'next_step_plan',
+      icon: Icons.newspaper_rounded,
+      titleBuilder: (_) => '每日报道',
+      intentId: 'daily_news_report',
     ),
   ];
 
