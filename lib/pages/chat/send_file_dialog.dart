@@ -28,7 +28,7 @@ class SendFileDialog extends StatefulWidget {
     required this.room,
     required this.files,
     required this.outerContext,
-    required this.onSent,
+    this.onSent,
     required this.replyEvent,
     required this.threadLastEventId,
     required this.threadRootEventId,

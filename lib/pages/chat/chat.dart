@@ -470,6 +470,8 @@ class ChatController extends State<ChatPageWithRoom>
           files: [XFile.fromData(imageData, mimeType: 'image/png')],
           room: room,
           outerContext: context,
+          onSent: clearReplyEventAfterMediaSend,
+          replyEvent: replyEvent,
           threadRootEventId: activeThreadId,
           threadLastEventId: threadLastEventId,
         ),
