@@ -1416,6 +1416,8 @@ class ChatController extends State<ChatPageWithRoom>
         threadRootEventId: activeThreadId,
       );
     } else {
+      final mentionsContent =
+          _buildMentionsContentForOutgoingText(outgoingText);
       // Use a custom content block so quick-tip server prompt is hidden from
       // the visible message body while still being available to backend.
       // ignore: unawaited_futures
@@ -1424,6 +1426,7 @@ class ChatController extends State<ChatPageWithRoom>
           'msgtype': MessageTypes.Text,
           'body': outgoingText,
           _quickTipEventContentKey: quickTipMetadata,
+          if (mentionsContent != null) 'm.mentions': mentionsContent,
         },
         inReplyTo: replyEvent,
         editEventId: editEvent?.eventId,
@@ -2824,6 +2827,39 @@ class ChatController extends State<ChatPageWithRoom>
       );
     }
     return normalized;
+  }
+
+  Map<String, dynamic>? _buildMentionsContentForOutgoingText(String text) {
+    if (text.isEmpty || !text.contains('@')) return null;
+
+    final mentions = <String, dynamic>{};
+    final roomMentionPattern = RegExp(
+      r'(^|[\s\(\[\{<，。！？、；：])(@room)(?=$|[\s\)\]\}>，。！？、；：,.!?])',
+      multiLine: true,
+    );
+    if (roomMentionPattern.hasMatch(text)) {
+      mentions['room'] = true;
+    }
+
+    final userIds = <String>{};
+    for (final participant in room.getParticipants()) {
+      final userId = participant.id.trim();
+      if (userId.isEmpty) continue;
+      final pattern = RegExp(
+        '(^|[\\s\\(\\[\\{<，。！？、；：])(${RegExp.escape(userId)})(?=\$|[\\s\\)\\]\\}>，。！？、；：,.!?])',
+        multiLine: true,
+      );
+      if (pattern.hasMatch(text)) {
+        userIds.add(userId);
+      }
+    }
+    if (userIds.isNotEmpty) {
+      final normalizedUserIds = userIds.toList()..sort();
+      mentions['user_ids'] = normalizedUserIds;
+    }
+
+    if (mentions.isEmpty) return null;
+    return mentions;
   }
 
   void toggleDisplayChatDetailsColumn() async {
