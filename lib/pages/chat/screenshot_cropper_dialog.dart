@@ -141,9 +141,9 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
   String? _pendingText;
   bool _showMarkupToolbar = false;
 
-  final List<_EditorStroke> _strokes = [];
-  final List<_EditorShape> _shapes = [];
-  final List<_EditorText> _texts = [];
+  List<_EditorStroke> _strokes = [];
+  List<_EditorShape> _shapes = [];
+  List<_EditorText> _texts = [];
   final List<_EditorAction> _history = [];
   int? _activeTextIndex;
   int? _editingTextIndex;
@@ -291,7 +291,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     if (draft == null) return;
     if (draft.points.length > 1) {
       setState(() {
-        _strokes.add(draft);
+        _strokes = [..._strokes, draft];
         _history.add(_EditorAction.stroke(draft));
         _draftStroke = null;
       });
@@ -332,7 +332,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     final delta = (draft.end - draft.start).distance;
     if (delta > 0.01) {
       setState(() {
-        _shapes.add(draft);
+        _shapes = [..._shapes, draft];
         _history.add(_EditorAction.shape(draft));
         _draftShape = null;
       });
@@ -344,6 +344,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
   Future<void> _placeText(Offset position) async {
     setState(() {
       _draftTextPosition = position;
+      _history.add(const _EditorAction.draftText());
       _draftTextFontSize =
           _activeTextIndex != null ? _texts[_activeTextIndex!].fontSize : 0.034;
       _editingTextIndex = null;
@@ -404,7 +405,8 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     final nextRotation = _textTransformStartRotation! + rotation;
 
     setState(() {
-      _texts[index] = _EditorText(
+      final nextTexts = List<_EditorText>.from(_texts);
+      nextTexts[index] = _EditorText(
         id: item.id,
         text: item.text,
         position: nextPosition,
@@ -413,6 +415,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         scale: nextScale,
         rotation: nextRotation,
       );
+      _texts = nextTexts;
     });
   }
 
@@ -437,6 +440,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     if (index < 0 || index >= _texts.length) return;
     final item = _texts[index];
     setState(() {
+      _history.add(const _EditorAction.draftText());
       _editingTextIndex = index;
       _activeTextIndex = index;
       _draftTextPosition = item.position;
@@ -463,12 +467,23 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     });
   }
 
-  void _cancelDraftText() {
+  void _cancelDraftText({bool removeHistory = true}) {
+    if (removeHistory) {
+      _removePendingDraftTextHistory();
+    }
     setState(() {
       _draftTextPosition = null;
       _editingTextIndex = null;
       _draftTextController.clear();
     });
+  }
+
+  void _removePendingDraftTextHistory() {
+    final index = _history.lastIndexWhere(
+      (action) => action.type == _EditorActionType.draftText,
+    );
+    if (index == -1) return;
+    _history.removeAt(index);
   }
 
   void _commitDraftText() {
@@ -486,8 +501,10 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         existingIndex >= 0 &&
         existingIndex < _texts.length) {
       final current = _texts[existingIndex];
+      _removePendingDraftTextHistory();
       setState(() {
-        _texts[existingIndex] = _EditorText(
+        final nextTexts = List<_EditorText>.from(_texts);
+        nextTexts[existingIndex] = _EditorText(
           id: current.id,
           text: text,
           position: current.position,
@@ -496,6 +513,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
           scale: current.scale,
           rotation: current.rotation,
         );
+        _texts = nextTexts;
         _pendingText = text;
         _draftTextPosition = null;
         _editingTextIndex = null;
@@ -513,8 +531,9 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
       scale: 1,
       rotation: 0,
     );
+    _removePendingDraftTextHistory();
     setState(() {
-      _texts.add(item);
+      _texts = [..._texts, item];
       _history.add(_EditorAction.text(item));
       _pendingText = text;
       _draftTextPosition = null;
@@ -532,7 +551,8 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
           draftIndex < _texts.length &&
           _draftTextPosition != null) {
         final item = _texts[draftIndex];
-        _texts[draftIndex] = _EditorText(
+        final nextTexts = List<_EditorText>.from(_texts);
+        nextTexts[draftIndex] = _EditorText(
           id: item.id,
           text: item.text,
           position: item.position,
@@ -541,11 +561,13 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
           scale: item.scale,
           rotation: item.rotation,
         );
+        _texts = nextTexts;
       } else if (_activeTextIndex != null &&
           _activeTextIndex! >= 0 &&
           _activeTextIndex! < _texts.length) {
         final item = _texts[_activeTextIndex!];
-        _texts[_activeTextIndex!] = _EditorText(
+        final nextTexts = List<_EditorText>.from(_texts);
+        nextTexts[_activeTextIndex!] = _EditorText(
           id: item.id,
           text: item.text,
           position: item.position,
@@ -554,6 +576,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
           scale: item.scale,
           rotation: item.rotation,
         );
+        _texts = nextTexts;
       }
     });
   }
@@ -567,7 +590,8 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
           activeIndex >= 0 &&
           activeIndex < _texts.length) {
         final item = _texts[activeIndex];
-        _texts[activeIndex] = _EditorText(
+        final nextTexts = List<_EditorText>.from(_texts);
+        nextTexts[activeIndex] = _EditorText(
           id: item.id,
           text: item.text,
           position: item.position,
@@ -576,6 +600,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
           scale: item.scale,
           rotation: item.rotation,
         );
+        _texts = nextTexts;
       }
     });
   }
@@ -599,22 +624,28 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
   }
 
   void _undo() {
-    if (_history.isEmpty) return;
+    if (_history.isEmpty) {
+      return;
+    }
     final last = _history.removeLast();
     setState(() {
       switch (last.type) {
         case _EditorActionType.stroke:
-          _strokes.remove(last.stroke);
+          _strokes = List<_EditorStroke>.from(_strokes)..remove(last.stroke);
           break;
         case _EditorActionType.shape:
-          _shapes.remove(last.shape);
+          _shapes = List<_EditorShape>.from(_shapes)..remove(last.shape);
           break;
         case _EditorActionType.text:
           final removedId = last.text?.id;
-          _texts.removeWhere((item) => item.id == removedId);
+          _texts = List<_EditorText>.from(_texts)
+            ..removeWhere((item) => item.id == removedId);
           if (_activeTextIndex != null && _activeTextIndex! >= _texts.length) {
             _activeTextIndex = _texts.isEmpty ? null : _texts.length - 1;
           }
+          break;
+        case _EditorActionType.draftText:
+          _cancelDraftText(removeHistory: false);
           break;
       }
     });
@@ -1323,17 +1354,6 @@ class _EditorCanvas extends StatelessWidget {
                 ),
               ),
             ),
-            Positioned.fromRect(
-              rect: selectionRect,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border:
-                        Border.all(color: const Color(0xFF34D399), width: 2),
-                  ),
-                ),
-              ),
-            ),
             Positioned(
               left: selectionRect.left,
               top: selectionRect.top - 14,
@@ -1349,7 +1369,7 @@ class _EditorCanvas extends StatelessWidget {
                     width: math.min(selectionRect.width, 120),
                     height: 28,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF34D399),
+                      color: const Color(0xCCF3F4F6),
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: const [
                         BoxShadow(
@@ -1363,7 +1383,7 @@ class _EditorCanvas extends StatelessWidget {
                       width: 28,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.34),
+                        color: Colors.black.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -2069,7 +2089,7 @@ class _CropMaskPainter extends CustomPainter {
   }
 }
 
-enum _EditorActionType { stroke, shape, text }
+enum _EditorActionType { stroke, shape, text, draftText }
 
 final class _EditorAction {
   _EditorAction.stroke(this.stroke)
@@ -2086,6 +2106,12 @@ final class _EditorAction {
       : type = _EditorActionType.text,
         stroke = null,
         shape = null;
+
+  const _EditorAction.draftText()
+      : type = _EditorActionType.draftText,
+        stroke = null,
+        shape = null,
+        text = null;
 
   final _EditorActionType type;
   final _EditorStroke? stroke;
