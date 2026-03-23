@@ -130,17 +130,19 @@ class NewPrivateChatView extends StatelessWidget {
                             title: Text(L10n.of(context).shareInviteLink),
                             onTap: controller.inviteAction,
                           ),
-                          ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              child: const Icon(Icons.card_giftcard_rounded),
-                            ),
-                            title: Text(L10n.of(context).viewInvitationCode),
-                            onTap: controller.showInvitationCodeAction,
-                          ),
+                          // Hidden on purpose: don't expose invitation code entry
+                          // in "New Chat" page for end users.
+                          // ListTile(
+                          //   leading: CircleAvatar(
+                          //     backgroundColor:
+                          //         theme.colorScheme.primaryContainer,
+                          //     foregroundColor:
+                          //         theme.colorScheme.onPrimaryContainer,
+                          //     child: const Icon(Icons.card_giftcard_rounded),
+                          //   ),
+                          //   title: Text(L10n.of(context).viewInvitationCode),
+                          //   onTap: controller.showInvitationCodeAction,
+                          // ),
                           ListTile(
                             leading: CircleAvatar(
                               backgroundColor:
