@@ -792,14 +792,15 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: l10n.walletTitle,
-                  onPressed: _openWalletDialog,
-                  icon: const Icon(Icons.account_balance_wallet_rounded),
-                  style: IconButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
+                // Wallet entry hidden by requirement. Keep logic for easy rollback.
+                // IconButton(
+                //   tooltip: l10n.walletTitle,
+                //   onPressed: _openWalletDialog,
+                //   icon: const Icon(Icons.account_balance_wallet_rounded),
+                //   style: IconButton.styleFrom(
+                //     visualDensity: VisualDensity.compact,
+                //   ),
+                // ),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: showProfileText ? 224 : 56,

@@ -350,29 +350,30 @@ class TeamPageView extends StatelessWidget {
         centerTitle: false,
         elevation: 0,
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: theme.colorScheme.primary,
-                size: 22,
-              ),
-              tooltip: l10n.walletTitle,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const WalletPage(),
-                  ),
-                );
-              },
-            ),
-          ),
+          // Wallet entry hidden by requirement. Keep logic for easy rollback.
+          // Container(
+          //   margin: const EdgeInsets.only(right: 12),
+          //   decoration: BoxDecoration(
+          //     color: theme.colorScheme.surfaceContainerHighest
+          //         .withValues(alpha: 0.5),
+          //     borderRadius: BorderRadius.circular(12),
+          //   ),
+          //   child: IconButton(
+          //     icon: Icon(
+          //       Icons.account_balance_wallet_rounded,
+          //       color: theme.colorScheme.primary,
+          //       size: 22,
+          //     ),
+          //     tooltip: l10n.walletTitle,
+          //     onPressed: () {
+          //       Navigator.of(context).push(
+          //         MaterialPageRoute(
+          //           builder: (context) => const WalletPage(),
+          //         ),
+          //       );
+          //     },
+          //   ),
+          // ),
         ],
       ),
       body: EmployeesTab(
