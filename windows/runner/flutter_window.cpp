@@ -14,6 +14,10 @@ namespace {
 
 constexpr char kScreenshotChannelName[] =
     "com.creativekoalas.psygo/macos_screenshot";
+constexpr int kGlobalScreenshotHotkeyId = 0x4150;
+constexpr UINT kGlobalScreenshotHotkeyModifiers =
+    MOD_CONTROL | MOD_ALT | MOD_NOREPEAT;
+constexpr UINT kGlobalScreenshotHotkeyVirtualKey = 0x53;  // S
 
 std::optional<CLSID> GetPngEncoderClsid() {
   UINT num = 0;
@@ -85,11 +89,13 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   RegisterScreenshotChannel();
+  RegisterGlobalScreenshotHotkey();
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   return true;
 }
 
 void FlutterWindow::OnDestroy() {
+  UnregisterGlobalScreenshotHotkey();
   screenshot_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -102,6 +108,12 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_HOTKEY &&
+      static_cast<int>(wparam) == kGlobalScreenshotHotkeyId) {
+    NotifyGlobalScreenshotHotkey();
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
@@ -152,6 +164,38 @@ void FlutterWindow::RegisterScreenshotChannel() {
 
         result->Success(flutter::EncodableValue(path_utf8.value()));
       });
+}
+
+void FlutterWindow::NotifyGlobalScreenshotHotkey() {
+  if (!screenshot_channel_) {
+    return;
+  }
+  screenshot_channel_->InvokeMethod("onGlobalScreenshotHotkey", nullptr);
+}
+
+bool FlutterWindow::RegisterGlobalScreenshotHotkey() {
+  if (screenshot_hotkey_registered_) {
+    return true;
+  }
+  const HWND hwnd = GetHandle();
+  if (!hwnd) {
+    return false;
+  }
+  screenshot_hotkey_registered_ = RegisterHotKey(
+      hwnd, kGlobalScreenshotHotkeyId, kGlobalScreenshotHotkeyModifiers,
+      kGlobalScreenshotHotkeyVirtualKey);
+  return screenshot_hotkey_registered_;
+}
+
+void FlutterWindow::UnregisterGlobalScreenshotHotkey() {
+  if (!screenshot_hotkey_registered_) {
+    return;
+  }
+  const HWND hwnd = GetHandle();
+  if (hwnd) {
+    UnregisterHotKey(hwnd, kGlobalScreenshotHotkeyId);
+  }
+  screenshot_hotkey_registered_ = false;
 }
 
 std::optional<std::wstring> FlutterWindow::CaptureScreenBufferToPng() const {

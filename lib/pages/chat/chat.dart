@@ -216,10 +216,6 @@ class ChatController extends State<ChatPageWithRoom>
       return HardwareKeyboard.instance.isMetaPressed &&
           HardwareKeyboard.instance.isAltPressed;
     }
-    if (PlatformInfos.isWindows) {
-      return HardwareKeyboard.instance.isControlPressed &&
-          HardwareKeyboard.instance.isAltPressed;
-    }
     return false;
   }
 
@@ -239,6 +235,8 @@ class ChatController extends State<ChatPageWithRoom>
 
   late final FocusNode inputFocus;
   StreamSubscription<html.Event>? onFocusSub;
+  StreamSubscription<void>? _globalScreenshotHotkeySub;
+  DateTime? _lastScreenshotTriggerAt;
 
   Timer? typingCoolDown;
   Timer? typingTimeout;
@@ -819,7 +817,7 @@ class ChatController extends State<ChatPageWithRoom>
 
   KeyEventResult _customEnterKeyHandling(FocusNode node, KeyEvent evt) {
     if (_isScreenshotShortcut(evt)) {
-      unawaited(captureScreenshotAction());
+      unawaited(_triggerScreenshotShortcut());
       return KeyEventResult.handled;
     }
     if (!HardwareKeyboard.instance.isShiftPressed &&
@@ -862,6 +860,47 @@ class ChatController extends State<ChatPageWithRoom>
     }
   }
 
+  Future<void> _triggerScreenshotShortcut({
+    bool hideWindow = false,
+    bool restoreWindowAfterCapture = false,
+    bool avoidFocusBeforeCapture = false,
+  }) async {
+    final now = DateTime.now();
+    final last = _lastScreenshotTriggerAt;
+    if (last != null &&
+        now.difference(last) < const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastScreenshotTriggerAt = now;
+    await captureScreenshotAction(
+      hideWindow: hideWindow,
+      restoreWindowAfterCapture: restoreWindowAfterCapture,
+      avoidFocusBeforeCapture: avoidFocusBeforeCapture,
+    );
+  }
+
+  Future<void> _handleWindowsGlobalScreenshotHotkey() async {
+    var hideWindow = true;
+    var restoreWindowAfterCapture = false;
+    try {
+      final isVisible = await windowManager.isVisible();
+      final isFocused = await windowManager.isFocused();
+      final isMinimized = await windowManager.isMinimized();
+      // Foreground capture should include app content.
+      // Background-but-visible capture should hide the app to avoid pollution.
+      hideWindow = isVisible && !isFocused && !isMinimized;
+      // Minimized/hidden window needs to be restored after capture so editor can show.
+      restoreWindowAfterCapture = isMinimized || !isVisible;
+    } catch (error) {
+      debugPrint('[Screenshot] Failed to query window state: $error');
+    }
+    await _triggerScreenshotShortcut(
+      hideWindow: hideWindow,
+      restoreWindowAfterCapture: restoreWindowAfterCapture,
+      avoidFocusBeforeCapture: true,
+    );
+  }
+
   @override
   void initState() {
     inputFocus = FocusNode(onKeyEvent: _customEnterKeyHandling);
@@ -901,6 +940,13 @@ class ChatController extends State<ChatPageWithRoom>
     unawaited(_loadEmployeeWorkTemplateVisibilityState());
     unawaited(_loadChatRoomGuideState());
     unawaited(_loadQuickTipTemplates());
+    if (PlatformInfos.isWindows) {
+      _globalScreenshotHotkeySub = DesktopScreenshotCapture.onGlobalHotkey.listen(
+        (dynamic _) {
+          unawaited(_handleWindowsGlobalScreenshotHotkey());
+        },
+      );
+    }
     if (kIsWeb) {
       onFocusSub = html.window.onFocus.listen((_) => setReadMarker());
     }
@@ -1271,6 +1317,7 @@ class ChatController extends State<ChatPageWithRoom>
     timeline = null;
     inputFocus.removeListener(_inputFocusListener);
     onFocusSub?.cancel();
+    _globalScreenshotHotkeySub?.cancel();
     _disposePendingAttachments();
     super.dispose();
   }
@@ -2066,6 +2113,8 @@ class ChatController extends State<ChatPageWithRoom>
   Future<void> captureScreenshotAction({
     bool hideWindow = false,
     bool openEditor = true,
+    bool restoreWindowAfterCapture = false,
+    bool avoidFocusBeforeCapture = false,
   }) async {
     if (_blockFileIfResting()) return;
     if (!PlatformInfos.isMacOS &&
@@ -2074,21 +2123,48 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
-    FocusScope.of(context).requestFocus(FocusNode());
-    if (hideWindow && PlatformInfos.isDesktop) {
-      await windowManager.hide();
-      await Future<void>.delayed(const Duration(milliseconds: 120));
+    // For global hotkey on Windows, requesting focus first may bring the app
+    // window to front and pollute the captured image.
+    if (!hideWindow && !avoidFocusBeforeCapture) {
+      FocusScope.of(context).requestFocus(FocusNode());
+    } else {
+      FocusScope.of(context).unfocus();
     }
-    final result = await DesktopScreenshotCapture.captureSelection();
+    var windowWasHidden = false;
+    late final DesktopScreenshotCaptureResult result;
+    try {
+      if (hideWindow && PlatformInfos.isDesktop) {
+        await windowManager.hide();
+        windowWasHidden = true;
+        if (PlatformInfos.isWindows) {
+          final visibleCheckDeadline = DateTime.now().add(
+            const Duration(milliseconds: 500),
+          );
+          while (await windowManager.isVisible() &&
+              DateTime.now().isBefore(visibleCheckDeadline)) {
+            await Future<void>.delayed(const Duration(milliseconds: 16));
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 180));
+        } else {
+          await Future<void>.delayed(const Duration(milliseconds: 120));
+        }
+      }
+      result = await DesktopScreenshotCapture.captureSelection();
+    } finally {
+      if ((windowWasHidden || restoreWindowAfterCapture) &&
+          PlatformInfos.isDesktop) {
+        try {
+          await windowManager.show();
+          await windowManager.restore();
+          await windowManager.focus();
+          await WindowToFront.activate();
+          await Future<void>.delayed(const Duration(milliseconds: 180));
+        } catch (error) {
+          debugPrint('[Screenshot] Failed to restore window after capture: $error');
+        }
+      }
+    }
     if (!mounted) return;
-
-    if (hideWindow && PlatformInfos.isDesktop) {
-      await windowManager.show();
-      await windowManager.restore();
-      await windowManager.focus();
-      await WindowToFront.activate();
-      await Future<void>.delayed(const Duration(milliseconds: 180));
-    }
 
     switch (result.status) {
       case DesktopScreenshotCaptureStatus.success:
@@ -2102,9 +2178,7 @@ class ChatController extends State<ChatPageWithRoom>
           file: result.file!,
         );
         if (cropped == null) {
-          if (result.file!.path != cropped?.path) {
-            unawaited(_deleteFileIfExists(result.file!.path));
-          }
+          unawaited(_deleteFileIfExists(result.file!.path));
           inputFocus.requestFocus();
           return;
         }
@@ -3046,39 +3120,6 @@ class ChatController extends State<ChatPageWithRoom>
       );
     }
     return normalized;
-  }
-
-  Map<String, dynamic>? _buildMentionsContentForOutgoingText(String text) {
-    if (text.isEmpty || !text.contains('@')) return null;
-
-    final mentions = <String, dynamic>{};
-    final roomMentionPattern = RegExp(
-      r'(^|[\s\(\[\{<，。！？、；：])(@room)(?=$|[\s\)\]\}>，。！？、；：,.!?])',
-      multiLine: true,
-    );
-    if (roomMentionPattern.hasMatch(text)) {
-      mentions['room'] = true;
-    }
-
-    final userIds = <String>{};
-    for (final participant in room.getParticipants()) {
-      final userId = participant.id.trim();
-      if (userId.isEmpty) continue;
-      final pattern = RegExp(
-        '(^|[\\s\\(\\[\\{<，。！？、；：])(${RegExp.escape(userId)})(?=\$|[\\s\\)\\]\\}>，。！？、；：,.!?])',
-        multiLine: true,
-      );
-      if (pattern.hasMatch(text)) {
-        userIds.add(userId);
-      }
-    }
-    if (userIds.isNotEmpty) {
-      final normalizedUserIds = userIds.toList()..sort();
-      mentions['user_ids'] = normalizedUserIds;
-    }
-
-    if (mentions.isEmpty) return null;
-    return mentions;
   }
 
   void toggleDisplayChatDetailsColumn() async {

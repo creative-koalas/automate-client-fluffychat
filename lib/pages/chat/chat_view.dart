@@ -531,14 +531,6 @@ class ChatView extends StatelessWidget {
                 SingleActivator(LogicalKeyboardKey.keyS, meta: true, alt: true):
                     _CaptureScreenshotIntent(),
               }
-            : PlatformInfos.isWindows
-            ? const <ShortcutActivator, Intent>{
-                SingleActivator(
-                  LogicalKeyboardKey.keyS,
-                  control: true,
-                  alt: true,
-                ): _CaptureScreenshotIntent(),
-              }
             : const <ShortcutActivator, Intent>{},
         child: Actions(
           actions: <Type, Action<Intent>>{

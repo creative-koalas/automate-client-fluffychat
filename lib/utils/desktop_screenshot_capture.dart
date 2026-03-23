@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cross_file/cross_file.dart';
@@ -42,8 +43,28 @@ class DesktopScreenshotCapture {
   static const MethodChannel _channel = MethodChannel(
     'com.creativekoalas.psygo/macos_screenshot',
   );
+  static final StreamController<void> _globalHotkeyController =
+      StreamController<void>.broadcast();
+  static bool _methodHandlerInitialized = false;
+
+  static Stream<void> get onGlobalHotkey {
+    _ensureMethodHandler();
+    return _globalHotkeyController.stream;
+  }
+
+  static void _ensureMethodHandler() {
+    if (_methodHandlerInitialized) return;
+    _methodHandlerInitialized = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onGlobalScreenshotHotkey') {
+        debugPrint('[Screenshot] Global screenshot hotkey triggered');
+        _globalHotkeyController.add(null);
+      }
+    });
+  }
 
   static Future<DesktopScreenshotCaptureResult> captureSelection() async {
+    _ensureMethodHandler();
     if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
       return const DesktopScreenshotCaptureResult.failed();
     }
