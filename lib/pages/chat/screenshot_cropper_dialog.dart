@@ -113,7 +113,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
   final TextEditingController _draftTextController = TextEditingController();
   final FocusNode _draftTextFocusNode = FocusNode();
   late Future<Uint8List> _bytesFuture;
-  late Future<Uint8List> _pixelatedBytesFuture;
+  Future<Uint8List>? _pixelatedBytesFuture;
 
   Rect _selection = const Rect.fromLTWH(0.22, 0.18, 0.46, 0.34);
   _DragHandle? _activeHandle;
@@ -148,7 +148,6 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
   void initState() {
     super.initState();
     _bytesFuture = widget.file.readAsBytes();
-    _pixelatedBytesFuture = _bytesFuture.then(_buildPixelatedBytes);
   }
 
   @override
@@ -624,6 +623,10 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     return Uint8List.fromList(img.encodePng(upscaled));
   }
 
+  Future<Uint8List> _ensurePixelatedBytesFuture() {
+    return _pixelatedBytesFuture ??= _bytesFuture.then(_buildPixelatedBytes);
+  }
+
   void _undo() {
     if (_history.isEmpty) {
       return;
@@ -792,6 +795,12 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                 imageInfo.image.width.toDouble(),
                 imageInfo.image.height.toDouble(),
               );
+              final hasMosaicContent =
+                  _strokes.any((stroke) => stroke.tool == _EditorTool.mosaic) ||
+                  _draftStroke?.tool == _EditorTool.mosaic;
+              final pixelatedBytesFuture = hasMosaicContent
+                  ? _ensurePixelatedBytesFuture()
+                  : null;
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final imageRect = Offset.zero & constraints.biggest;
@@ -920,7 +929,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                         child: _EditorCanvas(
                           imageBoundaryKey: _imageBoundaryKey,
                           bytes: bytes,
-                          pixelatedBytesFuture: _pixelatedBytesFuture,
+                          pixelatedBytesFuture: pixelatedBytesFuture,
                           selection: _selection,
                           tool: _tool,
                           strokes: _strokes,
@@ -1082,7 +1091,7 @@ class _EditorCanvas extends StatelessWidget {
   const _EditorCanvas({
     required this.imageBoundaryKey,
     required this.bytes,
-    required this.pixelatedBytesFuture,
+    this.pixelatedBytesFuture,
     required this.selection,
     required this.tool,
     required this.strokes,
@@ -1118,7 +1127,7 @@ class _EditorCanvas extends StatelessWidget {
 
   final GlobalKey imageBoundaryKey;
   final Uint8List bytes;
-  final Future<Uint8List> pixelatedBytesFuture;
+  final Future<Uint8List>? pixelatedBytesFuture;
   final Rect selection;
   final _EditorTool tool;
   final List<_EditorStroke> strokes;
@@ -1183,7 +1192,8 @@ class _EditorCanvas extends StatelessWidget {
                     Positioned.fill(
                       child: Image.memory(bytes, fit: BoxFit.fill),
                     ),
-                    if (_mosaicStrokes(strokes, draftStroke).isNotEmpty)
+                    if (_mosaicStrokes(strokes, draftStroke).isNotEmpty &&
+                        pixelatedBytesFuture != null)
                       Positioned.fill(
                         child: FutureBuilder<Uint8List>(
                           future: pixelatedBytesFuture,

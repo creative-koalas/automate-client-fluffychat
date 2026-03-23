@@ -43,15 +43,18 @@ std::optional<std::string> Utf8FromWide(const std::wstring& value) {
     return std::string();
   }
 
-  const int size = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, nullptr,
-                                       0, nullptr, nullptr);
-  if (size <= 1) {
+  const int size = WideCharToMultiByte(
+      CP_UTF8, 0, value.data(), static_cast<int>(value.size()), nullptr, 0,
+      nullptr, nullptr);
+  if (size <= 0) {
     return std::nullopt;
   }
 
-  std::string output(size - 1, '\0');
-  if (WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, output.data(), size,
-                          nullptr, nullptr) == 0) {
+  std::string output(size, '\0');
+  const int converted = WideCharToMultiByte(
+      CP_UTF8, 0, value.data(), static_cast<int>(value.size()), output.data(),
+      size, nullptr, nullptr);
+  if (converted != size) {
     return std::nullopt;
   }
 
@@ -224,12 +227,14 @@ std::optional<std::wstring> FlutterWindow::CaptureScreenBufferToPng() const {
     return std::nullopt;
   }
 
-  Gdiplus::Bitmap image(bitmap, nullptr);
-  const auto save_status = image.Save(output_path.c_str(), &png_encoder.value(),
-                                      nullptr);
+  Gdiplus::Status save_status = Gdiplus::GenericError;
+  {
+    Gdiplus::Bitmap image(bitmap, nullptr);
+    save_status = image.Save(output_path.c_str(), &png_encoder.value(), nullptr);
+  }
 
-  Gdiplus::GdiplusShutdown(token);
   DeleteObject(bitmap);
+  Gdiplus::GdiplusShutdown(token);
 
   if (save_status != Gdiplus::Ok) {
     DeleteFileW(output_path.c_str());
