@@ -701,9 +701,53 @@ class _InputQuickTipsBar extends StatelessWidget {
     required this.activeIntentId,
   });
 
+  List<Widget> _buildTipCards() {
+    final cards = <Widget>[];
+    for (var i = 0; i < tips.length; i++) {
+      if (i > 0) {
+        cards.add(const SizedBox(width: 8));
+      }
+      final tip = tips[i];
+      final isSelected =
+          tip.intentId.trim() == activeIntentId.trim() &&
+          activeIntentId.trim().isNotEmpty;
+      cards.add(
+        _InputQuickTipCard(
+          tip: tip,
+          selected: isSelected,
+          onTap: () => onTipTap(tip),
+        ),
+      );
+    }
+    return cards;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (tips.isEmpty) return const SizedBox.shrink();
+
+    if (PlatformInfos.isDesktop) {
+      return SizedBox(
+        height: 40,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _buildTipCards(),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
 
     return SizedBox(
       height: 40,
