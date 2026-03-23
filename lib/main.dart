@@ -20,10 +20,58 @@ import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'core/auth_storage_keys.dart';
+import 'core/token_manager.dart';
 import 'config/setting_keys.dart';
 import 'widgets/fluffy_chat_app.dart';
 
 ReceivePort? mainIsolateReceivePort;
+
+Future<bool> _hasDesktopValidSessionForStartup() async {
+  const storage = FlutterSecureStorage();
+  final primaryToken = await storage.read(key: AuthStorageKeys.primary);
+  if (primaryToken == null || primaryToken.isEmpty) {
+    return false;
+  }
+
+  final expiresAtStr = await storage.read(key: AuthStorageKeys.expiresAt);
+  final expiresAtMs = int.tryParse(expiresAtStr ?? '');
+  if (expiresAtMs == null) {
+    // Legacy data without expiry: treat as logged in and let runtime validate.
+    return true;
+  }
+
+  final expiresAt = DateTime.fromMillisecondsSinceEpoch(expiresAtMs);
+  if (DateTime.now().isBefore(expiresAt)) {
+    return true;
+  }
+
+  final refreshToken = await storage.read(key: AuthStorageKeys.refresh);
+  if (refreshToken == null || refreshToken.isEmpty) {
+    return false;
+  }
+
+  // Expired token: verify session once before deciding startup window mode.
+  final refreshSuccess = await TokenManager.instance
+      .refreshAccessToken()
+      .timeout(const Duration(seconds: 8), onTimeout: () => false);
+  if (refreshSuccess) {
+    return true;
+  }
+
+  // TokenManager clears tokens on invalid session (10002/10003).
+  final latestPrimaryToken = await storage.read(key: AuthStorageKeys.primary);
+  final latestRefreshToken = await storage.read(key: AuthStorageKeys.refresh);
+  final invalidSession = latestPrimaryToken == null ||
+      latestPrimaryToken.isEmpty ||
+      latestRefreshToken == null ||
+      latestRefreshToken.isEmpty;
+  if (invalidSession) {
+    return false;
+  }
+
+  // Transient refresh failure: keep session and let runtime retry.
+  return true;
+}
 
 void main() async {
   // 全局错误处理器：捕获并忽略第三方包的 setState 错误
@@ -82,9 +130,7 @@ void main() async {
     // 检查是否已登录：通过 FlutterSecureStorage 检查 Psygo 认证 token
     // 使用按环境隔离后的 auth key 判断，而不是 Matrix 客户端列表
     // 因为用户可能收到验证码但未完成登录，此时 Matrix 客户端已创建但用户未真正登录
-    const storage = FlutterSecureStorage();
-    final primaryToken = await storage.read(key: AuthStorageKeys.primary);
-    final isLoggedIn = primaryToken != null && primaryToken.isNotEmpty;
+    final isLoggedIn = await _hasDesktopValidSessionForStartup();
     final showNativeWindowButtons = !Platform.isMacOS;
     debugPrint('[Window] isLoggedIn: $isLoggedIn');
 

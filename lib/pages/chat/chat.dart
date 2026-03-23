@@ -949,7 +949,7 @@ class ChatController extends State<ChatPageWithRoom>
             ? room.lastEvent?.relationshipEventId
             : null;
     readMarkerEventId =
-        room.hasNewMessages ? lastEventThreadId ?? room.fullyRead : '';
+        _safeRoomHasNewMessages() ? lastEventThreadId ?? room.fullyRead : '';
     WidgetsBinding.instance.addObserver(this);
     _tryLoadTimeline();
     unawaited(_loadEmployeeWorkTemplateVisibilityState());
@@ -1280,21 +1280,33 @@ class ChatController extends State<ChatPageWithRoom>
 
   Future<void>? _setReadMarkerFuture;
 
+  bool _safeRoomHasNewMessages() {
+    try {
+      return room.hasNewMessages;
+    } catch (e, s) {
+      Logs().w('[Chat] Failed to read room.hasNewMessages', e, s);
+      return false;
+    }
+  }
+
   void setReadMarker({String? eventId}) {
     if (eventId?.isValidMatrixId == false) return;
     if (_setReadMarkerFuture != null) return;
     if (_scrolledUp) return;
     if (scrollUpBannerEventId != null) return;
+    final matrix = Matrix.of(context);
+    if (!matrix.client.isLogged()) return;
+    final hasNewMessages = _safeRoomHasNewMessages();
 
     if (eventId == null &&
         !room.isUnread &&
-        !room.hasNewMessages &&
+        !hasNewMessages &&
         room.notificationCount == 0) {
       return;
     }
 
     // Do not send read markers when app is not in foreground
-    if (kIsWeb && !Matrix.of(context).webHasFocus) return;
+    if (kIsWeb && !matrix.webHasFocus) return;
     // Only check app lifecycle state on mobile, desktop doesn't need this check
     if (!kIsWeb &&
         !PlatformInfos.isDesktop &&
@@ -1316,7 +1328,7 @@ class ChatController extends State<ChatPageWithRoom>
       _setReadMarkerFuture = null;
     });
     if (eventId == null || eventId == timeline.room.lastEvent?.eventId) {
-      Matrix.of(context).backgroundPush?.cancelNotification(roomId);
+      matrix.backgroundPush?.cancelNotification(roomId);
     }
   }
 
