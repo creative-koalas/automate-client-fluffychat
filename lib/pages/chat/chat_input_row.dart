@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -318,6 +319,85 @@ class ChatInputRow extends StatelessWidget {
                       //   ],
                       // ),
                     ),
+                  if (PlatformInfos.isMacOS ||
+                      PlatformInfos.isWindows ||
+                      PlatformInfos.isLinux)
+                    AnimatedContainer(
+                      duration: FluffyThemes.durationFast,
+                      curve: FluffyThemes.curveStandard,
+                      width: mobileShouldCollapseInputActions ||
+                              controller.sendController.text.isNotEmpty
+                          ? 0
+                          : height,
+                      height: height,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(),
+                      clipBehavior: Clip.hardEdge,
+                      child: Tooltip(
+                        waitDuration: const Duration(seconds: 1),
+                        message:
+                            '${L10n.of(context).takeScreenshot} (${ChatController.screenshotShortcutLabel})',
+                        child: Builder(
+                          builder: (context) {
+                            Future<void> showScreenshotOptions(
+                              Offset position,
+                            ) async {
+                              final value = await showMenu<String>(
+                                context: context,
+                                position: RelativeRect.fromLTRB(
+                                  position.dx,
+                                  position.dy,
+                                  position.dx,
+                                  position.dy,
+                                ),
+                                items: [
+                                  PopupMenuItem<String>(
+                                    value: 'hide_window',
+                                    child: Text(
+                                      Localizations.localeOf(
+                                            context,
+                                          ).languageCode.startsWith('zh')
+                                          ? '隐藏窗口后截图'
+                                          : 'Hide window before capture',
+                                    ),
+                                  ),
+                                ],
+                              );
+                              if (value == 'hide_window') {
+                                controller.captureScreenshotAction(
+                                  hideWindow: true,
+                                );
+                              }
+                            }
+
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onSecondaryTapDown: (details) {
+                                showScreenshotOptions(details.globalPosition);
+                              },
+                              onLongPressStart: (details) {
+                                showScreenshotOptions(details.globalPosition);
+                              },
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(
+                                  Icons.screenshot_monitor_outlined,
+                                ),
+                                color: controller.isAgentResting
+                                    ? theme.colorScheme.onSurface.withValues(
+                                        alpha: 0.38,
+                                      )
+                                    : theme.colorScheme.onPrimaryContainer,
+                                onPressed: () {
+                                  controller.captureScreenshotAction();
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
                   AnimatedContainer(
                     duration: FluffyThemes.durationFast,
                     curve: FluffyThemes.curveStandard,
@@ -372,6 +452,11 @@ class ChatInputRow extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (controller.hasPendingScreenshotReview)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: _PendingScreenshotReviewBar(controller),
+                              ),
                             if (hasPendingAttachments)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
@@ -773,6 +858,171 @@ class _PendingAttachmentsBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PendingScreenshotReviewBar extends StatelessWidget {
+  final ChatController controller;
+
+  const _PendingScreenshotReviewBar(this.controller);
+
+  @override
+  Widget build(BuildContext context) {
+    final review = controller.pendingScreenshotReview;
+    if (review == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final previewHeight = 120.0 * review.previewScale;
+    final isConfirmed = review.confirmed;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.screenshot_monitor_outlined,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isConfirmed
+                      ? l10n.screenshotReadyToSendTitle
+                      : l10n.screenshotReviewTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: l10n.cancel,
+                onPressed: controller.cancelPendingScreenshotReview,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              color: theme.colorScheme.surface,
+              constraints: BoxConstraints(
+                minHeight: 96,
+                maxHeight: previewHeight.clamp(96.0, 220.0),
+              ),
+              width: double.infinity,
+              child: FutureBuilder<Uint8List>(
+                future: review.file.readAsBytes(),
+                builder: (context, snapshot) {
+                  final bytes = snapshot.data;
+                  if (bytes == null) {
+                    return const SizedBox(
+                      height: 120,
+                      child: Center(
+                        child: CircularProgressIndicator.adaptive(),
+                      ),
+                    );
+                  }
+                  return InkWell(
+                    onTap: () => _openScreenshotPreview(context, bytes),
+                    child: Image.memory(bytes, fit: BoxFit.contain),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (!isConfirmed)
+            Row(
+              children: [
+                Text(
+                  l10n.screenshotReviewAdjustPreview,
+                  style: theme.textTheme.labelSmall,
+                ),
+                Expanded(
+                  child: Slider(
+                    min: 0.8,
+                    max: 1.8,
+                    divisions: 5,
+                    value: review.previewScale.clamp(0.8, 1.8),
+                    onChanged: controller.setPendingScreenshotReviewScale,
+                  ),
+                ),
+              ],
+            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!isConfirmed) ...[
+                TextButton.icon(
+                  onPressed: controller.cancelPendingScreenshotReview,
+                  icon: const Icon(Icons.close_rounded),
+                  label: Text(l10n.cancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: controller.confirmPendingScreenshotReview,
+                  icon: const Icon(Icons.check_rounded),
+                  label: Text(l10n.confirm),
+                ),
+              ] else
+                Text(
+                  l10n.screenshotReadyToSendHint,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openScreenshotPreview(
+    BuildContext context,
+    Uint8List bytes,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                tooltip: L10n.of(context).close,
+                onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

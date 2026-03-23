@@ -1,11 +1,134 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+#include <glib.h>
+#include <glib/gstdio.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <string>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+constexpr char kScreenshotChannelName[] =
+    "com.creativekoalas.psygo/macos_screenshot";
+
+gboolean command_exists(const gchar* command) {
+  g_autofree gchar* full_path = g_find_program_in_path(command);
+  return full_path != nullptr;
+}
+
+std::string shell_quote(const gchar* value) {
+  g_autofree gchar* quoted = g_shell_quote(value);
+  return quoted != nullptr ? quoted : "";
+}
+
+gboolean run_command(const std::string& command) {
+  gint exit_status = 0;
+  g_autoptr(GError) error = nullptr;
+  if (!g_spawn_command_line_sync(command.c_str(), nullptr, nullptr,
+                                 &exit_status, &error)) {
+    if (error != nullptr) {
+      g_warning("Failed to run screenshot command: %s", error->message);
+    }
+    return FALSE;
+  }
+
+  return exit_status == 0;
+}
+
+gchar* create_temp_png_path() {
+  gchar* temp_path = g_build_filename(g_get_tmp_dir(),
+                                      "psygo_screenshot_XXXXXX.png", nullptr);
+  const gint fd = g_mkstemp(temp_path);
+  if (fd == -1) {
+    g_free(temp_path);
+    return nullptr;
+  }
+  close(fd);
+  g_remove(temp_path);
+  return temp_path;
+}
+
+gchar* capture_screen_buffer_linux() {
+  g_autofree gchar* output_path = create_temp_png_path();
+  if (output_path == nullptr) {
+    return nullptr;
+  }
+
+  const std::string quoted_output = shell_quote(output_path);
+  gboolean success = FALSE;
+
+  if (command_exists("gnome-screenshot")) {
+    success = run_command("gnome-screenshot -a -f " + quoted_output);
+  } else if (command_exists("spectacle")) {
+    success = run_command("spectacle -brn -o " + quoted_output);
+  } else if (command_exists("flameshot")) {
+    success = run_command("flameshot gui -p " + quoted_output);
+  } else if (command_exists("grim") && command_exists("slurp")) {
+    success = run_command("sh -c 'grim -g \"$(slurp)\" " + quoted_output + "'");
+  }
+
+  if (!success || !g_file_test(output_path, G_FILE_TEST_EXISTS)) {
+    return nullptr;
+  }
+
+  struct stat file_stat;
+  if (stat(output_path, &file_stat) != 0 || file_stat.st_size <= 0) {
+    g_remove(output_path);
+    return nullptr;
+  }
+
+  return g_strdup(output_path);
+}
+
+void screenshot_method_call_cb(FlMethodChannel* channel,
+                               FlMethodCall* method_call,
+                               gpointer user_data) {
+  const gchar* method = fl_method_call_get_name(method_call);
+  if (g_strcmp0(method, "captureScreenBuffer") != 0) {
+    g_autoptr(FlMethodResponse) response =
+        FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  g_autofree gchar* output_path = capture_screen_buffer_linux();
+  if (output_path == nullptr) {
+    g_autoptr(FlValue) details =
+        fl_value_new_string("No supported Linux screenshot tool found or capture failed.");
+    g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(
+        fl_method_error_response_new("CAPTURE_FAILED",
+                                     "Failed to capture the current screen buffer.",
+                                     details));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  g_autoptr(FlValue) result = fl_value_new_string(output_path);
+  g_autoptr(FlMethodResponse) response =
+      FL_METHOD_RESPONSE(fl_method_success_response_new(result));
+  fl_method_call_respond(method_call, response, nullptr);
+}
+
+void register_screenshot_channel(FlView* view) {
+  FlEngine* engine = fl_view_get_engine(view);
+  FlBinaryMessenger* messenger = fl_engine_get_binary_messenger(engine);
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  g_autoptr(FlMethodChannel) channel = fl_method_channel_new(
+      messenger, kScreenshotChannelName, FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(channel, screenshot_method_call_cb,
+                                            nullptr, nullptr);
+  g_object_set_data_full(G_OBJECT(view), "psygo-screenshot-channel",
+                         g_object_ref(channel), g_object_unref);
+}
+
+}  // namespace
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -97,6 +220,7 @@ static void my_application_activate(GApplication* application) {
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+  register_screenshot_channel(view);
 
   gtk_widget_show(GTK_WIDGET(window));
   gtk_widget_show(GTK_WIDGET(view));
