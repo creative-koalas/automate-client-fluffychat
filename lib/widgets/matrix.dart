@@ -620,6 +620,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     if (!PlatformInfos.isMobile) return;
     final userID = c.userID;
     if (userID == null || userID.isEmpty) return;
+    if (!AliyunPushService.instance.shouldAttemptRegister(userID)) return;
 
     final inFlightTask = _pushRegistrationTasks[userID];
     if (inFlightTask != null) {
@@ -699,7 +700,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         PlatformInfos.isMobile &&
         !_skipAliyunPushOnCurrentDevice) {
       for (final c in widget.clients) {
-        if (c.isLogged()) {
+        final userID = c.userID;
+        if (c.isLogged() &&
+            userID != null &&
+            userID.isNotEmpty &&
+            AliyunPushService.instance.shouldAttemptRegister(userID)) {
           unawaited(ensureAliyunPushRegistered(c));
         }
       }

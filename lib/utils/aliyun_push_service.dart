@@ -26,7 +26,8 @@ class AliyunPushService {
   final Map<String, Future<bool>> _registerPushTasks = {};
   final Map<String, DateTime> _lastSuccessfulRegisterAt = {};
   final Map<String, String> _lastSuccessfulPushKeyByUser = {};
-  static const Duration _registerSuccessCooldown = Duration(seconds: 20);
+  // Revalidate registration at most once per day for the same push key.
+  static const Duration _registerSuccessCooldown = Duration(hours: 24);
 
   void clearRegisterPushStateForUser(String matrixUserID) {
     final userId = matrixUserID.trim();
@@ -51,6 +52,25 @@ class AliyunPushService {
       _audit(
           'registerPush state cleared by pushKey users=${usersToClear.length}');
     }
+  }
+
+  /// Whether a user should attempt backend/synapse registration now.
+  ///
+  /// Returns false only when we already have a successful registration for the
+  /// current pushKey and it is still within the revalidation interval.
+  bool shouldAttemptRegister(String matrixUserID) {
+    final userId = matrixUserID.trim();
+    if (userId.isEmpty) return false;
+
+    final currentPushKey = pushKey;
+    final lastRegisterAt = _lastSuccessfulRegisterAt[userId];
+    final lastSuccessfulPushKey = _lastSuccessfulPushKeyByUser[userId];
+
+    if (currentPushKey == null || currentPushKey.isEmpty) return true;
+    if (lastRegisterAt == null) return true;
+    if (currentPushKey != lastSuccessfulPushKey) return true;
+
+    return DateTime.now().difference(lastRegisterAt) >= _registerSuccessCooldown;
   }
 
   /// 获取当前活跃房间 ID 的回调（由 MatrixState 设置）
