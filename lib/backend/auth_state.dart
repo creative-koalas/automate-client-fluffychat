@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../core/auth_storage_keys.dart';
 import '../core/token_manager.dart';
 
 class PsygoAuthState extends ChangeNotifier {
@@ -15,14 +16,18 @@ class PsygoAuthState extends ChangeNotifier {
   final FlutterSecureStorage _storage;
   StreamSubscription<TokenEvent>? _tokenEventSubscription;
 
-  static const _primaryKey = 'automate_primary_token';
-  static const _refreshKey = 'automate_refresh_token';
-  static const _expiresAtKey = 'automate_expires_at';
-  static const _userIdKey = 'automate_user_id';
-  static const _onboardingCompletedKey = 'automate_onboarding_completed';
-  static const _matrixAccessTokenKey = 'automate_matrix_access_token';
-  static const _matrixUserIdKey = 'automate_matrix_user_id';
-  static const _matrixDeviceIdKey = 'automate_matrix_device_id';
+  static String get _primaryKey => AuthStorageKeys.primary;
+  static String get _refreshKey => AuthStorageKeys.refresh;
+  static String get _expiresAtKey => AuthStorageKeys.expiresAt;
+  static String get _userIdKey => AuthStorageKeys.userId;
+  static String get _onboardingCompletedKey =>
+      AuthStorageKeys.scoped('automate_onboarding_completed');
+  static String get _matrixAccessTokenKey =>
+      AuthStorageKeys.scoped('automate_matrix_access_token');
+  static String get _matrixUserIdKey =>
+      AuthStorageKeys.scoped('automate_matrix_user_id');
+  static String get _matrixDeviceIdKey =>
+      AuthStorageKeys.scoped('automate_matrix_device_id');
 
   // Token refresh threshold (5 minutes before expiry)
   static const Duration _refreshThreshold = Duration(minutes: 5);

@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
+import 'auth_storage_keys.dart';
 import 'config.dart';
 import 'token_refresh_lock.dart';
 import '../utils/custom_http_client.dart';
@@ -30,11 +31,11 @@ class TokenManager {
 
   static const _storage = FlutterSecureStorage();
 
-  // Storage keys（与 PsygoAuthState 保持一致）
-  static const String _primaryKey = 'automate_primary_token';
-  static const String _refreshKey = 'automate_refresh_token';
-  static const String _expiresAtKey = 'automate_expires_at';
-  static const String _userIdKey = 'automate_user_id';
+  // Storage keys（与 PsygoAuthState 保持一致，按环境隔离）
+  static String get _primaryKey => AuthStorageKeys.primary;
+  static String get _refreshKey => AuthStorageKeys.refresh;
+  static String get _expiresAtKey => AuthStorageKeys.expiresAt;
+  static String get _userIdKey => AuthStorageKeys.userId;
 
   // Token 过期前刷新阈值（5 分钟）
   static const Duration _refreshThreshold = Duration(minutes: 5);
