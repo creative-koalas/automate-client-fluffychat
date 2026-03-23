@@ -6,6 +6,10 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+namespace {
+constexpr wchar_t kAppDisplayName[] = L"PsyGo";
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Ensure this process is tied to the same AUMID used by Windows toast notifications.
@@ -15,7 +19,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   HANDLE mutex = CreateMutex(NULL, TRUE, L"com.psygo.app.single_instance");
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     // Find existing window and bring to front
-    HWND existingWindow = FindWindow(nullptr, L"PsyGo");
+    HWND existingWindow = FindWindow(nullptr, kAppDisplayName);
     if (existingWindow) {
       ShowWindow(existingWindow, SW_RESTORE);
       SetForegroundWindow(existingWindow);
@@ -44,7 +48,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.CreateAndShow(L"PsyGo", origin, size)) {
+  if (!window.CreateAndShow(kAppDisplayName, origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

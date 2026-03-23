@@ -158,7 +158,7 @@
       }
     }
   },
-  "automate": "Psygo",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}

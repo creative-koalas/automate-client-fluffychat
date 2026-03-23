@@ -5,6 +5,7 @@ import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:xdg_status_notifier_item/xdg_status_notifier_item.dart';
 import 'package:path/path.dart' as path;
+import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 /// 窗口管理服务 - 用于 PC 端窗口样式切换和系统托盘
@@ -67,23 +68,23 @@ class WindowService {
       if (Platform.isLinux) {
         try {
           await _systemTray.initSystemTray(
-            title: 'PsyGo',
+            title: PsygoConfig.appName,
             iconPath: iconPath,
-            toolTip: 'PsyGo',
+            toolTip: PsygoConfig.appName,
           );
         } catch (_) {
           iconPath = 'assets/logo.png';
           await _systemTray.initSystemTray(
-            title: 'PsyGo',
+            title: PsygoConfig.appName,
             iconPath: iconPath,
-            toolTip: 'PsyGo',
+            toolTip: PsygoConfig.appName,
           );
         }
       } else {
         await _systemTray.initSystemTray(
-          title: 'PsyGo',
+          title: PsygoConfig.appName,
           iconPath: iconPath,
-          toolTip: 'PsyGo',
+          toolTip: PsygoConfig.appName,
         );
       }
 

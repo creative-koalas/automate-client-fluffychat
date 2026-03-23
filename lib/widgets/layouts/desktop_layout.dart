@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/pages/chat/chat.dart';
@@ -735,7 +736,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 1),
                         child: Text(
-                          'PsyGo',
+                          PsygoConfig.appName,
                           maxLines: 1,
                           strutStyle: const StrutStyle(
                             height: 1.2,

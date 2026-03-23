@@ -2430,7 +2430,7 @@
     "@allSpaces": {},
     "appearOnTop": "显示在其它应用上方",
     "@appearOnTop": {},
-    "appearOnTopDetails": "允许应用显示在顶部（如果你已经将 Fluffychat 设置为呼叫账户，则不需要授予此权限）",
+    "appearOnTopDetails": "允许应用显示在顶部（如果你已经将 PsyGo 设置为呼叫账户，则不需要授予此权限）",
     "@appearOnTopDetails": {},
     "otherCallingPermissions": "麦克风、摄像头和其它 PsyGo 权限",
     "@otherCallingPermissions": {},

@@ -1,4 +1,4 @@
-; Inno Setup 脚本 - PsyGo 安装程序
+; Inno Setup 脚本 - 应用安装程序
 ; 使用方法：用 Inno Setup 打开此文件，点击编译即可生成安装包
 
 #define MyAppName "PsyGo"
@@ -40,7 +40,7 @@ DefaultGroupName={#MyAppName}
 
 ; 输出设置
 OutputDir=installer_output
-OutputBaseFilename=PsyGo_Setup_{#MyAppVersion}
+OutputBaseFilename={#MyAppName}_Setup_{#MyAppVersion}
 SetupIconFile={#IconFilePath}
 UninstallDisplayIcon={app}\logo.ico
 
@@ -147,7 +147,7 @@ begin
     if ContainsNonAscii(InstallDir) then
     begin
       MsgBox(
-        '安装路径不能包含中文或其他非英文字符，请选择纯英文路径（例如 C:\Program Files\PsyGo）。',
+        '安装路径不能包含中文或其他非英文字符，请选择纯英文路径（例如 C:\Program Files\{#MyAppName}）。',
         mbError,
         MB_OK
       );
