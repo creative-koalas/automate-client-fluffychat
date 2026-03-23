@@ -6,6 +6,7 @@ library;
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
@@ -104,6 +105,30 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     setState(() => agreedToEula = !agreedToEula);
   }
 
+  String _normalizedCode() => codeController.text.trim();
+
+  String? _validatePhone(String phone, L10n l10n) {
+    if (phone.isEmpty) {
+      return l10n.authPhoneRequired;
+    }
+    if (!phone.isPhoneNumber) {
+      return l10n.authPhoneInvalid;
+    }
+    return null;
+  }
+
+  String? _validateVerificationCode(String code, L10n l10n) {
+    if (code.isEmpty) {
+      return l10n.authCodeRequired;
+    }
+    if (!code.isVerificationCode) {
+      return Localizations.localeOf(context).languageCode == 'zh'
+          ? '验证码只能输入数字'
+          : 'Verification code can only contain digits';
+    }
+    return null;
+  }
+
   void requestVerificationCode() async {
     final l10n = L10n.of(context);
     if (!await _ensureEulaAccepted()) {
@@ -111,13 +136,9 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     }
 
     final phone = _normalizedPhone;
-    if (phone.isEmpty) {
-      setState(() => phoneError = l10n.authPhoneRequired);
-      return;
-    }
-
-    if (!phone.isPhoneNumber) {
-      setState(() => phoneError = l10n.authPhoneInvalid);
+    final phoneValidationError = _validatePhone(phone, l10n);
+    if (phoneValidationError != null) {
+      setState(() => phoneError = phoneValidationError);
       return;
     }
 
@@ -245,13 +266,14 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     }
 
     final phone = _normalizedPhone;
-    if (phone.isEmpty) {
-      setState(() => phoneError = l10n.authPhoneRequired);
-      return;
-    }
-
-    if (codeController.text.isEmpty) {
-      setState(() => codeError = l10n.authCodeRequired);
+    final inputCode = _normalizedCode();
+    final phoneValidationError = _validatePhone(phone, l10n);
+    final codeValidationError = _validateVerificationCode(inputCode, l10n);
+    if (phoneValidationError != null || codeValidationError != null) {
+      setState(() {
+        phoneError = phoneValidationError;
+        codeError = codeValidationError;
+      });
       return;
     }
 
@@ -264,7 +286,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     try {
       final code = SmsLoginOverride.resolveLoginCode(
         phone: phone,
-        inputCode: codeController.text,
+        inputCode: inputCode,
         namespace: PsygoConfig.k8sNamespace,
       );
       debugPrint('=== 调用后端短信登录 ===');
@@ -845,7 +867,11 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           prefixIcon: Icons.phone_outlined,
           errorText: phoneError,
           readOnly: loading,
-          keyboardType: TextInputType.phone,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(11),
+          ],
           textInputAction:
               codeSent ? TextInputAction.next : TextInputAction.done,
           isDark: isDark,
@@ -877,6 +903,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             errorText: codeError,
             readOnly: loading,
             keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textInputAction: TextInputAction.done,
             isDark: isDark,
             accentColor: accentColor,
@@ -1179,6 +1206,7 @@ class _GlowingTextField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final TextInputAction? textInputAction;
+  final List<TextInputFormatter>? inputFormatters;
 
   const _GlowingTextField({
     required this.controller,
@@ -1192,6 +1220,7 @@ class _GlowingTextField extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.textInputAction,
+    this.inputFormatters,
   });
 
   @override
@@ -1264,6 +1293,7 @@ class _GlowingTextFieldState extends State<_GlowingTextField> {
             readOnly: widget.readOnly,
             keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
+            inputFormatters: widget.inputFormatters,
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
             style: TextStyle(
@@ -1456,8 +1486,10 @@ class _ClickableLinkState extends State<_ClickableLink> {
 // ============================================================================
 
 extension on String {
-  static final RegExp _phoneRegex =
-      RegExp(r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$');
+  static final RegExp _phoneRegex = RegExp(r'^1[3-9]\d{9}$');
+  static final RegExp _verificationCodeRegex = RegExp(r'^\d+$');
 
-  bool get isPhoneNumber => _phoneRegex.hasMatch(this);
+  bool get isPhoneNumber => _phoneRegex.hasMatch(trim());
+
+  bool get isVerificationCode => _verificationCodeRegex.hasMatch(trim());
 }
