@@ -6,8 +6,11 @@ import UniformTypeIdentifiers
 
 class MainFlutterWindow: NSWindow {
   private let screenshotChannelName = "com.creativekoalas.psygo/macos_screenshot"
+  private let screenshotHotKeyChannelName = "com.creativekoalas.psygo/macos_global_screenshot_hotkey"
+  private var screenshotHotKeyChannel: FlutterMethodChannel?
 
   override func awakeFromNib() {
+    GlobalScreenshotHotKeyManager.shared.ensureRegistered()
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
@@ -15,8 +18,19 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     registerScreenshotChannel(flutterViewController)
+    registerScreenshotHotKeyChannel(flutterViewController)
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleGlobalScreenshotHotKeyPressed),
+      name: screenshotHotKeyNotificationName,
+      object: nil
+    )
 
     super.awakeFromNib()
+  }
+
+  deinit {
+    NotificationCenter.default.removeObserver(self)
   }
 
   private func registerScreenshotChannel(_ flutterViewController: FlutterViewController) {
@@ -31,6 +45,22 @@ class MainFlutterWindow: NSWindow {
       }
       self.handleScreenshotChannel(call: call, result: result)
     }
+  }
+
+  private func registerScreenshotHotKeyChannel(_ flutterViewController: FlutterViewController) {
+    screenshotHotKeyChannel = FlutterMethodChannel(
+      name: screenshotHotKeyChannelName,
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+  }
+
+  @objc private func handleGlobalScreenshotHotKeyPressed() {
+    guard let screenshotHotKeyChannel else {
+      NSLog("[GlobalHotKey] Hotkey pressed but Flutter channel is not ready")
+      return
+    }
+
+    screenshotHotKeyChannel.invokeMethod("onHotKeyPressed", arguments: nil)
   }
 
   private func handleScreenshotChannel(call: FlutterMethodCall, result: @escaping FlutterResult) {

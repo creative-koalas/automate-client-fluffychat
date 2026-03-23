@@ -18,6 +18,7 @@ import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/post_login_navigation.dart';
 import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/window_service.dart';
+import 'package:psygo/utils/macos_global_screenshot_hotkey.dart';
 import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/theme_builder.dart';
 import 'package:psygo/utils/app_update_service.dart';
@@ -283,6 +284,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(MacosGlobalScreenshotHotkey.initialize());
 
     // 监听认证状态变化（保存引用以便在 dispose 中使用）
     WidgetsBinding.instance.addPostFrameCallback((_) {

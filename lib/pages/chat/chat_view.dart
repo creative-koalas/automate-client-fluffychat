@@ -521,12 +521,7 @@ class ChatView extends StatelessWidget {
         }
       },
       child: Shortcuts(
-        shortcuts: PlatformInfos.isMacOS
-            ? const <ShortcutActivator, Intent>{
-                SingleActivator(LogicalKeyboardKey.keyS, meta: true, alt: true):
-                    _CaptureScreenshotIntent(),
-              }
-            : PlatformInfos.isWindows
+        shortcuts: PlatformInfos.isWindows
             ? const <ShortcutActivator, Intent>{
                 SingleActivator(
                   LogicalKeyboardKey.keyS,
