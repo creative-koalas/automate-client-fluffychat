@@ -64,13 +64,15 @@ class ChatInputRow extends StatelessWidget {
         // 选择模式：显示操作按钮
         if (controller.selectMode) {
           final showReply = controller.selectedEvents.length == 1;
-          final isSent = showReply &&
+          final isSent =
+              showReply &&
               controller.selectedEvents.first
                   .getDisplayEvent(controller.timeline!)
                   .status
                   .isSent;
-          final isError = controller.selectedEvents
-              .every((event) => event.status == EventStatus.error);
+          final isError = controller.selectedEvents.every(
+            (event) => event.status == EventStatus.error,
+          );
 
           return Row(
             children: <Widget>[
@@ -88,8 +90,10 @@ class ChatInputRow extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              const Icon(Icons.delete_forever_outlined,
-                                  size: 18),
+                              const Icon(
+                                Icons.delete_forever_outlined,
+                                size: 18,
+                              ),
                               const SizedBox(width: 2),
                               Text(L10n.of(context).delete),
                             ],
@@ -102,8 +106,10 @@ class ChatInputRow extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              const Icon(Icons.keyboard_arrow_left_outlined,
-                                  size: 18),
+                              const Icon(
+                                Icons.keyboard_arrow_left_outlined,
+                                size: 18,
+                              ),
                               Text(L10n.of(context).forward),
                             ],
                           ),
@@ -162,8 +168,10 @@ class ChatInputRow extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 Text(L10n.of(context).reply),
-                                const Icon(Icons.keyboard_arrow_right,
-                                    size: 18),
+                                const Icon(
+                                  Icons.keyboard_arrow_right,
+                                  size: 18,
+                                ),
                               ],
                             ),
                           )
@@ -289,7 +297,8 @@ class ChatInputRow extends StatelessWidget {
                   child: Builder(
                     builder: (context) {
                       Future<void> showScreenshotOptions(
-                          Offset position) async {
+                        Offset position,
+                      ) async {
                         final value = await showMenu<String>(
                           context: context,
                           position: RelativeRect.fromLTRB(
@@ -302,9 +311,9 @@ class ChatInputRow extends StatelessWidget {
                             PopupMenuItem<String>(
                               value: 'hide_window',
                               child: Text(
-                                Localizations.localeOf(context)
-                                        .languageCode
-                                        .startsWith('zh')
+                                Localizations.localeOf(
+                                      context,
+                                    ).languageCode.startsWith('zh')
                                     ? '隐藏窗口后截图'
                                     : 'Hide window before capture',
                               ),
@@ -329,8 +338,9 @@ class ChatInputRow extends StatelessWidget {
                           visualDensity: VisualDensity.compact,
                           icon: const Icon(Icons.screenshot_monitor_outlined),
                           color: controller.isAgentResting
-                              ? theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.38)
+                              ? theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.38,
+                                )
                               : theme.colorScheme.onPrimaryContainer,
                           onPressed: () {
                             controller.captureScreenshotAction();
@@ -349,19 +359,20 @@ class ChatInputRow extends StatelessWidget {
                 tooltip: L10n.of(context).emojis,
                 color: theme.colorScheme.onPrimaryContainer,
                 icon: PageTransitionSwitcher(
-                  transitionBuilder: (
-                    Widget child,
-                    Animation<double> primaryAnimation,
-                    Animation<double> secondaryAnimation,
-                  ) {
-                    return SharedAxisTransition(
-                      animation: primaryAnimation,
-                      secondaryAnimation: secondaryAnimation,
-                      transitionType: SharedAxisTransitionType.scaled,
-                      fillColor: Colors.transparent,
-                      child: child,
-                    );
-                  },
+                  transitionBuilder:
+                      (
+                        Widget child,
+                        Animation<double> primaryAnimation,
+                        Animation<double> secondaryAnimation,
+                      ) {
+                        return SharedAxisTransition(
+                          animation: primaryAnimation,
+                          secondaryAnimation: secondaryAnimation,
+                          transitionType: SharedAxisTransitionType.scaled,
+                          fillColor: Colors.transparent,
+                          child: child,
+                        );
+                      },
                   child: Icon(
                     controller.showEmojiPicker
                         ? Icons.keyboard
@@ -409,9 +420,9 @@ class ChatInputRow extends StatelessWidget {
                         keyboardType: TextInputType.multiline,
                         textInputAction:
                             AppSettings.sendOnEnter.value == true &&
-                                    PlatformInfos.isMobile
-                                ? TextInputAction.send
-                                : null,
+                                PlatformInfos.isMobile
+                            ? TextInputAction.send
+                            : null,
                         onSubmitted: controller.onInputBarSubmitted,
                         onContentInserted:
                             controller.handleKeyboardInsertedContent,
@@ -432,14 +443,18 @@ class ChatInputRow extends StatelessWidget {
                           filled: false,
                         ),
                         onChanged: controller.onInputBarChanged,
-                        suggestionEmojis: getDefaultEmojiLocale(
-                          AppSettings.emojiSuggestionLocale.value.isNotEmpty
-                              ? Locale(AppSettings.emojiSuggestionLocale.value)
-                              : Localizations.localeOf(context),
-                        ).fold(
-                          [],
-                          (emojis, category) => emojis..addAll(category.emoji),
-                        ),
+                        suggestionEmojis:
+                            getDefaultEmojiLocale(
+                              AppSettings.emojiSuggestionLocale.value.isNotEmpty
+                                  ? Locale(
+                                      AppSettings.emojiSuggestionLocale.value,
+                                    )
+                                  : Localizations.localeOf(context),
+                            ).fold(
+                              [],
+                              (emojis, category) =>
+                                  emojis..addAll(category.emoji),
+                            ),
                       ),
                     ],
                   ),
@@ -457,7 +472,8 @@ class ChatInputRow extends StatelessWidget {
                 child: AnimatedScale(
                   duration: FluffyThemes.animationDuration,
                   curve: FluffyThemes.animationCurveBounce,
-                  scale: controller.sendController.text.isNotEmpty ||
+                  scale:
+                      controller.sendController.text.isNotEmpty ||
                           hasPendingAttachments
                       ? 1.0
                       : 0.9,
@@ -608,10 +624,7 @@ class _PendingScreenshotReviewBar extends StatelessWidget {
                   }
                   return InkWell(
                     onTap: () => _openScreenshotPreview(context, bytes),
-                    child: Image.memory(
-                      bytes,
-                      fit: BoxFit.contain,
-                    ),
+                    child: Image.memory(bytes, fit: BoxFit.contain),
                   );
                 },
               ),
@@ -680,10 +693,7 @@ class _PendingScreenshotReviewBar extends StatelessWidget {
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 4.0,
-                child: Image.memory(
-                  bytes,
-                  fit: BoxFit.contain,
-                ),
+                child: Image.memory(bytes, fit: BoxFit.contain),
               ),
             ),
             Positioned(
@@ -746,8 +756,9 @@ class _PendingAttachmentItem extends StatelessWidget {
 
     final bytes = await attachment.file.readAsBytes();
     final tempDir = await getTemporaryDirectory();
-    final fileName =
-        _displayName().trim().isEmpty ? 'attachment' : _displayName().trim();
+    final fileName = _displayName().trim().isEmpty
+        ? 'attachment'
+        : _displayName().trim();
     final tempPath = path_lib.join(
       tempDir.path,
       '${DateTime.now().millisecondsSinceEpoch}_$fileName',
@@ -777,10 +788,7 @@ class _PendingAttachmentItem extends StatelessWidget {
                     return InteractiveViewer(
                       minScale: 0.5,
                       maxScale: 4.0,
-                      child: Image.memory(
-                        bytes,
-                        fit: BoxFit.contain,
-                      ),
+                      child: Image.memory(bytes, fit: BoxFit.contain),
                     );
                   },
                 ),
@@ -809,8 +817,9 @@ class _PendingAttachmentItem extends StatelessWidget {
     try {
       final result = await OpenFile.open(path);
       if (result.type != ResultType.done) {
-        final message =
-            result.message.isNotEmpty ? result.message : L10n.of(context).open;
+        final message = result.message.isNotEmpty
+            ? result.message
+            : L10n.of(context).open;
         scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (_) {
@@ -847,9 +856,7 @@ class _PendingAttachmentItem extends StatelessWidget {
                   controller: attachment.orderController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
@@ -936,8 +943,9 @@ class _ChatAccountPicker extends StatelessWidget {
 
   void _popupMenuButtonSelected(String mxid, BuildContext context) {
     final client = Matrix.of(context).currentBundle.firstWhere(
-        (cl) => cl.userID == mxid,
-        orElse: () => Matrix.of(context).client);
+      (cl) => cl.userID == mxid,
+      orElse: () => Matrix.of(context).client,
+    );
     if (client.userID != mxid) {
       Logs().w('Attempted to switch to a non-existing client $mxid');
       return;
@@ -964,7 +972,8 @@ class _ChatAccountPicker extends StatelessWidget {
                     builder: (context, snapshot) => ListTile(
                       leading: Avatar(
                         mxContent: snapshot.data?.avatarUrl,
-                        name: snapshot.data?.displayName ??
+                        name:
+                            snapshot.data?.displayName ??
                             client.userID!.localpart,
                         size: 20,
                       ),
@@ -977,7 +986,8 @@ class _ChatAccountPicker extends StatelessWidget {
               .toList(),
           child: Avatar(
             mxContent: snapshot.data?.avatarUrl,
-            name: snapshot.data?.displayName ??
+            name:
+                snapshot.data?.displayName ??
                 Matrix.of(context).client.userID!.localpart,
             size: 20,
           ),
@@ -1044,8 +1054,9 @@ void _showAttachmentBottomSheet(
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color:
-                    theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1070,8 +1081,9 @@ void _showAttachmentBottomSheet(
             subtitle: l10n.attachmentPickerImageSubtitle,
             onTap: () {
               Navigator.pop(context);
-              controller
-                  .onAddPopupMenuButtonSelected(AddPopupMenuActions.image);
+              controller.onAddPopupMenuButtonSelected(
+                AddPopupMenuActions.image,
+              );
             },
           ),
           const SizedBox(height: 12),
@@ -1124,11 +1136,7 @@ Widget _buildAttachmentItem({
                 color: iconBgColor,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 28,
-              ),
+              child: Icon(icon, color: iconColor, size: 28),
             ),
             const SizedBox(width: 16),
             Expanded(

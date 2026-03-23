@@ -24,22 +24,16 @@ class DesktopScreenshotCaptureResult {
   final Object? error;
 
   const DesktopScreenshotCaptureResult.success(XFile file)
-      : this._(
-          status: DesktopScreenshotCaptureStatus.success,
-          file: file,
-        );
+    : this._(status: DesktopScreenshotCaptureStatus.success, file: file);
 
   const DesktopScreenshotCaptureResult.cancelled()
-      : this._(status: DesktopScreenshotCaptureStatus.cancelled);
+    : this._(status: DesktopScreenshotCaptureStatus.cancelled);
 
   const DesktopScreenshotCaptureResult.permissionDenied()
-      : this._(status: DesktopScreenshotCaptureStatus.permissionDenied);
+    : this._(status: DesktopScreenshotCaptureStatus.permissionDenied);
 
   const DesktopScreenshotCaptureResult.failed([Object? error])
-      : this._(
-          status: DesktopScreenshotCaptureStatus.failed,
-          error: error,
-        );
+    : this._(status: DesktopScreenshotCaptureStatus.failed, error: error);
 }
 
 class DesktopScreenshotCapture {
@@ -55,8 +49,9 @@ class DesktopScreenshotCapture {
     }
 
     try {
-      final filePath =
-          await _channel.invokeMethod<String>('captureScreenBuffer');
+      final filePath = await _channel.invokeMethod<String>(
+        'captureScreenBuffer',
+      );
       debugPrint('[Screenshot] captureScreenBuffer returned path: $filePath');
       if (filePath != null) {
         final screenshotFile = File(filePath);

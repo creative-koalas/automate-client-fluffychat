@@ -13,22 +13,9 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 
-enum _DragHandle {
-  move,
-  topLeft,
-  topRight,
-  bottomLeft,
-  bottomRight,
-}
+enum _DragHandle { move, topLeft, topRight, bottomLeft, bottomRight }
 
-enum _EditorTool {
-  crop,
-  doodle,
-  arrow,
-  rect,
-  text,
-  mosaic,
-}
+enum _EditorTool { crop, doodle, arrow, rect, text, mosaic }
 
 final class _EditorStroke {
   _EditorStroke({
@@ -96,10 +83,7 @@ Future<XFile?> showScreenshotCropperDialog(
         parent: animation,
         curve: Curves.easeOutCubic,
       );
-      return FadeTransition(
-        opacity: curved,
-        child: child,
-      );
+      return FadeTransition(opacity: curved, child: child);
     },
   );
 }
@@ -205,10 +189,14 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         );
         break;
       case _DragHandle.topLeft:
-        final newLeft = (startSelection.left + dx)
-            .clamp(0.0, startSelection.right - _minSelectionSize);
-        final newTop = (startSelection.top + dy)
-            .clamp(0.0, startSelection.bottom - _minSelectionSize);
+        final newLeft = (startSelection.left + dx).clamp(
+          0.0,
+          startSelection.right - _minSelectionSize,
+        );
+        final newTop = (startSelection.top + dy).clamp(
+          0.0,
+          startSelection.bottom - _minSelectionSize,
+        );
         next = Rect.fromLTRB(
           newLeft,
           newTop,
@@ -217,10 +205,14 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         );
         break;
       case _DragHandle.topRight:
-        final newRight = (startSelection.right + dx)
-            .clamp(startSelection.left + _minSelectionSize, 1.0);
-        final newTop = (startSelection.top + dy)
-            .clamp(0.0, startSelection.bottom - _minSelectionSize);
+        final newRight = (startSelection.right + dx).clamp(
+          startSelection.left + _minSelectionSize,
+          1.0,
+        );
+        final newTop = (startSelection.top + dy).clamp(
+          0.0,
+          startSelection.bottom - _minSelectionSize,
+        );
         next = Rect.fromLTRB(
           startSelection.left,
           newTop,
@@ -229,10 +221,14 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         );
         break;
       case _DragHandle.bottomLeft:
-        final newLeft = (startSelection.left + dx)
-            .clamp(0.0, startSelection.right - _minSelectionSize);
-        final newBottom = (startSelection.bottom + dy)
-            .clamp(startSelection.top + _minSelectionSize, 1.0);
+        final newLeft = (startSelection.left + dx).clamp(
+          0.0,
+          startSelection.right - _minSelectionSize,
+        );
+        final newBottom = (startSelection.bottom + dy).clamp(
+          startSelection.top + _minSelectionSize,
+          1.0,
+        );
         next = Rect.fromLTRB(
           newLeft,
           startSelection.top,
@@ -241,10 +237,14 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         );
         break;
       case _DragHandle.bottomRight:
-        final newRight = (startSelection.right + dx)
-            .clamp(startSelection.left + _minSelectionSize, 1.0);
-        final newBottom = (startSelection.bottom + dy)
-            .clamp(startSelection.top + _minSelectionSize, 1.0);
+        final newRight = (startSelection.right + dx).clamp(
+          startSelection.left + _minSelectionSize,
+          1.0,
+        );
+        final newBottom = (startSelection.bottom + dy).clamp(
+          startSelection.top + _minSelectionSize,
+          1.0,
+        );
         next = Rect.fromLTRB(
           startSelection.left,
           startSelection.top,
@@ -345,8 +345,9 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
     setState(() {
       _draftTextPosition = position;
       _history.add(const _EditorAction.draftText());
-      _draftTextFontSize =
-          _activeTextIndex != null ? _texts[_activeTextIndex!].fontSize : 0.034;
+      _draftTextFontSize = _activeTextIndex != null
+          ? _texts[_activeTextIndex!].fontSize
+          : 0.034;
       _editingTextIndex = null;
       _activeTextIndex = null;
       _draftTextController.text = _pendingText ?? '';
@@ -663,8 +664,9 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
       final box = boundaryContext.findRenderObject() as RenderBox;
       final pixelRatio = rawSize.width / box.size.width;
       final renderedImage = await renderObject.toImage(pixelRatio: pixelRatio);
-      final byteData =
-          await renderedImage.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await renderedImage.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
       if (byteData == null) {
         if (!mounted) return;
         Navigator.of(context).pop();
@@ -678,18 +680,22 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         return;
       }
 
-      final cropX = (_selection.left * composed.width)
-          .round()
-          .clamp(0, composed.width - 1);
-      final cropY = (_selection.top * composed.height)
-          .round()
-          .clamp(0, composed.height - 1);
-      final cropWidth = (_selection.width * composed.width)
-          .round()
-          .clamp(1, composed.width - cropX);
-      final cropHeight = (_selection.height * composed.height)
-          .round()
-          .clamp(1, composed.height - cropY);
+      final cropX = (_selection.left * composed.width).round().clamp(
+        0,
+        composed.width - 1,
+      );
+      final cropY = (_selection.top * composed.height).round().clamp(
+        0,
+        composed.height - 1,
+      );
+      final cropWidth = (_selection.width * composed.width).round().clamp(
+        1,
+        composed.width - cropX,
+      );
+      final cropHeight = (_selection.height * composed.height).round().clamp(
+        1,
+        composed.height - cropY,
+      );
 
       final outputImage = img.copyCrop(
         composed,
@@ -737,9 +743,10 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
   String _hintLabel(BuildContext context) {
     final isZh = Localizations.localeOf(context).languageCode.startsWith('zh');
     return switch (_tool) {
-      _EditorTool.crop => isZh
-          ? '拖动顶部拖拽条移动，拖动四角调整大小'
-          : 'Drag the top handle to move and corners to resize',
+      _EditorTool.crop =>
+        isZh
+            ? '拖动顶部拖拽条移动，拖动四角调整大小'
+            : 'Drag the top handle to move and corners to resize',
       _EditorTool.doodle => isZh ? '按住拖动进行涂鸦' : 'Drag to doodle',
       _EditorTool.arrow => isZh ? '拖动添加箭头标注' : 'Drag to place an arrow',
       _EditorTool.rect => isZh ? '拖动添加矩形标注' : 'Drag to place a rectangle',
@@ -770,9 +777,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
         builder: (context, snapshot) {
           final bytes = snapshot.data;
           if (bytes == null) {
-            return const Center(
-              child: CircularProgressIndicator.adaptive(),
-            );
+            return const Center(child: CircularProgressIndicator.adaptive());
           }
           return FutureBuilder<ImageInfo>(
             future: _resolveImage(MemoryImage(bytes)),
@@ -807,12 +812,13 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                   final rightSpace = imageRect.right - selectionRect.right;
                   final isNearFullscreen =
                       selectionRect.width >= imageRect.width * 0.66 ||
-                          selectionRect.height >= imageRect.height * 0.58;
+                      selectionRect.height >= imageRect.height * 0.58;
                   final actionFitsAbove =
                       topSpace >= actionsHeight + overlayGap;
                   final actionFitsBelow =
                       bottomSpace >= actionsHeight + overlayGap;
-                  final canDockActionsToSelection = !isNearFullscreen &&
+                  final canDockActionsToSelection =
+                      !isNearFullscreen &&
                       (selectionRect.width >= actionsWidth ||
                           actionFitsAbove ||
                           actionFitsBelow ||
@@ -843,31 +849,33 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                       actionsTop = selectionRect.bottom + overlayGap;
                     } else if (rightSpace >= actionsWidth) {
                       actionsLeft = selectionRect.right + overlayGap;
-                      actionsTop = (selectionRect.top +
-                              selectionRect.height / 2 -
-                              actionsHeight / 2)
-                          .clamp(
-                        imageRect.top,
-                        imageRect.bottom - actionsHeight,
-                      );
+                      actionsTop =
+                          (selectionRect.top +
+                                  selectionRect.height / 2 -
+                                  actionsHeight / 2)
+                              .clamp(
+                                imageRect.top,
+                                imageRect.bottom - actionsHeight,
+                              );
                     } else {
                       actionsLeft =
                           selectionRect.left - actionsWidth - overlayGap;
-                      actionsTop = (selectionRect.top +
-                              selectionRect.height / 2 -
-                              actionsHeight / 2)
-                          .clamp(
-                        imageRect.top,
-                        imageRect.bottom - actionsHeight,
-                      );
+                      actionsTop =
+                          (selectionRect.top +
+                                  selectionRect.height / 2 -
+                                  actionsHeight / 2)
+                              .clamp(
+                                imageRect.top,
+                                imageRect.bottom - actionsHeight,
+                              );
                     }
                   } else {
                     actionsLeft =
                         (imageRect.left + (imageRect.width - actionsWidth) / 2)
                             .clamp(
-                      imageRect.left,
-                      imageRect.right - actionsWidth,
-                    );
+                              imageRect.left,
+                              imageRect.right - actionsWidth,
+                            );
                     actionsTop = imageRect.bottom - actionsHeight - 18;
                   }
 
@@ -878,35 +886,34 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                   final toolbarFitsBelow = bottomSpace >= toolbarHeight + 22;
                   final toolbarFitsAbove =
                       topSpace >= toolbarHeight + actionsHeight + 28;
-                  final useBottomToolbar = isNearFullscreen ||
+                  final useBottomToolbar =
+                      isNearFullscreen ||
                       selectionRect.width >= imageRect.width * 0.5 ||
                       selectionRect.height >= imageRect.height * 0.36 ||
                       selectionRect.width < toolbarMinWidth * 0.8 ||
                       (!toolbarFitsBelow && !toolbarFitsAbove);
                   final toolbarLeft = useBottomToolbar
                       ? (imageRect.left + (imageRect.width - toolbarWidth) / 2)
-                          .clamp(
-                          imageRect.left + 12,
-                          imageRect.right - toolbarWidth - 12,
-                        )
+                            .clamp(
+                              imageRect.left + 12,
+                              imageRect.right - toolbarWidth - 12,
+                            )
                       : (selectionRect.left +
-                              (selectionRect.width - toolbarWidth) / 2)
-                          .clamp(
-                          imageRect.left + 12,
-                          imageRect.right - toolbarWidth - 12,
-                        );
+                                (selectionRect.width - toolbarWidth) / 2)
+                            .clamp(
+                              imageRect.left + 12,
+                              imageRect.right - toolbarWidth - 12,
+                            );
                   final toolbarTop = useBottomToolbar
                       ? imageRect.bottom - toolbarHeight - 18
                       : toolbarFitsBelow
-                          ? selectionRect.bottom + overlayGap
-                          : selectionRect.top - toolbarHeight - overlayGap;
+                      ? selectionRect.bottom + overlayGap
+                      : selectionRect.top - toolbarHeight - overlayGap;
 
                   return Stack(
                     children: [
                       Positioned.fill(
-                        child: ColoredBox(
-                          color: const Color(0xFF050505),
-                        ),
+                        child: ColoredBox(color: const Color(0xFF050505)),
                       ),
                       Positioned.fromRect(
                         rect: imageRect,
@@ -930,10 +937,8 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                           onSubmitDraftText: _commitDraftText,
                           onCancelDraftText: _cancelDraftText,
                           onCropStartDrag: _startCropDrag,
-                          onCropUpdateDrag: (details) => _updateCropDrag(
-                            imageRect.size,
-                            details,
-                          ),
+                          onCropUpdateDrag: (details) =>
+                              _updateCropDrag(imageRect.size, details),
                           onCropEndDrag: _endCropDrag,
                           onStartStroke: _startStroke,
                           onUpdateStroke: _updateStroke,
@@ -953,9 +958,7 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                       Positioned(
                         left: imageRect.left + 18,
                         top: imageRect.top + 18,
-                        child: _HintChip(
-                          label: _hintLabel(context),
-                        ),
+                        child: _HintChip(label: _hintLabel(context)),
                       ),
                       Positioned(
                         left: actionsLeft,
@@ -966,9 +969,10 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                             _RoundActionButton(
                               icon: Icons.brush_rounded,
                               enabled: !_submitting,
-                              tooltip: Localizations.localeOf(context)
-                                      .languageCode
-                                      .startsWith('zh')
+                              tooltip:
+                                  Localizations.localeOf(
+                                    context,
+                                  ).languageCode.startsWith('zh')
                                   ? '标注'
                                   : 'Markup',
                               active: _showMarkupToolbar,
@@ -987,9 +991,10 @@ class _ScreenshotCropperDialogState extends State<_ScreenshotCropperDialog> {
                             _RoundActionButton(
                               icon: Icons.undo_rounded,
                               enabled: _history.isNotEmpty && !_submitting,
-                              tooltip: Localizations.localeOf(context)
-                                      .languageCode
-                                      .startsWith('zh')
+                              tooltip:
+                                  Localizations.localeOf(
+                                    context,
+                                  ).languageCode.startsWith('zh')
                                   ? '撤销'
                                   : 'Undo',
                               onTap: _undo,
@@ -1130,7 +1135,7 @@ class _EditorCanvas extends StatelessWidget {
   final VoidCallback onSubmitDraftText;
   final VoidCallback onCancelDraftText;
   final void Function(_DragHandle handle, DragStartDetails details)
-      onCropStartDrag;
+  onCropStartDrag;
   final void Function(DragUpdateDetails details) onCropUpdateDrag;
   final void Function(DragEndDetails details) onCropEndDrag;
   final void Function(Offset position) onStartStroke;
@@ -1149,7 +1154,8 @@ class _EditorCanvas extends StatelessWidget {
     required Size canvasSize,
     required double scale,
     required double rotation,
-  }) onUpdateTextTransform;
+  })
+  onUpdateTextTransform;
   final VoidCallback onEndTextTransform;
   final Future<void> Function(int index) onEditText;
 
@@ -1175,10 +1181,7 @@ class _EditorCanvas extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     Positioned.fill(
-                      child: Image.memory(
-                        bytes,
-                        fit: BoxFit.fill,
-                      ),
+                      child: Image.memory(bytes, fit: BoxFit.fill),
                     ),
                     if (_mosaicStrokes(strokes, draftStroke).isNotEmpty)
                       Positioned.fill(
@@ -1236,33 +1239,35 @@ class _EditorCanvas extends StatelessWidget {
                   top: texts[i].position.dy * size.height,
                   child: GestureDetector(
                     behavior: HitTestBehavior.translucent,
-                    onTap:
-                        tool == _EditorTool.text ? () => onSelectText(i) : null,
+                    onTap: tool == _EditorTool.text
+                        ? () => onSelectText(i)
+                        : null,
                     onScaleStart: tool == _EditorTool.text
                         ? (details) =>
-                            onStartTextTransform(i, details.focalPoint)
+                              onStartTextTransform(i, details.focalPoint)
                         : null,
                     onScaleUpdate: tool == _EditorTool.text
                         ? (details) => onUpdateTextTransform(
-                              i,
-                              focalPoint: details.focalPoint,
-                              canvasSize: size,
-                              scale: details.scale,
-                              rotation: details.rotation,
-                            )
+                            i,
+                            focalPoint: details.focalPoint,
+                            canvasSize: size,
+                            scale: details.scale,
+                            rotation: details.rotation,
+                          )
                         : null,
                     onScaleEnd: tool == _EditorTool.text
                         ? (_) => onEndTextTransform()
                         : null,
-                    onDoubleTap:
-                        tool == _EditorTool.text ? () => onEditText(i) : null,
+                    onDoubleTap: tool == _EditorTool.text
+                        ? () => onEditText(i)
+                        : null,
                     child: Container(
                       decoration: BoxDecoration(
                         border: Border.all(
                           color:
                               tool == _EditorTool.text && activeTextIndex == i
-                                  ? const Color(0xFF34D399)
-                                  : Colors.transparent,
+                              ? const Color(0xFF34D399)
+                              : Colors.transparent,
                         ),
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -1314,9 +1319,10 @@ class _EditorCanvas extends StatelessWidget {
                             decoration: InputDecoration(
                               isDense: true,
                               border: InputBorder.none,
-                              hintText: Localizations.localeOf(context)
-                                      .languageCode
-                                      .startsWith('zh')
+                              hintText:
+                                  Localizations.localeOf(
+                                    context,
+                                  ).languageCode.startsWith('zh')
                                   ? '输入文字'
                                   : 'Type here',
                               hintStyle: TextStyle(
@@ -1372,10 +1378,7 @@ class _EditorCanvas extends StatelessWidget {
                       color: const Color(0xCCF3F4F6),
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x66000000),
-                          blurRadius: 8,
-                        ),
+                        BoxShadow(color: Color(0x66000000), blurRadius: 8),
                       ],
                     ),
                     alignment: Alignment.center,
@@ -1559,8 +1562,8 @@ class _RoundActionButton extends StatelessWidget {
         color: filled
             ? const Color(0xFF34D399)
             : active
-                ? const Color(0xFF3B404B)
-                : Colors.black.withValues(alpha: 0.42),
+            ? const Color(0xFF3B404B)
+            : Colors.black.withValues(alpha: 0.42),
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
           onTap: enabled ? onTap : null,
@@ -1582,10 +1585,10 @@ class _RoundActionButton extends StatelessWidget {
                       icon,
                       color: enabled
                           ? (filled
-                              ? Colors.black
-                              : active
-                                  ? const Color(0xFF34D399)
-                                  : Colors.white)
+                                ? Colors.black
+                                : active
+                                ? const Color(0xFF34D399)
+                                : Colors.white)
                           : Colors.white.withValues(alpha: 0.45),
                     ),
             ),
@@ -1667,15 +1670,9 @@ class _FloatingToolbar extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.09),
                   ),
                   const SizedBox(width: 8),
-                  _ToolbarMiniButton(
-                    label: 'A-',
-                    onTap: onDecreaseTextSize,
-                  ),
+                  _ToolbarMiniButton(label: 'A-', onTap: onDecreaseTextSize),
                   const SizedBox(width: 6),
-                  _ToolbarMiniButton(
-                    label: 'A+',
-                    onTap: onIncreaseTextSize,
-                  ),
+                  _ToolbarMiniButton(label: 'A+', onTap: onIncreaseTextSize),
                 ],
                 if (showColors) ...[
                   const SizedBox(width: 8),
@@ -1765,8 +1762,9 @@ class _ColorButton extends StatelessWidget {
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color:
-                selected ? Colors.white : Colors.white.withValues(alpha: 0.35),
+            color: selected
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.35),
             width: selected ? 2 : 1,
           ),
         ),
@@ -1776,10 +1774,7 @@ class _ColorButton extends StatelessWidget {
 }
 
 class _RenderedTextLabel extends StatelessWidget {
-  const _RenderedTextLabel({
-    required this.text,
-    required this.canvasWidth,
-  });
+  const _RenderedTextLabel({required this.text, required this.canvasWidth});
 
   final _EditorText text;
   final double canvasWidth;
@@ -1797,12 +1792,7 @@ class _RenderedTextLabel extends StatelessWidget {
             color: text.color,
             fontSize: text.fontSize * canvasWidth,
             fontWeight: FontWeight.w700,
-            shadows: const [
-              Shadow(
-                color: Color(0xAA000000),
-                blurRadius: 6,
-              ),
-            ],
+            shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 6)],
           ),
         ),
       ),
@@ -1811,10 +1801,7 @@ class _RenderedTextLabel extends StatelessWidget {
 }
 
 class _ToolbarMiniButton extends StatelessWidget {
-  const _ToolbarMiniButton({
-    required this.label,
-    required this.onTap,
-  });
+  const _ToolbarMiniButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -1906,10 +1893,7 @@ class _CropHandle extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white, width: 2),
             boxShadow: const [
-              BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 8,
-              ),
+              BoxShadow(color: Color(0x66000000), blurRadius: 8),
             ],
           ),
         ),
@@ -1953,8 +1937,10 @@ class _MarkupPainter extends CustomPainter {
     }
 
     for (final shape in [...shapes, if (draftShape != null) draftShape!]) {
-      final start =
-          Offset(shape.start.dx * size.width, shape.start.dy * size.height);
+      final start = Offset(
+        shape.start.dx * size.width,
+        shape.start.dy * size.height,
+      );
       final end = Offset(shape.end.dx * size.width, shape.end.dy * size.height);
       final paint = Paint()
         ..color = shape.color
@@ -2041,21 +2027,10 @@ class _MosaicClipper extends CustomClipper<Path> {
     return path;
   }
 
-  void _addMosaicCell(
-    Path path,
-    Offset point,
-    double brushSize,
-  ) {
+  void _addMosaicCell(Path path, Offset point, double brushSize) {
     final snappedLeft = (point.dx / brushSize).floor() * brushSize;
     final snappedTop = (point.dy / brushSize).floor() * brushSize;
-    path.addRect(
-      Rect.fromLTWH(
-        snappedLeft,
-        snappedTop,
-        brushSize,
-        brushSize,
-      ),
-    );
+    path.addRect(Rect.fromLTWH(snappedLeft, snappedTop, brushSize, brushSize));
   }
 
   @override
@@ -2093,25 +2068,25 @@ enum _EditorActionType { stroke, shape, text, draftText }
 
 final class _EditorAction {
   _EditorAction.stroke(this.stroke)
-      : type = _EditorActionType.stroke,
-        shape = null,
-        text = null;
+    : type = _EditorActionType.stroke,
+      shape = null,
+      text = null;
 
   _EditorAction.shape(this.shape)
-      : type = _EditorActionType.shape,
-        stroke = null,
-        text = null;
+    : type = _EditorActionType.shape,
+      stroke = null,
+      text = null;
 
   _EditorAction.text(this.text)
-      : type = _EditorActionType.text,
-        stroke = null,
-        shape = null;
+    : type = _EditorActionType.text,
+      stroke = null,
+      shape = null;
 
   const _EditorAction.draftText()
-      : type = _EditorActionType.draftText,
-        stroke = null,
-        shape = null,
-        text = null;
+    : type = _EditorActionType.draftText,
+      stroke = null,
+      shape = null,
+      text = null;
 
   final _EditorActionType type;
   final _EditorStroke? stroke;
