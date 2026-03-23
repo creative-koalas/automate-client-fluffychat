@@ -323,13 +323,13 @@ class PsygoApiClient {
       '[API] Auth login response parsed: '
       'has_refresh_token=$hasRefreshToken, '
       'expires_in=${authResponse.expiresIn}, '
-      'platform=${_authDevicePlatform()}',
+      'platform=${AuthDeviceIdentity.platformName}',
     );
 
     if ((authResponse.expiresIn ?? 0) > 0 && authResponse.refreshToken == null) {
       debugPrint(
         '[API] Auth response missing refresh_token '
-        '(platform=${_authDevicePlatform()}, expires_in=${authResponse.expiresIn})',
+        '(platform=${AuthDeviceIdentity.platformName}, expires_in=${authResponse.expiresIn})',
       );
     }
 
