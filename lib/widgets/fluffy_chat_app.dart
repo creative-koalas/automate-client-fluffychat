@@ -553,7 +553,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 2. Token expired but have refresh token -> try to refresh
-    if (auth.isLoggedIn && auth.refreshToken != null) {
+    final refreshToken = auth.refreshToken?.trim();
+    if (auth.isLoggedIn &&
+        refreshToken != null &&
+        refreshToken.isNotEmpty) {
       debugPrint('[AuthGate] Token expired, attempting refresh...');
       setState(() => _state = _AuthState.refreshing);
 
@@ -591,6 +594,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
       debugPrint('[AuthGate] Token refresh failed with invalid session');
+    }
+    if (auth.isLoggedIn &&
+        auth.isTokenExpired &&
+        (refreshToken == null || refreshToken.isEmpty)) {
+      debugPrint(
+          '[AuthGate] Token expired but refresh token is missing, fallback to re-login');
     }
 
     // 3. No valid token -> need to authenticate

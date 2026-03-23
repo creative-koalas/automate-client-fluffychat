@@ -353,16 +353,43 @@ class PsygoApiClient {
       );
     }
 
+    final rawRefreshToken = (respData['refresh_token'] as String?)?.trim();
+    final refreshToken = (rawRefreshToken != null && rawRefreshToken.isNotEmpty)
+        ? rawRefreshToken
+        : null;
+    final hasRefreshToken = refreshToken != null;
+
+    final rawExpiresIn = respData['expires_in'];
+    final expiresIn = rawExpiresIn is int
+        ? rawExpiresIn
+        : (rawExpiresIn is num
+            ? rawExpiresIn.toInt()
+            : int.tryParse(rawExpiresIn?.toString() ?? ''));
+
     final authResponse = AuthResponse(
       token: token,
-      refreshToken: respData['refresh_token'] as String?,
-      expiresIn: respData['expires_in'] as int?,
+      refreshToken: refreshToken,
+      expiresIn: expiresIn,
       userId: userId,
       phone: respData['phone'] as String? ?? '',
       matrixAccessToken: respData['matrix_access_token'] as String?,
       matrixUserId: respData['matrix_user_id'] as String?,
       matrixDeviceId: respData['matrix_device_id'] as String?,
     );
+
+    debugPrint(
+      '[API] Auth login response parsed: '
+      'has_refresh_token=$hasRefreshToken, '
+      'expires_in=${authResponse.expiresIn}, '
+      'platform=${_authDevicePlatform()}',
+    );
+
+    if ((authResponse.expiresIn ?? 0) > 0 && authResponse.refreshToken == null) {
+      debugPrint(
+        '[API] Auth response missing refresh_token '
+        '(platform=${_authDevicePlatform()}, expires_in=${authResponse.expiresIn})',
+      );
+    }
 
     final rawOnboardingCompleted = respData['onboarding_completed'];
     final onboardingCompleted = rawOnboardingCompleted is bool

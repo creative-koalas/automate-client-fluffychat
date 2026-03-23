@@ -100,11 +100,22 @@ class PsygoAuthState extends ChangeNotifier {
     _userId = userId;
     _onboardingCompleted = onboardingCompleted;
     _loggedIn = true;
+    final hasRefreshToken = refreshToken != null && refreshToken.isNotEmpty;
 
-    // Handle refresh token
-    if (refreshToken != null) {
+    debugPrint(
+      '[AuthState] save login state: '
+      'hasPrimaryToken=${primaryToken.isNotEmpty}, '
+      'hasRefreshToken=$hasRefreshToken, '
+      'expiresIn=$expiresIn',
+    );
+
+    // Handle refresh token (empty string should be treated as missing)
+    if (hasRefreshToken) {
       _refreshToken = refreshToken;
       await _storage.write(key: _refreshKey, value: refreshToken);
+    } else {
+      _refreshToken = null;
+      await _storage.delete(key: _refreshKey);
     }
 
     // Handle token expiry
@@ -117,21 +128,30 @@ class PsygoAuthState extends ChangeNotifier {
     }
 
     // Handle Matrix access token
-    if (matrixAccessToken != null) {
+    if (matrixAccessToken != null && matrixAccessToken.isNotEmpty) {
       _matrixAccessToken = matrixAccessToken;
       await _storage.write(key: _matrixAccessTokenKey, value: matrixAccessToken);
+    } else {
+      _matrixAccessToken = null;
+      await _storage.delete(key: _matrixAccessTokenKey);
     }
 
     // Handle Matrix user ID
-    if (matrixUserId != null) {
+    if (matrixUserId != null && matrixUserId.isNotEmpty) {
       _matrixUserId = matrixUserId;
       await _storage.write(key: _matrixUserIdKey, value: matrixUserId);
+    } else {
+      _matrixUserId = null;
+      await _storage.delete(key: _matrixUserIdKey);
     }
 
     // Handle Matrix device ID (CRITICAL for encryption!)
-    if (matrixDeviceId != null) {
+    if (matrixDeviceId != null && matrixDeviceId.isNotEmpty) {
       _matrixDeviceId = matrixDeviceId;
       await _storage.write(key: _matrixDeviceIdKey, value: matrixDeviceId);
+    } else {
+      _matrixDeviceId = null;
+      await _storage.delete(key: _matrixDeviceIdKey);
     }
 
     await _storage.write(key: _primaryKey, value: primaryToken);
