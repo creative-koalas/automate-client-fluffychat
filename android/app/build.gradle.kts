@@ -23,21 +23,29 @@ fun normalizeAndroidApplicationIdSuffix(raw: String?): String {
         return ""
     }
 
-    val parts = trimmed
-        .replace(Regex("^[._-]+"), "")
-        .replace(Regex("[^A-Za-z0-9_]+"), ".")
-        .split(".")
-        .map { it.trim().lowercase() }
-        .filter { it.isNotEmpty() && it.first().isLetter() }
-
-    if (parts.isEmpty()) {
-        logger.warn("Ignoring invalid APP_ID_SUFFIX value for Android applicationId")
-        return ""
+    // Keep legacy suffix style used by existing installs, e.g. "_stg", "_dev".
+    if (Regex("^_[A-Za-z][A-Za-z0-9_]*$").matches(trimmed)) {
+        return trimmed.lowercase()
     }
 
-    val normalized = parts.joinToString(separator = ".", prefix = ".")
+    // Backward-compatible: allow bare suffix like "stg" and map to "_stg".
+    if (Regex("^[A-Za-z][A-Za-z0-9_]*$").matches(trimmed)) {
+        return "_${trimmed.lowercase()}"
+    }
 
-    return normalized
+    // Normalize dotted style to legacy underscore style, e.g. ".stg" -> "_stg".
+    if (Regex("^\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*$").matches(trimmed)) {
+        val normalized = trimmed
+            .lowercase()
+            .trimStart('.')
+            .replace('.', '_')
+        if (normalized.isNotEmpty()) {
+            return "_$normalized"
+        }
+    }
+
+    logger.warn("Ignoring invalid APP_ID_SUFFIX value for Android applicationId: $trimmed")
+    return ""
 }
 
 plugins {
