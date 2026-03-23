@@ -818,6 +818,21 @@ class ChatView extends StatelessWidget {
                                                       controller,
                                                     ),
                                               ),
+                                              if (controller
+                                                      .hasOwnEmployeeInRoom &&
+                                                  controller
+                                                          .room
+                                                          .isAbandonedDMRoom !=
+                                                      true)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        bottom: 8,
+                                                      ),
+                                                  child: ChatQuickTipsBar(
+                                                    controller,
+                                                  ),
+                                                ),
                                               Material(
                                                 clipBehavior: Clip.hardEdge,
                                                 color:
