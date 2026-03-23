@@ -507,8 +507,13 @@ class _WindowButtonState extends State<_WindowButton> {
 /// 可拖拽的窗口区域组件
 class WindowDragArea extends StatelessWidget {
   final Widget child;
+  final bool enableDoubleTapMaximize;
 
-  const WindowDragArea({super.key, required this.child});
+  const WindowDragArea({
+    super.key,
+    required this.child,
+    this.enableDoubleTapMaximize = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -517,6 +522,11 @@ class WindowDragArea extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
+      onDoubleTap: enableDoubleTapMaximize
+          ? () {
+              WindowService.toggleMaximize();
+            }
+          : null,
       child: child,
     );
   }

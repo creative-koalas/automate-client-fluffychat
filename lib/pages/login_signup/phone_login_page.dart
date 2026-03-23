@@ -651,6 +651,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
                     right: 0,
                     height: 40,
                     child: WindowDragArea(
+                      enableDoubleTapMaximize: false,
                       child: Container(color: Colors.transparent),
                     ),
                   ),
