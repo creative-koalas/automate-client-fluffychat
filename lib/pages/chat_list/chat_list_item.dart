@@ -10,6 +10,7 @@ import 'package:psygo/pages/chat_list/unread_bubble.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_list_preview_sender_name.dart';
 import 'package:psygo/utils/matrix_mention_display_name.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/room_status_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -59,11 +60,13 @@ class _ChatListItemState extends State<ChatListItem> {
     super.initState();
     // 监听 AgentService 变化，员工数据加载完成后刷新头像
     AgentService.instance.agentsNotifier.addListener(_onAgentsChanged);
+    AgentService.instance.profileNotifier.addListener(_onAgentsChanged);
   }
 
   @override
   void dispose() {
     AgentService.instance.agentsNotifier.removeListener(_onAgentsChanged);
+    AgentService.instance.profileNotifier.removeListener(_onAgentsChanged);
     super.dispose();
   }
 
@@ -79,18 +82,31 @@ class _ChatListItemState extends State<ChatListItem> {
     if (key.isEmpty) {
       return '';
     }
-    final agent = AgentService.instance.getAgentByMatrixUserId(key);
-    final agentName = agent?.displayName.trim() ?? '';
-    if (agentName.isNotEmpty) {
-      return agentName;
-    }
     final user = room.unsafeGetUserFromMemoryOrFallback(key);
-    return user.calcDisplayname(i18n: matrixLocals);
+    AgentService.instance.ensureMatrixProfilePresentationById(
+      client: room.client,
+      matrixUserId: key,
+      fallbackDisplayName:
+          user.displayName ?? user.calcDisplayname(i18n: matrixLocals),
+      fallbackAvatarUri: user.avatarUrl,
+    );
+    return AgentService.instance.resolveDisplayNameByMatrixUserId(
+      key,
+      fallbackDisplayName: user.calcDisplayname(i18n: matrixLocals),
+    );
   }
 
   String _resolveRoomDisplayName(BuildContext context) {
     final l10n = L10n.of(context);
     final matrixLocals = MatrixLocals(l10n);
+    final directChatMatrixId = room.directChatMatrixID;
+
+    if (directChatMatrixId != null) {
+      return _resolveDisplayNameForMatrixUserId(
+        matrixUserId: directChatMatrixId,
+        matrixLocals: matrixLocals,
+      );
+    }
 
     if (room.name.isNotEmpty) {
       return room.name;
@@ -101,11 +117,7 @@ class _ChatListItemState extends State<ChatListItem> {
       return canonicalAlias;
     }
 
-    final directChatMatrixId = room.directChatMatrixID;
     final heroIds = <String>[...?room.summary.mHeroes];
-    if (directChatMatrixId != null && heroIds.isEmpty) {
-      heroIds.add(directChatMatrixId);
-    }
 
     final names = <String>[];
     for (final heroId in heroIds) {
@@ -430,12 +442,13 @@ class _ChatListItemState extends State<ChatListItem> {
                                         borderRadius: null,
                                         mxContent: user.avatarUrl,
                                         size: avatarSize,
-                                        name: _resolveDisplayNameForMatrixUserId(
-                                          matrixUserId: directChatMatrixId,
-                                          matrixLocals: MatrixLocals(
-                                            L10n.of(context),
-                                          ),
-                                        ),
+                                        name:
+                                            _resolveDisplayNameForMatrixUserId(
+                                              matrixUserId: directChatMatrixId,
+                                              matrixLocals: MatrixLocals(
+                                                L10n.of(context),
+                                              ),
+                                            ),
                                         presenceUserId: directChatMatrixId,
                                         presenceBackgroundColor:
                                             backgroundColor,
@@ -639,7 +652,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                   '${lastEvent?.eventId}_${lastEvent?.type}_${lastEvent?.redacted}',
                                 ),
                                 future: needLastEventSender
-                                    ? lastEvent.calcLocalizedBody(
+                                    ? lastEvent.calcLocalizedBodyWithAgents(
                                         MatrixLocals(L10n.of(context)),
                                         hideReply: true,
                                         hideEdit: true,
@@ -652,7 +665,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                       )
                                     : null,
                                 initialData: lastEvent
-                                    ?.calcLocalizedBodyFallback(
+                                    ?.calcLocalizedBodyFallbackWithAgents(
                                       MatrixLocals(L10n.of(context)),
                                       hideReply: true,
                                       hideEdit: true,
