@@ -1,15 +1,13 @@
-import 'dart:math';
-
 import 'package:dio/dio.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/maintenance_status.dart';
 import '../services/maintenance_status_bus.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
 import '../core/token_manager.dart';
+import '../utils/auth_device_identity.dart';
 import '../utils/custom_http_client.dart';
 
 enum TokenRefreshOutcome {
@@ -86,9 +84,6 @@ class PsygoApiClient {
   final PsygoAuthState auth;
   final Dio _dio;
   static const Set<int> _unauthorizedCodes = {10002, 10003};
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static const String _authDeviceIdKey = 'automate_auth_device_id';
-  static const String _hexChars = '0123456789abcdef';
 
   Future<void> _syncAuthState() async {
     await auth.load();
@@ -155,44 +150,6 @@ class PsygoApiClient {
     return status;
   }
 
-  String _authDevicePlatform() {
-    if (kIsWeb) return 'web';
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'android';
-      case TargetPlatform.iOS:
-        return 'ios';
-      case TargetPlatform.windows:
-        return 'windows';
-      case TargetPlatform.macOS:
-        return 'macos';
-      case TargetPlatform.linux:
-        return 'linux';
-      case TargetPlatform.fuchsia:
-        return 'fuchsia';
-    }
-  }
-
-  String _randomHex(int length) {
-    final random = Random.secure();
-    final buffer = StringBuffer();
-    for (var i = 0; i < length; i++) {
-      buffer.write(_hexChars[random.nextInt(_hexChars.length)]);
-    }
-    return buffer.toString();
-  }
-
-  Future<String> _getOrCreateAuthDeviceId() async {
-    final existing = (await _secureStorage.read(key: _authDeviceIdKey))?.trim();
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
-    }
-    final generated =
-        '${_authDevicePlatform()}_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}_${_randomHex(12)}';
-    await _secureStorage.write(key: _authDeviceIdKey, value: generated);
-    return generated;
-  }
-
   Future<Response<Map<String, dynamic>>> _requestWithAuthRetry(
     Future<Response<Map<String, dynamic>>> Function(String token) request,
   ) async {
@@ -228,19 +185,15 @@ class PsygoApiClient {
     return response;
   }
 
-  /// 发送短信验证码
+  /// 发送短信验证码。
+  /// 后端应按 `phone + auth_device_id` 做 60 秒限频，避免不同设备互相阻塞。
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
     try {
-      final authDeviceID = await _getOrCreateAuthDeviceId();
-      final authDevicePlatform = _authDevicePlatform();
+      final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
       res = await _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
-        data: {
-          'phone': phone,
-          'auth_device_id': authDeviceID,
-          'auth_device_platform': authDevicePlatform,
-        },
+        data: {'phone': phone, ...authDevicePayload},
       );
     } on DioException catch (e) {
       debugPrint(
@@ -297,31 +250,20 @@ class PsygoApiClient {
 
   /// 短信验证码登录
   Future<AuthResponse> smsLogin(String phone, String code) async {
-    final authDeviceID = await _getOrCreateAuthDeviceId();
-    final authDevicePlatform = _authDevicePlatform();
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/sms-login',
-      data: {
-        'phone': phone,
-        'code': code,
-        'auth_device_id': authDeviceID,
-        'auth_device_platform': authDevicePlatform,
-      },
+      data: {'phone': phone, 'code': code, ...authDevicePayload},
     );
     return _handleAuthResponse(res, '登录失败');
   }
 
   /// 一键登录（阿里云）
   Future<AuthResponse> oneClickLogin(String accessToken) async {
-    final authDeviceID = await _getOrCreateAuthDeviceId();
-    final authDevicePlatform = _authDevicePlatform();
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/one-click-login',
-      data: {
-        'access_token': accessToken,
-        'auth_device_id': authDeviceID,
-        'auth_device_platform': authDevicePlatform,
-      },
+      data: {'access_token': accessToken, ...authDevicePayload},
     );
     return _handleAuthResponse(res, '登录失败');
   }

@@ -192,13 +192,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
 
-  // Aliyun SDK secret key
-  // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
-  static const _secretKey = String.fromEnvironment(
-    'ALIYUN_SECRET_KEY',
-    defaultValue: '',
-  );
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -656,12 +649,21 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     try {
       debugPrint('[AuthGate] Starting one-click login...');
 
+      if (!PsygoConfig.hasAliyunOneClickLoginSecret) {
+        debugPrint(
+            '[AuthGate] One-click login secret is missing, redirecting to manual login');
+        _forceManualLogin = true;
+        setState(() => _state = _AuthState.needsLogin);
+        _redirectToManualLoginPage();
+        return;
+      }
+
       // 先关闭可能存在的授权页，避免 "授权页已存在" 错误
       await OneClickLoginService.quitLoginPage();
 
       // Perform the complete one-click login flow
       final loginToken = await OneClickLoginService.performOneClickLogin(
-        secretKey: _secretKey,
+        secretKey: PsygoConfig.aliyunOneClickSecretKey,
         timeout: 10000,
       );
 

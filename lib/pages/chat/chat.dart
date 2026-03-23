@@ -473,6 +473,8 @@ class ChatController extends State<ChatPageWithRoom>
         files: details.files,
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -510,6 +512,8 @@ class ChatController extends State<ChatPageWithRoom>
           files: [XFile.fromData(imageData, mimeType: 'image/png')],
           room: room,
           outerContext: context,
+          onSent: clearReplyEventAfterMediaSend,
+          replyEvent: replyEvent,
           threadRootEventId: activeThreadId,
           threadLastEventId: threadLastEventId,
         ),
@@ -527,6 +531,8 @@ class ChatController extends State<ChatPageWithRoom>
         files: files,
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -809,6 +815,8 @@ class ChatController extends State<ChatPageWithRoom>
         files: files,
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -1516,7 +1524,11 @@ class ChatController extends State<ChatPageWithRoom>
       bytes: normalizedData,
       name: _fileNameFromInsertedContent(content.uri),
     );
-    room.sendFileEvent(file, shrinkImageMaxDimension: 1600);
+    final replyTo = replyEvent;
+    room.sendFileEvent(file, inReplyTo: replyTo, shrinkImageMaxDimension: 1600);
+    if (replyTo != null) {
+      setState(() => replyEvent = null);
+    }
   }
 
   String _fileNameFromInsertedContent(String uri) {
@@ -1579,6 +1591,9 @@ class ChatController extends State<ChatPageWithRoom>
     }
 
     if (trimmedText.isEmpty) {
+      if (hasPending && replyEvent != null) {
+        setState(() => replyEvent = null);
+      }
       return;
     }
 
@@ -1913,10 +1928,12 @@ class ChatController extends State<ChatPageWithRoom>
         }
 
         final caption = attachment.captionController.text.trim();
+        final replyTo = replyEvent;
         try {
           await room.sendFileEvent(
             file,
             thumbnail: thumbnail,
+            inReplyTo: replyTo,
             shrinkImageMaxDimension: pendingAttachmentsCompress ? 1600 : null,
             extraContent: caption.isEmpty ? null : {'body': caption},
             threadRootEventId: activeThreadId,
@@ -1945,6 +1962,7 @@ class ChatController extends State<ChatPageWithRoom>
           await room.sendFileEvent(
             file,
             thumbnail: thumbnail,
+            inReplyTo: replyTo,
             shrinkImageMaxDimension: pendingAttachmentsCompress ? 1600 : null,
             extraContent: caption.isEmpty ? null : {'body': caption},
             threadRootEventId: activeThreadId,
@@ -2030,6 +2048,8 @@ class ChatController extends State<ChatPageWithRoom>
         files: files,
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -2063,6 +2083,8 @@ class ChatController extends State<ChatPageWithRoom>
         ],
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -2082,6 +2104,8 @@ class ChatController extends State<ChatPageWithRoom>
         files: [file],
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -2104,6 +2128,8 @@ class ChatController extends State<ChatPageWithRoom>
         files: [file],
         room: room,
         outerContext: context,
+        onSent: clearReplyEventAfterMediaSend,
+        replyEvent: replyEvent,
         threadRootEventId: activeThreadId,
         threadLastEventId: threadLastEventId,
       ),
@@ -2237,13 +2263,14 @@ class ChatController extends State<ChatPageWithRoom>
       name: fileName ?? audioFile.path,
     );
 
+    final replyTo = replyEvent;
     setState(() {
       replyEvent = null;
     });
     room
         .sendFileEvent(
           file,
-          inReplyTo: replyEvent,
+          inReplyTo: replyTo,
           threadRootEventId: activeThreadId,
           extraContent: {
             'info': {...file.info, 'duration': duration},
@@ -3015,6 +3042,10 @@ class ChatController extends State<ChatPageWithRoom>
     replyEvent = null;
     editEvent = null;
   });
+  void clearReplyEventAfterMediaSend() {
+    if (!mounted || replyEvent == null) return;
+    setState(() => replyEvent = null);
+  }
 
   void insertMentionText(String mention) {
     final value = sendController.value;
