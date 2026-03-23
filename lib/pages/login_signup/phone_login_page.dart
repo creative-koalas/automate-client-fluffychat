@@ -841,7 +841,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
           errorText: phoneError,
           readOnly: loading,
           keyboardType: TextInputType.number,
-          inputFormatters: const [
+          inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(11),
           ],
@@ -876,7 +876,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
             errorText: codeError,
             readOnly: loading,
             keyboardType: TextInputType.number,
-            inputFormatters: const [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textInputAction: TextInputAction.done,
             isDark: isDark,
             accentColor: accentColor,
