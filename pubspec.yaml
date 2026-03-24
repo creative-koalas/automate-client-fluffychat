@@ -127,11 +127,12 @@ flutter_native_splash:
 
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
   macos:
     generate: true
     image_path: "assets/logo.png"
   image_path_android: "assets/logo_transparent.png"
+  image_path_ios: "assets/logo_macos.png"
   image_path: "assets/logo.png"
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/logo_transparent.png"
