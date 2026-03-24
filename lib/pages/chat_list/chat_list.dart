@@ -476,10 +476,13 @@ class ChatListController extends State<ChatList>
         await loadActiveAnnouncement();
       }
 
+      if (!mounted) return;
+
       // Workaround for system UI overlay style not applied on app start
-      SystemChrome.setSystemUIOverlayStyle(
-        Theme.of(context).appBarTheme.systemOverlayStyle!,
-      );
+      final overlayStyle = Theme.of(context).appBarTheme.systemOverlayStyle;
+      if (overlayStyle != null) {
+        SystemChrome.setSystemUIOverlayStyle(overlayStyle);
+      }
     });
 
     super.initState();

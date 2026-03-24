@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,10 +46,16 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
   bool get isUpdateActionInFlight => _updateActionInFlight;
   bool get isShowingUpdateDialog => _showingUpdateDialog;
 
+  void _flowLog(String message) {
+    final ts = DateTime.now().toIso8601String();
+    print('[ForceUpdateController][$ts] $message');
+  }
+
   void start() {
     if (_started) {
       return;
     }
+    _flowLog('start()');
     _started = true;
     WidgetsBinding.instance.addObserver(this);
     ForceUpdateBus.instance.notifier.addListener(_handleBusUpdate);
@@ -73,10 +80,12 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> refreshStatus() async {
     if (_refreshInFlight) {
+      _flowLog('refreshStatus() skipped: already in flight, queue next');
       _refreshQueued = true;
       return;
     }
 
+    _flowLog('refreshStatus() begin');
     _refreshInFlight = true;
     _notifyListenersIfAlive();
     try {
@@ -97,9 +106,15 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
         checkedAt: DateTime.now(),
         source: ForceUpdateSnapshot.sourceVersionCheck,
       );
+      _flowLog(
+        'refreshStatus() success: force=${snapshot.required}, '
+        'latest=${snapshot.latestVersion}, '
+        'hasUrl=${snapshot.hasDownloadUrl}',
+      );
       await _applySnapshot(snapshot, allowRelease: true);
       ForceUpdateBus.instance.publish(snapshot);
     } catch (e) {
+      _flowLog('refreshStatus() failed: $e');
       debugPrint('[ForceUpdate] refresh status failed: $e');
     } finally {
       _refreshInFlight = false;
@@ -113,22 +128,40 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> openUpdateDialog(BuildContext context) async {
     if (!isRequired || _updateActionInFlight) {
+      _flowLog(
+        'openUpdateDialog() skipped: isRequired=$isRequired, '
+        'inFlight=$_updateActionInFlight',
+      );
       return;
     }
+    _flowLog(
+      'openUpdateDialog() begin: statusSource=${_status.source}, '
+      'hasUrl=${_status.hasDownloadUrl}, latest=${_status.latestVersion}',
+    );
     _updateActionInFlight = true;
     _showingUpdateDialog = true;
     _notifyListenersIfAlive();
     try {
+      // Let ForceUpdateGate rebuild once so its full-screen overlay is removed
+      // before we push the update dialog route.
+      await SchedulerBinding.instance.endOfFrame;
       final dialogContext = _dialogContextProvider?.call() ?? context;
+      _flowLog(
+        'openUpdateDialog() resolved context: '
+        'providerNull=${_dialogContextProvider == null}, '
+        'mounted=${dialogContext.mounted}',
+      );
       final service = AppUpdateService(_api);
       await service.showForceUpdateDialog(
         context: dialogContext,
         snapshot: _status,
       );
+      _flowLog('openUpdateDialog() showForceUpdateDialog returned');
     } finally {
       _showingUpdateDialog = false;
       _updateActionInFlight = false;
       _notifyListenersIfAlive();
+      _flowLog('openUpdateDialog() finalize -> refreshStatus()');
       await refreshStatus();
     }
   }
@@ -138,6 +171,10 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
     if (snapshot == null) {
       return;
     }
+    _flowLog(
+      'bus update: required=${snapshot.required}, '
+      'source=${snapshot.source}, hasUrl=${snapshot.hasDownloadUrl}',
+    );
     final allowRelease = snapshot.canReleaseRequiredGate;
     unawaited(_applySnapshot(snapshot, allowRelease: allowRelease));
   }
