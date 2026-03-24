@@ -30,6 +30,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
   Set<String> memberIds = <String>{};
   Timer? coolDown;
   StreamSubscription? _roomStateSub;
+  bool _inviteSuccessSnackBarVisible = false;
 
   String? get roomId => widget.roomId;
 
@@ -79,6 +80,24 @@ class InvitationSelectionController extends State<InvitationSelection> {
     return contacts;
   }
 
+  void _showInviteSuccessSnackBar(BuildContext context) {
+    if (_inviteSuccessSnackBarVisible) return;
+    final messenger = ScaffoldMessenger.of(context);
+    _inviteSuccessSnackBarVisible = true;
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: InkWell(
+          onTap: messenger.hideCurrentSnackBar,
+          child: Text(L10n.of(context).contactHasBeenInvitedToTheGroup),
+        ),
+      ),
+    );
+    controller.closed.whenComplete(() {
+      _inviteSuccessSnackBarVisible = false;
+    });
+  }
+
   void inviteAction(BuildContext context, String id, String displayname) async {
     final l10n = L10n.of(context);
     final room = Matrix.of(context).client.getRoomById(roomId!)!;
@@ -112,11 +131,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
       setState(() {
         memberIds = {...memberIds, id};
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(L10n.of(context).contactHasBeenInvitedToTheGroup),
-        ),
-      );
+      _showInviteSuccessSnackBar(context);
     }
   }
 
