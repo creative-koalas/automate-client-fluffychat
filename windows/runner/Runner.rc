@@ -17,6 +17,7 @@
 // English (United States) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#define APP_DISPLAY_NAME "PsyGo"
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 #ifdef APSTUDIO_INVOKED
@@ -89,13 +90,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "PsyGo" "\0"
-            VALUE "FileDescription", "PsyGo" "\0"
+            VALUE "CompanyName", APP_DISPLAY_NAME "\0"
+            VALUE "FileDescription", APP_DISPLAY_NAME "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "PsyGo" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 PsyGo. All rights reserved." "\0"
+            VALUE "InternalName", APP_DISPLAY_NAME "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 " APP_DISPLAY_NAME ". All rights reserved." "\0"
             VALUE "OriginalFilename", "psygo.exe" "\0"
-            VALUE "ProductName", "PsyGo" "\0"
+            VALUE "ProductName", APP_DISPLAY_NAME "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

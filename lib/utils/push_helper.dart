@@ -11,7 +11,9 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/l10n/l10n_branding.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/client_manager.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
@@ -43,7 +45,7 @@ Future<void> pushHelper(
     l10n ??= await lookupL10n(PlatformDispatcher.instance.locale);
     flutterLocalNotificationsPlugin.show(
       notification.roomId?.hashCode ?? 0,
-      l10n.newMessageInPsygo,
+      l10n.brandedNewMessage,
       l10n.openAppToReadMessages,
       NotificationDetails(
         iOS: const DarwinNotificationDetails(),
@@ -52,7 +54,7 @@ Future<void> pushHelper(
           l10n.incomingMessages,
           number: notification.counts?.unread,
           ticker: l10n.unreadChatsInApp(
-            'PsyGo',
+            PsygoConfig.appName,
             (notification.counts?.unread ?? 0).toString(),
           ),
           importance: Importance.high,
@@ -147,7 +149,7 @@ Future<void> _tryPushHelper(
 
   // Calculate the body
   final body = event.type == EventTypes.Encrypted
-      ? l10n.newMessageInPsygo
+      ? l10n.brandedNewMessage
       : await event.calcLocalizedBody(
           matrixLocals,
           plaintextBody: true,
@@ -320,9 +322,8 @@ Future<void> _tryPushHelper(
     title,
     body,
     platformChannelSpecifics,
-    payload:
-        PsygoPushPayload(client.clientName, event.room.id, event.eventId)
-            .toString(),
+    payload: PsygoPushPayload(client.clientName, event.room.id, event.eventId)
+        .toString(),
   );
   Logs().v('Push helper has been completed!');
 }

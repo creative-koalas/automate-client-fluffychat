@@ -30,6 +30,7 @@ import 'package:matrix/matrix.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/l10n/l10n_branding.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/voip/video_renderer.dart';
@@ -305,7 +306,7 @@ class MyCallingPage extends State<Calling> {
         );
         FlutterForegroundTask.startService(
           notificationTitle: L10n.of(widget.context).screenSharingTitle,
-          notificationText: L10n.of(widget.context).screenSharingDetail,
+          notificationText: L10n.of(widget.context).brandedScreenSharingDetail,
         );
       } else {
         FlutterForegroundTask.stopService();

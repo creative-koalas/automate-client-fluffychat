@@ -518,7 +518,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "Psygo",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -635,7 +635,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} запрошує вас у Psygo. \n1. Перейдіть на psygoai.com й установіть застосунок \n2. Зареєструйтесь або ввійдіть \n3. Відкрийте запрошувальне посилання:\n {link}",
+  "inviteText": "{username} запрошує вас у PsyGo. \n1. Перейдіть на psygoai.com й установіть застосунок \n2. Зареєструйтесь або ввійдіть \n3. Відкрийте запрошувальне посилання:\n {link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -772,7 +772,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInPsygo": "💬 Нове повідомлення у Psygo",
+  "newMessageInPsygo": "💬 Нове повідомлення у PsyGo",
   "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
@@ -1086,7 +1086,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "Psygo",
+  "title": "PsyGo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2342,7 +2342,7 @@
   "@hydrateTorLong": {},
   "indexedDbErrorTitle": "Проблеми приватного режиму",
   "@indexedDbErrorTitle": {},
-  "indexedDbErrorLong": "На жаль, сховище повідомлень не ввімкнуто у приватному режимі типово.\nВідкрийте\n - about:config\n - установіть для dom.indexedDB.privateBrowsing.enabled значення true\nІнакше запустити Psygo буде неможливо.",
+  "indexedDbErrorLong": "На жаль, сховище повідомлень не ввімкнуто у приватному режимі типово.\nВідкрийте\n - about:config\n - установіть для dom.indexedDB.privateBrowsing.enabled значення true\nІнакше запустити PsyGo буде неможливо.",
   "@indexedDbErrorLong": {},
   "dehydrate": "Експортувати сеанс та очистити пристрій",
   "@dehydrate": {},
@@ -2385,11 +2385,11 @@
   "@callingPermissions": {},
   "callingAccount": "Обліковий запис для виклику",
   "@callingAccount": {},
-  "callingAccountDetails": "Дозволяє Psygo використовувати основний застосунок Android для набору номера.",
+  "callingAccountDetails": "Дозволяє PsyGo використовувати основний застосунок Android для набору номера.",
   "@callingAccountDetails": {},
   "appearOnTop": "З'являтися зверху",
   "@appearOnTop": {},
-  "appearOnTopDetails": "Дозволяє застосунку показуватися зверху (не потрібно, якщо Fluffychat вже налаштований обліковим записом для викликів)",
+  "appearOnTopDetails": "Дозволяє застосунку показуватися зверху (не потрібно, якщо PsyGo вже налаштований обліковим записом для викликів)",
   "@appearOnTopDetails": {},
   "newGroup": "Нова група",
   "@newGroup": {},
@@ -2399,11 +2399,11 @@
   "@enterSpace": {},
   "enterRoom": "Увійти в кімнату",
   "@enterRoom": {},
-  "otherCallingPermissions": "Мікрофон, камера та інші дозволи Psygo",
+  "otherCallingPermissions": "Мікрофон, камера та інші дозволи PsyGo",
   "@otherCallingPermissions": {},
   "allSpaces": "Усі простори",
   "@allSpaces": {},
-  "screenSharingDetail": "Ви ділитеся своїм екраном FuffyChat",
+  "screenSharingDetail": "Ви ділитеся своїм екраном PsyGo",
   "@screenSharingDetail": {},
   "numChats": "{number} бесід",
   "@numChats": {
@@ -3120,7 +3120,7 @@
   "@continueText": {},
   "manageAccount": "Керувати обліковим записом",
   "@manageAccount": {},
-  "welcomeText": "Привіт-привіт 👋 Це Psygo. Ви можете увійти на будь-який сервер, сумісний із https://matrix.org. А потім спілкуватися з будь-ким. Це величезна децентралізована мережа для обміну повідомленнями!",
+  "welcomeText": "Привіт-привіт 👋 Це PsyGo. Ви можете увійти на будь-який сервер, сумісний із https://matrix.org. А потім спілкуватися з будь-ким. Це величезна децентралізована мережа для обміну повідомленнями!",
   "@welcomeText": {},
   "blur": "Розмиття:",
   "@blur": {},
@@ -3214,7 +3214,7 @@
   "@open": {},
   "waitingForServer": "Очікування сервера...",
   "@waitingForServer": {},
-  "appIntroduction": "Psygo дає змогу спілкуватися з друзями у різних месенджерах. Дізнайтеся більше на https://matrix.org або просто натисніть *Продовжити*.",
+  "appIntroduction": "PsyGo дає змогу спілкуватися з друзями у різних месенджерах. Дізнайтеся більше на https://matrix.org або просто натисніть *Продовжити*.",
   "@appIntroduction": {},
   "shareKeysWithDescription": "Яким пристроям довіряти, щоб вони могли читати ваші повідомлення в зашифрованих бесідах?",
   "@shareKeysWithDescription": {},

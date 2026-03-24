@@ -11,6 +11,11 @@ import ATAuthSDK
 class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
     private static let channelName = "com.creativekoalas.psygo/one_click_login"
+    private var appDisplayName: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
+            ?? "PsyGo"
+    }
 
     private var isPreLoginSuccess = false
 
@@ -288,7 +293,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // ========== Slogan ==========
         model.sloganIsHidden = false
         model.sloganText = NSAttributedString(
-            string: "PsyGo",
+            string: appDisplayName,
             attributes: [
                 .foregroundColor: UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0),  // #1A1A1A
                 .font: UIFont.systemFont(ofSize: 20, weight: .medium)  // 与 Android 一致

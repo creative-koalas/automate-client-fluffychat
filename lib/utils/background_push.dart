@@ -31,6 +31,7 @@ import 'package:unifiedpush/unifiedpush.dart';
 import 'package:unifiedpush_ui/unifiedpush_ui.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/l10n/l10n_branding.dart';
 import 'package:psygo/main.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
@@ -332,7 +333,7 @@ class BackgroundPush {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (PlatformInfos.isAndroid) {
         onFcmError?.call(
-          l10n!.noGoogleServicesWarning,
+          l10n!.brandedNoGoogleServicesWarning,
           link: Uri.parse(
             AppConfig.enablePushTutorial,
           ),

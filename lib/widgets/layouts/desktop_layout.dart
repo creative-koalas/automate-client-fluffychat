@@ -748,7 +748,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 1),
                         child: Text(
-                          'PsyGo',
+                          PsygoConfig.appName,
                           maxLines: 1,
                           strutStyle: const StrutStyle(
                             height: 1.2,

@@ -65,7 +65,7 @@ class PsygoApp extends StatelessWidget {
     return ThemeBuilder(
       builder: (context, themeMode, primaryColor) => MaterialApp.router(
         debugShowCheckedModeBanner: false,
-        title: 'PsyGo',
+        title: PsygoConfig.appName,
         themeMode: themeMode,
         theme: FluffyThemes.buildTheme(context, Brightness.light, primaryColor),
         darkTheme:
@@ -270,7 +270,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         } else {
           // Matrix 还没登录完成，稍后再检查
           debugPrint(
-              '[AuthGate] PsyGo logged in but Matrix not yet, will check again');
+              '[AuthGate] ${PsygoConfig.appName} logged in but Matrix not yet, will check again');
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) _onAuthStateChanged();
           });

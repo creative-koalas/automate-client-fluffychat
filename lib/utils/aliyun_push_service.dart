@@ -479,7 +479,7 @@ class AliyunPushService {
 
     try {
       // 获取通知标题和内容
-      final title = message['title'] as String? ?? 'PsyGo';
+      final title = message['title'] as String? ?? PsygoConfig.appName;
       final body = message['body'] as String? ??
           message['summary'] as String? ??
           '你收到了一条新消息';
@@ -607,7 +607,7 @@ class AliyunPushService {
       final roomId = payload['room_id'] as String?;
       final eventId = payload['event_id'] as String?;
       final sender = payload['sender'] as String?;
-      final title = payload['title'] as String? ?? 'PsyGo';
+      final title = payload['title'] as String? ?? PsygoConfig.appName;
       final body = payload['body'] as String? ?? '你收到了一条新消息';
       final badge = payload['badge'] as int? ?? 0;
 
@@ -994,7 +994,7 @@ class AliyunPushService {
           pushkey: pushKey,
           kind: 'http',
           appId: _appId,
-          appDisplayName: 'PsyGo',
+          appDisplayName: PsygoConfig.appName,
           deviceDisplayName: Platform.localHostname,
           lang: 'zh-CN',
           data: PusherData(
