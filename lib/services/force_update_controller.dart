@@ -36,12 +36,14 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
   bool _hasLoaded = false;
   bool _disposed = false;
   bool _updateActionInFlight = false;
+  bool _showingUpdateDialog = false;
 
   ForceUpdateSnapshot get status => _status;
   bool get isRequired => _status.required;
   bool get isRefreshing => _refreshInFlight;
   bool get hasLoaded => _hasLoaded;
   bool get isUpdateActionInFlight => _updateActionInFlight;
+  bool get isShowingUpdateDialog => _showingUpdateDialog;
 
   void start() {
     if (_started) {
@@ -114,6 +116,7 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     _updateActionInFlight = true;
+    _showingUpdateDialog = true;
     _notifyListenersIfAlive();
     try {
       final dialogContext = _dialogContextProvider?.call() ?? context;
@@ -123,6 +126,7 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
         snapshot: _status,
       );
     } finally {
+      _showingUpdateDialog = false;
       _updateActionInFlight = false;
       _notifyListenersIfAlive();
       await refreshStatus();

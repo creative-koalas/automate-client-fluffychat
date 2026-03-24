@@ -38,6 +38,9 @@ class ForceUpdateGate extends StatelessWidget {
     if (!controller.isRequired) {
       return child;
     }
+    if (controller.isShowingUpdateDialog) {
+      return child;
+    }
 
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
