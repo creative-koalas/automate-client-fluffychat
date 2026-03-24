@@ -6,6 +6,10 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 Future<String?> getPreferredDownloadSaveDirectory() async {
+  if (!PlatformInfos.isDesktop) {
+    return null;
+  }
+
   final configuredDirectory = AppSettings.downloadSaveDirectory.value.trim();
   if (configuredDirectory.isNotEmpty &&
       await Directory(configuredDirectory).exists()) {

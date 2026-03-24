@@ -298,7 +298,7 @@ class SettingsView extends StatelessWidget {
                         title: Text(L10n.of(context).chat),
                         onTap: () => context.go('/rooms/settings/chat'),
                       ),
-                      if (PlatformInfos.isMacOS) ...[
+                      if (PlatformInfos.isDesktop) ...[
                         _buildDivider(theme),
                         _buildCardListTile(
                           theme,
