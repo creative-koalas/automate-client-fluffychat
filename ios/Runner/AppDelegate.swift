@@ -1,5 +1,6 @@
 import UIKit
 import Flutter
+import qr_code_scanner_plus
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -8,6 +9,9 @@ import Flutter
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    if let qrRegistrar = registrar(forPlugin: "FlutterQrPlusPlugin") {
+      SwiftFlutterQrPlusPlugin.register(with: qrRegistrar)
+    }
 
     // 注册一键登录插件
     if let registrar = self.registrar(forPlugin: "OneClickLoginPlugin") {

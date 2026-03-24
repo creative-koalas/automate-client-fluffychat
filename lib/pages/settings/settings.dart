@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
@@ -7,8 +9,10 @@ import 'package:psygo/core/config.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
+import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/core/token_manager.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/download_save_directory.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/profanity_checker.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -33,6 +37,9 @@ class SettingsController extends State<Settings> {
   Future<Profile>? profileFuture;
   bool profileUpdated = false;
   bool _logoutInProgress = false;
+
+  String get configuredDownloadSaveDirectory =>
+      AppSettings.downloadSaveDirectory.value.trim();
 
   void updateProfile() => setState(() {
         profileUpdated = true;
@@ -205,6 +212,35 @@ class SettingsController extends State<Settings> {
     } catch (e) {
       debugPrint('[Settings] Account deletion cleanup error: $e');
     }
+  }
+
+  void selectDownloadSaveDirectoryAction() async {
+    final initialDirectory = await getPreferredDownloadSaveDirectory();
+    final selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      initialDirectory: initialDirectory,
+    );
+    if (selectedDirectory == null) return;
+
+    await AppSettings.downloadSaveDirectory.setItem(selectedDirectory);
+    if (!mounted) return;
+
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text(L10n.of(context).downloadLocationUpdated(selectedDirectory)),
+      ),
+    );
+  }
+
+  void resetDownloadSaveDirectoryAction() async {
+    await AppSettings.downloadSaveDirectory.setItem('');
+    if (!mounted) return;
+
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(L10n.of(context).downloadLocationReset)),
+    );
   }
 
   void logoutAction() async {
@@ -476,7 +512,7 @@ class SettingsController extends State<Settings> {
   bool? crossSigningCached;
   bool? showChatBackupBanner;
 
-  void firstRunBootstrapAction([_]) async {
+  void firstRunBootstrapAction([Object? _]) async {
     if (showChatBackupBanner != true) {
       showOkAlertDialog(
         context: context,

@@ -2769,6 +2769,21 @@
       }
     }
   },
+  "downloadLocation": "Download location",
+  "@downloadLocation": {},
+  "downloadLocationSystemDefault": "System Downloads folder",
+  "@downloadLocationSystemDefault": {},
+  "downloadLocationUpdated": "Download location updated to {path}",
+  "@downloadLocationUpdated": {
+    "type": "String",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadLocationReset": "Download location reset to system default",
+  "@downloadLocationReset": {},
   "jumpToLastReadMessage": "Jump to last read message",
   "@jumpToLastReadMessage": {},
   "readUpToHere": "Read up to here",

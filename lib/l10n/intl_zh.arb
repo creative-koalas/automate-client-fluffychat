@@ -2557,6 +2557,21 @@
             }
         }
     },
+    "downloadLocation": "下载位置",
+    "@downloadLocation": {},
+    "downloadLocationSystemDefault": "系统下载目录",
+    "@downloadLocationSystemDefault": {},
+    "downloadLocationUpdated": "下载位置已更新为 {path}",
+    "@downloadLocationUpdated": {
+        "type": "String",
+        "placeholders": {
+            "path": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadLocationReset": "下载位置已重置为系统默认目录",
+    "@downloadLocationReset": {},
     "reportErrorDescription": "😭 哦不。出了点差错。如果你愿意，可以向开发人员报告此错误。",
     "@reportErrorDescription": {},
     "noBackupWarning": "警告！如果退出登录你的员工将会停止工作。",
