@@ -10,6 +10,7 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/app_update_test.dart';
 import 'package:psygo/utils/fluffy_share.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
@@ -297,6 +298,31 @@ class SettingsView extends StatelessWidget {
                         title: Text(L10n.of(context).chat),
                         onTap: () => context.go('/rooms/settings/chat'),
                       ),
+                      if (PlatformInfos.isMacOS) ...[
+                        _buildDivider(theme),
+                        _buildCardListTile(
+                          theme,
+                          icon: Icons.folder_outlined,
+                          title: Text(l10n.downloadLocation),
+                          subtitle: Text(
+                            controller.configuredDownloadSaveDirectory.isEmpty
+                                ? l10n.downloadLocationSystemDefault
+                                : controller.configuredDownloadSaveDirectory,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: controller
+                                  .configuredDownloadSaveDirectory.isNotEmpty
+                              ? IconButton(
+                                  tooltip: l10n.downloadLocationReset,
+                                  onPressed: controller
+                                      .resetDownloadSaveDirectoryAction,
+                                  icon: const Icon(Icons.restart_alt_outlined),
+                                )
+                              : const Icon(Icons.chevron_right_rounded),
+                          onTap: controller.selectDownloadSaveDirectoryAction,
+                        ),
+                      ],
                     ],
                   ),
 

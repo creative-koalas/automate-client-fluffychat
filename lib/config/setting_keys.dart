@@ -62,6 +62,7 @@ enum AppSettings<T> {
     0xFF5625BA,
   ),
   emojiSuggestionLocale<String>('emoji_suggestion_locale', ''),
+  downloadSaveDirectory<String>('com.psygo.download_save_directory', ''),
   enableSoftLogout<bool>('com.psygo.enable_soft_logout', false);
 
   final String key;
@@ -72,7 +73,9 @@ enum AppSettings<T> {
   static SharedPreferences get store => _store!;
   static SharedPreferences? _store;
 
-  static Future<SharedPreferences> init({loadWebConfigFile = true}) async {
+  static Future<SharedPreferences> init({
+    bool loadWebConfigFile = true,
+  }) async {
     if (AppSettings._store != null) return AppSettings.store;
 
     final store = AppSettings._store = await SharedPreferences.getInstance();

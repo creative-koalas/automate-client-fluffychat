@@ -5,15 +5,18 @@ import 'package:matrix/matrix.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/download_save_directory.dart';
 import 'package:psygo/utils/size_string.dart';
 
 extension MatrixFileExtension on MatrixFile {
   void save(BuildContext context) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final l10n = L10n.of(context);
+    final initialDirectory = await getPreferredDownloadSaveDirectory();
     final downloadPath = await FilePicker.platform.saveFile(
       dialogTitle: l10n.saveFile,
       fileName: name,
+      initialDirectory: initialDirectory,
       type: filePickerFileType,
       bytes: bytes,
     );
