@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/repositories/agent_repository.dart';
@@ -128,6 +129,9 @@ class TeamPageController extends State<TeamPage> {
   }
 
   Future<bool> _hasReachedRecruitLimit() async {
+    if (!PsygoConfig.isProdEnvironment) {
+      return false;
+    }
     final repository = AgentRepository();
     try {
       final page = await repository.getUserAgents(

@@ -16,6 +16,31 @@ class PsygoConfig {
     defaultValue: 'dev',
   );
 
+  static const List<String> _nonProdAppNameMarkers = [
+    'stg',
+    'stage',
+    'staging',
+    'dev',
+    'test',
+    'qa',
+  ];
+
+  static const Set<String> _prodNamespaces = {'prod', 'production'};
+
+  static bool get isProdEnvironment {
+    final normalizedAppName = appName.trim().toLowerCase();
+    final normalizedNamespace = k8sNamespace.trim().toLowerCase();
+    final isNonProdByAppName = _nonProdAppNameMarkers
+        .any((marker) => normalizedAppName.contains(marker));
+    if (isNonProdByAppName) {
+      return false;
+    }
+    return _prodNamespaces.contains(normalizedNamespace) ||
+        normalizedAppName == 'psygo' ||
+        normalizedAppName.endsWith('_prod') ||
+        normalizedAppName.contains('production');
+  }
+
   /// Psygo Assistant 后端 URL
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',

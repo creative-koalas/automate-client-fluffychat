@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -85,6 +86,10 @@ class EmployeesTabState extends State<EmployeesTab>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _offboardingEmployeeIdsNotifier.addListener(_handleOffboardingStateChanged);
+    debugPrint(
+      '[EmployeesTab] recruitOnboardingLock=${_isRecruitOnboardingLockEnabled} '
+      '(appName=${PsygoConfig.appName}, namespace=${PsygoConfig.k8sNamespace})',
+    );
     final currentUserId = Matrix.of(context).clientOrNull?.userID ?? '';
     if (_pendingEmployeesOwnerUserId != currentUserId) {
       _pendingEmployeesById.clear();
@@ -151,7 +156,10 @@ class EmployeesTabState extends State<EmployeesTab>
   }
 
   bool _isRecruitLimitReachedFromCurrentState() {
-    if (_hasOnboardingEmployeesForPolling()) {
+    if (!PsygoConfig.isProdEnvironment) {
+      return false;
+    }
+    if (_isRecruitOnboardingLockEnabled && _hasOnboardingEmployeesForPolling()) {
       return true;
     }
     if (!_isLoading && _hasMore) {
@@ -341,6 +349,10 @@ class EmployeesTabState extends State<EmployeesTab>
     return _pendingEmployeesById.keys.any((id) => !loadedIds.contains(id));
   }
 
+  bool get _isRecruitOnboardingLockEnabled {
+    return PsygoConfig.isProdEnvironment;
+  }
+
   /// 启动轮询定时器（如果尚未启动）
   void _startReadyPolling() {
     if (_readyPollingTimer != null && _readyPollingTimer!.isActive) {
@@ -522,7 +534,8 @@ class EmployeesTabState extends State<EmployeesTab>
   /// Public method to refresh employee list without loading skeleton.
   Future<void> refreshEmployeeListSilently() => _refreshOnEnter();
 
-  bool get hasOnboardingEmployees => _hasOnboardingEmployeesForPolling();
+  bool get hasOnboardingEmployees =>
+      _isRecruitOnboardingLockEnabled && _hasOnboardingEmployeesForPolling();
 
   /// Add an optimistic onboarding card right after hire request is submitted.
   void addPendingEmployee({
