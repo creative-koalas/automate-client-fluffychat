@@ -72,11 +72,20 @@ class CustomHttpClient {
     return PlatformInfos.isAndroid || PlatformInfos.isWindows;
   }
 
-  static http.Client createHTTPClient() => retry.RetryClient(
-        _needsCustomCert
-            ? IOClient(customHttpClient(ISRG_X1))
-            : http.Client(),
-      );
+  static http.Client _createBaseHTTPClient() {
+    if (_needsCustomCert) {
+      return IOClient(customHttpClient(ISRG_X1));
+    }
+    return http.Client();
+  }
+
+  static http.Client createHTTPClient({bool enableRetry = true}) {
+    final baseClient = _createBaseHTTPClient();
+    if (!enableRetry) {
+      return baseClient;
+    }
+    return retry.RetryClient(baseClient);
+  }
 
   /// 使用自定义证书配置全局 HttpOverrides（供 Image.network 使用）
   static void applyHttpOverrides() {

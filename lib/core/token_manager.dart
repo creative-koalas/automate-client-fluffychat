@@ -40,9 +40,11 @@ class TokenManager {
   // Token 过期前刷新阈值（5 分钟）
   static const Duration _refreshThreshold = Duration(minutes: 5);
 
-  // HTTP client for refresh requests
-  http.Client? _httpClient;
-  http.Client get httpClient => _httpClient ??= CustomHttpClient.createHTTPClient();
+  // Refresh uses one-time token rotation; retries may resend the same
+  // refresh token and cause an invalid-session false positive.
+  http.Client? _refreshHttpClient;
+  http.Client get refreshHttpClient =>
+      _refreshHttpClient ??= CustomHttpClient.createHTTPClient(enableRetry: false);
 
   // 事件流控制器
   final _eventController = StreamController<TokenEvent>.broadcast();
@@ -113,7 +115,7 @@ class TokenManager {
 
       try {
         final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/refresh-token');
-        final response = await httpClient.post(
+        final response = await refreshHttpClient.post(
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'refresh_token': refreshToken}),
@@ -139,17 +141,22 @@ class TokenManager {
         final expiresIn = data['expires_in'] as int;
         final newRefreshToken = data['refresh_token'] as String?;
 
-        // 更新 tokens
-        final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-        final writes = <Future<void>>[
-          _storage.write(key: _primaryKey, value: newAccessToken),
-          _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
-        ];
-        // 服务端返回新的 refresh token（一次性）
-        if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
-          writes.add(_storage.write(key: _refreshKey, value: newRefreshToken));
+        if (newRefreshToken == null || newRefreshToken.isEmpty) {
+          Logs().e('[TokenManager] Refresh response missing refresh_token');
+          await clearTokens();
+          _eventController.add(TokenEvent.expired);
+          throw Exception('Refresh response missing refresh token');
         }
-        await Future.wait(writes);
+
+        // Write refresh token first for one-time rotation safety. If app exits
+        // between writes, keeping the new refresh token avoids a stale token.
+        final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
+        await _storage.write(key: _refreshKey, value: newRefreshToken);
+        await _storage.write(key: _primaryKey, value: newAccessToken);
+        await _storage.write(
+          key: _expiresAtKey,
+          value: expiresAt.millisecondsSinceEpoch.toString(),
+        );
 
         Logs().i('[TokenManager] Access token refreshed successfully');
         _eventController.add(TokenEvent.refreshed);
@@ -221,7 +228,7 @@ class TokenManager {
 
   /// 释放资源
   void dispose() {
-    _httpClient?.close();
+    _refreshHttpClient?.close();
     _eventController.close();
   }
 }
