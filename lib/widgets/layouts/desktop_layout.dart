@@ -265,6 +265,15 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   }
 
   Future<void> _openRecruitMenu() async {
+    if (_employeesTabKey.currentState?.hasOnboardingEmployees == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(L10n.of(context).loadingPleaseWait),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final reachedLimit = await _hasReachedRecruitLimit();
     if (!mounted) return;
     if (_recruitLimitReached != reachedLimit) {

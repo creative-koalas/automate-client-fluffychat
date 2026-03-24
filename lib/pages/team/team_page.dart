@@ -169,6 +169,15 @@ class TeamPageController extends State<TeamPage> {
   }
 
   Future<void> openRecruitMenu(BuildContext context) async {
+    if (_employeesTabKey.currentState?.hasOnboardingEmployees == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(L10n.of(context).loadingPleaseWait),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final reachedLimit = await _hasReachedRecruitLimit();
     if (!mounted) return;
     if (_recruitLimitReached != reachedLimit) {
