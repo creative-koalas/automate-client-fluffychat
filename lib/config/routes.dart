@@ -26,6 +26,7 @@ import 'package:psygo/pages/settings_chat/settings_chat.dart';
 import 'package:psygo/pages/settings_feedback/settings_feedback.dart';
 import 'package:psygo/pages/settings_notifications/settings_notifications.dart';
 import 'package:psygo/pages/settings_style/settings_style.dart';
+import 'package:psygo/utils/share_intent_transfer.dart';
 import 'package:psygo/widgets/config_viewer.dart';
 import 'package:psygo/widgets/layouts/empty_page.dart';
 import 'package:psygo/widgets/layouts/two_column_layout.dart';
@@ -48,7 +49,8 @@ abstract class AppRoutes {
     BuildContext context,
     GoRouterState state,
   ) {
-    final isLoggedIn = Matrix.of(context).widget.clients.any((client) => client.isLogged());
+    final isLoggedIn =
+        Matrix.of(context).widget.clients.any((client) => client.isLogged());
     if (isLoggedIn) return null;
 
     // Mobile: Let AuthGate handle login, don't redirect
@@ -66,7 +68,7 @@ abstract class AppRoutes {
       redirect: (context, state) =>
           Matrix.of(context).widget.clients.any((client) => client.isLogged())
               ? '/rooms'
-              : null,  // Let AuthGate handle unauthenticated state
+              : null, // Let AuthGate handle unauthenticated state
       // Empty page builder - AuthGate will show loading/login UI, not this page
       pageBuilder: (context, state) => defaultPageBuilder(
         context,
@@ -89,7 +91,10 @@ abstract class AppRoutes {
       // 重定向到新版登录页面，不让用户看到旧版页面
       redirect: (context, state) {
         // 如果已登录，跳转到主页
-        if (Matrix.of(context).widget.clients.any((client) => client.isLogged())) {
+        if (Matrix.of(context)
+            .widget
+            .clients
+            .any((client) => client.isLogged())) {
           return '/rooms';
         }
         // 未登录: Web 跳转到 /login-signup, Mobile 跳转到根路径让 AuthGate 处理
@@ -105,7 +110,10 @@ abstract class AppRoutes {
           path: 'login',
           // 同样重定向到新版登录
           redirect: (context, state) {
-            if (Matrix.of(context).widget.clients.any((client) => client.isLogged())) {
+            if (Matrix.of(context)
+                .widget
+                .clients
+                .any((client) => client.isLogged())) {
               return '/rooms';
             }
             // Web 跳转到 /login-signup, Mobile 跳转到根路径让 AuthGate 处理
@@ -149,7 +157,12 @@ abstract class AppRoutes {
           '/rooms/newprivatechat',
         ];
         // 聊天详情和搜索页面的子路由也需要排除
-        final excludedSuffixes = ['/details', '/search', '/invite', '/encryption'];
+        final excludedSuffixes = [
+          '/details',
+          '/search',
+          '/invite',
+          '/encryption'
+        ];
         final excludedSubPathMarkers = [
           '/details/',
           '/search/',
@@ -296,9 +309,10 @@ abstract class AppRoutes {
               path: ':roomid',
               pageBuilder: (context, state) {
                 final body = state.uri.queryParameters['body'];
+                final roomId = state.pathParameters['roomid']!;
                 var shareItems = state.extra is List<ShareItem>
                     ? state.extra as List<ShareItem>
-                    : null;
+                    : ShareIntentTransfer.takeForRoom(roomId);
                 if (body != null && body.isNotEmpty) {
                   shareItems ??= [];
                   shareItems.add(TextShareItem(body));
@@ -307,7 +321,7 @@ abstract class AppRoutes {
                   context,
                   state,
                   ChatPage(
-                    roomId: state.pathParameters['roomid']!,
+                    roomId: roomId,
                     shareItems: shareItems,
                     eventId: state.uri.queryParameters['event'],
                   ),

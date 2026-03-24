@@ -2,12 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:app_links/app_links.dart';
-import 'package:cross_file/cross_file.dart';
 import 'package:flutter_shortcuts_new/flutter_shortcuts_new.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart' as sdk;
 import 'package:matrix/matrix.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/announcement.dart';
 import 'package:psygo/pages/chat_list/chat_list_view.dart';
@@ -16,13 +14,11 @@ import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/aliyun_push_service.dart';
-import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/show_update_snackbar.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
-import 'package:psygo/widgets/share_scaffold_dialog.dart';
 import '../../config/setting_keys.dart';
 import '../../utils/url_launcher.dart';
 import '../../widgets/matrix.dart';
@@ -75,10 +71,6 @@ class ChatList extends StatefulWidget {
 
 class ChatListController extends State<ChatList>
     with TickerProviderStateMixin, RouteAware {
-  StreamSubscription? _intentDataStreamSubscription;
-
-  StreamSubscription? _intentFileStreamSubscription;
-
   StreamSubscription? _intentUriStreamSubscription;
 
   late ActiveFilter activeFilter;
@@ -394,32 +386,6 @@ class ChatListController extends State<ChatList>
     );
   }
 
-  void _processIncomingSharedMedia(List<SharedMediaFile> files) {
-    if (files.isEmpty) return;
-
-    showScaffoldDialog(
-      context: context,
-      builder: (context) => ShareScaffoldDialog(
-        items: files.map(
-          (file) {
-            if ({
-              SharedMediaType.text,
-              SharedMediaType.url,
-            }.contains(file.type)) {
-              return TextShareItem(file.path);
-            }
-            return FileShareItem(
-              XFile(
-                file.path.replaceFirst('file://', ''),
-                mimeType: file.mimeType,
-              ),
-            );
-          },
-        ).toList(),
-      ),
-    );
-  }
-
   void _processIncomingUris(Uri? uri) async {
     if (uri == null) return;
     context.go('/rooms');
@@ -430,16 +396,6 @@ class ChatListController extends State<ChatList>
 
   void _initReceiveSharingIntent() {
     if (!PlatformInfos.isMobile) return;
-
-    // For sharing images coming from outside the app while the app is in the memory
-    _intentFileStreamSubscription = ReceiveSharingIntent.instance
-        .getMediaStream()
-        .listen(_processIncomingSharedMedia, onError: print);
-
-    // For sharing images coming from outside the app while the app is closed
-    ReceiveSharingIntent.instance
-        .getInitialMedia()
-        .then(_processIncomingSharedMedia);
 
     // For receiving shared Uris
     _intentUriStreamSubscription =
@@ -490,8 +446,6 @@ class ChatListController extends State<ChatList>
 
   @override
   void dispose() {
-    _intentDataStreamSubscription?.cancel();
-    _intentFileStreamSubscription?.cancel();
     _intentUriStreamSubscription?.cancel();
     _coolDown?.cancel();
     scrollController.removeListener(_onScroll);

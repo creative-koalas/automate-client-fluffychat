@@ -42,6 +42,8 @@
 		</array>
 		<key>CFBundleVersion</key>
 		<string>$(CURRENT_PROJECT_VERSION)</string>
+		<key>AppGroupId</key>
+		<string>group.com.creativekoalas.psygo.app</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 		<key>LSRequiresIPhoneOS</key>

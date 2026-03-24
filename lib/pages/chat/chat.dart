@@ -53,6 +53,7 @@ import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/share_intent_transfer.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
@@ -783,7 +784,8 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void _shareItems([_]) {
-    final shareItems = widget.shareItems;
+    final shareItems =
+        widget.shareItems ?? ShareIntentTransfer.takeForRoom(roomId);
     if (shareItems == null || shareItems.isEmpty) return;
     if (!room.otherPartyCanReceiveMessages) {
       final theme = Theme.of(context);

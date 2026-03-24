@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
+import 'package:cross_file/cross_file.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/services/one_click_login.dart';
@@ -17,9 +19,11 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/post_login_navigation.dart';
 import 'package:psygo/utils/permission_service.dart';
+import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/utils/macos_global_screenshot_hotkey.dart';
 import 'package:psygo/widgets/app_lock.dart';
+import 'package:psygo/widgets/share_scaffold_dialog.dart';
 import 'package:psygo/widgets/theme_builder.dart';
 import 'package:psygo/utils/agreement_check_service.dart';
 import 'package:psygo/utils/client_manager.dart';
@@ -200,6 +204,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   DateTime? _lastSyncFailureNoticeAt;
   static const Duration _syncFailureNoticeCooldown = Duration(seconds: 30);
 
+  StreamSubscription<List<SharedMediaFile>>? _shareMediaStreamSubscription;
+  List<SharedMediaFile>? _pendingSharedMedia;
+  bool _shareDialogVisible = false;
+
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
 
@@ -209,6 +217,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 取消同步状态监听
     _syncStatusSubscription?.cancel();
     _syncMonitoringClientName = null;
+    _shareMediaStreamSubscription?.cancel();
     // 移除认证状态监听（使用保存的引用，避免访问 context）
     _authState?.removeListener(_onAuthStateChanged);
     _authState = null;
@@ -267,6 +276,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           // 启动同步状态监听，检测持续连接失败
           _startSyncStatusMonitoring(loggedInClient);
           unawaited(_ensurePostLoginDestination());
+          unawaited(_consumePendingSharedMedia());
         } else {
           // Matrix 还没登录完成，稍后再检查
           debugPrint(
@@ -286,6 +296,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(MacosGlobalScreenshotHotkey.initialize());
+    _initReceiveSharingIntent();
 
     // 监听认证状态变化（保存引用以便在 dispose 中使用）
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -307,6 +318,86 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
+  void _initReceiveSharingIntent() {
+    if (!PlatformInfos.isMobile) return;
+
+    _shareMediaStreamSubscription = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen(_queueSharedMedia, onError: (_, __) {});
+
+    ReceiveSharingIntent.instance.getInitialMedia().then(_queueSharedMedia);
+  }
+
+  void _queueSharedMedia(List<SharedMediaFile> files) {
+    if (!mounted || files.isEmpty) return;
+    _pendingSharedMedia = files;
+    unawaited(ReceiveSharingIntent.instance.reset());
+    unawaited(_consumePendingSharedMedia());
+  }
+
+  List<ShareItem> _mapSharedMediaToItems(List<SharedMediaFile> files) =>
+      files.map((file) {
+        if ({
+          SharedMediaType.text,
+          SharedMediaType.url,
+        }.contains(file.type)) {
+          return TextShareItem(file.path);
+        }
+        return FileShareItem(
+          XFile(
+            file.path.replaceFirst('file://', ''),
+            mimeType: file.mimeType,
+          ),
+        );
+      }).toList();
+
+  Future<void> _consumePendingSharedMedia() async {
+    if (!mounted ||
+        _state != _AuthState.authenticated ||
+        _shareDialogVisible ||
+        _pendingSharedMedia == null ||
+        _pendingSharedMedia!.isEmpty) {
+      return;
+    }
+
+    final files = List<SharedMediaFile>.from(_pendingSharedMedia!);
+    final currentPath = PsygoApp.router.routeInformationProvider.value.uri.path;
+
+    if (currentPath != '/rooms') {
+      PsygoApp.router.go('/rooms');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_consumePendingSharedMedia());
+      });
+      return;
+    }
+
+    final dialogContext = PsygoApp.navigatorKey.currentContext;
+    if (!mounted || dialogContext == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_consumePendingSharedMedia());
+      });
+      return;
+    }
+
+    final items = _mapSharedMediaToItems(files);
+    _pendingSharedMedia = null;
+    _shareDialogVisible = true;
+    try {
+      await showScaffoldDialog<void>(
+        context: dialogContext,
+        builder: (context) => ShareScaffoldDialog(items: items),
+      );
+    } finally {
+      _shareDialogVisible = false;
+      if (mounted &&
+          _pendingSharedMedia != null &&
+          _pendingSharedMedia!.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(_consumePendingSharedMedia());
+        });
+      }
+    }
+  }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -315,6 +406,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (state == AppLifecycleState.resumed) {
       debugPrint(
           '[AuthGate] App resumed from background, state=$_state, pendingOneClickLogin=$_pendingOneClickLogin, hasTriedAuth=$_hasTriedAuth');
+      unawaited(_consumePendingSharedMedia());
 
       // 协议检查（仅已登录用户）
       if (_state == _AuthState.authenticated) {
