@@ -50,6 +50,11 @@ SolidCompression=yes
 WizardStyle=modern
 SetupLogging=yes
 
+; 升级时关闭正在运行的应用（主窗口关闭会被托盘逻辑拦截，需强制结束进程）
+CloseApplications=force
+CloseApplicationsFilter={#MyAppExeName}
+RestartApplications=no
+
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 #if FileExists(ChineseLangFile)
