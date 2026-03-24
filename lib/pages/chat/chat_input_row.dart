@@ -402,7 +402,8 @@ class ChatInputRow extends StatelessWidget {
                     duration: FluffyThemes.durationFast,
                     curve: FluffyThemes.curveStandard,
                     height: height,
-                    width: mobileShouldCollapseInputActions ? 0 : height,
+                    // Keep emoji button visible on mobile while input actions collapse.
+                    width: height,
                     alignment: Alignment.center,
                     clipBehavior: Clip.hardEdge,
                     decoration: const BoxDecoration(),
