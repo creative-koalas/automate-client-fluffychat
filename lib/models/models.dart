@@ -5,3 +5,4 @@ export 'agent.dart';
 export 'announcement.dart';
 export 'agent_template.dart';
 export 'plugin.dart';
+export 'force_update_status.dart';

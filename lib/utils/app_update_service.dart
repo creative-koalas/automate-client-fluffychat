@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/force_update_status.dart';
 import 'package:psygo/utils/custom_http_client.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
@@ -346,6 +347,42 @@ class AppUpdateService {
       }
       return true;
     }
+  }
+
+  /// 显示强制更新弹窗（由 ForceUpdateGate 调用）
+  Future<void> showForceUpdateDialog({
+    required BuildContext context,
+    required ForceUpdateSnapshot snapshot,
+  }) async {
+    if (!context.mounted) {
+      return;
+    }
+
+    final downloadUrl = snapshot.downloadUrl?.trim() ?? '';
+    if (downloadUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L10n.of(context).appUpdateDownloadLinkFailed)),
+      );
+      return;
+    }
+
+    final currentVersion = await PlatformInfos.getVersion();
+    final platform = _getPlatformName();
+    final latestVersion = snapshot.latestVersion.trim().isNotEmpty
+        ? snapshot.latestVersion.trim()
+        : currentVersion;
+
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (builderContext) => _UpdateDialog(
+        latestVersion: latestVersion,
+        forceUpdate: true,
+        downloadUrl: downloadUrl,
+        changelog: snapshot.changelog,
+        refreshDownloadUrl: () => _refreshDownloadUrl(currentVersion, platform),
+      ),
+    );
   }
 
   /// 获取平台名称

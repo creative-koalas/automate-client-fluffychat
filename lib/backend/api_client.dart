@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
+import '../models/force_update_status.dart';
 import '../models/maintenance_status.dart';
+import '../services/force_update_bus.dart';
 import '../services/maintenance_status_bus.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
@@ -29,10 +31,12 @@ class PsygoApiClient {
     return InterceptorsWrapper(
       onResponse: (response, handler) {
         _captureMaintenanceFromResponse(response);
+        _captureForceUpdateFromResponse(response);
         handler.next(response);
       },
       onError: (error, handler) async {
         _captureMaintenanceFromResponse(error.response);
+        _captureForceUpdateFromResponse(error.response);
 
         // 只处理 401 错误
         if (error.response?.statusCode != 401) {
@@ -112,6 +116,21 @@ class PsygoApiClient {
 
     if (status != null) {
       MaintenanceStatusBus.instance.publish(status);
+    }
+  }
+
+  void _captureForceUpdateFromResponse(Response<dynamic>? response) {
+    if (response == null) {
+      return;
+    }
+    final snapshot = ForceUpdateSnapshot.tryParseRequiredPayload(
+      response.data,
+      source: ForceUpdateSnapshot.sourceResponseInterceptor,
+      httpStatus: response.statusCode,
+      fallbackMessage: response.statusMessage,
+    );
+    if (snapshot != null) {
+      ForceUpdateBus.instance.publish(snapshot);
     }
   }
 
@@ -676,6 +695,7 @@ class PsygoApiClient {
   Future<AppVersionResponse> checkAppVersion({
     required String currentVersion,
     required String platform,
+    bool publishForceUpdate = true,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/app/version',
@@ -697,7 +717,21 @@ class PsygoApiClient {
       throw AutomateBackendException('Empty response data');
     }
 
-    return AppVersionResponse.fromJson(respData);
+    final parsed = AppVersionResponse.fromJson(respData);
+    if (publishForceUpdate) {
+      ForceUpdateBus.instance.publish(
+        ForceUpdateSnapshot(
+          required: parsed.forceUpdate,
+          minVersion: parsed.minSupportedVersion,
+          latestVersion: parsed.latestVersion,
+          downloadUrl: parsed.downloadUrl,
+          changelog: parsed.changelog,
+          checkedAt: DateTime.now(),
+          source: ForceUpdateSnapshot.sourceVersionCheck,
+        ),
+      );
+    }
+    return parsed;
   }
 
   /// 获取所有激活的协议列表（公开接口，无需认证）
@@ -979,23 +1013,27 @@ class UserInfo {
 /// 版本检查响应
 class AppVersionResponse {
   final String latestVersion; // 最新版本号
+  final String minSupportedVersion; // 最低支持版本
   final bool forceUpdate; // 是否强制更新
   final String? downloadUrl; // 下载链接（null 表示已是最新，链接有效期 10 分钟）
   final String? changelog; // 更新日志
 
   AppVersionResponse({
     required this.latestVersion,
+    required this.minSupportedVersion,
     required this.forceUpdate,
     this.downloadUrl,
     this.changelog,
   });
 
-  /// 是否有更新（download_url 不为空才需要更新）
-  bool get hasUpdate => downloadUrl != null && downloadUrl!.isNotEmpty;
+  /// 是否有更新（强制更新即使没有下载链接也视为更新）
+  bool get hasUpdate =>
+      forceUpdate || (downloadUrl != null && downloadUrl!.isNotEmpty);
 
   factory AppVersionResponse.fromJson(Map<String, dynamic> json) {
     return AppVersionResponse(
       latestVersion: json['latest_version'] as String? ?? '',
+      minSupportedVersion: json['min_supported_version'] as String? ?? '',
       forceUpdate: json['force_update'] as bool? ?? false,
       downloadUrl: json['download_url'] as String?,
       changelog: json['changelog'] as String?,

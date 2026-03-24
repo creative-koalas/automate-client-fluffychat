@@ -21,11 +21,12 @@ import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/utils/macos_global_screenshot_hotkey.dart';
 import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/theme_builder.dart';
-import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/agreement_check_service.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/services/force_update_controller.dart';
 import 'package:psygo/services/maintenance_status_controller.dart';
 import '../utils/custom_scroll_behaviour.dart';
+import 'force_update_gate.dart';
 import 'maintenance_gate.dart';
 import 'matrix.dart';
 
@@ -85,17 +86,25 @@ class PsygoApp extends StatelessWidget {
                   create: (context) => MaintenanceStatusController(
                     context.read<PsygoApiClient>(),
                   )..start(),
-                  child: MaintenanceGate(
-                    child: AppLockWidget(
-                      pincode: pincode,
-                      clients: clients,
-                      child: Matrix(
-                        clients: clients,
-                        store: store,
-                        child: _AutomateAuthGate(
+                  child: ChangeNotifierProvider(
+                    lazy: false,
+                    create: (context) => ForceUpdateController(
+                      context.read<PsygoApiClient>(),
+                    )..start(),
+                    child: MaintenanceGate(
+                      child: ForceUpdateGate(
+                        child: AppLockWidget(
+                          pincode: pincode,
                           clients: clients,
-                          store: store,
-                          child: testWidget ?? child,
+                          child: Matrix(
+                            clients: clients,
+                            store: store,
+                            child: _AutomateAuthGate(
+                              clients: clients,
+                              store: store,
+                              child: testWidget ?? child,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -173,8 +182,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     '600025', // Environment check failed
     '600026', // Pre-login called while auth page open
   };
-  bool _blockedByForceUpdate = false; // Track if blocked by force update
-  bool _updateCheckInProgress = false; // 防止并发触发重复检查
   bool _isLoggingOut = false; // 防止登出过程中重复触发一键登录
   bool _pendingOneClickLogin = false; // 延迟触发一键登录（等待 app 回到前台）
   bool _forceManualLogin = false; // 一键登录不可用时，直接进入手动登录入口
@@ -202,8 +209,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 移除认证状态监听（使用保存的引用，避免访问 context）
     _authState?.removeListener(_onAuthStateChanged);
     _authState = null;
-    // 停止后台检查服务
-    AppUpdateService.stopBackgroundCheck();
     AgreementCheckService.stopBackgroundCheck();
     super.dispose();
   }
@@ -299,52 +304,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
-  /// 应用启动时初始化更新检查
-  Future<void> _initUpdateCheck() async {
-    if (_updateCheckInProgress) return;
-    _updateCheckInProgress = true;
-    try {
-      final api = context.read<PsygoApiClient>();
-
-      // 获取可用的 context（优先使用 Navigator context，否则使用当前 widget context）
-      BuildContext? getNavigatorContext() {
-        return PsygoApp.navigatorKey.currentContext;
-      }
-
-      // 获取最佳可用 context
-      // Navigator context 可能在登录完成后才可用，所以先用当前 context
-      BuildContext getAvailableContext() {
-        return getNavigatorContext() ?? context;
-      }
-
-      // 启动后台检查服务
-      AppUpdateService.startBackgroundCheck(api, getAvailableContext);
-
-      // 不再等待 Navigator，直接使用当前 context 执行检查
-      // 当前 context 在 MaterialApp.builder 内，可以正常显示 Dialog
-      if (!mounted) return;
-
-      // 立即执行一次检查
-      final updateService = AppUpdateService(api);
-      final canContinue = await updateService.checkAndPrompt(context);
-
-      // 每次检查都同步阻止状态，避免“已更新但仍被拦截”
-      if (!mounted) return;
-      final shouldBlock = !canContinue;
-      if (_blockedByForceUpdate != shouldBlock) {
-        setState(() {
-          _blockedByForceUpdate = shouldBlock;
-        });
-      } else {
-        _blockedByForceUpdate = shouldBlock;
-      }
-    } catch (e) {
-      debugPrint('[AppUpdate] Init update check failed: $e');
-    } finally {
-      _updateCheckInProgress = false;
-    }
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -354,12 +313,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint(
           '[AuthGate] App resumed from background, state=$_state, pendingOneClickLogin=$_pendingOneClickLogin, hasTriedAuth=$_hasTriedAuth');
 
-      // 应用恢复时检查更新（先检查 App 更新，再检查协议）
-      AppUpdateService.onAppResumed();
-      // 如果当前被强更拦截，恢复到前台时做一次前台检查用于自动解锁
-      if (_blockedByForceUpdate) {
-        unawaited(_initUpdateCheck());
-      }
       // 协议检查（仅已登录用户）
       if (_state == _AuthState.authenticated) {
         AgreementCheckService.onAppResumed();
@@ -489,12 +442,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     await auth.load();
 
     debugPrint('[AuthGate] Checking auth state...');
-
-    // 在检查登录状态之前先检查更新（只在首次检查时执行）
-    if (!_hasTriedAuth) {
-      await _initUpdateCheck();
-      if (_blockedByForceUpdate) return; // 被强制更新阻止，不继续
-    }
 
     // iOS CRITICAL FIX: Handle retry after stale credentials detected
     if (_needsRetryAfterStaleCredentials) {
@@ -1386,10 +1333,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return _buildErrorScreen();
 
       case _AuthState.needsLogin:
-        // 被强制更新阻止时显示提示
-        if (_blockedByForceUpdate) {
-          return _buildForceUpdateBlockedScreen();
-        }
         // 移动端：需要登录时显示加载界面，等待一键登录 SDK 弹出
         // 这样可以避免短暂显示聊天列表后再弹出登录页
         if (PlatformInfos.isMobile) {
@@ -1402,62 +1345,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return widget.child ?? const SizedBox.shrink();
 
       case _AuthState.authenticated:
-        // 被强制更新阻止时显示提示
-        if (_blockedByForceUpdate) {
-          return _buildForceUpdateBlockedScreen();
-        }
         return widget.child ?? const SizedBox.shrink();
     }
-  }
-
-  /// 强制更新阻止界面
-  Widget _buildForceUpdateBlockedScreen() {
-    final theme = Theme.of(context);
-    final l10n = L10n.of(context);
-
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.system_update_rounded,
-                size: 64,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                l10n.authNeedUpdateTitle,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.authNeedUpdateMessage,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: () async {
-                  // 重新触发更新检查
-                  setState(() {
-                    _blockedByForceUpdate = false;
-                  });
-                  await _initUpdateCheck();
-                },
-                child: Text(l10n.authCheckAgain),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildLoadingScreen(String message) {
