@@ -118,6 +118,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
             rooms: rooms,
             files: files,
             outerContext: rootContext,
+            replyEvent: null,
             threadRootEventId: null,
             threadLastEventId: null,
           ),
@@ -312,8 +313,8 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
         ],
       ),
       bottomNavigationBar: AnimatedSize(
-        duration: FluffyThemes.animationDuration,
-        curve: FluffyThemes.animationCurve,
+        duration: FluffyThemes.durationFast,
+        curve: FluffyThemes.curveStandard,
         child: _selectedRoomIds.isEmpty
             ? const SizedBox.shrink()
             : Container(
