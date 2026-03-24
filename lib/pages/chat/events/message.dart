@@ -1127,30 +1127,44 @@ class Message extends StatelessWidget {
                 ),
               ),
             // 消息行：勾选框 + 消息内容
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 勾选框始终在最左边
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: SizedBox(
-                    width: Avatar.defaultSize,
-                    height: 32,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      tooltip: L10n.of(context).select,
-                      icon: Icon(
-                        selected ? Icons.check_circle : Icons.circle_outlined,
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onSelect(event),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 勾选框始终在最左边
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: SizedBox(
+                      width: Avatar.defaultSize,
+                      height: 32,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        tooltip: L10n.of(context).select,
+                        icon: Icon(
+                          selected ? Icons.check_circle : Icons.circle_outlined,
+                        ),
+                        onPressed: () => onSelect(event),
                       ),
-                      onPressed: () => onSelect(event),
                     ),
                   ),
-                ),
-                // 消息内容填充剩余空间
-                Expanded(child: messageWidget),
-              ],
+                  // 消息内容填充剩余空间
+                  Expanded(child: messageWidget),
+                ],
+              ),
             ),
           ],
+        ),
+      );
+    }
+
+    if (longPressSelect && !PlatformInfos.isDesktop && !event.redacted) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onSelect(event),
+        child: AbsorbPointer(
+          child: messageWidget,
         ),
       );
     }
