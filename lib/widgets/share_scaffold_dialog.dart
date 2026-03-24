@@ -8,6 +8,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -236,7 +237,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
             itemCount: rooms.length,
             itemBuilder: (context, i) {
               final room = rooms[i];
-              final displayname = room.getLocalizedDisplayname(
+              final displayname = room.getLocalizedDisplaynameWithAgents(
                 MatrixLocals(L10n.of(context)),
               );
               final value = selectedRoomId == room.id;

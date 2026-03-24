@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat/chat_app_bar_list_tile.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -39,7 +40,7 @@ class PinnedEvents extends StatelessWidget {
                   (event) => AdaptiveModalAction(
                     value: event?.eventId ?? '',
                     icon: const Icon(Icons.push_pin_outlined),
-                    label: event?.calcLocalizedBodyFallback(
+                    label: event?.calcLocalizedBodyFallbackWithAgents(
                           MatrixLocals(L10n.of(context)),
                           withSenderNamePrefix: true,
                           hideReply: true,
@@ -68,7 +69,7 @@ class PinnedEvents extends StatelessWidget {
       builder: (context, snapshot) {
         final event = snapshot.data;
         return ChatAppBarListTile(
-          title: event?.calcLocalizedBodyFallback(
+          title: event?.calcLocalizedBodyFallbackWithAgents(
                 MatrixLocals(L10n.of(context)),
                 withSenderNamePrefix: true,
                 hideReply: true,

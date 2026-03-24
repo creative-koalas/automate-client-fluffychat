@@ -13,6 +13,7 @@ import 'package:psygo/models/announcement.dart';
 import 'package:psygo/pages/chat_list/chat_list_view.dart';
 import 'package:psygo/services/announcement_service.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/aliyun_push_service.dart';
@@ -521,7 +522,7 @@ class ChatListController extends State<ChatList>
     );
 
     final displayname =
-        room.getLocalizedDisplayname(MatrixLocals(L10n.of(context)));
+        room.getLocalizedDisplaynameWithAgents(MatrixLocals(L10n.of(context)));
 
     final action = await showMenu<ChatContextAction>(
       context: posContext,

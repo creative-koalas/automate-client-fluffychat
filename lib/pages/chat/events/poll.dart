@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart' hide Result;
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/url_launcher.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -162,8 +163,9 @@ class PollWidget extends StatelessWidget {
                                         horizontal: 2.0,
                                       ),
                                       child: Avatar(
-                                        mxContent: user?.avatarUrl,
-                                        name: user?.calcDisplayname() ??
+                                        mxContent: user?.avatarUrlWithAgents ??
+                                            user?.avatarUrl,
+                                        name: user?.calcDisplaynameWithAgents() ??
                                             userId.localpart,
                                         size: 12 *
                                             AppSettings.fontSizeFactor.value,

@@ -9,6 +9,7 @@ import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/pages/chat_details/participant_list_item.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/fluffy_share.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/chat_settings_popup_menu.dart';
@@ -55,7 +56,7 @@ class ChatDetailsView extends StatelessWidget {
             (room.summary.mJoinedMemberCount ?? 0);
         final canRequestMoreMembers = members.length < actualMembersCount;
         final iconColor = theme.textTheme.bodyLarge!.color;
-        final displayname = room.getLocalizedDisplayname(
+        final displayname = room.getLocalizedDisplaynameWithAgents(
           MatrixLocals(L10n.of(context)),
         );
         return Scaffold(
@@ -211,9 +212,17 @@ class ChatDetailsView extends StatelessWidget {
                                             avatarName = agent!.displayName;
                                           } else {
                                             // 非员工或员工没有头像，使用 Matrix 用户头像
-                                            final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
-                                            avatarUrl = user.avatarUrl;
-                                            avatarName = user.calcDisplayname();
+                                            final user = room
+                                                .unsafeGetUserFromMemoryOrFallback(
+                                                    directChatMatrixID);
+                                            avatarUrl =
+                                                user.avatarUrlWithAgents ??
+                                                    user.avatarUrl;
+                                            avatarName =
+                                                user.calcDisplaynameWithAgents(
+                                              i18n:
+                                                  MatrixLocals(L10n.of(context)),
+                                            );
                                           }
                                         }
                                         return Avatar(

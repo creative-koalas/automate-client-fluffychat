@@ -11,6 +11,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/push_helper.dart';
@@ -213,7 +214,7 @@ Future<void> notificationTap(
 
             await FlutterLocalNotificationsPlugin().show(
               room.id.hashCode,
-              room.getLocalizedDisplayname(MatrixLocals(l10n)),
+              room.getLocalizedDisplaynameWithAgents(MatrixLocals(l10n)),
               input,
               NotificationDetails(
                 android: AndroidNotificationDetails(

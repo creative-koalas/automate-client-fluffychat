@@ -12,6 +12,7 @@ import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/sync_status_localization.dart';
@@ -209,7 +210,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Text(
-                            room.getLocalizedDisplayname(
+                            room.getLocalizedDisplaynameWithAgents(
                               MatrixLocals(L10n.of(context)),
                             ),
                             maxLines: 1,
@@ -281,8 +282,10 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       // 非员工或员工没有头像，使用 Matrix 用户头像
       final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
       return Avatar(
-        mxContent: user.avatarUrl,
-        name: user.calcDisplayname(),
+        mxContent: user.avatarUrlWithAgents ?? user.avatarUrl,
+        name: user.calcDisplaynameWithAgents(
+          i18n: MatrixLocals(L10n.of(context)),
+        ),
         size: 36,
         borderRadius: BorderRadius.circular(12),
       );
@@ -291,7 +294,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     // 群聊使用房间头像
     return Avatar(
       mxContent: room.avatar,
-      name: room.getLocalizedDisplayname(
+      name: room.getLocalizedDisplaynameWithAgents(
         MatrixLocals(L10n.of(context)),
       ),
       size: 36,

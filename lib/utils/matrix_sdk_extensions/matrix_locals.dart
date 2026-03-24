@@ -1,6 +1,7 @@
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 
 /// This is a temporary helper class until there is a proper solution to this with the new system
 class MatrixLocals extends MatrixLocalizations {
@@ -186,7 +187,7 @@ class MatrixLocals extends MatrixLocalizations {
   String redactedAnEvent(Event redactedEvent) {
     return l10n.redactedAnEvent(
       redactedEvent.redactedBecause?.senderFromMemoryOrFallback
-              .calcDisplayname() ??
+              .calcDisplaynameWithAgents(i18n: this) ??
           l10n.user,
     );
   }
@@ -199,7 +200,9 @@ class MatrixLocals extends MatrixLocalizations {
   @override
   String removedBy(Event redactedEvent) {
     return l10n.redactedBy(
-      redactedEvent.senderFromMemoryOrFallback.calcDisplayname(),
+      redactedEvent.senderFromMemoryOrFallback.calcDisplaynameWithAgents(
+        i18n: this,
+      ),
     );
   }
 

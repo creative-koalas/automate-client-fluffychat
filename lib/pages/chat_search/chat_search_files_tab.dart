@@ -5,6 +5,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 
@@ -38,7 +39,7 @@ class ChatSearchFilesTab extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 L10n.of(context).searchIn(
-                  room.getLocalizedDisplayname(
+                  room.getLocalizedDisplaynameWithAgents(
                     MatrixLocals(L10n.of(context)),
                   ),
                 ),

@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/url_launcher.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -35,6 +36,7 @@ class ChatSearchMessageTab extends StatelessWidget {
       stream: searchStream,
       builder: (context, snapshot) {
         final theme = Theme.of(context);
+        final matrixLocals = MatrixLocals(L10n.of(context));
         if (searchStream == null) {
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -42,11 +44,8 @@ class ChatSearchMessageTab extends StatelessWidget {
               const Icon(Icons.search_outlined, size: 64),
               const SizedBox(height: 8),
               Text(
-                L10n.of(context).searchIn(
-                  room.getLocalizedDisplayname(
-                    MatrixLocals(L10n.of(context)),
-                  ),
-                ),
+                L10n.of(context)
+                    .searchIn(room.getLocalizedDisplaynameWithAgents(matrixLocals)),
               ),
             ],
           );
@@ -98,9 +97,8 @@ class ChatSearchMessageTab extends StatelessWidget {
               }
               final event = events[i];
               final sender = event.senderFromMemoryOrFallback;
-              final displayname = sender.calcDisplayname(
-                i18n: MatrixLocals(L10n.of(context)),
-              );
+              final displayname =
+                  sender.calcDisplaynameWithAgents(i18n: matrixLocals);
               return _MessageSearchResultListTile(
                 sender: sender,
                 displayname: displayname,
@@ -163,7 +161,7 @@ class _MessageSearchResultListTile extends StatelessWidget {
         onOpen: (url) => UrlLauncher(context, url.url).launchUrl(),
         text: renderMatrixMentionsWithDisplayName(
           text: event
-              .calcLocalizedBodyFallback(
+              .calcLocalizedBodyFallbackWithAgents(
                 plaintextBody: true,
                 removeMarkdown: true,
                 MatrixLocals(

@@ -15,6 +15,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/aliyun_push_service.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/permission_service.dart';
@@ -220,10 +221,10 @@ extension LocalNotificationsExtension on MatrixState {
         }
       }
 
-      final title =
-          event.room.getLocalizedDisplayname(MatrixLocals(L10n.of(context)));
-      final body = await event.calcLocalizedBody(
-        MatrixLocals(L10n.of(context)),
+      final matrixLocals = MatrixLocals(L10n.of(context));
+      final title = event.room.getLocalizedDisplaynameWithAgents(matrixLocals);
+      final body = await event.calcLocalizedBodyWithAgents(
+        matrixLocals,
         withSenderNamePrefix: !event.room.isDirectChat ||
             event.room.lastEvent?.senderId == client.userID,
         plaintextBody: true,

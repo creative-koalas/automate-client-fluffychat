@@ -6,6 +6,7 @@ import 'package:psygo/pages/chat_search/chat_search_files_tab.dart';
 import 'package:psygo/pages/chat_search/chat_search_images_tab.dart';
 import 'package:psygo/pages/chat_search/chat_search_message_tab.dart';
 import 'package:psygo/pages/chat_search/chat_search_page.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 
@@ -37,7 +38,9 @@ class ChatSearchView extends StatelessWidget {
         titleSpacing: 0,
         title: Text(
           L10n.of(context).searchIn(
-            room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
+            room.getLocalizedDisplaynameWithAgents(
+              MatrixLocals(L10n.of(context)),
+            ),
           ),
         ),
       ),
@@ -97,7 +100,8 @@ class ChatSearchView extends StatelessWidget {
                           )
                         : null,
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withAlpha(180),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withAlpha(180),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,

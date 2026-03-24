@@ -7,6 +7,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat/events/video_player.dart';
 import 'package:psygo/pages/image_viewer/image_viewer.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 
@@ -41,7 +42,7 @@ class ChatSearchImagesTab extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 L10n.of(context).searchIn(
-                  room.getLocalizedDisplayname(
+                  room.getLocalizedDisplaynameWithAgents(
                     MatrixLocals(L10n.of(context)),
                   ),
                 ),

@@ -11,6 +11,7 @@ import 'package:psygo/pages/chat/events/video_player.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/markdown_helper.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -49,11 +50,12 @@ class MessageContent extends StatelessWidget {
 
   void _verifyOrRequestKey(BuildContext context) async {
     final l10n = L10n.of(context);
+    final matrixLocals = MatrixLocals(l10n);
     if (event.content['can_request_session'] != true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            event.calcLocalizedBodyFallback(MatrixLocals(l10n)),
+            event.calcLocalizedBodyFallbackWithAgents(matrixLocals),
           ),
         ),
       );
@@ -68,6 +70,8 @@ class MessageContent extends StatelessWidget {
     }
     event.requestKey();
     final sender = event.senderFromMemoryOrFallback;
+    final senderDisplayName =
+        sender.calcDisplaynameWithAgents(i18n: matrixLocals);
     await showAdaptiveBottomSheet(
       context: context,
       builder: (context) => Scaffold(
@@ -85,20 +89,18 @@ class MessageContent extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Avatar(
-                  mxContent: sender.avatarUrl,
-                  name: sender.calcDisplayname(),
+                  mxContent: sender.avatarUrlWithAgents ?? sender.avatarUrl,
+                  name: senderDisplayName,
                   presenceUserId: sender.stateKey,
                   client: event.room.client,
                 ),
-                title: Text(sender.calcDisplayname()),
+                title: Text(senderDisplayName),
                 subtitle: Text(event.originServerTs.localizedTime(context)),
                 trailing: const Icon(Icons.lock_outlined),
               ),
               const Divider(),
               Text(
-                event.calcLocalizedBodyFallback(
-                  MatrixLocals(l10n),
-                ),
+                event.calcLocalizedBodyFallbackWithAgents(matrixLocals),
               ),
             ],
           ),
@@ -109,6 +111,8 @@ class MessageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final matrixLocals = MatrixLocals(l10n);
     final fontSize =
         AppConfig.messageFontSize * AppSettings.fontSizeFactor.value;
     final buttonTextColor = textColor;
@@ -362,9 +366,10 @@ class MessageContent extends StatelessWidget {
           future: event.fetchSenderUser(),
           builder: (context, snapshot) {
             return _ButtonContent(
-              label: L10n.of(context).startedACall(
-                snapshot.data?.calcDisplayname() ??
-                    event.senderFromMemoryOrFallback.calcDisplayname(),
+              label: l10n.startedACall(
+                snapshot.data?.calcDisplaynameWithAgents(i18n: matrixLocals) ??
+                    event.senderFromMemoryOrFallback
+                        .calcDisplaynameWithAgents(i18n: matrixLocals),
               ),
               icon: '📞',
               textColor: buttonTextColor,
@@ -378,9 +383,10 @@ class MessageContent extends StatelessWidget {
           future: event.fetchSenderUser(),
           builder: (context, snapshot) {
             return _ButtonContent(
-              label: L10n.of(context).userSentUnknownEvent(
-                snapshot.data?.calcDisplayname() ??
-                    event.senderFromMemoryOrFallback.calcDisplayname(),
+              label: l10n.userSentUnknownEvent(
+                snapshot.data?.calcDisplaynameWithAgents(i18n: matrixLocals) ??
+                    event.senderFromMemoryOrFallback
+                        .calcDisplaynameWithAgents(i18n: matrixLocals),
                 event.type,
               ),
               icon: 'ℹ️',
@@ -410,11 +416,15 @@ class RedactionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final matrixLocals = MatrixLocals(L10n.of(context));
     return FutureBuilder<User?>(
       future: event.redactedBecause?.fetchSenderUser(),
       builder: (context, snapshot) {
         final reason = event.redactedBecause?.content.tryGet<String>('reason');
-        final redactedBy = snapshot.data?.calcDisplayname() ??
+        final redactedBy =
+            snapshot.data?.calcDisplaynameWithAgents(i18n: matrixLocals) ??
+            event.redactedBecause?.senderFromMemoryOrFallback
+                .calcDisplaynameWithAgents(i18n: matrixLocals) ??
             event.redactedBecause?.senderId.localpart ??
             L10n.of(context).user;
         return _ButtonContent(

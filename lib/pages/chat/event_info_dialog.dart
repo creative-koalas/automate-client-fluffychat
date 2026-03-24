@@ -8,6 +8,8 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 
 extension EventInfoDialogExtension on Event {
@@ -39,6 +41,9 @@ class EventInfoDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final originalSource = event.originalSource;
+    final sender = event.senderFromMemoryOrFallback;
+    final senderDisplayName =
+        sender.calcDisplaynameWithAgents(i18n: MatrixLocals(l10n));
     return Scaffold(
       appBar: AppBar(
         title: Text(L10n.of(context).messageInfo),
@@ -50,15 +55,13 @@ class EventInfoDialog extends StatelessWidget {
         children: [
           ListTile(
             leading: Avatar(
-              mxContent: event.senderFromMemoryOrFallback.avatarUrl,
-              name: event.senderFromMemoryOrFallback.calcDisplayname(),
+              mxContent: sender.avatarUrlWithAgents ?? sender.avatarUrl,
+              name: senderDisplayName,
               client: event.room.client,
               presenceUserId: event.senderId,
             ),
             title: Text(L10n.of(context).sender),
-            subtitle: Text(
-              '${event.senderFromMemoryOrFallback.calcDisplayname()} [${event.senderId}]',
-            ),
+            subtitle: Text(senderDisplayName),
           ),
           ListTile(
             title: Text('${L10n.of(context).time}:'),

@@ -179,7 +179,8 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示名称
-  /// 优先级：自己的员工名称 > Matrix profile 缓存 > fallback
+  /// 优先级：自己的员工名称 > 普通用户 Matrix profile 缓存 > fallback
+  /// 对于看起来像 bot/agent 账号、但不属于自己的账号，不渲染别名，回退到 localpart。
   String? tryResolveDisplayNameByMatrixUserId(
     String? matrixUserId, {
     String? fallbackDisplayName,
@@ -195,9 +196,12 @@ class AgentService {
       return ownName;
     }
 
+    if (_shouldUseStrictBotDisplayName(key)) {
+      return null;
+    }
+
     final remote = _profilePresentationByUserId[key];
-    final remoteName =
-        _normalizeDisplayNameCandidate(remote?.displayName, key);
+    final remoteName = _normalizeDisplayNameCandidate(remote?.displayName, key);
     if (remoteName != null) {
       return remoteName;
     }
@@ -211,7 +215,8 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示名称
-  /// 优先级：自己的员工名称 > Matrix profile 缓存 > fallback > localpart
+  /// 优先级：自己的员工名称 > 普通用户 Matrix profile 缓存 > fallback > localpart
+  /// 对于非自己的 bot/agent 账号，强制回退到 localpart。
   String resolveDisplayNameByMatrixUserId(
     String? matrixUserId, {
     String? fallbackDisplayName,
@@ -307,7 +312,8 @@ class AgentService {
     }
 
     final agent = getAgentByMatrixUserId(key);
-    final ownAgentName = _normalizeDisplayNameCandidate(agent?.displayName, key);
+    final ownAgentName =
+        _normalizeDisplayNameCandidate(agent?.displayName, key);
     if (ownAgentName != null) {
       return ownAgentName;
     }
@@ -384,12 +390,16 @@ class AgentService {
   }) async {
     try {
       final profile = await client.getProfileFromUserId(matrixUserId);
+      final shouldUseStrictBotDisplayName =
+          _shouldUseStrictBotDisplayName(matrixUserId);
 
-      final displayName = _normalizeDisplayNameCandidate(
-            profile.displayName,
-            matrixUserId,
-          ) ??
-          _normalizeDisplayNameCandidate(fallbackDisplayName, matrixUserId);
+      final displayName = shouldUseStrictBotDisplayName
+          ? null
+          : _normalizeDisplayNameCandidate(
+                profile.displayName,
+                matrixUserId,
+              ) ??
+              _normalizeDisplayNameCandidate(fallbackDisplayName, matrixUserId);
 
       final avatarUrl = _normalizeAvatarUrl(profile.avatarUrl?.toString()) ??
           _normalizeAvatarUrl(fallbackAvatarUri?.toString());
@@ -417,7 +427,19 @@ class AgentService {
     }
   }
 
-  String? _normalizeDisplayNameCandidate(String? candidate, String matrixUserId) {
+  bool _shouldUseStrictBotDisplayName(String matrixUserId) {
+    if (getAgentByMatrixUserId(matrixUserId) != null) {
+      return false;
+    }
+    final localpart = matrixUserId.localpart?.trim().toLowerCase() ?? '';
+    if (localpart.isEmpty) {
+      return false;
+    }
+    return localpart.startsWith('agent-') || localpart.startsWith('agent_');
+  }
+
+  String? _normalizeDisplayNameCandidate(
+      String? candidate, String matrixUserId) {
     final trimmed = candidate?.trim() ?? '';
     if (trimmed.isEmpty || trimmed == matrixUserId) {
       return null;
@@ -520,9 +542,8 @@ class AgentService {
       return Uri.tryParse('${baseUri.origin}$raw');
     }
 
-    final basePath = baseUri.path.endsWith('/')
-        ? baseUri.path
-        : '${baseUri.path}/';
+    final basePath =
+        baseUri.path.endsWith('/') ? baseUri.path : '${baseUri.path}/';
     final baseWithSlash = baseUri.replace(path: basePath);
     return baseWithSlash.resolve(raw);
   }

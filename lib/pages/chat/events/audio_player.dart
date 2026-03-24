@@ -16,6 +16,7 @@ import 'package:psygo/config/themes.dart';
 import 'package:psygo/utils/error_reporter.dart';
 import 'package:psygo/utils/file_description.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/url_launcher.dart';
 import '../../../utils/matrix_sdk_extensions/event_extension.dart';
 import '../../../widgets/fluffy_chat_app.dart';
@@ -89,7 +90,7 @@ class AudioPlayerState extends State<AudioPlayerWidget> {
                     '/rooms/${widget.event.room.id}?event=${widget.event.eventId}',
                   ),
                   child: Text(
-                    '🎙️ ${audioPlayer.position.minuteSecondString} / ${audioPlayer.duration?.minuteSecondString} - ${widget.event.senderFromMemoryOrFallback.calcDisplayname()}',
+                    '🎙️ ${audioPlayer.position.minuteSecondString} / ${audioPlayer.duration?.minuteSecondString} - ${widget.event.senderFromMemoryOrFallback.calcDisplaynameWithAgents()}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

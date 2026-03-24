@@ -15,6 +15,7 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/file_description.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/string_color.dart';
@@ -1026,7 +1027,7 @@ class Message extends StatelessWidget {
                               onPressed: () => enterThread(event.eventId),
                               icon: const Icon(Icons.message),
                               label: Text(
-                                '${L10n.of(context).countReplies(threadChildren.length)} | ${threadChildren.first.calcLocalizedBodyFallback(
+                                '${L10n.of(context).countReplies(threadChildren.length)} | ${threadChildren.first.calcLocalizedBodyFallbackWithAgents(
                                   MatrixLocals(L10n.of(context)),
                                   withSenderNamePrefix: true,
                                 )}',

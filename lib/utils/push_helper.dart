@@ -14,6 +14,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -148,7 +149,7 @@ Future<void> _tryPushHelper(
   // Calculate the body
   final body = event.type == EventTypes.Encrypted
       ? l10n.newMessageInPsygo
-      : await event.calcLocalizedBody(
+      : await event.calcLocalizedBodyWithAgents(
           matrixLocals,
           plaintextBody: true,
           withSenderNamePrefix: false,
@@ -203,7 +204,9 @@ Future<void> _tryPushHelper(
 
   final id = notification.roomId.hashCode;
 
-  final senderName = event.senderFromMemoryOrFallback.calcDisplayname();
+  final senderName = event.senderFromMemoryOrFallback.calcDisplaynameWithAgents(
+    i18n: matrixLocals,
+  );
   // Show notification
 
   final newMessage = Message(
@@ -225,7 +228,7 @@ Future<void> _tryPushHelper(
       : null;
   messagingStyleInformation?.messages?.add(newMessage);
 
-  final roomName = event.room.getLocalizedDisplayname(MatrixLocals(l10n));
+  final roomName = event.room.getLocalizedDisplaynameWithAgents(matrixLocals);
 
   final notificationGroupId =
       event.room.isDirectChat ? 'directChats' : 'groupChats';
@@ -270,7 +273,7 @@ Future<void> _tryPushHelper(
           groupConversation: !event.room.isDirectChat,
           messages: [newMessage],
         ),
-    ticker: event.calcLocalizedBodyFallback(
+    ticker: event.calcLocalizedBodyFallbackWithAgents(
       matrixLocals,
       plaintextBody: true,
       withSenderNamePrefix: !event.room.isDirectChat,
@@ -309,7 +312,7 @@ Future<void> _tryPushHelper(
     iOS: iOSPlatformChannelSpecifics,
   );
 
-  final title = event.room.getLocalizedDisplayname(MatrixLocals(l10n));
+  final title = roomName;
 
   if (PlatformInfos.isAndroid && messagingStyleInformation == null) {
     await _setShortcut(event, l10n, title, roomAvatarFile);

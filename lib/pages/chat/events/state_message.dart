@@ -6,6 +6,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import '../../../config/app_config.dart';
 
@@ -46,7 +47,7 @@ class StateMessage extends StatelessWidget {
                         TextSpan(
                           children: [
                             TextSpan(
-                              text: event.calcLocalizedBodyFallback(
+                              text: event.calcLocalizedBodyFallbackWithAgents(
                                 MatrixLocals(L10n.of(context)),
                               ),
                             ),

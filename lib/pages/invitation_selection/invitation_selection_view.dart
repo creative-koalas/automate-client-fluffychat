@@ -5,6 +5,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
@@ -115,6 +116,7 @@ class InvitationSelectionView extends StatelessWidget {
                               ),
                             );
                           }
+                          final matrixLocals = MatrixLocals(L10n.of(context));
                           final contacts = snapshot.data!;
                           return ListView.builder(
                             physics: const NeverScrollableScrollPhysics(),
@@ -126,14 +128,19 @@ class InvitationSelectionView extends StatelessWidget {
                               canInvite: room.canInvite,
                               profile: Profile(
                                 avatarUrl: contacts[i].avatarUrl,
-                                displayName: contacts[i].calcDisplayname(),
+                                displayName:
+                                    contacts[i].calcDisplaynameWithAgents(
+                                  i18n: matrixLocals,
+                                ),
                                 userId: contacts[i].id,
                               ),
                               isMember: participants.contains(contacts[i].id),
                               onTap: () => controller.inviteAction(
                                 context,
                                 contacts[i].id,
-                                contacts[i].calcDisplayname(),
+                                contacts[i].calcDisplaynameWithAgents(
+                                  i18n: matrixLocals,
+                                ),
                               ),
                             ),
                           );
@@ -171,8 +178,9 @@ class _InviteContactListTile extends StatelessWidget {
     final directChatRoomId = client.getDirectChatFromUserId(profile.userId);
     final directChatRoom =
         directChatRoomId == null ? null : client.getRoomById(directChatRoomId);
+    final matrixLocals = MatrixLocals(l10n);
     final roomDisplayName =
-        directChatRoom?.getLocalizedDisplayname(MatrixLocals(l10n)).trim();
+        directChatRoom?.getLocalizedDisplaynameWithAgents(matrixLocals).trim();
     final agentDisplayName = AgentService.instance
         .getAgentByMatrixUserId(profile.userId)
         ?.displayName;
@@ -241,7 +249,9 @@ class _InviteContactListTile extends StatelessWidget {
       return normalizedAgentDisplayName;
     }
 
-    final userDisplayName = user?.calcDisplayname();
+    final userDisplayName = user?.calcDisplaynameWithAgents(
+      i18n: MatrixLocals(l10n),
+    );
     final normalizedUserDisplayName = userDisplayName?.trim();
     if (normalizedUserDisplayName != null &&
         normalizedUserDisplayName.isNotEmpty &&

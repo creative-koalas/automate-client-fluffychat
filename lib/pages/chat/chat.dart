@@ -36,6 +36,7 @@ import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
 import 'package:psygo/services/employee_work_template_visibility_service.dart';
@@ -956,7 +957,8 @@ class ChatController extends State<ChatPageWithRoom>
     unawaited(_loadChatRoomGuideState());
     unawaited(_loadQuickTipTemplates());
     if (PlatformInfos.isWindows) {
-      _globalScreenshotHotkeySub = DesktopScreenshotCapture.onGlobalHotkey.listen(
+      _globalScreenshotHotkeySub =
+          DesktopScreenshotCapture.onGlobalHotkey.listen(
         (dynamic _) {
           unawaited(_handleWindowsGlobalScreenshotHotkey());
         },
@@ -2216,7 +2218,8 @@ class ChatController extends State<ChatPageWithRoom>
           await WindowToFront.activate();
           await Future<void>.delayed(const Duration(milliseconds: 180));
         } catch (error) {
-          debugPrint('[Screenshot] Failed to restore window after capture: $error');
+          debugPrint(
+              '[Screenshot] Failed to restore window after capture: $error');
         }
       }
     }
@@ -2306,26 +2309,24 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() {
       replyEvent = null;
     });
-    room
-        .sendFileEvent(
-          file,
-          inReplyTo: replyTo,
-          threadRootEventId: activeThreadId,
-          extraContent: {
-            'info': {...file.info, 'duration': duration},
-            'org.matrix.msc3245.voice': {},
-            'org.matrix.msc1767.audio': {
-              'duration': duration,
-              'waveform': waveform,
-            },
-          },
-        )
-        .catchError((e) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text((e as Object).toLocalizedString(context))),
-          );
-          return null;
-        });
+    room.sendFileEvent(
+      file,
+      inReplyTo: replyTo,
+      threadRootEventId: activeThreadId,
+      extraContent: {
+        'info': {...file.info, 'duration': duration},
+        'org.matrix.msc3245.voice': {},
+        'org.matrix.msc1767.audio': {
+          'duration': duration,
+          'waveform': waveform,
+        },
+      },
+    ).catchError((e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text((e as Object).toLocalizedString(context))),
+      );
+      return null;
+    });
     return;
   }
 
@@ -2360,14 +2361,15 @@ class ChatController extends State<ChatPageWithRoom>
     if (selectedEvents.length == 1) {
       return selectedEvents.first
           .getDisplayEvent(timeline!)
-          .calcLocalizedBodyFallback(MatrixLocals(L10n.of(context)));
+          .calcLocalizedBodyFallbackWithAgents(MatrixLocals(L10n.of(context)));
     }
     for (final event in selectedEvents) {
       if (copyString.isNotEmpty) copyString += '\n\n';
-      copyString += event.getDisplayEvent(timeline!).calcLocalizedBodyFallback(
-            MatrixLocals(L10n.of(context)),
-            withSenderNamePrefix: true,
-          );
+      copyString +=
+          event.getDisplayEvent(timeline!).calcLocalizedBodyFallbackWithAgents(
+                MatrixLocals(L10n.of(context)),
+                withSenderNamePrefix: true,
+              );
     }
     return copyString;
   }
@@ -2699,12 +2701,13 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() {
       pendingText = sendController.text;
       editEvent = selectedEvents.first;
-      sendController.text =
-          editEvent!.getDisplayEvent(timeline!).calcLocalizedBodyFallback(
-                MatrixLocals(L10n.of(context)),
-                withSenderNamePrefix: false,
-                hideReply: true,
-              );
+      sendController.text = editEvent!
+          .getDisplayEvent(timeline!)
+          .calcLocalizedBodyFallbackWithAgents(
+            MatrixLocals(L10n.of(context)),
+            withSenderNamePrefix: false,
+            hideReply: true,
+          );
       selectedEvents.clear();
     });
     inputFocus.requestFocus();
@@ -3070,13 +3073,13 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void cancelReplyEventAction() => setState(() {
-    if (editEvent != null) {
-      sendController.text = pendingText;
-      pendingText = '';
-    }
-    replyEvent = null;
-    editEvent = null;
-  });
+        if (editEvent != null) {
+          sendController.text = pendingText;
+          pendingText = '';
+        }
+        replyEvent = null;
+        editEvent = null;
+      });
   void clearReplyEventAfterMediaSend() {
     if (!mounted || replyEvent == null) return;
     setState(() => replyEvent = null);

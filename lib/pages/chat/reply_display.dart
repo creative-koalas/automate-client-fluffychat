@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/matrix_mention_display_name.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'chat.dart';
 import 'events/reply_content.dart';
@@ -52,9 +53,8 @@ class ReplyDisplay extends StatelessWidget {
           Icon(
             isEdit ? Icons.edit_rounded : Icons.reply_rounded,
             size: 20,
-            color: isEdit
-                ? theme.colorScheme.tertiary
-                : theme.colorScheme.primary,
+            color:
+                isEdit ? theme.colorScheme.tertiary : theme.colorScheme.primary,
           ),
           const SizedBox(width: 12),
           // 内容
@@ -111,7 +111,7 @@ class _EditContent extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           renderMatrixMentionsWithDisplayName(
-            text: event.calcLocalizedBodyFallback(
+            text: event.calcLocalizedBodyFallbackWithAgents(
               MatrixLocals(L10n.of(context)),
               withSenderNamePrefix: false,
               hideReply: true,

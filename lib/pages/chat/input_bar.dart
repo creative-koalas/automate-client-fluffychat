@@ -12,6 +12,8 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/mxc_image.dart';
@@ -241,7 +243,9 @@ class InputBar extends StatelessWidget {
           ret.add({
             'type': 'room',
             'mxid': (r.canonicalAlias.isNotEmpty) ? r.canonicalAlias : r.id,
-            'displayname': r.getLocalizedDisplayname(),
+            'displayname': r.getLocalizedDisplaynameWithAgents(
+              MatrixLocals(L10n.of(context)),
+            ),
             'avatar_url': r.avatar?.toString(),
           });
         }

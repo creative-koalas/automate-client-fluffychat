@@ -8,6 +8,8 @@ import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -105,8 +107,10 @@ class KeyVerificationPageState extends State<KeyVerificationDialog> {
           .getRoomById(directChatId)!
           .unsafeGetUserFromMemoryOrFallback(widget.request.userId);
     }
-    final displayName =
-        user?.calcDisplayname() ?? widget.request.userId.localpart!;
+    final displayName = user?.calcDisplaynameWithAgents(
+          i18n: MatrixLocals(L10n.of(context)),
+        ) ??
+        widget.request.userId.localpart!;
     var title = Text(L10n.of(context).verifyTitle);
     Widget body;
     final buttons = <Widget>[];

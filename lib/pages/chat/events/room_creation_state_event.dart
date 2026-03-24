@@ -6,6 +6,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/date_time_extension.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 
@@ -19,7 +20,7 @@ class RoomCreationStateEvent extends StatelessWidget {
     final l10n = L10n.of(context);
     final matrixLocals = MatrixLocals(l10n);
     final theme = Theme.of(context);
-    final roomName = event.room.getLocalizedDisplayname(matrixLocals);
+    final roomName = event.room.getLocalizedDisplaynameWithAgents(matrixLocals);
 
     // 私聊时显示对方用户的头像
     final directChatMatrixID = event.room.directChatMatrixID;
@@ -34,9 +35,10 @@ class RoomCreationStateEvent extends StatelessWidget {
         avatarName = agent!.displayName;
       } else {
         // 非员工或员工没有头像，使用 Matrix 用户头像
-        final user = event.room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
-        avatarUrl = user.avatarUrl;
-        avatarName = user.calcDisplayname();
+        final user =
+            event.room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+        avatarUrl = user.avatarUrlWithAgents ?? user.avatarUrl;
+        avatarName = user.calcDisplaynameWithAgents(i18n: matrixLocals);
       }
     }
 

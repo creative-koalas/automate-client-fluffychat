@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/chat/chat.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 
@@ -60,7 +61,7 @@ class TypingIndicators extends StatelessWidget {
                         Avatar(
                           size: avatarSize,
                           mxContent: typingUsers.first.avatarUrl,
-                          name: typingUsers.first.calcDisplayname(),
+                          name: typingUsers.first.calcDisplaynameWithAgents(),
                         ),
                       if (typingUsers.length == 2)
                         Padding(
@@ -71,7 +72,7 @@ class TypingIndicators extends StatelessWidget {
                                 ? typingUsers.last.avatarUrl
                                 : null,
                             name: typingUsers.length == 2
-                                ? typingUsers.last.calcDisplayname()
+                                ? typingUsers.last.calcDisplaynameWithAgents()
                                 : '+${typingUsers.length - 1}',
                           ),
                         ),

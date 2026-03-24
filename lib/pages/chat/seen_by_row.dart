@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/chat/chat.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/room_status_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -41,8 +42,8 @@ class SeenByRow extends StatelessWidget {
                     : seenByUsers)
                 .map(
               (user) => Avatar(
-                mxContent: user.avatarUrl,
-                name: user.calcDisplayname(),
+                mxContent: user.avatarUrlWithAgents ?? user.avatarUrl,
+                name: user.calcDisplaynameWithAgents(),
                 size: 16,
               ),
             ),

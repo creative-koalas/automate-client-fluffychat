@@ -30,6 +30,7 @@ import 'package:matrix/matrix.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/voip/video_renderer.dart';
@@ -133,7 +134,7 @@ class Calling extends StatefulWidget {
 class MyCallingPage extends State<Calling> {
   Room? get room => call.room;
 
-  String get displayName => call.room.getLocalizedDisplayname(
+  String get displayName => call.room.getLocalizedDisplaynameWithAgents(
         MatrixLocals(L10n.of(widget.context)),
       );
 
@@ -458,7 +459,7 @@ class MyCallingPage extends State<Calling> {
     if (call.localHold || call.remoteOnHold) {
       var title = '';
       if (call.localHold) {
-        title = '${call.room.getLocalizedDisplayname(
+        title = '${call.room.getLocalizedDisplaynameWithAgents(
           MatrixLocals(L10n.of(widget.context)),
         )} held the call.';
       } else if (call.remoteOnHold) {
