@@ -150,31 +150,48 @@ jobs:
           echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
           echo "file_name=$file_name" >> "$GITHUB_OUTPUT"
       - name: Install Inno Setup
+        id: inno
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-
-          for ($attempt = 1; $attempt -le 3; $attempt++) {
-            try {
-              choco install innosetup --no-progress -y
-              break
-            } catch {
-              if ($attempt -eq 3) {
-                throw
-              }
-              Start-Sleep -Seconds (10 * $attempt)
+          function Resolve-IsccPath {
+            $candidates = @()
+            if (${env:ProgramFiles(x86)}) {
+              $candidates += (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe")
             }
+            if ($env:ProgramFiles) {
+              $candidates += (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
+            }
+            foreach ($candidate in $candidates) {
+              if ($candidate -and (Test-Path $candidate)) {
+                return $candidate
+              }
+            }
+            return $null
           }
 
-          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
-            throw "ISCC not found after install: $iscc"
+          $iscc = Resolve-IsccPath
+          if (-not $iscc) {
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+              try {
+                choco install innosetup --no-progress -y
+                break
+              } catch {
+                if ($attempt -eq 3) {
+                  throw
+                }
+                Start-Sleep -Seconds (10 * $attempt)
+              }
+            }
+            $iscc = Resolve-IsccPath
           }
 
-          $zhLang = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\Languages\ChineseSimplified.isl"
-          if (-not (Test-Path $zhLang)) {
-            throw "Chinese language file not found: $zhLang"
+          if (-not $iscc) {
+            throw "ISCC not found after install."
           }
+
+          Write-Host "Using ISCC: $iscc"
+          "iscc_path=$iscc" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Download VC++ Redistributable
         shell: powershell
         run: |
@@ -212,8 +229,9 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
+          $issScript = "windows\innosetup\build-windows-installer.iss"
           $requiredPaths = @(
-            "installer.iss",
+            $issScript,
             "build\windows\x64\runner\Release\psygo.exe",
             "VC_redist.x64.exe"
           )
@@ -225,9 +243,10 @@ jobs:
           }
 
           New-Item -ItemType Directory -Force -Path "dist/windows" | Out-Null
+          $outputDir = Join-Path $PWD "dist\windows"
           $fileName = "${{ steps.meta.outputs.file_name }}"
           $baseName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
-          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          $iscc = "${{ steps.inno.outputs.iscc_path }}"
           if (-not (Test-Path $iscc)) {
             throw "ISCC not found: $iscc"
           }
@@ -235,9 +254,15 @@ jobs:
           & $iscc `
             "/Qp" `
             "/DMyAppVersion=${{ steps.meta.outputs.version_tag }}" `
-            "/O$PWD\dist\windows" `
+            "/O$outputDir" `
             "/F$baseName" `
-            "installer.iss"
+            $issScript
+
+          $outputFile = Join-Path $outputDir $fileName
+          if (-not (Test-Path $outputFile)) {
+            throw "Installer output not found: $outputFile"
+          }
+          Write-Host "Installer generated: $outputFile"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.file_name }}
