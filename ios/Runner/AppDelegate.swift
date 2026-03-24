@@ -38,7 +38,7 @@ import Flutter
     // Set FlutterViewController background color to prevent black screen
     // when native modal views (like Aliyun auth) are dismissed
     if let controller = window?.rootViewController as? FlutterViewController {
-      controller.view.backgroundColor = UIColor.white
+      controller.view.backgroundColor = UIColor.systemBackground
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

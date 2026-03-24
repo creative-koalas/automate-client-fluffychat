@@ -17,19 +17,24 @@ import 'package:psygo/utils/size_string.dart';
 import '../../utils/resize_video.dart';
 
 class SendFileDialog extends StatefulWidget {
-  final Room room;
+  final List<Room> rooms;
   final List<XFile> files;
   final BuildContext outerContext;
   final String? threadLastEventId, threadRootEventId;
 
-  const SendFileDialog({
-    required this.room,
+  SendFileDialog({
+    Room? room,
+    List<Room>? rooms,
     required this.files,
     required this.outerContext,
     required this.threadLastEventId,
     required this.threadRootEventId,
     super.key,
-  });
+  })  : assert(
+          room != null || (rooms != null && rooms.isNotEmpty),
+          'Either room or rooms must be provided.',
+        ),
+        rooms = rooms ?? [room!];
 
   @override
   SendFileDialogState createState() => SendFileDialogState();
@@ -169,8 +174,10 @@ class SendFileDialogState extends State<SendFileDialog> {
     final l10n = L10n.of(context);
 
     try {
-      if (!widget.room.otherPartyCanReceiveMessages) {
-        throw OtherPartyCanNotReceiveMessages();
+      for (final room in widget.rooms) {
+        if (!room.otherPartyCanReceiveMessages) {
+          throw OtherPartyCanNotReceiveMessages();
+        }
       }
       scaffoldMessenger.showLoadingSnackBar(l10n.prepareSendingAttachment);
       Navigator.of(context, rootNavigator: false).pop();
@@ -224,16 +231,22 @@ class SendFileDialogState extends State<SendFileDialog> {
         }
 
         final label = _labelTextController.text.trim();
+        final threadRootEventId =
+            widget.rooms.length == 1 ? widget.threadRootEventId : null;
+        final threadLastEventId =
+            widget.rooms.length == 1 ? widget.threadLastEventId : null;
 
         try {
-          await widget.room.sendFileEvent(
-            file,
-            thumbnail: thumbnail,
-            shrinkImageMaxDimension: compress ? 1600 : null,
-            extraContent: label.isEmpty ? null : {'body': label},
-            threadRootEventId: widget.threadRootEventId,
-            threadLastEventId: widget.threadLastEventId,
-          );
+          for (final room in widget.rooms) {
+            await room.sendFileEvent(
+              file,
+              thumbnail: thumbnail,
+              shrinkImageMaxDimension: compress ? 1600 : null,
+              extraContent: label.isEmpty ? null : {'body': label},
+              threadRootEventId: threadRootEventId,
+              threadLastEventId: threadLastEventId,
+            );
+          }
         } on MatrixException catch (e) {
           final retryAfterMs = e.retryAfterMs;
           if (e.error != MatrixError.M_LIMIT_EXCEEDED || retryAfterMs == null) {
@@ -253,12 +266,14 @@ class SendFileDialogState extends State<SendFileDialog> {
 
           scaffoldMessenger.showLoadingSnackBar(l10n.sendingAttachment);
 
-          await widget.room.sendFileEvent(
-            file,
-            thumbnail: thumbnail,
-            shrinkImageMaxDimension: compress ? 1600 : null,
-            extraContent: label.isEmpty ? null : {'body': label},
-          );
+          for (final room in widget.rooms) {
+            await room.sendFileEvent(
+              file,
+              thumbnail: thumbnail,
+              shrinkImageMaxDimension: compress ? 1600 : null,
+              extraContent: label.isEmpty ? null : {'body': label},
+            );
+          }
         }
       }
       scaffoldMessenger.clearSnackBars();
