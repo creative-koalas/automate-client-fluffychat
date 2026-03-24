@@ -12,13 +12,17 @@ import '../utils/platform_infos.dart';
 import 'force_update_bus.dart';
 
 class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
-  ForceUpdateController(this._api);
+  ForceUpdateController(
+    this._api, {
+    BuildContext? Function()? dialogContextProvider,
+  }) : _dialogContextProvider = dialogContextProvider;
 
   static const String _lockStorageKey = 'force_update_lock_v1';
   static const Duration _foregroundPollInterval = Duration(minutes: 5);
   static const Duration _backgroundPollInterval = Duration(minutes: 15);
 
   final PsygoApiClient _api;
+  final BuildContext? Function()? _dialogContextProvider;
 
   ForceUpdateSnapshot _status = ForceUpdateSnapshot.open(
     source: ForceUpdateSnapshot.sourceVersionCheck,
@@ -112,9 +116,10 @@ class ForceUpdateController extends ChangeNotifier with WidgetsBindingObserver {
     _updateActionInFlight = true;
     _notifyListenersIfAlive();
     try {
+      final dialogContext = _dialogContextProvider?.call() ?? context;
       final service = AppUpdateService(_api);
       await service.showForceUpdateDialog(
-        context: context,
+        context: dialogContext,
         snapshot: _status,
       );
     } finally {

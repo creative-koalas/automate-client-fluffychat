@@ -358,23 +358,42 @@ class AppUpdateService {
       return;
     }
 
-    final downloadUrl = snapshot.downloadUrl?.trim() ?? '';
+    final currentVersion = await PlatformInfos.getVersion();
+    final platform = _getPlatformName();
+    var downloadUrl = snapshot.downloadUrl?.trim() ?? '';
     if (downloadUrl.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(L10n.of(context).appUpdateDownloadLinkFailed)),
-      );
+      final refreshed = await _refreshDownloadUrl(currentVersion, platform);
+      downloadUrl = refreshed?.trim() ?? '';
+    }
+
+    if (downloadUrl.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).appUpdateDownloadLinkFailed)),
+        );
+      }
       return;
     }
 
-    final currentVersion = await PlatformInfos.getVersion();
-    final platform = _getPlatformName();
+    final navigatorContext =
+        Navigator.maybeOf(context, rootNavigator: true)?.context ?? context;
+    if (Navigator.maybeOf(navigatorContext, rootNavigator: true) == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).appUpdateDownloadLinkFailed)),
+        );
+      }
+      return;
+    }
+
     final latestVersion = snapshot.latestVersion.trim().isNotEmpty
         ? snapshot.latestVersion.trim()
         : currentVersion;
 
     await showDialog<bool>(
-      context: context,
+      context: navigatorContext,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (builderContext) => _UpdateDialog(
         latestVersion: latestVersion,
         forceUpdate: true,

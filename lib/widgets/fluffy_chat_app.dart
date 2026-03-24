@@ -90,6 +90,9 @@ class PsygoApp extends StatelessWidget {
                     lazy: false,
                     create: (context) => ForceUpdateController(
                       context.read<PsygoApiClient>(),
+                      dialogContextProvider: () =>
+                          PsygoApp.router.routerDelegate.navigatorKey
+                              .currentContext,
                     )..start(),
                     child: MaintenanceGate(
                       child: ForceUpdateGate(
