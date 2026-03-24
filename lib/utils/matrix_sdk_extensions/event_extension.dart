@@ -15,6 +15,10 @@ extension LocalizedBody on Event {
       showFutureLoadingDialog(
         context: context,
         futureWithProgress: (onProgress) {
+          debugPrint(
+            '[DownloadFile] Start fetching attachment: '
+            'eventId=$eventId, msgType=$messageType, body=$body, infoSize=${infoMap['size']}',
+          );
           final fileSize =
               infoMap['size'] is int ? infoMap['size'] as int : null;
           return downloadAndDecryptAttachment(
@@ -27,12 +31,20 @@ extension LocalizedBody on Event {
 
   void saveFile(BuildContext context) async {
     final matrixFile = await _getFile(context);
+    debugPrint(
+      '[DownloadFile] Fetch result for save: '
+      'eventId=$eventId, hasFile=${matrixFile.result != null}, error=${matrixFile.error}',
+    );
 
     matrixFile.result?.save(context);
   }
 
   void shareFile(BuildContext context) async {
     final matrixFile = await _getFile(context);
+    debugPrint(
+      '[DownloadFile] Fetch result for share: '
+      'eventId=$eventId, hasFile=${matrixFile.result != null}, error=${matrixFile.error}',
+    );
     inspect(matrixFile);
 
     matrixFile.result?.share(context);
