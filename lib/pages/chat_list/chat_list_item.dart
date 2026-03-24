@@ -11,6 +11,7 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_list_preview_sender_name.dart';
 import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/utils/room_status_extension.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
@@ -69,67 +70,6 @@ class _ChatListItemState extends State<ChatListItem> {
 
   void _onAgentsChanged() {
     if (mounted) setState(() {});
-  }
-
-  String _resolveDisplayNameForMatrixUserId({
-    required String? matrixUserId,
-    required MatrixLocals matrixLocals,
-  }) {
-    final key = matrixUserId?.trim() ?? '';
-    if (key.isEmpty) {
-      return '';
-    }
-    final agent = AgentService.instance.getAgentByMatrixUserId(key);
-    final agentName = agent?.displayName.trim() ?? '';
-    if (agentName.isNotEmpty) {
-      return agentName;
-    }
-    final user = room.unsafeGetUserFromMemoryOrFallback(key);
-    return user.calcDisplayname(i18n: matrixLocals);
-  }
-
-  String _resolveRoomDisplayName(BuildContext context) {
-    final l10n = L10n.of(context);
-    final matrixLocals = MatrixLocals(l10n);
-
-    if (room.name.isNotEmpty) {
-      return room.name;
-    }
-
-    final canonicalAlias = room.canonicalAlias.localpart;
-    if (canonicalAlias != null && canonicalAlias.isNotEmpty) {
-      return canonicalAlias;
-    }
-
-    final directChatMatrixId = room.directChatMatrixID;
-    final heroIds = <String>[...?room.summary.mHeroes];
-    if (directChatMatrixId != null && heroIds.isEmpty) {
-      heroIds.add(directChatMatrixId);
-    }
-
-    final names = <String>[];
-    for (final heroId in heroIds) {
-      if (heroId.isEmpty || heroId == room.client.userID) {
-        continue;
-      }
-      final resolvedName = _resolveDisplayNameForMatrixUserId(
-        matrixUserId: heroId,
-        matrixLocals: matrixLocals,
-      ).trim();
-      if (resolvedName.isNotEmpty) {
-        names.add(resolvedName);
-      }
-    }
-
-    if (names.isNotEmpty) {
-      final joinedNames = names.join(', ');
-      if (room.isAbandonedDMRoom) {
-        return l10n.wasDirectChatDisplayName(joinedNames);
-      }
-      return room.isDirectChat ? joinedNames : l10n.groupWith(joinedNames);
-    }
-
-    return room.getLocalizedDisplayname(matrixLocals);
   }
 
   bool _usesSenderNamePrefix({
@@ -239,7 +179,10 @@ class _ChatListItemState extends State<ChatListItem> {
     final backgroundColor = activeChat
         ? theme.colorScheme.secondaryContainer
         : null;
-    final displayname = _resolveRoomDisplayName(context);
+    final displayname = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
     final currentFilter = filter;
     if (currentFilter != null &&
         !displayname.toLowerCase().contains(currentFilter)) {
@@ -430,7 +373,8 @@ class _ChatListItemState extends State<ChatListItem> {
                                         borderRadius: null,
                                         mxContent: user.avatarUrl,
                                         size: avatarSize,
-                                        name: _resolveDisplayNameForMatrixUserId(
+                                        name: resolveDisplayNameForMatrixUserId(
+                                          room: room,
                                           matrixUserId: directChatMatrixId,
                                           matrixLocals: MatrixLocals(
                                             L10n.of(context),
