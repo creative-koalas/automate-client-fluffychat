@@ -55,7 +55,6 @@ import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/share_intent_transfer.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
-import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
@@ -903,10 +902,11 @@ class ChatController extends State<ChatPageWithRoom>
       AgentService.instance.attachLiveStatusWatcher();
       _groupLiveStatusWatcherAttached = true;
     }
-    final lastEventThreadId =
-        room.lastEvent?.relationshipType == RelationshipTypes.thread
-            ? room.lastEvent?.relationshipEventId
-            : null;
+    final lastEvent = room.lastEvent;
+    final lastEventThreadId = lastEvent != null &&
+            lastEvent.relationshipType == RelationshipTypes.thread
+        ? lastEvent.relationshipEventId
+        : null;
     readMarkerEventId =
         _safeRoomHasNewMessages() ? lastEventThreadId ?? room.fullyRead : '';
     WidgetsBinding.instance.addObserver(this);
@@ -1322,6 +1322,8 @@ class ChatController extends State<ChatPageWithRoom>
   int _pendingAttachmentSerial = 0;
   bool pendingAttachmentsCompress = true;
   PendingScreenshotReview? _pendingScreenshotReview;
+  // Default to mention-first in group chats; user can switch via composer menu.
+  bool _groupSendShouldPromptMention = true;
 
   List<PendingAttachment> get pendingAttachments =>
       List.unmodifiable(_pendingAttachments);
@@ -1333,6 +1335,17 @@ class ChatController extends State<ChatPageWithRoom>
       _pendingScreenshotReview?.confirmed == true;
   bool get hasCompressiblePendingAttachments =>
       _pendingAttachments.any(_isCompressibleAttachment);
+  bool get isGroupChat => room.directChatMatrixID == null;
+  bool get groupSendShouldPromptMention =>
+      isGroupChat && _groupSendShouldPromptMention;
+
+  void toggleGroupSendMode() {
+    if (!isGroupChat) return;
+    setState(() {
+      _groupSendShouldPromptMention = !_groupSendShouldPromptMention;
+    });
+  }
+
   bool get canSendCurrentDraft {
     final hasPendingScreenshot =
         PlatformInfos.isDesktop && hasConfirmedScreenshotToSend;
@@ -1554,7 +1567,7 @@ class ChatController extends State<ChatPageWithRoom>
         Matrix.of(context).setActiveClient(c);
       });
 
-  Future<void> send() async {
+  Future<void> send({bool? promptMentionIfMissing}) async {
     // If user sends a message while WebView is open, return to chat first.
     if (_webEntryOpen || _webEntryLoading) {
       closeWebEntry();
@@ -1583,9 +1596,11 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
-    // 群聊中，消息不含 @ 时弹出 mention 提示
-    final isGroupChat = room.directChatMatrixID == null;
-    if (isGroupChat && !trimmedText.contains('@')) {
+    final shouldPromptMention =
+        isGroupChat &&
+        (promptMentionIfMissing ?? _groupSendShouldPromptMention);
+    // 群聊中，消息不含 @ 时按发送模式弹出 mention 提示
+    if (shouldPromptMention && !trimmedText.contains('@')) {
       final mention = await _showMentionHint();
       if (mention == null) return; // 用户取消
       if (mention.isNotEmpty) {

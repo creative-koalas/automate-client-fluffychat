@@ -221,6 +221,8 @@ class ChatInputRow extends StatelessWidget {
           );
         }
         final canSend = controller.canSendCurrentDraft;
+        final sendWithMentionHint =
+            controller.isGroupChat && controller.groupSendShouldPromptMention;
         final mobileShouldCollapseInputActions = PlatformInfos.isMobile &&
             (controller.inputFocus.hasFocus ||
                 controller.sendController.text.isNotEmpty);
@@ -538,8 +540,10 @@ class ChatInputRow extends StatelessWidget {
                         curve: FluffyThemes.curveBounce,
                         scale: canSend ? 1.0 : 0.9,
                         child: IconButton(
-                          tooltip: L10n.of(context).send,
-                          onPressed: canSend ? controller.send : null,
+                          tooltip: sendWithMentionHint
+                              ? L10n.of(context).mentionHintTitle
+                              : L10n.of(context).send,
+                          onPressed: canSend ? () => controller.send() : null,
                           style: IconButton.styleFrom(
                             backgroundColor: theme.bubbleColor,
                             foregroundColor: theme.onBubbleColor,
@@ -547,7 +551,17 @@ class ChatInputRow extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          icon: const Icon(Icons.send_rounded, size: 22),
+                          icon: sendWithMentionHint
+                              ? Text(
+                                  '@',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.onBubbleColor,
+                                    height: 1,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 22),
                         ),
                       ),
                     ),

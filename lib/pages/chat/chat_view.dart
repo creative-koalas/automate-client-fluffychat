@@ -481,6 +481,30 @@ class ChatView extends StatelessWidget {
       );
     }
     final bottomSheetPadding = FluffyThemes.isColumnMode(context) ? 16.0 : 8.0;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final sendModeSwitchWidth =
+        (viewportWidth * 0.12).clamp(40.0, 56.0).toDouble();
+    final sendModeSwitchHeight = (sendModeSwitchWidth * 0.58)
+        .clamp(22.0, 30.0)
+        .toDouble();
+    final sendModeSwitchRightInset =
+        ((viewportWidth * 0.035) - 5.0).clamp(6.0, 21.0).toDouble();
+    final sendModeSwitchPadding = (sendModeSwitchHeight * 0.12)
+        .clamp(2.0, 4.0)
+        .toDouble();
+    final sendModeSwitchRadius = sendModeSwitchHeight / 2;
+    final sendModeSwitchKnobSize =
+        sendModeSwitchHeight - (sendModeSwitchPadding * 2);
+    final sendModeSwitchTrackIconSize = (sendModeSwitchHeight * 0.45)
+        .clamp(10.0, 14.0)
+        .toDouble();
+    final sendModeSwitchKnobIconSize = (sendModeSwitchKnobSize * 0.58)
+        .clamp(10.0, 14.0)
+        .toDouble();
+    final shouldShowGroupSendSwitch =
+        controller.isGroupChat &&
+        controller.selectedEvents.isEmpty &&
+        controller.room.isAbandonedDMRoom != true;
     final scrollUpBannerEventId = controller.scrollUpBannerEventId;
 
     final accountConfig = Matrix.of(context).client.applicationAccountConfig;
@@ -780,14 +804,155 @@ class ChatView extends StatelessWidget {
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              ValueListenableBuilder(
-                                                valueListenable: AgentService
-                                                    .instance
-                                                    .agentsNotifier,
-                                                builder: (context, _, __) =>
-                                                    EmployeeWorkingIndicator(
-                                                      controller,
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  Expanded(
+                                                    child: ValueListenableBuilder(
+                                                      valueListenable:
+                                                          AgentService
+                                                              .instance
+                                                              .agentsNotifier,
+                                                      builder:
+                                                          (
+                                                            context,
+                                                            _,
+                                                            __,
+                                                          ) =>
+                                                              EmployeeWorkingIndicator(
+                                                                controller,
+                                                              ),
                                                     ),
+                                                  ),
+                                                  if (shouldShowGroupSendSwitch)
+                                                    Padding(
+                                                      padding: EdgeInsets.only(
+                                                        right:
+                                                            sendModeSwitchRightInset,
+                                                      ),
+                                                      child: Tooltip(
+                                                        message: controller
+                                                                .groupSendShouldPromptMention
+                                                            ? L10n.of(context)
+                                                                .mentionHintTitle
+                                                            : L10n.of(context)
+                                                                .sendDirectly,
+                                                        child: GestureDetector(
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .opaque,
+                                                          onTap: controller
+                                                              .toggleGroupSendMode,
+                                                          child:
+                                                              AnimatedContainer(
+                                                            duration: FluffyThemes
+                                                                .durationFast,
+                                                            curve: FluffyThemes
+                                                                .curveStandard,
+                                                            width:
+                                                                sendModeSwitchWidth,
+                                                            height:
+                                                                sendModeSwitchHeight,
+                                                            padding:
+                                                                EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      sendModeSwitchPadding,
+                                                                ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .surfaceContainerHigh,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                        sendModeSwitchRadius,
+                                                                      ),
+                                                              border: Border.all(
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .outlineVariant,
+                                                              ),
+                                                            ),
+                                                            child: Stack(
+                                                              alignment:
+                                                                  Alignment
+                                                                      .center,
+                                                              children: [
+                                                                Row(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .spaceBetween,
+                                                                  children: [
+                                                                    Icon(
+                                                                      Icons
+                                                                          .alternate_email_rounded,
+                                                                      size:
+                                                                          sendModeSwitchTrackIconSize,
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .onSurfaceVariant,
+                                                                    ),
+                                                                    Icon(
+                                                                      Icons
+                                                                          .send_rounded,
+                                                                      size:
+                                                                          sendModeSwitchTrackIconSize,
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .onSurfaceVariant,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                                AnimatedAlign(
+                                                                  duration:
+                                                                      FluffyThemes
+                                                                          .durationFast,
+                                                                  curve: FluffyThemes
+                                                                      .curveBounce,
+                                                                  alignment:
+                                                                      controller.groupSendShouldPromptMention
+                                                                      ? Alignment
+                                                                            .centerLeft
+                                                                      : Alignment
+                                                                            .centerRight,
+                                                                  child:
+                                                                      Container(
+                                                                    width:
+                                                                        sendModeSwitchKnobSize,
+                                                                    height:
+                                                                        sendModeSwitchKnobSize,
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .primary,
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            sendModeSwitchKnobSize /
+                                                                                2,
+                                                                          ),
+                                                                    ),
+                                                                    child: Icon(
+                                                                      controller.groupSendShouldPromptMention
+                                                                          ? Icons.alternate_email_rounded
+                                                                          : Icons.send_rounded,
+                                                                      size:
+                                                                          sendModeSwitchKnobIconSize,
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .onPrimary,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
                                               if (controller
                                                       .hasOwnEmployeeInRoom &&
@@ -865,8 +1030,9 @@ class ChatView extends StatelessWidget {
                                                               Icons
                                                                   .forum_outlined,
                                                             ),
-                                                            onPressed: controller
-                                                                .recreateChat,
+                                                            onPressed:
+                                                                controller
+                                                                    .recreateChat,
                                                             label: Text(
                                                               L10n.of(
                                                                 context,
