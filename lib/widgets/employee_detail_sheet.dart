@@ -72,8 +72,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     }
 
     try {
-      final plugins =
-          await _pluginRepository.getAgentPlugins(widget.employee.agentId);
+      final plugins = await _pluginRepository.getAgentPlugins(
+        widget.employee.agentId,
+      );
       if (mounted) {
         setState(() {
           _plugins = plugins.where((p) => p.isActive).toList();
@@ -296,16 +297,16 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
               ),
               child:
                   employee.avatarUrl != null && employee.avatarUrl!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: CustomNetworkImage(
-                            employee.avatarUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildAvatarFallback(theme),
-                          ),
-                        )
-                      : _buildAvatarFallback(theme),
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: CustomNetworkImage(
+                        employee.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _buildAvatarFallback(theme),
+                      ),
+                    )
+                  : _buildAvatarFallback(theme),
             ),
             const SizedBox(height: 20),
 
@@ -322,8 +323,10 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             // Matrix ID
             if (employee.matrixUserId != null)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(20),
@@ -369,8 +372,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             // 开始聊天按钮
             Expanded(
               child: FilledButton.icon(
-                onPressed:
-                    employee.isReady && !_isStartingChat ? _startChat : null,
+                onPressed: employee.isReady && !_isStartingChat
+                    ? _startChat
+                    : null,
                 icon: _isStartingChat
                     ? const SizedBox(
                         width: 18,
@@ -495,9 +499,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              side: BorderSide(
-                color: theme.colorScheme.error.withAlpha(80),
-              ),
+              side: BorderSide(color: theme.colorScheme.error.withAlpha(80)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -673,6 +675,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
 
   String _getWorkStatusText(L10n l10n, String status) {
     switch (status) {
+      case 'waking':
+        return '⚡ ${l10n.employeeWaking}';
       case 'working':
         return '💼 ${l10n.employeeWorking}';
       case 'slacking':
@@ -684,6 +688,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
 
   Color _getWorkStatusColor(String status) {
     switch (status) {
+      case 'waking':
+        return Colors.orange;
       case 'working':
         return Colors.green;
       case 'slacking':
@@ -747,8 +753,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color:
-                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
+              color: theme.colorScheme.secondaryContainer.withValues(
+                alpha: 0.5,
+              ),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
@@ -788,8 +795,8 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
         color: isExpired
             ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
             : isExpiringSoon
-                ? Colors.orange.withValues(alpha: 0.15)
-                : theme.colorScheme.surfaceContainerLow,
+            ? Colors.orange.withValues(alpha: 0.15)
+            : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -801,22 +808,22 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
             color: isExpired
                 ? theme.colorScheme.error
                 : isExpiringSoon
-                    ? Colors.orange
-                    : theme.colorScheme.onSurfaceVariant,
+                ? Colors.orange
+                : theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
           Text(
             isExpired
                 ? l10n.contractExpired
                 : isExpiringSoon
-                    ? l10n.contractExpiringSoon(daysRemaining)
-                    : l10n.contractExpiresOn(_formatDate(expiryDate)),
+                ? l10n.contractExpiringSoon(daysRemaining)
+                : l10n.contractExpiresOn(_formatDate(expiryDate)),
             style: theme.textTheme.labelMedium?.copyWith(
               color: isExpired
                   ? theme.colorScheme.error
                   : isExpiringSoon
-                      ? Colors.orange
-                      : theme.colorScheme.onSurfaceVariant,
+                  ? Colors.orange
+                  : theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -839,11 +846,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.access_time,
-          size: 14,
-          color: theme.colorScheme.outline,
-        ),
+        Icon(Icons.access_time, size: 14, color: theme.colorScheme.outline),
         const SizedBox(width: 6),
         Text(
           l10n.lastActiveSummary(_formatRelativeTime(lastActiveDate)),
@@ -881,9 +884,7 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.deleteEmployee),
-        content: Text(
-          l10n.deleteEmployeeConfirm(widget.employee.displayName),
-        ),
+        content: Text(l10n.deleteEmployeeConfirm(widget.employee.displayName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -962,8 +963,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
                             color: isSelected
                                 ? theme.colorScheme.onPrimaryContainer
                                 : theme.colorScheme.onSurfaceVariant,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -1022,8 +1024,9 @@ class _EmployeeDetailSheetState extends State<EmployeeDetailSheet> {
                             color: isSelected
                                 ? theme.colorScheme.onPrimaryContainer
                                 : theme.colorScheme.onSurfaceVariant,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                           ),
                         ),
                       ),

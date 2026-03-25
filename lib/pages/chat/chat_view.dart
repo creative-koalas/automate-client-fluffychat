@@ -52,10 +52,7 @@ class ChatView extends StatelessWidget {
           width: 8,
           height: 8,
           margin: const EdgeInsets.only(top: 5),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -97,7 +94,7 @@ class ChatView extends StatelessWidget {
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
               preferredPlacement: GuideBubblePlacement.below,
-              estimatedContentHeight: 148,
+              estimatedContentHeight: 184,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -113,6 +110,13 @@ class ChatView extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     label: l10n.employeeSlacking,
                     hint: l10n.employeeSlackingHint,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildGuideStatusItem(
+                    context,
+                    color: Colors.orange,
+                    label: l10n.employeeWaking,
+                    hint: l10n.employeeWakingHint,
                   ),
                   const SizedBox(height: 10),
                   _buildGuideStatusItem(
@@ -231,10 +235,8 @@ class ChatView extends StatelessWidget {
       title: l10n.employeeWorkTemplatesTitle,
       subtitle: l10n.employeeWorkTemplatesSubtitle,
       templates: _employeeWorkTemplates(context),
-      onTemplateTap: (template) => _handleEmployeeWorkTemplateTap(
-        context,
-        template,
-      ),
+      onTemplateTap: (template) =>
+          _handleEmployeeWorkTemplateTap(context, template),
       margin: margin,
       onClose: onClose,
     );
@@ -249,13 +251,14 @@ class ChatView extends StatelessWidget {
       isDesktop ? 16 : 12,
       8,
     );
-    final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
+    final showEmployeeWorkTemplateBar =
+        controller.isEmployeeChat &&
         controller.activeThreadId == null &&
         !controller.employeeWorkTemplateDismissed;
     final onCloseEmployeeWorkTemplate =
         controller.canDismissEmployeeWorkTemplateBar
-            ? controller.dismissEmployeeWorkTemplateBar
-            : null;
+        ? controller.dismissEmployeeWorkTemplateBar
+        : null;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
         ? _buildEmployeeWorkTemplateBar(
             context,
@@ -273,9 +276,7 @@ class ChatView extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: controller.clearSingleSelectedEvent,
-                child: ChatEventList(
-                  controller: controller,
-                ),
+                child: ChatEventList(controller: controller),
               ),
               if (controller.readMarkerEventId.isNotEmpty)
                 Positioned(
@@ -301,10 +302,7 @@ class ChatView extends StatelessWidget {
                               color: theme.colorScheme.onPrimaryContainer,
                             ),
                             const SizedBox(width: 4),
-                            const Text(
-                              '新消息',
-                              style: TextStyle(fontSize: 12),
-                            ),
+                            const Text('新消息', style: TextStyle(fontSize: 12)),
                           ],
                         ),
                       ),
@@ -333,8 +331,9 @@ class ChatView extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.message_outlined),
             tooltip: L10n.of(context).replyInThread,
-            onPressed: () => controller
-                .enterThread(controller.selectedEvents.single.eventId),
+            onPressed: () => controller.enterThread(
+              controller.selectedEvents.single.eventId,
+            ),
           ),
         if (controller.canPinSelectedEvents)
           IconButton(
@@ -393,10 +392,7 @@ class ChatView extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.shield_outlined,
-                        color: Colors.red,
-                      ),
+                      const Icon(Icons.shield_outlined, color: Colors.red),
                       const SizedBox(width: 12),
                       Text(L10n.of(context).reportMessage),
                     ],
@@ -412,15 +408,18 @@ class ChatView extends StatelessWidget {
           ValueListenableBuilder<List<Agent>>(
             valueListenable: AgentService.instance.agentsNotifier,
             builder: (context, _, __) {
-              final agent = AgentService.instance
-                  .getAgentByMatrixUserId(directChatMatrixID);
+              final agent = AgentService.instance.getAgentByMatrixUserId(
+                directChatMatrixID,
+              );
               if (agent == null) return const SizedBox.shrink();
               final theme = Theme.of(context);
               final l10n = L10n.of(context);
-              final isDisabled = !controller.webEntryOpen &&
+              final isDisabled =
+                  !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
                   !agent.canOpenWebEntry;
-              final isVisuallyDisabled = isDisabled || agent.isResting;
+              final isVisuallyDisabled =
+                  isDisabled || agent.isInteractiveUnavailable;
 
               return KeyedSubtree(
                 key: controller.webEntryGuideKey,
@@ -428,12 +427,12 @@ class ChatView extends StatelessWidget {
                   tooltip: controller.webEntryOpen
                       ? '返回聊天'
                       : (isVisuallyDisabled
-                          ? l10n.agentWebEntryUnavailable
-                          : '打开 WebView'),
+                            ? l10n.agentWebEntryUnavailable
+                            : '打开 WebView'),
                   onPressed:
                       controller.webEntryOpen || controller.webEntryLoading
-                          ? controller.closeWebEntry
-                          : () => controller.openWebEntry(),
+                      ? controller.closeWebEntry
+                      : () => controller.openWebEntry(),
                   icon: controller.webEntryLoading
                       ? const SizedBox(
                           width: 20,
@@ -504,7 +503,8 @@ class ChatView extends StatelessWidget {
     final accountConfig = Matrix.of(context).client.applicationAccountConfig;
 
     return PopScope(
-      canPop: controller.selectedEvents.isEmpty &&
+      canPop:
+          controller.selectedEvents.isEmpty &&
           !controller.showEmojiPicker &&
           controller.activeThreadId == null &&
           !controller.webEntryOpen &&
@@ -552,8 +552,8 @@ class ChatView extends StatelessWidget {
                     ),
                     backgroundColor: controller.selectedEvents.isEmpty
                         ? controller.activeThreadId != null
-                            ? theme.colorScheme.secondaryContainer
-                            : null
+                              ? theme.colorScheme.secondaryContainer
+                              : null
                         : theme.colorScheme.tertiaryContainer,
                     automaticallyImplyLeading: false,
                     leading: controller.selectMode
@@ -564,30 +564,28 @@ class ChatView extends StatelessWidget {
                             color: theme.colorScheme.onTertiaryContainer,
                           )
                         : activeThreadId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: controller.closeThread,
-                                tooltip: L10n.of(context).backToMainChat,
-                                color: theme.colorScheme.onSecondaryContainer,
-                              )
-                            : FluffyThemes.isColumnMode(context)
-                                ? null
-                                : StreamBuilder<Object>(
-                                    stream: Matrix.of(context)
-                                        .client
-                                        .onSync
-                                        .stream
-                                        .where(
-                                          (syncUpdate) =>
-                                              syncUpdate.hasRoomUpdate,
-                                        ),
-                                    builder: (context, _) => UnreadRoomsBadge(
-                                      filter: (r) => r.id != controller.roomId,
-                                      badgePosition:
-                                          BadgePosition.topEnd(end: 8, top: 4),
-                                      child: const Center(child: BackButton()),
-                                    ),
-                                  ),
+                        ? IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: controller.closeThread,
+                            tooltip: L10n.of(context).backToMainChat,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          )
+                        : FluffyThemes.isColumnMode(context)
+                        ? null
+                        : StreamBuilder<Object>(
+                            stream: Matrix.of(context).client.onSync.stream
+                                .where(
+                                  (syncUpdate) => syncUpdate.hasRoomUpdate,
+                                ),
+                            builder: (context, _) => UnreadRoomsBadge(
+                              filter: (r) => r.id != controller.roomId,
+                              badgePosition: BadgePosition.topEnd(
+                                end: 8,
+                                top: 4,
+                              ),
+                              child: const Center(child: BackButton()),
+                            ),
+                          ),
                     titleSpacing: FluffyThemes.isColumnMode(context) ? 24 : 0,
                     title: ChatAppBarTitle(controller),
                     actions: _appBarActions(context),
@@ -602,8 +600,9 @@ class ChatView extends StatelessWidget {
                               height: ChatAppBarListTile.fixedHeight,
                               child: Center(
                                 child: TextButton.icon(
-                                  onPressed: () => controller
-                                      .scrollToEventId(activeThreadId),
+                                  onPressed: () => controller.scrollToEventId(
+                                    activeThreadId,
+                                  ),
                                   icon: const Icon(Icons.message),
                                   label: Text(L10n.of(context).replyInThread),
                                   style: TextButton.styleFrom(
@@ -645,7 +644,8 @@ class ChatView extends StatelessWidget {
                   ),
                   floatingActionButtonLocation:
                       FloatingActionButtonLocation.miniCenterFloat,
-                  floatingActionButton: controller.showScrollDownButton &&
+                  floatingActionButton:
+                      controller.showScrollDownButton &&
                           controller.selectedEvents.isEmpty
                       ? Padding(
                           padding: const EdgeInsets.only(bottom: 56.0),
@@ -662,8 +662,9 @@ class ChatView extends StatelessWidget {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: theme.colorScheme.primary
-                                      .withValues(alpha: 0.2),
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -713,7 +714,8 @@ class ChatView extends StatelessWidget {
                           child: Column(
                             children: <Widget>[
                               Expanded(
-                                child: controller.webEntryOpen &&
+                                child:
+                                    controller.webEntryOpen &&
                                         controller.webEntryUrl != null
                                     ? AgentWebEntryView(
                                         url: controller.webEntryUrl!,
@@ -721,10 +723,7 @@ class ChatView extends StatelessWidget {
                                     : _buildTimelinePane(context),
                               ),
                               if (controller.showScrollDownButton)
-                                Divider(
-                                  height: 1,
-                                  color: theme.dividerColor,
-                                ),
+                                Divider(height: 1, color: theme.dividerColor),
                               if (controller.room.isExtinct)
                                 Container(
                                   margin: EdgeInsets.all(bottomSheetPadding),
@@ -768,17 +767,23 @@ class ChatView extends StatelessWidget {
                                         children: [
                                           Material(
                                             clipBehavior: Clip.hardEdge,
-                                            color: controller
-                                                    .selectedEvents.isNotEmpty
-                                                ? theme.colorScheme
-                                                    .tertiaryContainer
-                                                : theme.colorScheme
-                                                    .surfaceContainerHigh,
+                                            color:
+                                                controller
+                                                    .selectedEvents
+                                                    .isNotEmpty
+                                                ? theme
+                                                      .colorScheme
+                                                      .tertiaryContainer
+                                                : theme
+                                                      .colorScheme
+                                                      .surfaceContainerHigh,
                                             borderRadius:
                                                 const BorderRadius.all(
-                                              Radius.circular(24),
-                                            ),
-                                            child: controller.room
+                                                  Radius.circular(24),
+                                                ),
+                                            child:
+                                                controller
+                                                        .room
                                                         .isAbandonedDMRoom ==
                                                     true
                                                 ? Row(
@@ -787,13 +792,11 @@ class ChatView extends StatelessWidget {
                                                             .spaceEvenly,
                                                     children: [
                                                       TextButton.icon(
-                                                        style: TextButton
-                                                            .styleFrom(
+                                                        style: TextButton.styleFrom(
                                                           padding:
-                                                              const EdgeInsets
-                                                                  .all(
-                                                            16,
-                                                          ),
+                                                              const EdgeInsets.all(
+                                                                16,
+                                                              ),
                                                           foregroundColor: theme
                                                               .colorScheme
                                                               .error,
@@ -805,18 +808,17 @@ class ChatView extends StatelessWidget {
                                                         onPressed: controller
                                                             .leaveChat,
                                                         label: Text(
-                                                          L10n.of(context)
-                                                              .declineInvitation,
+                                                          L10n.of(
+                                                            context,
+                                                          ).declineInvitation,
                                                         ),
                                                       ),
                                                       TextButton.icon(
-                                                        style: TextButton
-                                                            .styleFrom(
+                                                        style: TextButton.styleFrom(
                                                           padding:
-                                                              const EdgeInsets
-                                                                  .all(
-                                                            16,
-                                                          ),
+                                                              const EdgeInsets.all(
+                                                                16,
+                                                              ),
                                                         ),
                                                         icon: const Icon(
                                                           Icons.forum_outlined,
@@ -824,8 +826,9 @@ class ChatView extends StatelessWidget {
                                                         onPressed: controller
                                                             .recreateChat,
                                                         label: Text(
-                                                          L10n.of(context)
-                                                              .reopenChat,
+                                                          L10n.of(
+                                                            context,
+                                                          ).reopenChat,
                                                         ),
                                                       ),
                                                     ],
@@ -858,10 +861,7 @@ class ChatView extends StatelessWidget {
                           Container(
                             color: theme.scaffoldBackgroundColor.withAlpha(230),
                             alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.upload_outlined,
-                              size: 100,
-                            ),
+                            child: const Icon(Icons.upload_outlined, size: 100),
                           ),
                       ],
                     ),
@@ -914,8 +914,9 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
     if (directChatMatrixID == null) return;
 
     // 从缓存中快速查找（用于立即显示）
-    final cachedEmployee =
-        AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+    final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(
+      directChatMatrixID,
+    );
     if (cachedEmployee != null) {
       setState(() => _employee = cachedEmployee);
     } else {
@@ -928,8 +929,9 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
   Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
     try {
       final page = await _repository.getUserAgents(limit: 50);
-      final agent =
-          page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
+      final agent = page.agents
+          .where((a) => a.matrixUserId == matrixUserId)
+          .firstOrNull;
       if (mounted && agent != null) {
         setState(() => _employee = agent);
       }

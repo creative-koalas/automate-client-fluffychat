@@ -190,13 +190,15 @@ class _EmployeeCardState extends State<EmployeeCard>
       return;
     }
     if (!mounted) return;
-    final lines =
-        _onboardingLines(Localizations.localeOf(context).languageCode);
+    final lines = _onboardingLines(
+      Localizations.localeOf(context).languageCode,
+    );
     if (lines.isEmpty) return;
     final maxIndex = lines.length - 1;
 
-    final nextLineIndex =
-        _onboardingLineIndex < maxIndex ? _onboardingLineIndex + 1 : maxIndex;
+    final nextLineIndex = _onboardingLineIndex < maxIndex
+        ? _onboardingLineIndex + 1
+        : maxIndex;
     if (nextLineIndex != _onboardingLineIndex) {
       setState(() {
         _onboardingLineIndex = nextLineIndex;
@@ -230,15 +232,13 @@ class _EmployeeCardState extends State<EmployeeCard>
         .round();
   }
 
-  List<InlineSpan> _onboardingTypewriterSpans(
-    L10n l10n,
-    TextStyle? textStyle,
-  ) {
+  List<InlineSpan> _onboardingTypewriterSpans(L10n l10n, TextStyle? textStyle) {
     if (!_shouldTypewriter(widget)) {
       return [TextSpan(text: l10n.employeeOnboarding)];
     }
-    final lines =
-        _onboardingLines(Localizations.localeOf(context).languageCode);
+    final lines = _onboardingLines(
+      Localizations.localeOf(context).languageCode,
+    );
     if (lines.isEmpty) {
       return [TextSpan(text: l10n.employeeOnboarding)];
     }
@@ -259,9 +259,7 @@ class _EmployeeCardState extends State<EmployeeCard>
       final fadeProgress = (rawTyped - fullCount).clamp(0.0, 1.0);
       final spans = <InlineSpan>[];
       if (fullCount > 0) {
-        spans.add(
-          TextSpan(text: String.fromCharCodes(runes.take(fullCount))),
-        );
+        spans.add(TextSpan(text: String.fromCharCodes(runes.take(fullCount))));
       }
       if (fullCount < runeCount) {
         final fadingChar = String.fromCharCodes([runes[fullCount]]);
@@ -433,30 +431,28 @@ class _EmployeeCardState extends State<EmployeeCard>
                 ],
               )
             : isOffboarding
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.error.withValues(
-                        alpha: 0.06 + glowOpacity * 0.12,
-                      ),
-                      theme.colorScheme.surfaceContainerLow,
-                      theme.colorScheme.errorContainer.withValues(
-                        alpha: 0.08 + glowOpacity * 0.1,
-                      ),
-                    ],
-                  )
-                : LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.primaryContainer
-                          .withValues(alpha: 0.05),
-                      theme.colorScheme.surfaceContainerLow,
-                      theme.colorScheme.secondaryContainer
-                          .withValues(alpha: 0.03),
-                    ],
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.error.withValues(
+                    alpha: 0.06 + glowOpacity * 0.12,
                   ),
+                  theme.colorScheme.surfaceContainerLow,
+                  theme.colorScheme.errorContainer.withValues(
+                    alpha: 0.08 + glowOpacity * 0.1,
+                  ),
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.05),
+                  theme.colorScheme.surfaceContainerLow,
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.03),
+                ],
+              ),
         boxShadow: isOnboarding
             ? [
                 BoxShadow(
@@ -472,34 +468,34 @@ class _EmployeeCardState extends State<EmployeeCard>
                 ),
               ]
             : isOffboarding
-                ? [
-                    BoxShadow(
-                      color: theme.colorScheme.error.withValues(
-                        alpha: glowOpacity * 0.6,
-                      ),
-                      blurRadius: 24,
-                      spreadRadius: 0,
-                      offset: const Offset(0, 8),
-                    ),
-                    BoxShadow(
-                      color: theme.colorScheme.shadow.withAlpha(12),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.06),
-                      blurRadius: 16,
-                      spreadRadius: -4,
-                      offset: const Offset(0, 6),
-                    ),
-                    BoxShadow(
-                      color: theme.colorScheme.shadow.withAlpha(6),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.error.withValues(
+                    alpha: glowOpacity * 0.6,
+                  ),
+                  blurRadius: 24,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withAlpha(12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withAlpha(6),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Card(
         elevation: 0,
@@ -508,10 +504,7 @@ class _EmployeeCardState extends State<EmployeeCard>
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: borderColor,
-            width: 1.5,
-          ),
+          side: BorderSide(color: borderColor, width: 1.5),
         ),
         child: InkWell(
           onTap: widget.onTap,
@@ -538,8 +531,9 @@ class _EmployeeCardState extends State<EmployeeCard>
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: (isOnboarding || isOffboarding)
-                              ? theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7)
+                              ? theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                )
                               : null,
                         ),
                         maxLines: 1,
@@ -597,20 +591,20 @@ class _EmployeeCardState extends State<EmployeeCard>
                               ),
                             ]
                           : isOnboarding
-                              ? [
-                                  Colors.orange.withValues(
-                                    alpha: 0.3 + _pulseAnimation.value * 0.3,
-                                  ),
-                                  Colors.deepOrange.withValues(
-                                    alpha: 0.2 + _pulseAnimation.value * 0.2,
-                                  ),
-                                ]
-                              : [
-                                  theme.colorScheme.primary
-                                      .withValues(alpha: 0.15),
-                                  theme.colorScheme.secondary
-                                      .withValues(alpha: 0.1),
-                                ],
+                          ? [
+                              Colors.orange.withValues(
+                                alpha: 0.3 + _pulseAnimation.value * 0.3,
+                              ),
+                              Colors.deepOrange.withValues(
+                                alpha: 0.2 + _pulseAnimation.value * 0.2,
+                              ),
+                            ]
+                          : [
+                              theme.colorScheme.primary.withValues(alpha: 0.15),
+                              theme.colorScheme.secondary.withValues(
+                                alpha: 0.1,
+                              ),
+                            ],
                     ),
                   ),
                 );
@@ -636,8 +630,9 @@ class _EmployeeCardState extends State<EmployeeCard>
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color:
-                      theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+                  color: theme.colorScheme.primaryContainer.withValues(
+                    alpha: 0.2,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: theme.colorScheme.primary.withValues(alpha: 0.1),
@@ -646,7 +641,8 @@ class _EmployeeCardState extends State<EmployeeCard>
                     ),
                   ],
                 ),
-                child: widget.employee.avatarUrl != null &&
+                child:
+                    widget.employee.avatarUrl != null &&
                         widget.employee.avatarUrl!.isNotEmpty
                     ? ClipOval(
                         child: Opacity(
@@ -696,10 +692,7 @@ class _EmployeeCardState extends State<EmployeeCard>
       decoration: BoxDecoration(
         color: dotColor,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: theme.colorScheme.surface,
-          width: 2,
-        ),
+        border: Border.all(color: theme.colorScheme.surface, width: 2),
       ),
     );
   }
@@ -713,6 +706,8 @@ class _EmployeeCardState extends State<EmployeeCard>
     }
 
     switch (widget.employee.computedWorkStatus) {
+      case 'waking':
+        return '⚡ ${l10n.employeeWaking}';
       case 'working':
         return '💼 ${l10n.employeeWorking}';
       case 'slacking':
@@ -724,6 +719,8 @@ class _EmployeeCardState extends State<EmployeeCard>
 
   Color _getWorkStatusColor(String status) {
     switch (status) {
+      case 'waking':
+        return Colors.orange;
       case 'working':
         return Colors.green;
       case 'slacking':

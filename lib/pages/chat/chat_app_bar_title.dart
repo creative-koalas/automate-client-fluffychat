@@ -30,10 +30,13 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   /// 开发预览：
   /// --dart-define=PREVIEW_EMPLOYEE_STATUS=cycle
   ///   在 UI 中显示切换按钮，可循环预览多种状态
-  static const String _previewEmployeeStatus =
-      String.fromEnvironment('PREVIEW_EMPLOYEE_STATUS', defaultValue: '');
+  static const String _previewEmployeeStatus = String.fromEnvironment(
+    'PREVIEW_EMPLOYEE_STATUS',
+    defaultValue: '',
+  );
   static const List<String> _previewStatusCycleModes = <String>[
     'auto',
+    'waking',
     'working',
     'slacking',
     'resting',
@@ -78,8 +81,9 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     if (directChatMatrixID == null) return;
 
     // AgentService 更新后，尝试从缓存获取最新员工数据
-    final cachedEmployee =
-        AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+    final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(
+      directChatMatrixID,
+    );
     if (cachedEmployee != null &&
         _employee?.agentId == cachedEmployee.agentId) {
       // 如果是同一员工，更新数据（可能包含新的 avatarUrl）
@@ -95,8 +99,9 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     if (directChatMatrixID == null) return;
 
     // 从缓存中快速查找（用于立即显示）
-    final cachedEmployee =
-        AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+    final cachedEmployee = AgentService.instance.getAgentByMatrixUserId(
+      directChatMatrixID,
+    );
     if (cachedEmployee != null) {
       setState(() => _employee = cachedEmployee);
       _startPolling(cachedEmployee.agentId);
@@ -110,8 +115,9 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
     try {
       final page = await _repository.getUserAgents(limit: 50);
-      final agent =
-          page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
+      final agent = page.agents
+          .where((a) => a.matrixUserId == matrixUserId)
+          .firstOrNull;
       if (mounted && agent != null) {
         AgentService.instance.updateAgent(agent);
         setState(() => _employee = agent);
@@ -167,14 +173,15 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     }
 
     final theme = Theme.of(context);
-    final showPreviewStatusButton = _isInteractivePreviewEnabled &&
+    final showPreviewStatusButton =
+        _isInteractivePreviewEnabled &&
         room.directChatMatrixID != null &&
         _employee != null;
     final onProfileTap = controller.isArchived
         ? null
         : () => FluffyThemes.isThreeColumnMode(context)
-            ? controller.toggleDisplayChatDetailsColumn()
-            : context.go('/rooms/${room.id}/details');
+              ? controller.toggleDisplayChatDetailsColumn()
+              : context.go('/rooms/${room.id}/details');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -235,8 +242,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                 // 群聊：不显示状态
                 room.directChatMatrixID != null
                     ? (_employee != null
-                        ? _buildEmployeeWorkStatus(context, _employee!)
-                        : _buildPresenceStatus(context, room))
+                          ? _buildEmployeeWorkStatus(context, _employee!)
+                          : _buildPresenceStatus(context, room))
                     : const SizedBox.shrink(),
               ],
             ),
@@ -256,8 +263,9 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       if (_employee != null &&
           _employee!.avatarUrl != null &&
           _employee!.avatarUrl!.isNotEmpty) {
-        final avatarUri =
-            AgentService.instance.parseAvatarUri(_employee!.avatarUrl);
+        final avatarUri = AgentService.instance.parseAvatarUri(
+          _employee!.avatarUrl,
+        );
         if (avatarUri != null) {
           return Avatar(
             mxContent: avatarUri,
@@ -267,11 +275,13 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
         }
       }
       // 其次从 AgentService 缓存获取员工头像
-      final agentAvatarUri =
-          AgentService.instance.getAgentAvatarUri(directChatMatrixID);
+      final agentAvatarUri = AgentService.instance.getAgentAvatarUri(
+        directChatMatrixID,
+      );
       if (agentAvatarUri != null) {
-        final agent =
-            AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
+        final agent = AgentService.instance.getAgentByMatrixUserId(
+          directChatMatrixID,
+        );
         return Avatar(
           mxContent: agentAvatarUri,
           name: agent!.displayName,
@@ -291,9 +301,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     // 群聊使用房间头像
     return Avatar(
       mxContent: room.avatar,
-      name: room.getLocalizedDisplayname(
-        MatrixLocals(L10n.of(context)),
-      ),
+      name: room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
       size: 36,
       borderRadius: BorderRadius.circular(12),
     );
@@ -361,9 +369,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: dotColor.withAlpha(26),
-                        border: Border.all(
-                          color: dotColor.withAlpha(120),
-                        ),
+                        border: Border.all(color: dotColor.withAlpha(120)),
                       ),
                       child: Text(
                         'i',
@@ -385,10 +391,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     );
   }
 
-  Future<void> _showFullStatusHint(
-    BuildContext context,
-    String hint,
-  ) async {
+  Future<void> _showFullStatusHint(BuildContext context, String hint) async {
     final now = DateTime.now();
     final lastHintAt = _lastStatusHintAt;
     if (lastHintAt != null &&
@@ -405,10 +408,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
       ..showSnackBar(
         SnackBar(
           content: PlatformInfos.isMobile
-              ? InkWell(
-                  onTap: messenger.hideCurrentSnackBar,
-                  child: Text(hint),
-                )
+              ? InkWell(onTap: messenger.hideCurrentSnackBar, child: Text(hint))
               : Text(hint),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
@@ -418,6 +418,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
   String _getWorkStatusText(L10n l10n, String status) {
     switch (status) {
+      case 'waking':
+        return '⚡ ${l10n.employeeWaking}';
       case 'working':
         return '💼 ${l10n.employeeWorking}';
       case 'slacking':
@@ -447,6 +449,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
   String _previewStatusLabel(L10n l10n, String status) {
     switch (status) {
+      case 'waking':
+        return l10n.employeeWaking;
       case 'working':
         return l10n.employeeWorking;
       case 'slacking':
@@ -502,6 +506,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
   String _getWorkStatusHint(L10n l10n, String status) {
     switch (status) {
+      case 'waking':
+        return l10n.employeeWakingHint;
       case 'working':
         return l10n.employeeWorkingHint;
       case 'slacking':
@@ -513,6 +519,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
 
   Color _getWorkStatusColor(String status) {
     switch (status) {
+      case 'waking':
+        return Colors.orange;
       case 'working':
         return Colors.green;
       case 'slacking':
@@ -527,9 +535,11 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
     return StreamBuilder(
       stream: room.client.onSyncStatus.stream,
       builder: (context, snapshot) {
-        final status = room.client.onSyncStatus.value ??
+        final status =
+            room.client.onSyncStatus.value ??
             const SyncStatusUpdate(SyncStatus.waitingForResponse);
-        final hide = FluffyThemes.isColumnMode(context) ||
+        final hide =
+            FluffyThemes.isColumnMode(context) ||
             (room.client.onSync.value != null &&
                 status.status != SyncStatus.error &&
                 room.client.prevBatch != null);
