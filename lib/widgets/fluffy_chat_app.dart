@@ -702,6 +702,22 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
 
+      // 尝试加载协议 URL，授权页协议与手机号登录页保持一致
+      String? termsUrl;
+      String? privacyUrl;
+      try {
+        final agreements = await context.read<PsygoApiClient>().getAgreements();
+        for (final agreement in agreements) {
+          if (agreement.type == 'terms') {
+            termsUrl = agreement.url;
+          } else if (agreement.type == 'privacy') {
+            privacyUrl = agreement.url;
+          }
+        }
+      } catch (e) {
+        debugPrint('[AuthGate] Failed to load agreement URLs: $e');
+      }
+
       // 先关闭可能存在的授权页，避免 "授权页已存在" 错误
       await OneClickLoginService.quitLoginPage();
 
@@ -709,6 +725,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final loginToken = await OneClickLoginService.performOneClickLogin(
         secretKey: PsygoConfig.aliyunOneClickSecretKey,
         timeout: 10000,
+        termsUrl: termsUrl,
+        privacyUrl: privacyUrl,
       );
 
       debugPrint('[AuthGate] Got token from Aliyun, calling backend...');

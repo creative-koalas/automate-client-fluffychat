@@ -40,8 +40,11 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
             accelerateLogin(timeout: timeout, result: result)
 
         case "oneClickLogin":
-            let timeout = (call.arguments as? [String: Any])?["timeout"] as? Int ?? 5000
-            oneClickLogin(timeout: timeout, result: result)
+            let args = call.arguments as? [String: Any]
+            let timeout = args?["timeout"] as? Int ?? 5000
+            let termsUrl = args?["termsUrl"] as? String
+            let privacyUrl = args?["privacyUrl"] as? String
+            oneClickLogin(timeout: timeout, termsUrl: termsUrl, privacyUrl: privacyUrl, result: result)
 
         case "checkEnvAvailable":
             checkEnvAvailable(result: result)
@@ -140,7 +143,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    private func oneClickLogin(timeout: Int, result: @escaping FlutterResult) {
+    private func oneClickLogin(timeout: Int, termsUrl: String?, privacyUrl: String?, result: @escaping FlutterResult) {
         print("OneClickLogin iOS: Starting login with timeout: \(timeout), preLoginSuccess: \(isPreLoginSuccess)")
 
         guard let viewController = getTopViewController() else {
@@ -155,7 +158,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         let timeoutSeconds = TimeInterval(timeout) / 1000.0
 
         // 配置授权页 UI
-        let model = buildAuthUIModel()
+        let model = buildAuthUIModel(termsUrl: termsUrl, privacyUrl: privacyUrl)
 
         TXCommonHandler.sharedInstance().getLoginToken(withTimeout: timeoutSeconds, controller: viewController, model: model) { [weak self] resultDic in
             // resultDic 在新版 SDK 中不再是 Optional 类型
@@ -249,8 +252,14 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
     // MARK: - UI Configuration
 
-    private func buildAuthUIModel() -> TXCustomModel {
+    private func buildAuthUIModel(termsUrl: String?, privacyUrl: String?) -> TXCustomModel {
         let model = TXCustomModel()
+        let resolvedTermsUrl = termsUrl?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .flatMap { $0.isEmpty ? nil : $0 }
+        let resolvedPrivacyUrl = privacyUrl?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .flatMap { $0.isEmpty ? nil : $0 }
 
         // ========== 状态栏 ==========
         model.prefersStatusBarHidden = false
@@ -360,8 +369,26 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
             )
         }
 
-        // ========== 其他登录方式（隐藏） ==========
-        model.changeBtnIsHidden = true
+        // ========== 其他号码登录（位于一键登录按钮下方） ==========
+        model.changeBtnIsHidden = false
+        model.changeBtnTitle = NSAttributedString(
+            string: "其他号码登录",
+            attributes: [
+                .foregroundColor: UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0),
+                .font: UIFont.systemFont(ofSize: 15, weight: .medium),
+                .underlineStyle: NSUnderlineStyle.single.rawValue
+            ]
+        )
+        model.changeBtnFrameBlock = { _, superViewSize, _ in
+            let horizontalMargin: CGFloat = 32
+            let btnHeight: CGFloat = 28
+            return CGRect(
+                x: horizontalMargin,
+                y: 406 + statusBarHeight,
+                width: superViewSize.width - horizontalMargin * 2,
+                height: btnHeight
+            )
+        }
 
         // ========== 隐私协议 ==========
         model.checkBoxIsHidden = false
@@ -375,8 +402,12 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // 协议文案
         model.privacyPreText = "登录即同意"
         model.privacySufText = ""
-        model.privacyOne = ["《用户协议》", "https://psygoai.com/legal/user-agreement.html"]
-        model.privacyTwo = ["《隐私政策》", "https://psygoai.com/legal/privacy-policy.html"]
+        if let resolvedTermsUrl {
+            model.privacyOne = ["《用户协议》", resolvedTermsUrl]
+        }
+        if let resolvedPrivacyUrl {
+            model.privacyTwo = ["《隐私政策》", resolvedPrivacyUrl]
+        }
         model.privacyConectTexts = ["和", "、", "、"]
         model.privacyColors = [
             UIColor(red: 0x99/255.0, green: 0x99/255.0, blue: 0x99/255.0, alpha: 1.0),  // #999999
