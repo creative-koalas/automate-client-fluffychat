@@ -221,7 +221,6 @@ class ChatInputRow extends StatelessWidget {
         final mobileShouldCollapseInputActions = PlatformInfos.isMobile &&
             (controller.inputFocus.hasFocus ||
                 controller.sendController.text.isNotEmpty);
-
         // 正常输入模式
         return SizedBox(
           width: double.infinity,
@@ -237,10 +236,7 @@ class ChatInputRow extends StatelessWidget {
                   AnimatedContainer(
                     duration: FluffyThemes.durationFast,
                     curve: FluffyThemes.curveStandard,
-                    width: mobileShouldCollapseInputActions ||
-                            controller.sendController.text.isNotEmpty
-                        ? 0
-                        : height,
+                    width: height,
                     height: height,
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(),
@@ -258,9 +254,7 @@ class ChatInputRow extends StatelessWidget {
                     AnimatedContainer(
                       duration: FluffyThemes.durationFast,
                       curve: FluffyThemes.curveStandard,
-                      width: mobileShouldCollapseInputActions
-                          ? 0
-                          : height,
+                      width: mobileShouldCollapseInputActions ? 0 : height,
                       height: height,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
@@ -320,8 +314,7 @@ class ChatInputRow extends StatelessWidget {
                     AnimatedContainer(
                       duration: FluffyThemes.durationFast,
                       curve: FluffyThemes.curveStandard,
-                      width: mobileShouldCollapseInputActions ||
-                              controller.sendController.text.isNotEmpty
+                      width: controller.sendController.text.isNotEmpty
                           ? 0
                           : height,
                       height: height,
