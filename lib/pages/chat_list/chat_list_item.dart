@@ -90,6 +90,14 @@ class _ChatListItemState extends State<ChatListItem> {
           user.displayName ?? user.calcDisplayname(i18n: matrixLocals),
       fallbackAvatarUri: user.avatarUrl,
     );
+    if (!room.isDirectChat) {
+      AgentService.instance.ensureGroupDisplayNameByMatrixUserId(key);
+      final groupDisplayName =
+          AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(key);
+      if (groupDisplayName != null) {
+        return groupDisplayName;
+      }
+    }
     return AgentService.instance.resolveDisplayNameByMatrixUserId(
       key,
       fallbackDisplayName: user.calcDisplayname(i18n: matrixLocals),

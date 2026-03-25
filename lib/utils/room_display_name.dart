@@ -13,6 +13,14 @@ String resolveDisplayNameForMatrixUserId({
   if (key.isEmpty) {
     return '';
   }
+  if (!room.isDirectChat) {
+    AgentService.instance.ensureGroupDisplayNameByMatrixUserId(key);
+    final groupDisplayName =
+        AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(key);
+    if (groupDisplayName != null) {
+      return groupDisplayName;
+    }
+  }
   final agent = AgentService.instance.getAgentByMatrixUserId(key);
   final agentName = agent?.displayName.trim() ?? '';
   if (agentName.isNotEmpty) {

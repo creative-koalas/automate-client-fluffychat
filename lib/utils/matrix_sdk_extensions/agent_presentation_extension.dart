@@ -8,8 +8,8 @@ extension AgentUserPresentationExtension on User {
     agentService.ensureMatrixProfilePresentation(this);
     final fallbackDisplayName =
         i18n == null ? calcDisplayname() : calcDisplayname(i18n: i18n);
-    return agentService.resolveDisplayNameByMatrixUserId(
-      id,
+    return agentService.resolveDisplayName(
+      this,
       fallbackDisplayName: fallbackDisplayName,
     );
   }
