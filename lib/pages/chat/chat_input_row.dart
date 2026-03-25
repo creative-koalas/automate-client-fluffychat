@@ -61,6 +61,9 @@ class ChatInputRow extends StatelessWidget {
         PlatformInfos.isDesktop && controller.hasPendingAttachments;
 
     const height = 48.0;
+    const actionButtonWidth = 36.0;
+    const actionIconTapSize = 36.0;
+    const leadingButtonsInset = 2.0;
 
     if (!controller.room.otherPartyCanReceiveMessages) {
       return Center(
@@ -232,16 +235,23 @@ class ChatInputRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: leadingButtonsInset),
                   AnimatedContainer(
                     duration: FluffyThemes.durationFast,
                     curve: FluffyThemes.curveStandard,
-                    width: height,
+                    width: actionButtonWidth,
                     height: height,
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(),
                     clipBehavior: Clip.hardEdge,
                     child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: actionIconTapSize,
+                        height: actionIconTapSize,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 22,
                       icon: const Icon(Icons.add_circle_outline),
                       color: theme.colorScheme.onPrimaryContainer,
                       onPressed: () {
@@ -254,13 +264,21 @@ class ChatInputRow extends StatelessWidget {
                     AnimatedContainer(
                       duration: FluffyThemes.durationFast,
                       curve: FluffyThemes.curveStandard,
-                      width: mobileShouldCollapseInputActions ? 0 : height,
+                      width: mobileShouldCollapseInputActions
+                          ? 0
+                          : actionButtonWidth,
                       height: height,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
                       clipBehavior: Clip.hardEdge,
                       // 禁用录像功能，点击相机按钮直接拍照
                       child: IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: actionIconTapSize,
+                          height: actionIconTapSize,
+                        ),
+                        visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.camera_alt_outlined),
                         onPressed: () {
                           if (controller.blockFileIfResting()) return;
@@ -268,7 +286,7 @@ class ChatInputRow extends StatelessWidget {
                             AddPopupMenuActions.photoCamera,
                           );
                         },
-                        iconSize: height * 0.5,
+                        iconSize: 20,
                         color: theme.colorScheme.onPrimaryContainer,
                       ),
                       // child: PopupMenuButton(
@@ -316,7 +334,7 @@ class ChatInputRow extends StatelessWidget {
                       curve: FluffyThemes.curveStandard,
                       width: controller.sendController.text.isNotEmpty
                           ? 0
-                          : height,
+                          : actionButtonWidth,
                       height: height,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
@@ -368,6 +386,10 @@ class ChatInputRow extends StatelessWidget {
                               },
                               child: IconButton(
                                 padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: actionIconTapSize,
+                                  height: actionIconTapSize,
+                                ),
                                 visualDensity: VisualDensity.compact,
                                 icon: const Icon(
                                   Icons.screenshot_monitor_outlined,
@@ -387,11 +409,18 @@ class ChatInputRow extends StatelessWidget {
                     curve: FluffyThemes.curveStandard,
                     height: height,
                     // Keep emoji button visible on mobile while input actions collapse.
-                    width: height,
+                    width: actionButtonWidth,
                     alignment: Alignment.center,
                     clipBehavior: Clip.hardEdge,
                     decoration: const BoxDecoration(),
                     child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: actionIconTapSize,
+                        height: actionIconTapSize,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 22,
                       tooltip: L10n.of(context).emojis,
                       color: theme.colorScheme.onPrimaryContainer,
                       icon: PageTransitionSwitcher(
