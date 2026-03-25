@@ -122,3 +122,6 @@ ios_build.sh
 android_build.sh
 build-linux.sh
 build-deb.sh
+
+# Local installer config (keep local, do not track)
+installer.iss
