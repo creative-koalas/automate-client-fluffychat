@@ -152,9 +152,10 @@ class InputBar extends StatelessWidget {
         }
       }
     }
-    final userMatch = RegExp(r'(?:\s|^)@([-\w]+)$').firstMatch(searchText);
-    // Also match CJK/localized input like @所有人
-    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S+)$').firstMatch(searchText);
+    // Trigger mention suggestions immediately after typing '@'.
+    final userMatch = RegExp(r'(?:\s|^)@([-\w]*)$').firstMatch(searchText);
+    // Also match CJK/localized input like @所有人 and plain '@'.
+    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
     final effectiveMatch = userMatch ?? cjkMentionMatch;
     if (effectiveMatch != null) {
       final userSearch = effectiveMatch[1]!.toLowerCase();
@@ -372,12 +373,18 @@ class InputBar extends StatelessWidget {
   }
 
   String insertSuggestion(Map<String, String?> suggestion) {
-    final replaceText =
-        controller!.text.substring(0, controller!.selection.baseOffset);
+    final fullText = controller?.text ?? '';
+    final selection = controller?.selection;
+    final rawOffset = selection?.baseOffset ?? fullText.length;
+    final safeOffset = (rawOffset < 0 || rawOffset > fullText.length)
+        ? fullText.length
+        : rawOffset;
+
+    final replaceText = fullText.substring(0, safeOffset);
     var startText = '';
-    final afterText = replaceText == controller!.text
+    final afterText = safeOffset >= fullText.length
         ? ''
-        : controller!.text.substring(controller!.selection.baseOffset + 1);
+        : fullText.substring(safeOffset);
     var insertText = '';
     if (suggestion['type'] == 'command') {
       insertText = '${suggestion['name']!} ';
@@ -420,10 +427,11 @@ class InputBar extends StatelessWidget {
     }
     if (suggestion['type'] == 'user') {
       insertText = '${suggestion['mention']!} ';
-      startText = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@\S+)$'),
+      final replaced = replaceText.replaceAllMapped(
+        RegExp(r'(\s|^)(@\S*)$'),
         (Match m) => '${m[1]}$insertText',
       );
+      startText = replaced == replaceText ? '$replaceText$insertText' : replaced;
     }
     if (suggestion['type'] == 'room') {
       insertText = '${suggestion['mxid']!} ';
