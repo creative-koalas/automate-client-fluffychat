@@ -100,7 +100,7 @@ class ChatView extends StatelessWidget {
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
               preferredPlacement: GuideBubblePlacement.below,
-              estimatedContentHeight: 148,
+              estimatedContentHeight: 120,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,27 +123,6 @@ class ChatView extends StatelessWidget {
                     color: theme.colorScheme.outline,
                     label: l10n.employeeSleeping,
                     hint: l10n.employeeSleepingHint,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l10n.guideRestingFeatureUnavailable,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -423,7 +402,7 @@ class ChatView extends StatelessWidget {
                   !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
                   !agent.canOpenWebEntry;
-              final isVisuallyDisabled = isDisabled || agent.isResting;
+              final isVisuallyDisabled = isDisabled;
 
               return KeyedSubtree(
                 key: controller.webEntryGuideKey,

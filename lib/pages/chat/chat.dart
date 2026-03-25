@@ -258,9 +258,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool _webEntryLoading = false;
   String? _webEntryUrl;
   DateTime? _lastWebEntryHintAt;
-  DateTime? _lastRestingFeatureHintAt;
   static const Duration _webEntryHintCooldown = Duration(seconds: 2);
-  static const Duration _restingFeatureHintCooldown = Duration(seconds: 2);
   static const String _legacyWaitingEmployeesCleanupKey =
       'migration_waiting_employees_cleanup_v1';
   final GlobalKey chatRoomGuideContainerKey = GlobalKey();
@@ -298,14 +296,10 @@ class ChatController extends State<ChatPageWithRoom>
       _chatRoomGuideType == ChatRoomGuideType.groupMention;
   bool get canDismissEmployeeWorkTemplateBar => _employeeChatRoomGuideCompleted;
   bool get employeeWorkTemplateDismissed => _employeeWorkTemplateDismissed;
-  bool get isAgentResting => webEntryAgent?.isResting == true;
   String? get backendUserId => context.read<PsygoAuthState>().userId;
 
-  bool _blockFileIfResting() {
-    if (!isAgentResting) return false;
-    _showRestingFeatureUnavailableHint();
-    return true;
-  }
+  // Resting state should not block chat actions anymore.
+  bool _blockFileIfResting() => false;
 
   bool blockFileIfResting() => _blockFileIfResting();
 
@@ -335,17 +329,6 @@ class ChatController extends State<ChatPageWithRoom>
     return false;
   }
 
-  bool _shouldThrottleRestingFeatureHint() {
-    final now = DateTime.now();
-    final lastHintAt = _lastRestingFeatureHintAt;
-    if (lastHintAt != null &&
-        now.difference(lastHintAt) < _restingFeatureHintCooldown) {
-      return true;
-    }
-    _lastRestingFeatureHintAt = now;
-    return false;
-  }
-
   void closeWebEntry() {
     // Invalidate any in-flight open request so it can't "re-open" later.
     _webEntryRequestId++;
@@ -362,11 +345,6 @@ class ChatController extends State<ChatPageWithRoom>
     if (agent == null) return;
     if (_webEntryLoading) return;
     final l10n = L10n.of(context);
-
-    if (agent.isResting) {
-      _showWebEntryHint(l10n.guideRestingFeatureUnavailable);
-      return;
-    }
 
     if (!agent.canOpenWebEntry) {
       _showWebEntryHint(l10n.agentWebEntryUnavailable);
@@ -431,27 +409,6 @@ class ChatController extends State<ChatPageWithRoom>
           content: InkWell(
             onTap: messenger.hideCurrentSnackBar,
             child: Text(message),
-          ),
-        ),
-      );
-  }
-
-  void _showRestingFeatureUnavailableHint() {
-    if (_shouldThrottleRestingFeatureHint()) {
-      return;
-    }
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          content: InkWell(
-            onTap: messenger.hideCurrentSnackBar,
-            child: Text(L10n.of(context).guideRestingFeatureUnavailable),
           ),
         ),
       );

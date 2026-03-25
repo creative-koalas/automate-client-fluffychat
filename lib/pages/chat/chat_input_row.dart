@@ -247,9 +247,7 @@ class ChatInputRow extends StatelessWidget {
                     clipBehavior: Clip.hardEdge,
                     child: IconButton(
                       icon: const Icon(Icons.add_circle_outline),
-                      color: controller.isAgentResting
-                          ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-                          : theme.colorScheme.onPrimaryContainer,
+                      color: theme.colorScheme.onPrimaryContainer,
                       onPressed: () {
                         if (controller.blockFileIfResting()) return;
                         _showAttachmentBottomSheet(context, controller);
@@ -277,10 +275,7 @@ class ChatInputRow extends StatelessWidget {
                           );
                         },
                         iconSize: height * 0.5,
-                        color: controller.isAgentResting
-                            ? theme.colorScheme.onSurface
-                                .withValues(alpha: 0.38)
-                            : theme.colorScheme.onPrimaryContainer,
+                        color: theme.colorScheme.onPrimaryContainer,
                       ),
                       // child: PopupMenuButton(
                       //   useRootNavigator: true,
@@ -384,11 +379,7 @@ class ChatInputRow extends StatelessWidget {
                                 icon: const Icon(
                                   Icons.screenshot_monitor_outlined,
                                 ),
-                                color: controller.isAgentResting
-                                    ? theme.colorScheme.onSurface.withValues(
-                                        alpha: 0.38,
-                                      )
-                                    : theme.colorScheme.onPrimaryContainer,
+                                color: theme.colorScheme.onPrimaryContainer,
                                 onPressed: () {
                                   controller.captureScreenshotAction();
                                 },
