@@ -2530,6 +2530,8 @@
     "@jumpToLastReadMessage": {},
     "readUpToHere": "读到此处",
     "@readUpToHere": {},
+    "newMessages": "新消息",
+    "@newMessages": {},
     "jump": "跳转",
     "@jump": {},
     "openLinkInBrowser": "在浏览器中打开链接",
