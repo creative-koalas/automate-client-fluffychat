@@ -68,8 +68,11 @@ class PsygoApp extends StatelessWidget {
         title: 'PsyGo',
         themeMode: themeMode,
         theme: FluffyThemes.buildTheme(context, Brightness.light, primaryColor),
-        darkTheme:
-            FluffyThemes.buildTheme(context, Brightness.dark, primaryColor),
+        darkTheme: FluffyThemes.buildTheme(
+          context,
+          Brightness.dark,
+          primaryColor,
+        ),
         scrollBehavior: CustomScrollBehavior(),
         localizationsDelegates: L10n.localizationsDelegates,
         supportedLocales: L10n.supportedLocales,
@@ -90,9 +93,11 @@ class PsygoApp extends StatelessWidget {
                     lazy: false,
                     create: (context) => ForceUpdateController(
                       context.read<PsygoApiClient>(),
-                      dialogContextProvider: () =>
-                          PsygoApp.router.routerDelegate.navigatorKey
-                              .currentContext,
+                      dialogContextProvider: () => PsygoApp
+                          .router
+                          .routerDelegate
+                          .navigatorKey
+                          .currentContext,
                     )..start(),
                     child: MaintenanceGate(
                       child: ForceUpdateGate(
@@ -230,7 +235,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
       debugPrint(
-          '[AuthGate] User logged out via auth state change, clearing all auth state');
+        '[AuthGate] User logged out via auth state change, clearing all auth state',
+      );
 
       // 取消同步状态监听
       _syncStatusSubscription?.cancel();
@@ -260,7 +266,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         }
         if (loggedInClient != null && loggedInClient.isLogged()) {
           debugPrint(
-              '[AuthGate] User logged in with Matrix, updating state to authenticated');
+            '[AuthGate] User logged in with Matrix, updating state to authenticated',
+          );
           matrix.setActiveClient(loggedInClient);
           setState(() => _state = _AuthState.authenticated);
           _startAgreementCheckService();
@@ -270,7 +277,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         } else {
           // Matrix 还没登录完成，稍后再检查
           debugPrint(
-              '[AuthGate] PsyGo logged in but Matrix not yet, will check again');
+            '[AuthGate] PsyGo logged in but Matrix not yet, will check again',
+          );
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) _onAuthStateChanged();
           });
@@ -314,7 +322,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 当应用从后台恢复时
     if (state == AppLifecycleState.resumed) {
       debugPrint(
-          '[AuthGate] App resumed from background, state=$_state, pendingOneClickLogin=$_pendingOneClickLogin, hasTriedAuth=$_hasTriedAuth');
+        '[AuthGate] App resumed from background, state=$_state, pendingOneClickLogin=$_pendingOneClickLogin, hasTriedAuth=$_hasTriedAuth',
+      );
 
       // 协议检查（仅已登录用户）
       if (_state == _AuthState.authenticated) {
@@ -323,14 +332,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       if (_forceManualLogin) {
         debugPrint(
-            '[AuthGate] Manual login mode active, skipping auto one-click retry');
+          '[AuthGate] Manual login mode active, skipping auto one-click retry',
+        );
         return;
       }
 
       // 如果有延迟的一键登录请求，现在执行
       if (_pendingOneClickLogin) {
         debugPrint(
-            '[AuthGate] Executing pending one-click login after app resumed');
+          '[AuthGate] Executing pending one-click login after app resumed',
+        );
         _pendingOneClickLogin = false;
         // 稍微延迟一下确保 app 完全恢复
         Future.delayed(const Duration(milliseconds: 300), () {
@@ -345,7 +356,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           _hasTriedAuth &&
           PlatformInfos.isMobile) {
         debugPrint(
-            '[AuthGate] Auth page might have been dismissed, retrying one-click login');
+          '[AuthGate] Auth page might have been dismissed, retrying one-click login',
+        );
         setState(() {
           _hasTriedAuth = false;
         });
@@ -360,7 +372,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // Auto-retry when app resumes after permission approval (with retry limit)
       if (_state == _AuthState.error && _resumeRetryCount < _maxResumeRetries) {
         debugPrint(
-            '[AuthGate] In error state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)');
+          '[AuthGate] In error state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)',
+        );
         _resumeRetryCount++;
 
         setState(() {
@@ -376,7 +389,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       } else if (_resumeRetryCount >= _maxResumeRetries &&
           _state == _AuthState.error) {
         debugPrint(
-            '[AuthGate] Max resume retries reached, showing persistent error');
+          '[AuthGate] Max resume retries reached, showing persistent error',
+        );
       }
     }
   }
@@ -390,7 +404,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (_authCheckInProgress) {
       _authCheckQueued = true;
       debugPrint(
-          '[AuthGate] Auth check already in progress, queued one follow-up run');
+        '[AuthGate] Auth check already in progress, queued one follow-up run',
+      );
       return;
     }
 
@@ -406,7 +421,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // User will see loading screen instead of error flash
       if (_resumeRetryCount < _maxResumeRetries) {
         debugPrint(
-            '[AuthGate] Error occurred but retries available, staying in checking state');
+          '[AuthGate] Error occurred but retries available, staying in checking state',
+        );
         // Keep state as checking, will be retried on next resume
         return;
       }
@@ -449,7 +465,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // iOS CRITICAL FIX: Handle retry after stale credentials detected
     if (_needsRetryAfterStaleCredentials) {
       debugPrint(
-          '[AuthGate] Retrying after stale credentials, directly triggering one-click login...');
+        '[AuthGate] Retrying after stale credentials, directly triggering one-click login...',
+      );
       _needsRetryAfterStaleCredentials = false;
 
       // On mobile only, directly trigger one-click login
@@ -499,9 +516,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     // 2. Token expired but have refresh token -> try to refresh
     final refreshToken = auth.refreshToken?.trim();
-    if (auth.isLoggedIn &&
-        refreshToken != null &&
-        refreshToken.isNotEmpty) {
+    if (auth.isLoggedIn && refreshToken != null && refreshToken.isNotEmpty) {
       debugPrint('[AuthGate] Token expired, attempting refresh...');
       setState(() => _state = _AuthState.refreshing);
 
@@ -531,7 +546,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       }
       if (refreshOutcome == TokenRefreshOutcome.transientFailure) {
         debugPrint(
-            '[AuthGate] Token refresh failed due to transient network error, keep session');
+          '[AuthGate] Token refresh failed due to transient network error, keep session',
+        );
         setState(() {
           _state = _AuthState.error;
           _errorMessage = L10n.of(context).authChatServiceUnavailable;
@@ -544,7 +560,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         auth.isTokenExpired &&
         (refreshToken == null || refreshToken.isEmpty)) {
       debugPrint(
-          '[AuthGate] Token expired but refresh token is missing, fallback to re-login');
+        '[AuthGate] Token expired but refresh token is missing, fallback to re-login',
+      );
     }
 
     // 3. No valid token -> need to authenticate
@@ -603,7 +620,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       if (!PsygoConfig.hasAliyunOneClickLoginSecret) {
         debugPrint(
-            '[AuthGate] One-click login secret is missing, redirecting to manual login');
+          '[AuthGate] One-click login secret is missing, redirecting to manual login',
+        );
         _forceManualLogin = true;
         setState(() => _state = _AuthState.needsLogin);
         _redirectToManualLoginPage();
@@ -624,7 +642,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final api = context.read<PsygoApiClient>();
       final authResponse = await api.oneClickLogin(loginToken);
       debugPrint(
-          '[AuthGate] Backend oneClickLogin success, userId=${authResponse.userId}');
+        '[AuthGate] Backend oneClickLogin success, userId=${authResponse.userId}',
+      );
 
       if (!mounted) return;
 
@@ -650,7 +669,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final errorStr = e.toString();
       if (PlatformInfos.isMobile) {
         debugPrint(
-            '[AuthGate] One-click login failed on mobile, redirecting to manual login');
+          '[AuthGate] One-click login failed on mobile, redirecting to manual login',
+        );
         _forceManualLogin = true;
         setState(() => _state = _AuthState.needsLogin);
         _redirectToManualLoginPage();
@@ -659,7 +679,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       if (_shouldFallbackToManualLogin(errorStr)) {
         debugPrint(
-            '[AuthGate] One-click login unavailable, redirecting to manual login');
+          '[AuthGate] One-click login unavailable, redirecting to manual login',
+        );
         _forceManualLogin = true;
         setState(() => _state = _AuthState.needsLogin);
         _redirectToManualLoginPage();
@@ -675,7 +696,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // Will be automatically retried when app resumes
       if (_resumeRetryCount < _maxResumeRetries) {
         debugPrint(
-            '[AuthGate] Login error but retries available ($_resumeRetryCount/$_maxResumeRetries), staying in checking state');
+          '[AuthGate] Login error but retries available ($_resumeRetryCount/$_maxResumeRetries), staying in checking state',
+        );
         // Keep state as checking, will be retried
         return;
       }
@@ -753,12 +775,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Future<void> _requestPushPermissionAndRetryPush(
-      MatrixState matrixState, Client client) async {
+    MatrixState matrixState,
+    Client client,
+  ) async {
     try {
       final granted = await PermissionService.instance.requestPushPermissions();
       if (!granted) {
         debugPrint(
-            '[AuthGate] Notification permission not granted, skip push re-register');
+          '[AuthGate] Notification permission not granted, skip push re-register',
+        );
         return;
       }
       await matrixState.ensureAliyunPushRegistered(client);
@@ -766,7 +791,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       await matrixState.ensureAliyunPushRegistered(client);
     } catch (e) {
       debugPrint(
-          '[AuthGate] Failed to request push permission / retry registration: $e');
+        '[AuthGate] Failed to request push permission / retry registration: $e',
+      );
     }
   }
 
@@ -786,7 +812,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     debugPrint(
-        '[AuthGate] Matrix credentials: userId=$matrixUserId, deviceId=$matrixDeviceId');
+      '[AuthGate] Matrix credentials: userId=$matrixUserId, deviceId=$matrixDeviceId',
+    );
 
     try {
       final matrix = Matrix.of(context);
@@ -827,12 +854,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         debugPrint('[AuthGate] Setting homeserver: $homeserverUrl');
 
         debugPrint(
-            '[AuthGate] Attempting Matrix login: matrixUserId=$matrixUserId');
+          '[AuthGate] Attempting Matrix login: matrixUserId=$matrixUserId',
+        );
 
         // Use access_token directly
         await client.init(
           newToken: matrixAccessToken,
           newUserID: matrixUserId,
+          newDeviceID: matrixDeviceId,
           newHomeserver: homeserverUrl,
           newDeviceName: PlatformInfos.clientName,
           // Do not block UI on first sync/load; background sync continues after init.
@@ -840,7 +869,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           waitUntilLoadCompletedLoaded: false,
         );
         debugPrint(
-            '[AuthGate] Matrix login success, deviceID=${client.deviceID}');
+          '[AuthGate] Matrix login success, deviceID=${client.deviceID}',
+        );
 
         // CRITICAL: Ensure client is in the clients list and subscriptions are active
         // client.init(newToken:...) may not trigger onLoginStateChanged event.
@@ -880,7 +910,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // Client is already logged in with correct userID, just proceed
       debugPrint(
-          '[AuthGate] Client already logged in with correct userID=${client.userID}, deviceID=${client.deviceID}');
+        '[AuthGate] Client already logged in with correct userID=${client.userID}, deviceID=${client.deviceID}',
+      );
 
       final addedAlreadyLogged = matrix.ensureClientRegistered(client);
       debugPrint(
@@ -918,13 +949,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Stack trace: $stackTrace');
 
       final errorStr = e.toString();
-      final isInvalidToken = errorStr.contains('M_UNKNOWN_TOKEN') ||
+      final isInvalidToken =
+          errorStr.contains('M_UNKNOWN_TOKEN') ||
           errorStr.contains('Invalid access token');
 
       // Token 失效：清除所有状态并跳转到登录页
       if (isInvalidToken) {
         debugPrint(
-            '[AuthGate] Matrix token invalid, clearing all auth state and redirecting to login...');
+          '[AuthGate] Matrix token invalid, clearing all auth state and redirecting to login...',
+        );
         await _clearAllAuthStateAndRedirectToLogin();
         return;
       }
@@ -963,7 +996,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // 重试后仍然失败：清除状态并跳转登录
       debugPrint(
-          '[AuthGate] Matrix login failed after retry, clearing auth and redirecting to login...');
+        '[AuthGate] Matrix login failed after retry, clearing auth and redirecting to login...',
+      );
       await _clearAllAuthStateAndRedirectToLogin();
     }
   }
@@ -997,8 +1031,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           _redirectRetryCount = 0;
           return;
         }
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _redirectToLoginPage());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _redirectToLoginPage(),
+        );
         return;
       }
 
@@ -1064,13 +1099,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (_syncStatusSubscription != null &&
         _syncMonitoringClientName == targetClientName) {
       debugPrint(
-          '[AuthGate] Sync status monitoring already active for $targetClientName, skipping');
+        '[AuthGate] Sync status monitoring already active for $targetClientName, skipping',
+      );
       return;
     }
 
     if (_syncStatusSubscription != null) {
       debugPrint(
-          '[AuthGate] Sync monitor client changed, restarting: $_syncMonitoringClientName -> $targetClientName');
+        '[AuthGate] Sync monitor client changed, restarting: $_syncMonitoringClientName -> $targetClientName',
+      );
       _syncStatusSubscription?.cancel();
       _syncStatusSubscription = null;
     }
@@ -1096,7 +1133,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // 避免弱网场景误登出。
         if (_consecutiveSyncErrors >= _maxConsecutiveSyncErrors) {
           debugPrint(
-              '[AuthGate] Max consecutive sync errors reached, keep session and show notice');
+            '[AuthGate] Max consecutive sync errors reached, keep session and show notice',
+          );
           _consecutiveSyncErrors = 0;
           _handlePersistentConnectionFailure();
         }
@@ -1201,12 +1239,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
     if (PlatformInfos.isMobile) {
       debugPrint(
-          '[AuthGate] Force logout complete, setting pending one-click login flag');
+        '[AuthGate] Force logout complete, setting pending one-click login flag',
+      );
       _pendingOneClickLogin = true;
       // 如果 app 已经在前台，立即触发
       if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
         debugPrint(
-            '[AuthGate] App is in foreground, triggering one-click login immediately');
+          '[AuthGate] App is in foreground, triggering one-click login immediately',
+        );
         _pendingOneClickLogin = false;
         await _checkAuthStateSafe();
       }
@@ -1228,7 +1268,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _isLoggingOut = true;
 
     debugPrint(
-        '[AuthGate] Clearing all auth state and redirecting to login...');
+      '[AuthGate] Clearing all auth state and redirecting to login...',
+    );
 
     // 停止后台检查服务
     AgreementCheckService.stopBackgroundCheck();
@@ -1285,8 +1326,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     setState(() {
       // PC端/Web端：设置为 needsLogin，显示登录页面
       // 移动端：设置为 checking，等待一键登录
-      _state =
-          PlatformInfos.isMobile ? _AuthState.checking : _AuthState.needsLogin;
+      _state = PlatformInfos.isMobile
+          ? _AuthState.checking
+          : _AuthState.needsLogin;
       _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
@@ -1297,12 +1339,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // PC端/Web端：跳转到登录页
     if (PlatformInfos.isMobile) {
       debugPrint(
-          '[AuthGate] Auth state cleared, setting pending one-click login flag');
+        '[AuthGate] Auth state cleared, setting pending one-click login flag',
+      );
       _pendingOneClickLogin = true;
       // 如果 app 已经在前台，立即触发
       if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
         debugPrint(
-            '[AuthGate] App is in foreground, triggering one-click login immediately');
+          '[AuthGate] App is in foreground, triggering one-click login immediately',
+        );
         _pendingOneClickLogin = false;
         await _checkAuthStateSafe();
       }
@@ -1434,8 +1478,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final subtitleColor = isDark
           ? Colors.white.withValues(alpha: 0.7)
           : const Color(0xFF666666);
-      final accentColor =
-          isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+      final accentColor = isDark
+          ? const Color(0xFF00FF9F)
+          : const Color(0xFF00A878);
       const errorColor = Color(0xFFFF6B6B);
 
       return Scaffold(
@@ -1561,7 +1606,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 14),
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
                               child: Text(
                                 l10n.tryAgain,
                                 style: TextStyle(
@@ -1590,7 +1637,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                           style: TextButton.styleFrom(
                             foregroundColor: accentColor,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 14),
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
                           ),
                           child: Text(l10n.authReLogin),
                         ),
@@ -1622,16 +1671,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
               Text(
                 l10n.authLoginFailedTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
                 _errorMessage ?? l10n.authUnknownError,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 32),
               Wrap(

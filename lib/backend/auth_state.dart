@@ -8,9 +8,11 @@ import '../core/token_manager.dart';
 
 class PsygoAuthState extends ChangeNotifier {
   PsygoAuthState({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage() {
+    : _storage = storage ?? const FlutterSecureStorage() {
     // 监听 TokenManager 事件，保持状态同步
-    _tokenEventSubscription = TokenManager.instance.events.listen(_onTokenEvent);
+    _tokenEventSubscription = TokenManager.instance.events.listen(
+      _onTokenEvent,
+    );
   }
 
   final FlutterSecureStorage _storage;
@@ -68,7 +70,9 @@ class PsygoAuthState extends ChangeNotifier {
 
   /// Check if we have a valid (non-expired) token
   bool get hasValidToken {
-    return _primaryToken != null && _primaryToken!.isNotEmpty && !isTokenExpired;
+    return _primaryToken != null &&
+        _primaryToken!.isNotEmpty &&
+        !isTokenExpired;
   }
 
   Future<void> load() async {
@@ -79,8 +83,9 @@ class PsygoAuthState extends ChangeNotifier {
         ? DateTime.fromMillisecondsSinceEpoch(int.tryParse(expiresAtStr) ?? 0)
         : null;
     _userId = await _storage.read(key: _userIdKey);
-    final onboardingCompletedStr =
-        await _storage.read(key: _onboardingCompletedKey);
+    final onboardingCompletedStr = await _storage.read(
+      key: _onboardingCompletedKey,
+    );
     _onboardingCompleted = onboardingCompletedStr == null
         ? true
         : onboardingCompletedStr.toLowerCase() == 'true';
@@ -135,7 +140,10 @@ class PsygoAuthState extends ChangeNotifier {
     // Handle Matrix access token
     if (matrixAccessToken != null && matrixAccessToken.isNotEmpty) {
       _matrixAccessToken = matrixAccessToken;
-      await _storage.write(key: _matrixAccessTokenKey, value: matrixAccessToken);
+      await _storage.write(
+        key: _matrixAccessTokenKey,
+        value: matrixAccessToken,
+      );
     } else {
       _matrixAccessToken = null;
       await _storage.delete(key: _matrixAccessTokenKey);
@@ -161,15 +169,26 @@ class PsygoAuthState extends ChangeNotifier {
 
     await _storage.write(key: _primaryKey, value: primaryToken);
     await _storage.write(key: _userIdKey, value: userId);
-    await _storage.write(key: _onboardingCompletedKey, value: onboardingCompleted.toString());
+    await _storage.write(
+      key: _onboardingCompletedKey,
+      value: onboardingCompleted.toString(),
+    );
     notifyListeners();
   }
 
   /// Update access token after refresh
   /// 通过 TokenManager 更新，确保状态一致
-  Future<void> updateAccessToken(String accessToken, int expiresIn, {String? refreshToken}) async {
+  Future<void> updateAccessToken(
+    String accessToken,
+    int expiresIn, {
+    String? refreshToken,
+  }) async {
     // 通过 TokenManager 更新，会触发 refreshed 事件
-    await TokenManager.instance.updateAccessToken(accessToken, expiresIn, refreshToken: refreshToken);
+    await TokenManager.instance.updateAccessToken(
+      accessToken,
+      expiresIn,
+      refreshToken: refreshToken,
+    );
     // 同步更新内存状态（避免等待事件回调）
     _primaryToken = accessToken;
     _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
@@ -179,8 +198,11 @@ class PsygoAuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markLoggedOut() async {
+  Future<void> markLoggedOut({bool revokeRemoteSession = false}) async {
     _clearInMemoryState();
+    if (revokeRemoteSession) {
+      await TokenManager.instance.revokeCurrentDeviceSession();
+    }
     // 通过 TokenManager 清除 token（会触发 loggedOut 事件）
     // 使用 clearTokens 而非 logout 避免重复触发事件
     await TokenManager.instance.clearTokens();
