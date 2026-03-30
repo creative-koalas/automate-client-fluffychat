@@ -3410,7 +3410,7 @@
     "@employeeWorkingHint": {},
     "employeeSlackingHint": "可隨時安排工作",
     "@employeeSlackingHint": {},
-    "employeeSleepingHint": "啟用員工需要一些時間",
+    "employeeSleepingHint": "傳送任意訊息即可喚醒",
     "@employeeSleepingHint": {},
     "employeeWorkingNotice1": "員工正在處理你的任務...",
     "@employeeWorkingNotice1": {},

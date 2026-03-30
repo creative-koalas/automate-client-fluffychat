@@ -3565,7 +3565,7 @@
   "@employeeWorkingHint": {},
   "employeeSlackingHint": "Available for new tasks.",
   "@employeeSlackingHint": {},
-  "employeeSleepingHint": "Waking the employee may take a moment.",
+  "employeeSleepingHint": "Send any message to wake them up.",
   "@employeeSleepingHint": {},
   "employeeWorkingNotice1": "The employee is working on your request...",
   "@employeeWorkingNotice1": {},

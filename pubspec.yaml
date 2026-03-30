@@ -161,3 +161,8 @@ flutter:
 # 1. Don't do it if you can avoid it or fix it upstream in a manageable time
 # 2. Always link an (upstream?) issue
 # 3. Explain how and when this can be removed (overrides must be temporarily)
+dependency_overrides:
+  # Temporary workaround: webview_flutter_android 4.10.12+ bumps Kotlin to 2.3.0,
+  # which can fail in this project toolchain with missing Pigeon symbols on Android.
+  # Remove after project Android/Kotlin toolchain is upgraded and verified.
+  webview_flutter_android: 4.10.11

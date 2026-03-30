@@ -3592,7 +3592,7 @@
     "@employeeWorkingHint": {},
     "employeeSlackingHint": "可随时安排工作",
     "@employeeSlackingHint": {},
-    "employeeSleepingHint": "激活员工需要一点时间",
+    "employeeSleepingHint": "发送任意消息即可唤醒",
     "@employeeSleepingHint": {},
     "employeeWorkingNotice1": "员工正在处理你的任务...",
     "@employeeWorkingNotice1": {},
