@@ -99,7 +99,10 @@ class _ChatListItemState extends State<ChatListItem> {
 
     final isMuted = room.pushRuleState != PushRuleState.notify;
     final typingText = room.getLocalizedTypingText(context);
-    final lastEvent = room.lastEvent;
+    final rawLastEvent = room.lastEvent;
+    final isRefreshingLastEvent =
+        rawLastEvent?.type == EventTypes.refreshingLastEvent;
+    final lastEvent = isRefreshingLastEvent ? null : rawLastEvent;
     final ownMessage = lastEvent?.senderId == room.client.userID;
     final unread = room.isUnread;
     final directChatMatrixId = room.directChatMatrixID;
@@ -111,7 +114,8 @@ class _ChatListItemState extends State<ChatListItem> {
       MatrixLocals(L10n.of(context)),
     );
     final currentFilter = filter;
-    if (currentFilter != null && !displayname.toLowerCase().contains(currentFilter)) {
+    if (currentFilter != null &&
+        !displayname.toLowerCase().contains(currentFilter)) {
       return const SizedBox.shrink();
     }
 
@@ -136,9 +140,12 @@ class _ChatListItemState extends State<ChatListItem> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
-                      theme.colorScheme.secondaryContainer.withValues(alpha: 0.18),
-                      theme.colorScheme.tertiaryContainer.withValues(alpha: 0.12),
+                      theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.25),
+                      theme.colorScheme.secondaryContainer
+                          .withValues(alpha: 0.18),
+                      theme.colorScheme.tertiaryContainer
+                          .withValues(alpha: 0.12),
                     ],
                   )
                 : isHovered
@@ -146,8 +153,10 @@ class _ChatListItemState extends State<ChatListItem> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                          theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                          theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                          theme.colorScheme.surfaceContainer
+                              .withValues(alpha: 0.3),
                         ],
                       )
                     : null,
@@ -163,9 +172,11 @@ class _ChatListItemState extends State<ChatListItem> {
                       )
                     : null,
             boxShadow: activeChat
-                ? FluffyThemes.layeredShadow(context, elevation: FluffyThemes.elevationMd)
+                ? FluffyThemes.layeredShadow(context,
+                    elevation: FluffyThemes.elevationMd)
                 : isHovered
-                    ? FluffyThemes.shadow(context, elevation: FluffyThemes.elevationSm)
+                    ? FluffyThemes.shadow(context,
+                        elevation: FluffyThemes.elevationSm)
                     : null,
           ),
           child: Material(
@@ -181,265 +192,290 @@ class _ChatListItemState extends State<ChatListItem> {
                     horizontal: FluffyThemes.spacing12,
                     vertical: FluffyThemes.spacing4,
                   ),
-              // 移动端用长按，PC端用右键（Listener处理）
-              onLongPress: isDesktop ? null : () => onLongPress?.call(context),
-              leading: HoverBuilder(
-                builder: (context, hovered) => AnimatedScale(
-                  duration: FluffyThemes.durationFast,
-                  curve: FluffyThemes.curveBounce,
-                  scale: hovered ? 1.08 : 1.0,
-                  child: AnimatedContainer(
-                    duration: FluffyThemes.durationFast,
-                    curve: FluffyThemes.curveStandard,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
-                      boxShadow: hovered
-                          ? FluffyThemes.shadow(context, elevation: FluffyThemes.elevationSm)
-                          : null,
-                    ),
-                    child: SizedBox(
-                      width: Avatar.defaultSize,
-                      height: Avatar.defaultSize,
-                      child: Stack(
-                        children: [
-                          if (currentSpace != null)
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              child: Avatar(
-                                border: BorderSide(
-                                  width: 2,
-                                  color: backgroundColor ??
-                                      theme.colorScheme.surface,
+                  // 移动端用长按，PC端用右键（Listener处理）
+                  onLongPress:
+                      isDesktop ? null : () => onLongPress?.call(context),
+                  leading: HoverBuilder(
+                    builder: (context, hovered) => AnimatedScale(
+                      duration: FluffyThemes.durationFast,
+                      curve: FluffyThemes.curveBounce,
+                      scale: hovered ? 1.08 : 1.0,
+                      child: AnimatedContainer(
+                        duration: FluffyThemes.durationFast,
+                        curve: FluffyThemes.curveStandard,
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(FluffyThemes.radiusFull),
+                          boxShadow: hovered
+                              ? FluffyThemes.shadow(context,
+                                  elevation: FluffyThemes.elevationSm)
+                              : null,
+                        ),
+                        child: SizedBox(
+                          width: Avatar.defaultSize,
+                          height: Avatar.defaultSize,
+                          child: Stack(
+                            children: [
+                              if (currentSpace != null)
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  child: Avatar(
+                                    border: BorderSide(
+                                      width: 2,
+                                      color: backgroundColor ??
+                                          theme.colorScheme.surface,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      FluffyThemes.radiusMd,
+                                    ),
+                                    mxContent: currentSpace.avatar,
+                                    size: Avatar.defaultSize * 0.75,
+                                    name:
+                                        currentSpace.getLocalizedDisplayname(),
+                                    onTap: () => onLongPress?.call(context),
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(
-                                  FluffyThemes.radiusMd,
-                                ),
-                                mxContent: currentSpace.avatar,
-                                size: Avatar.defaultSize * 0.75,
-                                name: currentSpace.getLocalizedDisplayname(),
-                                onTap: () => onLongPress?.call(context),
-                              ),
-                            ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Builder(
-                              builder: (context) {
-                                // 私聊时显示对方用户的头像
-                                final avatarSize = currentSpace != null
-                                    ? Avatar.defaultSize * 0.75
-                                    : Avatar.defaultSize;
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Builder(
+                                  builder: (context) {
+                                    // 私聊时显示对方用户的头像
+                                    final avatarSize = currentSpace != null
+                                        ? Avatar.defaultSize * 0.75
+                                        : Avatar.defaultSize;
 
-                                if (directChatMatrixId != null) {
-                                  // 优先使用员工头像（直接使用 avatarUrl 字符串，和 EmployeeCard 一样）
-                                  final agent = AgentService.instance.getAgentByMatrixUserId(directChatMatrixId);
-                                  if (agent != null && agent.avatarUrl != null && agent.avatarUrl!.isNotEmpty) {
-                                    return _buildEmployeeAvatar(
-                                      avatarUrl: agent.avatarUrl!,
-                                      name: agent.displayName,
-                                      size: avatarSize,
+                                    if (directChatMatrixId != null) {
+                                      // 优先使用员工头像（直接使用 avatarUrl 字符串，和 EmployeeCard 一样）
+                                      final agent = AgentService.instance
+                                          .getAgentByMatrixUserId(
+                                              directChatMatrixId);
+                                      if (agent != null &&
+                                          agent.avatarUrl != null &&
+                                          agent.avatarUrl!.isNotEmpty) {
+                                        return _buildEmployeeAvatar(
+                                          avatarUrl: agent.avatarUrl!,
+                                          name: agent.displayName,
+                                          size: avatarSize,
+                                          border: currentSpace == null
+                                              ? null
+                                              : BorderSide(
+                                                  width: 2,
+                                                  color: backgroundColor ??
+                                                      theme.colorScheme.surface,
+                                                ),
+                                          presenceUserId: directChatMatrixId,
+                                          presenceBackgroundColor:
+                                              backgroundColor,
+                                          onTap: () =>
+                                              onLongPress?.call(context),
+                                        );
+                                      }
+                                      // 非员工或员工没有头像，使用 Matrix 用户头像
+                                      final user = room
+                                          .unsafeGetUserFromMemoryOrFallback(
+                                              directChatMatrixId);
+                                      return Avatar(
+                                        border: currentSpace == null
+                                            ? null
+                                            : BorderSide(
+                                                width: 2,
+                                                color: backgroundColor ??
+                                                    theme.colorScheme.surface,
+                                              ),
+                                        borderRadius: null,
+                                        mxContent: user.avatarUrl,
+                                        size: avatarSize,
+                                        name: user.calcDisplayname(),
+                                        presenceUserId: directChatMatrixId,
+                                        presenceBackgroundColor:
+                                            backgroundColor,
+                                        onTap: () => onLongPress?.call(context),
+                                      );
+                                    }
+                                    // 群聊使用房间头像
+                                    return Avatar(
                                       border: currentSpace == null
                                           ? null
                                           : BorderSide(
                                               width: 2,
-                                              color: backgroundColor ?? theme.colorScheme.surface,
+                                              color: backgroundColor ??
+                                                  theme.colorScheme.surface,
                                             ),
+                                      borderRadius: null,
+                                      mxContent: room.avatar,
+                                      size: avatarSize,
+                                      name: displayname,
                                       presenceUserId: directChatMatrixId,
                                       presenceBackgroundColor: backgroundColor,
                                       onTap: () => onLongPress?.call(context),
                                     );
-                                  }
-                                  // 非员工或员工没有头像，使用 Matrix 用户头像
-                                  final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixId);
-                                  return Avatar(
-                                    border: currentSpace == null
-                                        ? null
-                                        : BorderSide(
-                                            width: 2,
-                                            color: backgroundColor ?? theme.colorScheme.surface,
-                                          ),
-                                    borderRadius: null,
-                                    mxContent: user.avatarUrl,
-                                    size: avatarSize,
-                                    name: user.calcDisplayname(),
-                                    presenceUserId: directChatMatrixId,
-                                    presenceBackgroundColor: backgroundColor,
-                                    onTap: () => onLongPress?.call(context),
-                                  );
-                                }
-                                // 群聊使用房间头像
-                                return Avatar(
-                                  border: currentSpace == null
-                                      ? null
-                                      : BorderSide(
-                                          width: 2,
-                                          color: backgroundColor ?? theme.colorScheme.surface,
-                                        ),
-                                  borderRadius: null,
-                                  mxContent: room.avatar,
-                                  size: avatarSize,
-                                  name: displayname,
-                                  presenceUserId: directChatMatrixId,
-                                  presenceBackgroundColor: backgroundColor,
+                                  },
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
                                   onTap: () => onLongPress?.call(context),
-                                );
-                              },
-                            ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: () => onLongPress?.call(context),
-                              child: AnimatedScale(
-                                duration: FluffyThemes.durationFast,
-                                curve: FluffyThemes.curveBounce,
-                                scale: listTileHovered ? 1.0 : 0.0,
-                                child: Material(
-                                  color: backgroundColor,
-                                  borderRadius: BorderRadius.circular(FluffyThemes.radiusLg),
-                                  elevation: FluffyThemes.elevationSm,
-                                  child: const Icon(
-                                    Icons.arrow_drop_down_circle_outlined,
-                                    size: FluffyThemes.iconSizeSm,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              title: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      displayname,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: TextStyle(
-                        fontWeight: unread || room.hasNewMessages
-                            ? FontWeight.w500
-                            : null,
-                      ),
-                    ),
-                  ),
-                  if (isMuted)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4.0),
-                      child: Icon(
-                        Icons.notifications_off_outlined,
-                        size: 16,
-                      ),
-                    ),
-                  if (room.isFavourite)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        right: hasNotifications ? 4.0 : 0.0,
-                      ),
-                      child: Icon(
-                        Icons.push_pin,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  if (room.membership != Membership.invite)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4.0),
-                      child: Text(
-                        room.latestEventReceivedTime
-                            .localizedTimeShort(context),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              subtitle: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  if (typingText.isEmpty &&
-                      ownMessage &&
-                      room.lastEvent?.status.isSending == true) ...[
-                    SizedBox(
-                      width: FluffyThemes.iconSizeXs,
-                      height: FluffyThemes.iconSizeXs,
-                      child: CircularProgressIndicator.adaptive(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: FluffyThemes.spacing4),
-                  ],
-                  AnimatedSize(
-                    clipBehavior: Clip.hardEdge,
-                    duration: FluffyThemes.durationFast,
-                    curve: FluffyThemes.curveStandard,
-                    child: typingText.isNotEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: FluffyThemes.spacing4),
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0.0, end: 1.0),
-                              duration: FluffyThemes.durationNormal,
-                              curve: FluffyThemes.curveBounce,
-                              builder: (context, value, child) => Transform.scale(
-                                scale: value,
-                                child: Icon(
-                                  Icons.edit_outlined,
-                                  color: theme.colorScheme.secondary,
-                                  size: FluffyThemes.iconSizeXs,
-                                ),
-                              ),
-                            ),
-                          )
-                        : room.lastEvent?.relationshipType ==
-                                RelationshipTypes.thread
-                            ? Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: theme.colorScheme.outline,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    FluffyThemes.radiusSm,
-                                  ),
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: FluffyThemes.spacing8),
-                                margin: const EdgeInsets.only(right: FluffyThemes.spacing4),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.message_outlined,
-                                      size: FluffyThemes.fontSizeSm,
-                                      color: theme.colorScheme.outline,
-                                    ),
-                                    const SizedBox(width: FluffyThemes.spacing4),
-                                    Text(
-                                      L10n.of(context).thread,
-                                      style: TextStyle(
-                                        fontSize: FluffyThemes.fontSizeSm,
-                                        color: theme.colorScheme.outline,
+                                  child: AnimatedScale(
+                                    duration: FluffyThemes.durationFast,
+                                    curve: FluffyThemes.curveBounce,
+                                    scale: listTileHovered ? 1.0 : 0.0,
+                                    child: Material(
+                                      color: backgroundColor,
+                                      borderRadius: BorderRadius.circular(
+                                          FluffyThemes.radiusLg),
+                                      elevation: FluffyThemes.elevationSm,
+                                      child: const Icon(
+                                        Icons.arrow_drop_down_circle_outlined,
+                                        size: FluffyThemes.iconSizeSm,
                                       ),
                                     ),
-                                  ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  title: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          displayname,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontWeight: unread || room.hasNewMessages
+                                ? FontWeight.w500
+                                : null,
+                          ),
+                        ),
+                      ),
+                      if (isMuted)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4.0),
+                          child: Icon(
+                            Icons.notifications_off_outlined,
+                            size: 16,
+                          ),
+                        ),
+                      if (room.isFavourite)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            right: hasNotifications ? 4.0 : 0.0,
+                          ),
+                          child: Icon(
+                            Icons.push_pin,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      if (room.membership != Membership.invite)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4.0),
+                          child: lastEvent == null
+                              ? const SizedBox.shrink()
+                              : Text(
+                                  room.latestEventReceivedTime
+                                      .localizedTimeShort(context),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                        ),
+                    ],
+                  ),
+                  subtitle: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      if (typingText.isEmpty &&
+                          ownMessage &&
+                          lastEvent?.status.isSending == true) ...[
+                        SizedBox(
+                          width: FluffyThemes.iconSizeXs,
+                          height: FluffyThemes.iconSizeXs,
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: FluffyThemes.spacing4,
+                        ),
+                      ],
+                      AnimatedSize(
+                        clipBehavior: Clip.hardEdge,
+                        duration: FluffyThemes.durationFast,
+                        curve: FluffyThemes.curveStandard,
+                        child: typingText.isNotEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.only(
+                                    right: FluffyThemes.spacing4),
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  duration: FluffyThemes.durationNormal,
+                                  curve: FluffyThemes.curveBounce,
+                                  builder: (context, value, child) =>
+                                      Transform.scale(
+                                    scale: value,
+                                    child: Icon(
+                                      Icons.edit_outlined,
+                                      color: theme.colorScheme.secondary,
+                                      size: FluffyThemes.iconSizeXs,
+                                    ),
+                                  ),
                                 ),
                               )
-                            : const SizedBox.shrink(),
-                  ),
-                  Expanded(
-                    child: typingText.isNotEmpty
-                        ? Text(
+                            : lastEvent?.relationshipType ==
+                                    RelationshipTypes.thread
+                                ? Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: theme.colorScheme.outline,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        FluffyThemes.radiusSm,
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: FluffyThemes.spacing8),
+                                    margin: const EdgeInsets.only(
+                                        right: FluffyThemes.spacing4),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.message_outlined,
+                                          size: FluffyThemes.fontSizeSm,
+                                          color: theme.colorScheme.outline,
+                                        ),
+                                        const SizedBox(
+                                            width: FluffyThemes.spacing4),
+                                        Text(
+                                          L10n.of(context).thread,
+                                          style: TextStyle(
+                                            fontSize: FluffyThemes.fontSizeSm,
+                                            color: theme.colorScheme.outline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                      ),
+                      Expanded(
+                        child: typingText.isNotEmpty
+                            ? Text(
                                 typingText,
                                 style: TextStyle(
                                   color: theme.colorScheme.primary,
@@ -451,7 +487,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                 key: ValueKey(
                                   '${lastEvent?.eventId}_${lastEvent?.type}_${lastEvent?.redacted}',
                                 ),
-                                future: needLastEventSender
+                                future: lastEvent != null && needLastEventSender
                                     ? lastEvent.calcLocalizedBody(
                                         MatrixLocals(L10n.of(context)),
                                         hideReply: true,
@@ -460,7 +496,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                         removeMarkdown: true,
                                         withSenderNamePrefix: (!isDirectChat ||
                                             directChatMatrixId !=
-                                                room.lastEvent?.senderId),
+                                                lastEvent.senderId),
                                       )
                                     : null,
                                 initialData:
@@ -472,7 +508,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                   removeMarkdown: true,
                                   withSenderNamePrefix: (!isDirectChat ||
                                       directChatMatrixId !=
-                                          room.lastEvent?.senderId),
+                                          lastEvent?.senderId),
                                 ),
                                 builder: (context, snapshot) {
                                   final subtitleText = room.membership ==
@@ -503,47 +539,46 @@ class _ChatListItemState extends State<ChatListItem> {
                                       color: unread || room.hasNewMessages
                                           ? theme.colorScheme.onSurface
                                           : theme.colorScheme.outline,
-                                      decoration:
-                                          room.lastEvent?.redacted == true
-                                              ? TextDecoration.lineThrough
-                                              : null,
+                                      decoration: lastEvent?.redacted == true
+                                          ? TextDecoration.lineThrough
+                                          : null,
                                     ),
                                   );
                                 },
                               ),
+                      ),
+                      const SizedBox(width: 8),
+                      UnreadBubble(room: room),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  UnreadBubble(room: room),
-                ],
-              ),
-              onTap: onTap,
-              trailing: onForget == null
-                  ? room.membership == Membership.invite
-                      ? IconButton(
-                          tooltip: L10n.of(context).declineInvitation,
-                          icon: const Icon(Icons.delete_forever_outlined),
-                          color: theme.colorScheme.error,
-                          onPressed: () async {
-                            final consent = await showOkCancelAlertDialog(
-                              context: context,
-                              title: L10n.of(context).declineInvitation,
-                              message: L10n.of(context).areYouSure,
-                              okLabel: L10n.of(context).yes,
-                              isDestructive: true,
-                            );
-                            if (consent != OkCancelResult.ok) return;
-                            if (!context.mounted) return;
-                            await showFutureLoadingDialog(
-                              context: context,
-                              future: room.leave,
-                            );
-                          },
-                        )
-                      : null
-                  : IconButton(
-                      icon: const Icon(Icons.delete_outlined),
-                      onPressed: onForget,
-                    ),
+                  onTap: onTap,
+                  trailing: onForget == null
+                      ? room.membership == Membership.invite
+                          ? IconButton(
+                              tooltip: L10n.of(context).declineInvitation,
+                              icon: const Icon(Icons.delete_forever_outlined),
+                              color: theme.colorScheme.error,
+                              onPressed: () async {
+                                final consent = await showOkCancelAlertDialog(
+                                  context: context,
+                                  title: L10n.of(context).declineInvitation,
+                                  message: L10n.of(context).areYouSure,
+                                  okLabel: L10n.of(context).yes,
+                                  isDestructive: true,
+                                );
+                                if (consent != OkCancelResult.ok) return;
+                                if (!context.mounted) return;
+                                await showFutureLoadingDialog(
+                                  context: context,
+                                  future: room.leave,
+                                );
+                              },
+                            )
+                          : null
+                      : IconButton(
+                          icon: const Icon(Icons.delete_outlined),
+                          onPressed: onForget,
+                        ),
                 ),
               ),
             ),
