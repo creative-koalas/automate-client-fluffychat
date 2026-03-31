@@ -11,6 +11,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 
+import 'package:psygo/utils/chat_text_tokenizer.dart';
 import 'package:psygo/utils/code_highlight_theme.dart';
 import 'package:psygo/utils/event_checkbox_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -19,10 +20,7 @@ import 'package:psygo/widgets/mxc_image.dart';
 import '../../../utils/url_launcher.dart';
 
 class HtmlMessage extends StatelessWidget {
-  static final RegExp _plainUrlPattern = RegExp(
-    r"https?:\/\/[A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]+",
-    caseSensitive: false,
-  );
+  static const ChatTextTokenizer _textTokenizer = ChatTextTokenizer();
 
   final String html;
   final Room room;
@@ -250,9 +248,9 @@ class HtmlMessage extends StatelessWidget {
             );
           }
         }
-        final sanitizedHref = _extractLeadingUrl(href) ?? href;
+        final sanitizedHref = _textTokenizer.extractLeadingUrl(href) ?? href;
         final linkText = node.text;
-        final sanitizedLinkText = _extractLeadingUrl(linkText);
+        final sanitizedLinkText = _textTokenizer.extractLeadingUrl(linkText);
         final trailingText =
             sanitizedLinkText != null && linkText.startsWith(sanitizedLinkText)
                 ? linkText.substring(sanitizedLinkText.length)
@@ -737,49 +735,21 @@ class HtmlMessage extends StatelessWidget {
     if (text.isEmpty) return const [];
 
     final spans = <InlineSpan>[];
-    var cursor = 0;
-    for (final match in _plainUrlPattern.allMatches(text)) {
-      if (match.start > cursor) {
-        spans.add(
-          TextSpan(
-            text: text.substring(cursor, match.start),
-            style: TextStyle(color: textColor),
-          ),
-        );
-      }
-
-      final url = match.group(0);
-      if (url == null || url.isEmpty) {
-        cursor = match.end;
-        continue;
-      }
-
+    final plainTextStyle = TextStyle(color: textColor);
+    for (final token in _textTokenizer.tokenize(text)) {
       spans.add(
         TextSpan(
-          text: url,
-          style: linkStyle,
-          recognizer: TapGestureRecognizer()
-            ..onTap = () => UrlLauncher(context, url).launchUrl(),
-        ),
-      );
-      cursor = match.end;
-    }
-
-    if (cursor < text.length) {
-      spans.add(
-        TextSpan(
-          text: text.substring(cursor),
-          style: TextStyle(color: textColor),
+          text: token.text,
+          style: token.isUrl ? linkStyle : plainTextStyle,
+          recognizer: token.isUrl
+              ? (TapGestureRecognizer()
+                ..onTap = () => UrlLauncher(context, token.text).launchUrl())
+              : null,
         ),
       );
     }
 
     return spans;
-  }
-
-  String? _extractLeadingUrl(String text) {
-    final match = _plainUrlPattern.matchAsPrefix(text);
-    return match?.group(0);
   }
 
   @override
