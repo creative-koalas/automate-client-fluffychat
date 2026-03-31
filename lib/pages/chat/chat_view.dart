@@ -1,7 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:badges/badges.dart';
+import 'package:badges/badges.dart' as badges;
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:matrix/matrix.dart';
 import 'package:psygo/config/setting_keys.dart';
@@ -43,6 +43,29 @@ class ChatView extends StatelessWidget {
   final ChatController controller;
 
   const ChatView(this.controller, {super.key});
+
+  Widget _buildWebEntryActionButton(
+    BuildContext context, {
+    required Agent agent,
+    required bool isVisuallyDisabled,
+  }) {
+    final l10n = L10n.of(context);
+    final isUpdated = agent.webEntryStatus == Agent.webEntryStatusUpdated;
+    final isAvailable = agent.canOpenWebEntry && !agent.isResting;
+
+    return _WebEntryActionButton(
+      key: controller.webEntryGuideKey,
+      isOpen: controller.webEntryOpen,
+      isLoading: controller.webEntryLoading,
+      isDisabled: isVisuallyDisabled,
+      isAvailable: isAvailable,
+      isUpdated: isUpdated,
+      unavailableTooltip: l10n.agentWebEntryUnavailable,
+      onPressed: controller.webEntryOpen || controller.webEntryLoading
+          ? controller.closeWebEntry
+          : controller.openWebEntry,
+    );
+  }
 
   Widget _buildGuideStatusItem(
     BuildContext context, {
@@ -396,63 +419,15 @@ class ChatView extends StatelessWidget {
                 directChatMatrixID,
               );
               if (agent == null) return const SizedBox.shrink();
-              final theme = Theme.of(context);
-              final l10n = L10n.of(context);
-              final isDisabled =
-                  !controller.webEntryOpen &&
+              final isDisabled = !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
-                  (agent.isResting || !agent.canOpenWebEntry);
-              final isVisuallyDisabled = isDisabled;
+                  !agent.canOpenWebEntry;
+              final isVisuallyDisabled = isDisabled || agent.isResting;
 
-              return KeyedSubtree(
-                key: controller.webEntryGuideKey,
-                child: IconButton(
-                  tooltip: controller.webEntryOpen
-                      ? '返回聊天'
-                      : (isVisuallyDisabled
-                            ? l10n.agentWebEntryUnavailable
-                            : '打开 WebView'),
-                  onPressed:
-                      controller.webEntryOpen || controller.webEntryLoading
-                      ? controller.closeWebEntry
-                      : () => controller.openWebEntry(),
-                  icon: controller.webEntryLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(
-                              controller.webEntryOpen
-                                  ? Icons.arrow_back
-                                  : Icons.web_outlined,
-                              color: isVisuallyDisabled
-                                  ? theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.38,
-                                    )
-                                  : null,
-                            ),
-                            if (!controller.webEntryOpen &&
-                                agent.webEntryStatus ==
-                                    Agent.webEntryStatusUpdated)
-                              Positioned(
-                                right: -1,
-                                top: -1,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.error,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                ),
+              return _buildWebEntryActionButton(
+                context,
+                agent: agent,
+                isVisuallyDisabled: isVisuallyDisabled,
               );
             },
           ),
@@ -602,7 +577,7 @@ class ChatView extends StatelessWidget {
                                     ),
                                 builder: (context, _) => UnreadRoomsBadge(
                                   filter: (r) => r.id != controller.roomId,
-                                  badgePosition: BadgePosition.topEnd(
+                                  badgePosition: badges.BadgePosition.topEnd(
                                     end: 8,
                                     top: 4,
                                   ),
@@ -1094,6 +1069,318 @@ class ChatView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WebEntryActionButton extends StatefulWidget {
+  final bool isOpen;
+  final bool isLoading;
+  final bool isDisabled;
+  final bool isAvailable;
+  final bool isUpdated;
+  final String unavailableTooltip;
+  final VoidCallback onPressed;
+
+  const _WebEntryActionButton({
+    super.key,
+    required this.isOpen,
+    required this.isLoading,
+    required this.isDisabled,
+    required this.isAvailable,
+    required this.isUpdated,
+    required this.unavailableTooltip,
+    required this.onPressed,
+  });
+
+  @override
+  State<_WebEntryActionButton> createState() => _WebEntryActionButtonState();
+}
+
+class _WebEntryActionButtonState extends State<_WebEntryActionButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WebEntryActionButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    if (widget.isUpdated) {
+      _controller.repeat(reverse: true);
+    } else if (widget.isAvailable && !widget.isDisabled && !widget.isOpen) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.stop();
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isHighlighted = !widget.isDisabled &&
+        !widget.isOpen &&
+        (widget.isAvailable || widget.isUpdated);
+    final availableStyle = _resolveAvailableStyle(colorScheme);
+    final updatedStyle = _resolveUpdatedStyle(colorScheme, availableStyle);
+    final stateStyle = widget.isUpdated ? updatedStyle : availableStyle;
+    final highlightColor = stateStyle.accent;
+    final baseBackground = widget.isDisabled
+        ? Colors.transparent
+        : isHighlighted
+            ? stateStyle.background
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.36);
+
+    final tooltip = widget.isOpen
+        ? '返回聊天'
+        : widget.isDisabled
+            ? widget.unavailableTooltip
+            : widget.isUpdated
+                ? '智能界面有更新'
+                : widget.isAvailable
+                    ? '智能界面可用'
+                    : '打开 WebView';
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final pulse = widget.isUpdated
+            ? 0.78 + (_controller.value * 0.18)
+            : 0.88 + (_controller.value * 0.1);
+        final glowOpacity = isHighlighted ? pulse : 0.0;
+        final tooltipBackground = Color.alphaBlend(
+          highlightColor.withValues(alpha: widget.isUpdated ? 0.14 : 0.08),
+          colorScheme.surfaceContainerHighest,
+        );
+        final tooltipTextColor = colorScheme.onSurface;
+        final tooltipBorderColor = isHighlighted
+            ? highlightColor.withValues(
+                alpha: widget.isUpdated ? 0.34 : 0.22,
+              )
+            : colorScheme.outlineVariant.withValues(alpha: 0.18);
+
+        return Tooltip(
+          message: tooltip,
+          waitDuration: const Duration(milliseconds: 180),
+          showDuration: const Duration(seconds: 2),
+          preferBelow: false,
+          verticalOffset: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          textStyle: theme.textTheme.bodySmall?.copyWith(
+            color: tooltipTextColor,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
+          decoration: BoxDecoration(
+            color: tooltipBackground.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tooltipBorderColor),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.shadow.withValues(alpha: 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              if (isHighlighted)
+                Container(
+                  width: widget.isUpdated ? 42 : 38,
+                  height: widget.isUpdated ? 42 : 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: highlightColor.withValues(
+                          alpha: glowOpacity * (widget.isUpdated ? 0.22 : 0.14),
+                        ),
+                        blurRadius: widget.isUpdated ? 14 : 10,
+                        spreadRadius: widget.isUpdated ? 2 : 1,
+                      ),
+                    ],
+                  ),
+                ),
+              Material(
+                color: baseBackground,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: isHighlighted
+                        ? highlightColor.withValues(
+                            alpha: stateStyle.borderOpacity,
+                          )
+                        : colorScheme.outlineVariant.withValues(alpha: 0.28),
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: widget.onPressed,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: widget.isLoading
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(highlightColor),
+                            ),
+                          )
+                        : Icon(
+                            widget.isOpen
+                                ? Icons.arrow_back
+                                : Icons.dashboard_customize_rounded,
+                            size: 20,
+                            color: widget.isDisabled
+                                ? colorScheme.onSurface.withValues(alpha: 0.38)
+                                : isHighlighted
+                                    ? highlightColor
+                                    : colorScheme.onSurfaceVariant,
+                          ),
+                  ),
+                ),
+              ),
+              if (!widget.isOpen && widget.isUpdated)
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: highlightColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.surface,
+                        width: 1.6,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: highlightColor.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: updatedStyle.dotCore,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else if (!widget.isOpen &&
+                  widget.isAvailable &&
+                  !widget.isDisabled)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: highlightColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.surface,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  _WebEntryVisualStyle _resolveAvailableStyle(ColorScheme colorScheme) {
+    return _WebEntryVisualStyle(
+      accent: colorScheme.primary,
+      background: colorScheme.primaryContainer.withValues(alpha: 0.2),
+      borderOpacity: 0.46,
+      dotCore: colorScheme.onPrimaryContainer,
+    );
+  }
+
+  _WebEntryVisualStyle _resolveUpdatedStyle(
+    ColorScheme colorScheme,
+    _WebEntryVisualStyle availableStyle,
+  ) {
+    final accent = colorScheme.tertiary;
+    final isTooClose = _colorDistance(accent, availableStyle.accent) < 72;
+    if (!isTooClose) {
+      return _WebEntryVisualStyle(
+        accent: accent,
+        background: colorScheme.tertiaryContainer.withValues(alpha: 0.28),
+        borderOpacity: 0.72,
+        dotCore: colorScheme.onTertiaryContainer,
+      );
+    }
+
+    final fallbackAccent = Color.alphaBlend(
+      colorScheme.inversePrimary.withValues(alpha: 0.72),
+      colorScheme.primary,
+    );
+    final fallbackBackground = Color.alphaBlend(
+      colorScheme.secondaryContainer.withValues(alpha: 0.85),
+      colorScheme.surfaceContainerHighest,
+    );
+    return _WebEntryVisualStyle(
+      accent: fallbackAccent,
+      background: fallbackBackground.withValues(alpha: 0.34),
+      borderOpacity: 0.86,
+      dotCore: colorScheme.onSecondaryContainer,
+    );
+  }
+
+  double _colorDistance(Color a, Color b) {
+    final dr = (a.r - b.r).abs();
+    final dg = (a.g - b.g).abs();
+    final db = (a.b - b.b).abs();
+    return dr + dg + db;
+  }
+}
+
+class _WebEntryVisualStyle {
+  final Color accent;
+  final Color background;
+  final double borderOpacity;
+  final Color dotCore;
+
+  const _WebEntryVisualStyle({
+    required this.accent,
+    required this.background,
+    required this.borderOpacity,
+    required this.dotCore,
+  });
 }
 
 /// AI 内容免责声明
