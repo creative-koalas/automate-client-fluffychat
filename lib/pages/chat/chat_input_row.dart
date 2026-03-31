@@ -257,7 +257,6 @@ class ChatInputRow extends StatelessWidget {
                       icon: const Icon(Icons.add_circle_outline),
                       color: theme.colorScheme.onPrimaryContainer,
                       onPressed: () {
-                        if (controller.blockFileIfResting()) return;
                         _showAttachmentBottomSheet(context, controller);
                       },
                     ),
@@ -283,7 +282,6 @@ class ChatInputRow extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.camera_alt_outlined),
                         onPressed: () {
-                          if (controller.blockFileIfResting()) return;
                           controller.onAddPopupMenuButtonSelected(
                             AddPopupMenuActions.photoCamera,
                           );

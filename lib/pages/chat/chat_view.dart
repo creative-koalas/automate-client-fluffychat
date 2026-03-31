@@ -401,7 +401,7 @@ class ChatView extends StatelessWidget {
               final isDisabled =
                   !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
-                  !agent.canOpenWebEntry;
+                  (agent.isResting || !agent.canOpenWebEntry);
               final isVisuallyDisabled = isDisabled;
 
               return KeyedSubtree(

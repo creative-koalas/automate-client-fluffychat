@@ -297,17 +297,10 @@ class ChatController extends State<ChatPageWithRoom>
   bool get employeeWorkTemplateDismissed => _employeeWorkTemplateDismissed;
   String? get backendUserId => context.read<PsygoAuthState>().userId;
 
-  // Resting state should not block chat actions anymore.
-  bool _blockFileIfResting() => false;
-
-  bool blockFileIfResting() => _blockFileIfResting();
-
   Agent? get webEntryAgent {
     final directChatMatrixID = room.directChatMatrixID;
     return AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
   }
-
-  bool get canOpenWebEntry => webEntryAgent?.canOpenWebEntry == true;
 
   bool get _supportsInlineWebView {
     if (kIsWeb) return false;
@@ -345,7 +338,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (_webEntryLoading) return;
     final l10n = L10n.of(context);
 
-    if (!agent.canOpenWebEntry) {
+    if (agent.isResting || !agent.canOpenWebEntry) {
       _showWebEntryHint(l10n.agentWebEntryUnavailable);
       return;
     }
@@ -420,8 +413,6 @@ class ChatController extends State<ChatPageWithRoom>
   void onDragDone(DropDoneDetails details) async {
     setState(() => dragging = false);
     if (details.files.isEmpty) return;
-    if (_blockFileIfResting()) return;
-
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(details.files);
       return;
@@ -455,7 +446,6 @@ class ChatController extends State<ChatPageWithRoom>
       if (imageData == null || imageData.isEmpty) {
         return false;
       }
-      if (_blockFileIfResting()) return true;
       if (PlatformInfos.isDesktop) {
         addPendingAttachments([
           XFile.fromData(
@@ -480,7 +470,6 @@ class ChatController extends State<ChatPageWithRoom>
       );
       return true;
     }
-    if (_blockFileIfResting()) return true;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments(files);
       return true;
@@ -1582,7 +1571,6 @@ class ChatController extends State<ChatPageWithRoom>
     if (!hasPending && !hasPendingScreenshot && trimmedText.isEmpty) return;
 
     if (hasPending || hasPendingScreenshot) {
-      if (_blockFileIfResting()) return;
       final sent = await _sendPendingAttachments(
         includeConfirmedScreenshot: hasPendingScreenshot,
       );
@@ -2033,7 +2021,6 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void sendFileAction({FileSelectorType type = FileSelectorType.any}) async {
-    if (_blockFileIfResting()) return;
     final files = await selectFiles(context, allowMultiple: true, type: type);
     if (files.isEmpty) return;
     if (PlatformInfos.isDesktop) {
@@ -2058,7 +2045,6 @@ class ChatController extends State<ChatPageWithRoom>
     if (image == null) return;
     final normalizedImage = await _normalizedClipboardImageData(image);
     if (normalizedImage == null || normalizedImage.isEmpty) return;
-    if (_blockFileIfResting()) return;
     if (PlatformInfos.isDesktop) {
       addPendingAttachments([
         XFile.fromData(
@@ -2090,7 +2076,6 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void openCameraAction() async {
-    if (_blockFileIfResting()) return;
     // Make sure the textfield is unfocused before opening the camera
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickImage(source: ImageSource.camera);
@@ -2111,7 +2096,6 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void openVideoCameraAction() async {
-    if (_blockFileIfResting()) return;
     // Make sure the textfield is unfocused before opening the camera
     FocusScope.of(context).requestFocus(FocusNode());
     final file = await ImagePicker().pickVideo(
@@ -2146,7 +2130,6 @@ class ChatController extends State<ChatPageWithRoom>
       'restoreWindowAfterCapture=$restoreWindowAfterCapture '
       'avoidFocusBeforeCapture=$avoidFocusBeforeCapture',
     );
-    if (_blockFileIfResting()) return;
     if (!PlatformInfos.isMacOS &&
         !PlatformInfos.isWindows &&
         !PlatformInfos.isLinux) {
