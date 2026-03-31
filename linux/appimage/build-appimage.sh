@@ -1,5 +1,5 @@
 #!/bin/bash
-# PsyGo Linux AppImage 打包脚本
+# OpenOcto Linux AppImage 打包脚本
 # 此脚本将 Flutter 应用打包为 AppImage 格式，包含系统托盘所需的依赖
 
 set -e
@@ -8,10 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="$PROJECT_ROOT/build/linux/x64/release/bundle"
 APPDIR="$PROJECT_ROOT/build/AppDir"
-APP_NAME="PsyGo"
+APP_NAME="OpenOcto"
 APP_ID="com.psygo.app"
 
-echo "=== PsyGo AppImage 打包脚本 ==="
+echo "=== OpenOcto AppImage 打包脚本 ==="
 echo "项目目录: $PROJECT_ROOT"
 echo "构建目录: $BUILD_DIR"
 

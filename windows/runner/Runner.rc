@@ -17,7 +17,7 @@
 // English (United States) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#define APP_DISPLAY_NAME "PsyGo"
+#define APP_DISPLAY_NAME "OpenOcto"
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 #ifdef APSTUDIO_INVOKED

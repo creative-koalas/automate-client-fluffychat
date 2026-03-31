@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Name=Psygo
-GenericName=Psygo
+Name=OpenOcto
+GenericName=OpenOcto
 Comment=Your AI coworkers. Give a git URL, get a production-ready project.
 Exec=psygo
 Terminal=false
