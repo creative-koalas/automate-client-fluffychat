@@ -147,11 +147,12 @@ class MainActivity : FlutterActivity() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val appName = resolveAppName()
 
             // 创建高优先级通知渠道
             val channelId = "automate_push_channel"
             val channelName = "消息通知"
-            val channelDescription = "接收 PsyGo 的消息推送通知"
+            val channelDescription = "接收 $appName 的消息推送通知"
             val importance = NotificationManager.IMPORTANCE_HIGH
 
             val channel = NotificationChannel(channelId, channelName, importance).apply {
@@ -164,6 +165,15 @@ class MainActivity : FlutterActivity() {
             }
 
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun resolveAppName(): String {
+        return try {
+            applicationInfo.loadLabel(packageManager)?.toString()?.trim().orEmpty()
+                .ifEmpty { "App" }
+        } catch (_: Exception) {
+            "App"
         }
     }
 

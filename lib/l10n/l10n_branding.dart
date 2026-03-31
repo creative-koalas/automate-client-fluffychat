@@ -8,6 +8,7 @@ extension L10nBrandingExtension on L10n {
       title,
       'PsyGo',
       'Psygo',
+      PsygoConfig.defaultAppName,
       'FluffyChat',
       'FuffyChat',
       'FluffyChät',

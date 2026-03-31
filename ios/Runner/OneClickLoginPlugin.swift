@@ -14,7 +14,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
     private var appDisplayName: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? "PsyGo"
+            ?? "App"
     }
 
     private var isPreLoginSuccess = false
