@@ -249,8 +249,12 @@ class _ChatListItemState extends State<ChatListItem> {
 
     final isMuted = room.pushRuleState != PushRuleState.notify;
     final typingText = room.getLocalizedTypingText(context);
-    final lastEvent = room.lastEvent;
-    final ownMessage = lastEvent?.senderId == room.client.userID;
+    final rawLastEvent = room.lastEvent;
+    final isRefreshingLastEvent =
+        rawLastEvent?.type == EventTypes.refreshingLastEvent;
+    final lastEvent = isRefreshingLastEvent ? null : rawLastEvent;
+    final lastEventSenderId = lastEvent?.senderId;
+    final ownMessage = lastEventSenderId == room.client.userID;
     final unread = room.isUnread;
     final directChatMatrixId = room.directChatMatrixID;
     final isDirectChat = directChatMatrixId != null;
@@ -549,15 +553,17 @@ class _ChatListItemState extends State<ChatListItem> {
                       if (room.membership != Membership.invite)
                         Padding(
                           padding: const EdgeInsets.only(left: 4.0),
-                          child: Text(
-                            room.latestEventReceivedTime.localizedTimeShort(
-                              context,
-                            ),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.outline,
-                            ),
-                          ),
+                          child: lastEvent == null
+                              ? const SizedBox.shrink()
+                              : Text(
+                                  room.latestEventReceivedTime.localizedTimeShort(
+                                    context,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
                         ),
                     ],
                   ),
@@ -567,7 +573,7 @@ class _ChatListItemState extends State<ChatListItem> {
                     children: <Widget>[
                       if (typingText.isEmpty &&
                           ownMessage &&
-                          room.lastEvent?.status.isSending == true) ...[
+                          lastEvent?.status.isSending == true) ...[
                         SizedBox(
                           width: FluffyThemes.iconSizeXs,
                           height: FluffyThemes.iconSizeXs,
@@ -604,7 +610,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                       ),
                                 ),
                               )
-                            : room.lastEvent?.relationshipType ==
+                            : lastEvent?.relationshipType ==
                                   RelationshipTypes.thread
                             ? Container(
                                 decoration: BoxDecoration(
@@ -668,7 +674,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                         withSenderNamePrefix:
                                             (!isDirectChat ||
                                             directChatMatrixId !=
-                                                room.lastEvent?.senderId),
+                                                lastEventSenderId),
                                       )
                                     : null,
                                 initialData: lastEvent
@@ -681,7 +687,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                       withSenderNamePrefix:
                                           (!isDirectChat ||
                                           directChatMatrixId !=
-                                              room.lastEvent?.senderId),
+                                              lastEventSenderId),
                                     ),
                                 builder: (context, snapshot) {
                                   final subtitleText =
@@ -720,7 +726,7 @@ class _ChatListItemState extends State<ChatListItem> {
                                           ? theme.colorScheme.onSurface
                                           : theme.colorScheme.outline,
                                       decoration:
-                                          room.lastEvent?.redacted == true
+                                          lastEvent?.redacted == true
                                           ? TextDecoration.lineThrough
                                           : null,
                                     ),
