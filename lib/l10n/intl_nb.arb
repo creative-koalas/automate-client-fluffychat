@@ -657,7 +657,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -824,7 +824,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} har invitert deg til PsyGo. \n1. Installer PsyGo: https://psygoai.com \n2. Registrer deg eller logg inn \n3. Åpne invitasjonslenken: {link}",
+    "inviteText": "{username} har invitert deg til OpenOcto. \n1. Installer OpenOcto: https://psygoai.com \n2. Registrer deg eller logg inn \n3. Åpne invitasjonslenken: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -986,7 +986,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "Ny melding i PsyGo",
+    "newMessageInPsygo": "Ny melding i OpenOcto",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1011,7 +1011,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Bruk https://microg.org/ for å få Google-tjenester (uten at det går ut over personvernet) for å få push-merknader i PsyGo:",
+    "noGoogleServicesWarning": "Bruk https://microg.org/ for å få Google-tjenester (uten at det går ut over personvernet) for å få push-merknader i OpenOcto:",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1472,7 +1472,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2323,15 +2323,15 @@
     },
     "screenSharingTitle": "skjermdeling",
     "@screenSharingTitle": {},
-    "screenSharingDetail": "Du deler skjermen din i PsyGo",
+    "screenSharingDetail": "Du deler skjermen din i OpenOcto",
     "@screenSharingDetail": {},
     "callingPermissions": "Anropstillatelser",
     "@callingPermissions": {},
-    "callingAccountDetails": "Lar PsyGo bruke den innebygde Android-oppringingsappen.",
+    "callingAccountDetails": "Lar OpenOcto bruke den innebygde Android-oppringingsappen.",
     "@callingAccountDetails": {},
     "appearOnTop": "Vis øverst",
     "@appearOnTop": {},
-    "otherCallingPermissions": "Mikrofon, kamera og andre PsyGo-tillatelser",
+    "otherCallingPermissions": "Mikrofon, kamera og andre OpenOcto-tillatelser",
     "@otherCallingPermissions": {},
     "whyIsThisMessageEncrypted": "Hvorfor er denne meldingen uleselig?",
     "@whyIsThisMessageEncrypted": {},
@@ -2872,7 +2872,7 @@
     "@contentNotificationSettings": {},
     "generalNotificationSettings": "Generelle varslingsinnstillinger",
     "@generalNotificationSettings": {},
-    "appIntroduction": "Med PsyGo kan du chatte med vennene dine på tvers av forskjellige meldingstjenester. Finn ut mer på https://matrix.org eller trykk bare på *Fortsett*.",
+    "appIntroduction": "Med OpenOcto kan du chatte med vennene dine på tvers av forskjellige meldingstjenester. Finn ut mer på https://matrix.org eller trykk bare på *Fortsett*.",
     "@appIntroduction": {},
     "notificationRuleContainsUserNameDescription": "Varsler bruker når en melding inneholder ens brukernavn.",
     "@notificationRuleContainsUserNameDescription": {},
@@ -2942,7 +2942,7 @@
     "@generatingVideoThumbnail": {},
     "compressVideo": "Komprimerer video...",
     "@compressVideo": {},
-    "welcomeText": "Hei, hei! 👋 Dette er PsyGo. Du kan logge på hvilken som helst hjemmeserver som er kompatibel med https://matrix.org. Og deretter chatte med hvem som helst. Det er et stort desentralisert meldingsnettverk!",
+    "welcomeText": "Hei, hei! 👋 Dette er OpenOcto. Du kan logge på hvilken som helst hjemmeserver som er kompatibel med https://matrix.org. Og deretter chatte med hvem som helst. Det er et stort desentralisert meldingsnettverk!",
     "@welcomeText": {},
     "notificationRuleIsUserMentionDescription": "Varsler brukeren når de er direkte nevnt i en melding.",
     "@notificationRuleIsUserMentionDescription": {},
@@ -3222,7 +3222,7 @@
     "@foregroundServiceRunning": {},
     "callingAccount": "Ringekonto",
     "@callingAccount": {},
-    "appearOnTopDetails": "Lar appen vises øverst (ikke nødvendig hvis du allerede har PsyGo konfigurert som en ringekonto)",
+    "appearOnTopDetails": "Lar appen vises øverst (ikke nødvendig hvis du allerede har OpenOcto konfigurert som en ringekonto)",
     "@appearOnTopDetails": {},
     "longPressToRecordVoiceMessage": "Langt trykk for å spille inn talemelding.",
     "@longPressToRecordVoiceMessage": {},

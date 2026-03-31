@@ -830,7 +830,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1002,7 +1002,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vous a invité·e sur PsyGo.\n1. Visiter psygoai.com et installer l'application\n2. Inscrivez-vous ou connectez-vous\n3. Ouvrez le lien d'invitation :\n{link}",
+    "inviteText": "{username} vous a invité·e sur OpenOcto.\n1. Visiter psygoai.com et installer l'application\n2. Inscrivez-vous ou connectez-vous\n3. Ouvrez le lien d'invitation :\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1174,7 +1174,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Nouveau message dans PsyGo",
+    "newMessageInPsygo": "💬 Nouveau message dans OpenOcto",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1796,7 +1796,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2326,7 +2326,7 @@
     "@recoveryKey": {},
     "recoveryKeyLost": "Clé de récupération perdue ?",
     "@recoveryKeyLost": {},
-    "indexedDbErrorLong": "Le stockage des messages n'est malheureusement pas activé par défaut en mode privé.\nVeuillez consulter :\n - about:config\n - Définir dom.indexedDB.privateBrowsing.enabled à « vrai ».\nSinon, il n'est pas possible d'exécuter PsyGo.",
+    "indexedDbErrorLong": "Le stockage des messages n'est malheureusement pas activé par défaut en mode privé.\nVeuillez consulter :\n - about:config\n - Définir dom.indexedDB.privateBrowsing.enabled à « vrai ».\nSinon, il n'est pas possible d'exécuter OpenOcto.",
     "@indexedDbErrorLong": {},
     "saveKeyManuallyDescription": "Enregistrer cette clé manuellement en déclenchant la boîte de dialogue de partage du système ou le presse-papiers.",
     "@saveKeyManuallyDescription": {},
@@ -2385,19 +2385,19 @@
     "@foregroundServiceRunning": {},
     "screenSharingTitle": "Partage d'écran",
     "@screenSharingTitle": {},
-    "screenSharingDetail": "Vous partagez votre écran dans PsyGo",
+    "screenSharingDetail": "Vous partagez votre écran dans OpenOcto",
     "@screenSharingDetail": {},
     "callingPermissions": "Permissions d'appel",
     "@callingPermissions": {},
     "callingAccount": "Compte d'appel",
     "@callingAccount": {},
-    "callingAccountDetails": "Permet à PsyGo d'utiliser l'application de numérotation native d'Android.",
+    "callingAccountDetails": "Permet à OpenOcto d'utiliser l'application de numérotation native d'Android.",
     "@callingAccountDetails": {},
     "appearOnTop": "Apparaître en haut",
     "@appearOnTop": {},
-    "appearOnTopDetails": "Permet à l'application d'apparaître en haut de l'écran (non nécessaire si vous avez déjà configuré PsyGo comme compte d'appel)",
+    "appearOnTopDetails": "Permet à l'application d'apparaître en haut de l'écran (non nécessaire si vous avez déjà configuré OpenOcto comme compte d'appel)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Microphone, caméra et autres autorisations de PsyGo",
+    "otherCallingPermissions": "Microphone, caméra et autres autorisations de OpenOcto",
     "@otherCallingPermissions": {},
     "newGroup": "Nouveau groupe",
     "@newGroup": {},
