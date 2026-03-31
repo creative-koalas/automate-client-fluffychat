@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
@@ -18,6 +19,11 @@ import 'package:psygo/widgets/mxc_image.dart';
 import '../../../utils/url_launcher.dart';
 
 class HtmlMessage extends StatelessWidget {
+  static final RegExp _plainUrlPattern = RegExp(
+    r"https?:\/\/[A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]+",
+    caseSensitive: false,
+  );
+
   final String html;
   final Room room;
   final Color textColor;
@@ -176,12 +182,7 @@ class HtmlMessage extends StatelessWidget {
         return TextSpan(children: mentionSpans);
       }
 
-      return LinkifySpan(
-        text: text,
-        options: const LinkifyOptions(humanize: false),
-        linkStyle: linkStyle,
-        onOpen: onOpen,
-      );
+      return TextSpan(children: _buildPlainTextSpans(text, context));
     }
 
     // We must not render tags which are not in the allow list:
@@ -249,12 +250,48 @@ class HtmlMessage extends StatelessWidget {
             );
           }
         }
+        final sanitizedHref = _extractLeadingUrl(href) ?? href;
+        final linkText = node.text;
+        final sanitizedLinkText = _extractLeadingUrl(linkText);
+        final trailingText =
+            sanitizedLinkText != null && linkText.startsWith(sanitizedLinkText)
+                ? linkText.substring(sanitizedLinkText.length)
+                : '';
+        if (sanitizedLinkText != null && trailingText.isNotEmpty) {
+          return WidgetSpan(
+            child: Tooltip(
+              message: sanitizedHref,
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: sanitizedLinkText,
+                      style: linkStyle,
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => UrlLauncher(
+                              context,
+                              sanitizedHref,
+                              sanitizedLinkText,
+                            ).launchUrl(),
+                    ),
+                    TextSpan(
+                      text: trailingText,
+                      style: TextStyle(color: textColor),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(height: 1.25),
+              ),
+            ),
+          );
+        }
         return WidgetSpan(
           child: Tooltip(
-            message: href,
+            message: sanitizedHref,
             child: InkWell(
               splashColor: Colors.transparent,
-              onTap: () => UrlLauncher(context, href, node.text).launchUrl(),
+              onTap: () =>
+                  UrlLauncher(context, sanitizedHref, node.text).launchUrl(),
               child: Text.rich(
                 TextSpan(
                   children: _renderWithLineBreaks(
@@ -632,14 +669,7 @@ class HtmlMessage extends StatelessWidget {
     for (final match in matches) {
       if (match.start > lastEnd) {
         final plainText = text.substring(lastEnd, match.start);
-        spans.add(
-          LinkifySpan(
-            text: plainText,
-            options: const LinkifyOptions(humanize: false),
-            linkStyle: linkStyle,
-            onOpen: onOpen,
-          ),
-        );
+        spans.addAll(_buildPlainTextSpans(plainText, context));
       }
 
       final segment = match.group(0);
@@ -696,18 +726,60 @@ class HtmlMessage extends StatelessWidget {
     if (lastEnd < text.length) {
       final trailingText = text.substring(lastEnd);
       if (trailingText.isNotEmpty) {
-        spans.add(
-          LinkifySpan(
-            text: trailingText,
-            options: const LinkifyOptions(humanize: false),
-            linkStyle: linkStyle,
-            onOpen: onOpen,
-          ),
-        );
+        spans.addAll(_buildPlainTextSpans(trailingText, context));
       }
     }
 
     return spans;
+  }
+
+  List<InlineSpan> _buildPlainTextSpans(String text, BuildContext context) {
+    if (text.isEmpty) return const [];
+
+    final spans = <InlineSpan>[];
+    var cursor = 0;
+    for (final match in _plainUrlPattern.allMatches(text)) {
+      if (match.start > cursor) {
+        spans.add(
+          TextSpan(
+            text: text.substring(cursor, match.start),
+            style: TextStyle(color: textColor),
+          ),
+        );
+      }
+
+      final url = match.group(0);
+      if (url == null || url.isEmpty) {
+        cursor = match.end;
+        continue;
+      }
+
+      spans.add(
+        TextSpan(
+          text: url,
+          style: linkStyle,
+          recognizer: TapGestureRecognizer()
+            ..onTap = () => UrlLauncher(context, url).launchUrl(),
+        ),
+      );
+      cursor = match.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(cursor),
+          style: TextStyle(color: textColor),
+        ),
+      );
+    }
+
+    return spans;
+  }
+
+  String? _extractLeadingUrl(String text) {
+    final match = _plainUrlPattern.matchAsPrefix(text);
+    return match?.group(0);
   }
 
   @override
