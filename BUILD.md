@@ -29,7 +29,7 @@ cp env.json.example env.json
 2. 编辑 `env.json` 文件，填入实际值：
 ```json
 {
-  "APP_NAME": "Psygo",
+  "APP_NAME": "OpenOcto",
   "APP_ID_SUFFIX": "",
   "K8S_NAMESPACE": "prod",
   "API_BASE_URL": "https://api.example.com/assistant",
@@ -77,6 +77,7 @@ flutter build apk --release --dart-define-from-file=env.json
 - 客户端构建配置会被打进安装包，能被反编译提取，因此只应包含可公开的地址和标识
 - 团队成员需要各自配置自己的 `env.json` 文件
 - 确保使用 Flutter 3.7 或更高版本以支持 `--dart-define-from-file`
+- iOS 会在构建阶段自动从 `APP_NAME` 同步 `CFBundleDisplayName/CFBundleName`，保持与 Android 一致
 
 ### 本地调试的可选 secret
 
