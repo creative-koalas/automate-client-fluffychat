@@ -500,7 +500,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -617,7 +617,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vás pozval na PsyGo.\n1. Nainštalujte si PsyGo: https://psygoai.com\n2. Zaregistrujte sa alebo sa prihláste\n3. Otvorte odkaz na pozvánku: {link}",
+    "inviteText": "{username} vás pozval na OpenOcto.\n1. Nainštalujte si OpenOcto: https://psygoai.com\n2. Zaregistrujte sa alebo sa prihláste\n3. Otvorte odkaz na pozvánku: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -754,7 +754,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "Nová správa v PsyGoe",
+    "newMessageInPsygo": "Nová správa v OpenOctoe",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -769,7 +769,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Zdá sa, že nemáte žiadne služby Googlu v telefóne. To je dobré rozhodnutie pre vaše súkromie! Ak chcete dostávať push notifikácie vo PsyGo, odporúčame používať microG: https://microg.org/.",
+    "noGoogleServicesWarning": "Zdá sa, že nemáte žiadne služby Googlu v telefóne. To je dobré rozhodnutie pre vaše súkromie! Ak chcete dostávať push notifikácie vo OpenOcto, odporúčame používať microG: https://microg.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1068,7 +1068,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",

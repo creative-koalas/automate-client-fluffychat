@@ -158,7 +158,7 @@
       }
     }
   },
-  "automate": "PsyGo",
+  "automate": "OpenOcto",
   "@automate": {
     "type": "String",
     "placeholders": {}

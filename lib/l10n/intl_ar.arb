@@ -528,7 +528,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -650,7 +650,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "دعاك {username} إلى PsyGo.\n1. قم بزيارة موقع psygoai.com وقم بتثبيت التطبيق\n2. قم بإنشاءحساب أو تسجيل الدخول\n3. افتح رابط الدعوة:\n {link}",
+    "inviteText": "دعاك {username} إلى OpenOcto.\n1. قم بزيارة موقع psygoai.com وقم بتثبيت التطبيق\n2. قم بإنشاءحساب أو تسجيل الدخول\n3. افتح رابط الدعوة:\n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -792,7 +792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 رسالة جديدة في PsyGo",
+    "newMessageInPsygo": "💬 رسالة جديدة في OpenOcto",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1159,7 +1159,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2345,7 +2345,7 @@
     "@screenSharingTitle": {},
     "appearOnTop": "يظهر في الأعلى",
     "@appearOnTop": {},
-    "otherCallingPermissions": "الميكروفون والكاميرا وأذونات PsyGo الأخرى",
+    "otherCallingPermissions": "الميكروفون والكاميرا وأذونات OpenOcto الأخرى",
     "@otherCallingPermissions": {},
     "enterSpace": "أدخل المساحة",
     "@enterSpace": {},
@@ -2361,7 +2361,7 @@
     "@previousAccount": {},
     "encryptThisChat": "تشفير هذه المحادثة",
     "@encryptThisChat": {},
-    "screenSharingDetail": "أنت تشارك شاشتك في PsyGo",
+    "screenSharingDetail": "أنت تشارك شاشتك في OpenOcto",
     "@screenSharingDetail": {},
     "hideUnimportantStateEvents": "إخفاء أحداث الحالة غير المهمة",
     "@hideUnimportantStateEvents": {},
@@ -2399,7 +2399,7 @@
     "@widgetUrlError": {},
     "indexedDbErrorTitle": "مشاكل الوضع الخاص",
     "@indexedDbErrorTitle": {},
-    "indexedDbErrorLong": "للأسف ، لم يتم تمكين تخزين الرسائل في الوضع الخاص افتراضيا.\nيرجى زيارة\n - حول:التكوين\n - تعيين dom.indexedDB.privateBrowsing.enabled إلى true\nخلاف ذلك ، لا يمكن تشغيل PsyGo.",
+    "indexedDbErrorLong": "للأسف ، لم يتم تمكين تخزين الرسائل في الوضع الخاص افتراضيا.\nيرجى زيارة\n - حول:التكوين\n - تعيين dom.indexedDB.privateBrowsing.enabled إلى true\nخلاف ذلك ، لا يمكن تشغيل OpenOcto.",
     "@indexedDbErrorLong": {},
     "switchToAccount": "التبديل إلى الحساب {number}",
     "@switchToAccount": {
@@ -2452,9 +2452,9 @@
     "@callingPermissions": {},
     "callingAccount": "الاتصال بالحساب",
     "@callingAccount": {},
-    "callingAccountDetails": "يسمح لـ PsyGo باستخدام تطبيق android Dialer الأصلي.",
+    "callingAccountDetails": "يسمح لـ OpenOcto باستخدام تطبيق android Dialer الأصلي.",
     "@callingAccountDetails": {},
-    "appearOnTopDetails": "يسمح للتطبيق بالظهور في الأعلى (ليست هناك حاجة إذا قمت بالفعل بإعداد PsyGo كحساب اتصال)",
+    "appearOnTopDetails": "يسمح للتطبيق بالظهور في الأعلى (ليست هناك حاجة إذا قمت بالفعل بإعداد OpenOcto كحساب اتصال)",
     "@appearOnTopDetails": {},
     "numChats": "{number} الدردشات",
     "@numChats": {
@@ -3118,7 +3118,7 @@
     "@noticeChatBackupDeviceVerification": {},
     "continueText": "استمرار",
     "@continueText": {},
-    "welcomeText": "مرحبًا، 👋 معك PsyGo. يمكنك تسجيل الدخول إلى أي خادم منزلي، وهو متوافق مع https://matrix.org. ثم دردش مع أي شخص. إنها شبكة مراسلة لا مركزية ضخمة!",
+    "welcomeText": "مرحبًا، 👋 معك OpenOcto. يمكنك تسجيل الدخول إلى أي خادم منزلي، وهو متوافق مع https://matrix.org. ثم دردش مع أي شخص. إنها شبكة مراسلة لا مركزية ضخمة!",
     "@welcomeText": {},
     "blur": "الضبابية:",
     "@blur": {},

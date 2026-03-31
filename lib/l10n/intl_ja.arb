@@ -704,7 +704,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -876,7 +876,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username}がPsyGoにあなたを招待しました. \n1. PsyGoをインストールしてください: https://psygoai.com \n2. 新しくアカウントを作成するかサインインしてください\n3. 招待リンクを開いてください: {link}",
+    "inviteText": "{username}がOpenOctoにあなたを招待しました. \n1. OpenOctoをインストールしてください: https://psygoai.com \n2. 新しくアカウントを作成するかサインインしてください\n3. 招待リンクを開いてください: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1038,7 +1038,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 PsyGoに新しいメッセージがあります",
+    "newMessageInPsygo": "💬 OpenOctoに新しいメッセージがあります",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1574,7 +1574,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2018,7 +2018,7 @@
     "@users": {},
     "youRejectedTheInvitation": "招待を拒否しました",
     "@youRejectedTheInvitation": {},
-    "screenSharingDetail": "PsyGoで画面を共有しています",
+    "screenSharingDetail": "OpenOctoで画面を共有しています",
     "@screenSharingDetail": {},
     "homeserver": "ホームサーバー",
     "@homeserver": {},
@@ -2197,9 +2197,9 @@
     "@storeSecurlyOnThisDevice": {},
     "whyIsThisMessageEncrypted": "このメッセージが読めない理由",
     "@whyIsThisMessageEncrypted": {},
-    "otherCallingPermissions": "マイク、カメラ、その他PsyGoの権限",
+    "otherCallingPermissions": "マイク、カメラ、その他OpenOctoの権限",
     "@otherCallingPermissions": {},
-    "appearOnTopDetails": "アプリをトップに表示できるようにする（すでに通話アカウントとしてPsyGoを設定している場合は必要ありません）",
+    "appearOnTopDetails": "アプリをトップに表示できるようにする（すでに通話アカウントとしてOpenOctoを設定している場合は必要ありません）",
     "@appearOnTopDetails": {},
     "dehydrateTorLong": "TOR ユーザーの場合、ウィンドウを閉じる前にセッションをエクスポートすることをお勧めします。",
     "@dehydrateTorLong": {},

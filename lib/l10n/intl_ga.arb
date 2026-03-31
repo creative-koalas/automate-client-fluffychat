@@ -44,7 +44,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -324,7 +324,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1288,7 +1288,7 @@
     },
     "scanQrCode": "Scan cód QR",
     "@scanQrCode": {},
-    "inviteText": "Thug {username} cuireadh duit chuig PsyGo.\n1. Tabhair cuairt ar psygoai.com agus a shuiteáil an app\n2. Cláraigh nó sínigh isteach\n3. Oscail an nasc cuirí:\n {link}",
+    "inviteText": "Thug {username} cuireadh duit chuig OpenOcto.\n1. Tabhair cuairt ar psygoai.com agus a shuiteáil an app\n2. Cláraigh nó sínigh isteach\n3. Oscail an nasc cuirí:\n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1337,7 +1337,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Teachtaireacht nua in PsyGo",
+    "newMessageInPsygo": "💬 Teachtaireacht nua in OpenOcto",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -2441,17 +2441,17 @@
     },
     "foregroundServiceRunning": "Tá an fógra seo le feiceáil nuair atá an tseirbhís tulra ag rith.",
     "@foregroundServiceRunning": {},
-    "screenSharingDetail": "Tá do scáileán á roinnt agat i PsyGo",
+    "screenSharingDetail": "Tá do scáileán á roinnt agat i OpenOcto",
     "@screenSharingDetail": {},
     "callingPermissions": "Ceadanna a ghlaoch",
     "@callingPermissions": {},
     "callingAccount": "Cuntas ag glaoch",
     "@callingAccount": {},
-    "callingAccountDetails": "Ceadaíonn PsyGo an aip dhiailiú android dúchais a úsáid.",
+    "callingAccountDetails": "Ceadaíonn OpenOcto an aip dhiailiú android dúchais a úsáid.",
     "@callingAccountDetails": {},
-    "appearOnTopDetails": "Ceadaíonn sé don aip a bheith ar bharr (ní gá má tá socrú PsyGo agat cheana féin mar chuntas glao)",
+    "appearOnTopDetails": "Ceadaíonn sé don aip a bheith ar bharr (ní gá má tá socrú OpenOcto agat cheana féin mar chuntas glao)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Micreafón, ceamara agus ceadanna PsyGo eile",
+    "otherCallingPermissions": "Micreafón, ceamara agus ceadanna OpenOcto eile",
     "@otherCallingPermissions": {},
     "hideUnimportantStateEvents": "Folaigh imeachtaí stáit gan tábhacht",
     "@hideUnimportantStateEvents": {},
@@ -2698,7 +2698,7 @@
     "@noticeChatBackupDeviceVerification": {},
     "continueText": "Lean ar aghaidh",
     "@continueText": {},
-    "welcomeText": "Hey Hey 👋 Is é seo PsyGo. Is féidir leat síniú isteach in aon fhreastalaí baile, atá comhoiriúnach leis https://matrix.org. Agus ansin comhrá a dhéanamh le duine ar bith. Is líonra teachtaireachtaí díláraithe ollmhór é!",
+    "welcomeText": "Hey Hey 👋 Is é seo OpenOcto. Is féidir leat síniú isteach in aon fhreastalaí baile, atá comhoiriúnach leis https://matrix.org. Agus ansin comhrá a dhéanamh le duine ar bith. Is líonra teachtaireachtaí díláraithe ollmhór é!",
     "@welcomeText": {},
     "blur": "Doiléirigh:",
     "@blur": {},
@@ -3124,7 +3124,7 @@
     "@doesNotSeemToBeAValidHomeserver": {},
     "indexedDbErrorTitle": "Saincheisteanna mód príobháideach",
     "@indexedDbErrorTitle": {},
-    "indexedDbErrorLong": "Ar an drochuair níl an stóráil teachtaireachta cumasaithe sa mhód príobháideach de réir réamhshocraithe.\nTabhair cuairt le do thoil\n - faoi: config\n - socraithe dom.indexedDB.privateBrowsing.enabled go fíor\nSeachas sin, ní féidir PsyGo a rith.",
+    "indexedDbErrorLong": "Ar an drochuair níl an stóráil teachtaireachta cumasaithe sa mhód príobháideach de réir réamhshocraithe.\nTabhair cuairt le do thoil\n - faoi: config\n - socraithe dom.indexedDB.privateBrowsing.enabled go fíor\nSeachas sin, ní féidir OpenOcto a rith.",
     "@indexedDbErrorLong": {},
     "nextAccount": "An chéad chuntas eile",
     "@nextAccount": {},
@@ -3183,7 +3183,7 @@
             }
         }
     },
-    "appIntroduction": "Ligeann PsyGo duit comhrá a dhéanamh le do chairde thar theachtairí éagsúla. Foghlaim tuilleadh ag https://matrix.org nó tapáil *Ar aghaidh*.",
+    "appIntroduction": "Ligeann OpenOcto duit comhrá a dhéanamh le do chairde thar theachtairí éagsúla. Foghlaim tuilleadh ag https://matrix.org nó tapáil *Ar aghaidh*.",
     "@appIntroduction": {},
     "appWantsToUseForLoginDescription": "Ligeann tú leis seo don aip agus don suíomh Gréasáin faisnéis a roinnt fút.",
     "@appWantsToUseForLoginDescription": {},

@@ -1014,7 +1014,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1201,7 +1201,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} запрасіў вас у PsyGo.\n1. Перайдзіце на psygoai.com і ўстанавіце праграму\n2. Зарэгестрыруйцесь альбо ўвайдзіце\n3. Перайдзіце па запрашальнай спасылцы:\n{link}",
+    "inviteText": "{username} запрасіў вас у OpenOcto.\n1. Перайдзіце на psygoai.com і ўстанавіце праграму\n2. Зарэгестрыруйцесь альбо ўвайдзіце\n3. Перайдзіце па запрашальнай спасылцы:\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1389,7 +1389,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Новае паведамленне ў PsyGo",
+    "newMessageInPsygo": "💬 Новае паведамленне ў OpenOcto",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1606,7 +1606,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -1788,7 +1788,7 @@
     "@emailOrUsername": {},
     "indexedDbErrorTitle": "Праблемы з прыватным рэжымам",
     "@indexedDbErrorTitle": {},
-    "indexedDbErrorLong": "Сховішча паведамленняў, на жаль, не ўключана ў прыватным рэжыме па змаўчанні.\nКалі ласка, наведайце\n - about:config\n - што dom.indexedDB.privateBrowsing.enabled уключаны\nІнакш, PsyGo будзе немагчыма запусціць.",
+    "indexedDbErrorLong": "Сховішча паведамленняў, на жаль, не ўключана ў прыватным рэжыме па змаўчанні.\nКалі ласка, наведайце\n - about:config\n - што dom.indexedDB.privateBrowsing.enabled уключаны\nІнакш, OpenOcto будзе немагчыма запусціць.",
     "@indexedDbErrorLong": {},
     "switchToAccount": "Пераключыцца на ўліковы запіс {number}",
     "@switchToAccount": {
@@ -1953,19 +1953,19 @@
     "@foregroundServiceRunning": {},
     "screenSharingTitle": "падзяліцца экранам",
     "@screenSharingTitle": {},
-    "screenSharingDetail": "Вы дзеліцеся экранам у PsyGo",
+    "screenSharingDetail": "Вы дзеліцеся экранам у OpenOcto",
     "@screenSharingDetail": {},
     "callingPermissions": "Дазволы на выклікі",
     "@callingPermissions": {},
     "callingAccount": "Уліковы запіс для выклікаў",
     "@callingAccount": {},
-    "callingAccountDetails": "Дазваляе PsyGo выкарыстоўваць сістэмную праграму для выклікаў.",
+    "callingAccountDetails": "Дазваляе OpenOcto выкарыстоўваць сістэмную праграму для выклікаў.",
     "@callingAccountDetails": {},
     "appearOnTop": "З'яўляцца зверху",
     "@appearOnTop": {},
-    "appearOnTopDetails": "Дазваляе праграму з'яўляцца наверсе (не патрэбна, калі PsyGo наладжаны як уліковы запіс для выклікаў)",
+    "appearOnTopDetails": "Дазваляе праграму з'яўляцца наверсе (не патрэбна, калі OpenOcto наладжаны як уліковы запіс для выклікаў)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Мікрафон, камера і іншыя дазволы PsyGo",
+    "otherCallingPermissions": "Мікрафон, камера і іншыя дазволы OpenOcto",
     "@otherCallingPermissions": {},
     "whyIsThisMessageEncrypted": "Чаму гэта паведамленне нельга прачытаць?",
     "@whyIsThisMessageEncrypted": {},
@@ -2106,7 +2106,7 @@
     "@open": {},
     "waitingForServer": "Чаканне сервера...",
     "@waitingForServer": {},
-    "appIntroduction": "PsyGo дазваляе вам і вашым сябрам размаўляць скрозь розныя мэсэнджары. Даведайцеся болей на https://matrix.org ці націсніце *Працягнуць*.",
+    "appIntroduction": "OpenOcto дазваляе вам і вашым сябрам размаўляць скрозь розныя мэсэнджары. Даведайцеся болей на https://matrix.org ці націсніце *Працягнуць*.",
     "@appIntroduction": {},
     "newChatRequest": "📩 Запыт новага чату",
     "@newChatRequest": {},
@@ -3285,7 +3285,7 @@
     "@oneOfYourDevicesIsNotVerified": {},
     "noticeChatBackupDeviceVerification": "Заўвага: Калі вы падключыце ўсе свае прылады да рэзервовага капіравання, яны аўтаматычна спраўдзяцца.",
     "@noticeChatBackupDeviceVerification": {},
-    "welcomeText": "Вітаначкі 👋 Гэта PsyGo. Вы можаце ўвайсці на любы дамашні сервер, што сумяшчальны з https://matrix.org, а потым паразмаўляць з кім-небудзь. Гэта вялізная дэцэнтралізаваная сетка абмену паведамленнямі!",
+    "welcomeText": "Вітаначкі 👋 Гэта OpenOcto. Вы можаце ўвайсці на любы дамашні сервер, што сумяшчальны з https://matrix.org, а потым паразмаўляць з кім-небудзь. Гэта вялізная дэцэнтралізаваная сетка абмену паведамленнямі!",
     "@welcomeText": {},
     "blur": "Размыццё:",
     "@blur": {},

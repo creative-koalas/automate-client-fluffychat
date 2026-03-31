@@ -629,7 +629,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -735,7 +735,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} הזמין אותך ל-PsyGo.\n1. התקן את PsyGo: https://psygoai.com\n2. הירשם או היכנס\n3. פתח את קישור ההזמנה: {link}",
+    "inviteText": "{username} הזמין אותך ל-OpenOcto.\n1. התקן את OpenOcto: https://psygoai.com\n2. הירשם או היכנס\n3. פתח את קישור ההזמנה: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1308,12 +1308,12 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "הודעה חדשה ב-PsyGo",
+    "newMessageInPsygo": "הודעה חדשה ב-OpenOcto",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "נראה שאין לך שירותי גוגל בטלפון שלך. זו החלטה טובה לפרטיות שלך! כדי לקבל התרעות ב- PsyGo אנו ממליצים להשתמש https://microg.org/ או https://unifiedpush.org/.",
+    "noGoogleServicesWarning": "נראה שאין לך שירותי גוגל בטלפון שלך. זו החלטה טובה לפרטיות שלך! כדי לקבל התרעות ב- OpenOcto אנו ממליצים להשתמש https://microg.org/ או https://unifiedpush.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}

@@ -34,7 +34,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -873,7 +873,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Nauja žinutė PsyGo'e",
+    "newMessageInPsygo": "💬 Nauja žinutė OpenOcto'e",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1275,7 +1275,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -1311,7 +1311,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Atrodo, kad jūsų telefone nėra Google Services. Tai geras sprendimas jūsų privatumui! Norėdami gauti tiesioginius pranešimus PsyGo, rekomenduojame naudoti https://microg.org/ arba https://unifiedpush.org/.",
+    "noGoogleServicesWarning": "Atrodo, kad jūsų telefone nėra Google Services. Tai geras sprendimas jūsų privatumui! Norėdami gauti tiesioginius pranešimus OpenOcto, rekomenduojame naudoti https://microg.org/ arba https://unifiedpush.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1837,7 +1837,7 @@
             }
         }
     },
-    "inviteText": "{username} pakvietė jus prisijungti prie PsyGo. \n1. Įdiekite PsyGo: https://psygoai.com \n2. Prisiregistruokite arba prisijunkite \n3. Atidarykite pakvietimo nuorodą: {link}",
+    "inviteText": "{username} pakvietė jus prisijungti prie OpenOcto. \n1. Įdiekite OpenOcto: https://psygoai.com \n2. Prisiregistruokite arba prisijunkite \n3. Atidarykite pakvietimo nuorodą: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -2324,7 +2324,7 @@
     "@callingAccount": {},
     "newSpace": "Nauja erdvė",
     "@newSpace": {},
-    "callingAccountDetails": "Leidžia PsyGo naudoti vietinę Android rinkiklio programą.",
+    "callingAccountDetails": "Leidžia OpenOcto naudoti vietinę Android rinkiklio programą.",
     "@callingAccountDetails": {},
     "appearOnTop": "Rodyti viršuje",
     "@appearOnTop": {},
@@ -2363,7 +2363,7 @@
     "@recoveryKey": {},
     "recoveryKeyLost": "Pamestas atkūrimo raktas?",
     "@recoveryKeyLost": {},
-    "indexedDbErrorLong": "Deja, pagal numatytuosius nustatymus žinučių saugojimas privačiame režime nėra įjungtas.\nPrašome apsilankyti\n - about:config\n - nustatykite dom.indexedDB.privateBrowsing.enabled į true\nPriešingu atveju PsyGo paleisti neįmanoma.",
+    "indexedDbErrorLong": "Deja, pagal numatytuosius nustatymus žinučių saugojimas privačiame režime nėra įjungtas.\nPrašome apsilankyti\n - about:config\n - nustatykite dom.indexedDB.privateBrowsing.enabled į true\nPriešingu atveju OpenOcto paleisti neįmanoma.",
     "@indexedDbErrorLong": {},
     "countFiles": "{count} failai",
     "@countFiles": {
@@ -2393,15 +2393,15 @@
     "@foregroundServiceRunning": {},
     "screenSharingTitle": "ekrano bendrinimas",
     "@screenSharingTitle": {},
-    "appearOnTopDetails": "Leidžia programėlę rodyti viršuje (nebūtina, jei jau esate nustatę PsyGo kaip skambinimo paskyrą)",
+    "appearOnTopDetails": "Leidžia programėlę rodyti viršuje (nebūtina, jei jau esate nustatę OpenOcto kaip skambinimo paskyrą)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Mikrofonas, kamera ir kiti PsyGo leidimai",
+    "otherCallingPermissions": "Mikrofonas, kamera ir kiti OpenOcto leidimai",
     "@otherCallingPermissions": {},
     "whyIsThisMessageEncrypted": "Kodėl ši žinutė neperskaitoma?",
     "@whyIsThisMessageEncrypted": {},
     "newGroup": "Nauja grupė",
     "@newGroup": {},
-    "screenSharingDetail": "Bendrinate savo ekraną per PsyGo",
+    "screenSharingDetail": "Bendrinate savo ekraną per OpenOcto",
     "@screenSharingDetail": {},
     "numChats": "{number} pokalbiai",
     "@numChats": {

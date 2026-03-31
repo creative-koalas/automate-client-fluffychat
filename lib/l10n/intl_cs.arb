@@ -826,7 +826,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "PsyGo",
+    "automate": "OpenOcto",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -998,7 +998,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} vás pozvali na PsyGo.\n1. Navštivte psygoai.com a nainstalujte si aplikaci.\n2. Zaregistrujte se anebo se přihlašte.\n3. Otevřete pozvánku: \n {link}",
+    "inviteText": "{username} vás pozvali na OpenOcto.\n1. Navštivte psygoai.com a nainstalujte si aplikaci.\n2. Zaregistrujte se anebo se přihlašte.\n3. Otevřete pozvánku: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1170,7 +1170,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "Nová zpráva ve PsyGou",
+    "newMessageInPsygo": "Nová zpráva ve OpenOctou",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1792,7 +1792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "PsyGo",
+    "title": "OpenOcto",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2491,13 +2491,13 @@
     "@unlockOldMessages": {},
     "foregroundServiceRunning": "Toto oznámení se zobrazuje když běží služba na pozadí.",
     "@foregroundServiceRunning": {},
-    "screenSharingDetail": "Sdílíte svou obrazovku přes PsyGo",
+    "screenSharingDetail": "Sdílíte svou obrazovku přes OpenOcto",
     "@screenSharingDetail": {},
-    "callingAccountDetails": "Opravňuje PsyGo používat Android systémovou aplikaci pro vytáčení.",
+    "callingAccountDetails": "Opravňuje OpenOcto používat Android systémovou aplikaci pro vytáčení.",
     "@callingAccountDetails": {},
     "appearOnTop": "Zobrazovat nahoře",
     "@appearOnTop": {},
-    "otherCallingPermissions": "Mikrofon, kamera a ostatní oprávnění PsyGo",
+    "otherCallingPermissions": "Mikrofon, kamera a ostatní oprávnění OpenOcto",
     "@otherCallingPermissions": {},
     "encryptThisChat": "Zašifrovat tuto konverzaci",
     "@encryptThisChat": {},
@@ -2626,7 +2626,7 @@
     },
     "block": "Blokovat",
     "@block": {},
-    "indexedDbErrorLong": "Ukládání zpráv bohužel není ve výchozím nastavení v soukromém režimu povoleno.\nNavštivte prosím\n - about:config\n - nastavte dom.indexedDB.privateBrowsing.enabled na true\nV opačném případě nebude možné PsyGo spustit.",
+    "indexedDbErrorLong": "Ukládání zpráv bohužel není ve výchozím nastavení v soukromém režimu povoleno.\nNavštivte prosím\n - about:config\n - nastavte dom.indexedDB.privateBrowsing.enabled na true\nV opačném případě nebude možné OpenOcto spustit.",
     "@indexedDbErrorLong": {},
     "youInvitedToBy": "📩 Prostřednictvím odkazu jste byli pozváni na:\n{alias}",
     "@youInvitedToBy": {
