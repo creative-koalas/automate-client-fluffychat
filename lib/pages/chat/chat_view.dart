@@ -286,7 +286,10 @@ class ChatView extends StatelessWidget {
                               color: theme.colorScheme.onPrimaryContainer,
                             ),
                             const SizedBox(width: 4),
-                            const Text('新消息', style: TextStyle(fontSize: 12)),
+                            Text(
+                              L10n.of(context).newMessages,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                       ),

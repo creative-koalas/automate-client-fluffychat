@@ -612,8 +612,19 @@ class ChatController extends State<ChatPageWithRoom>
       _scrolledUp || timeline?.allowNewEvent == false;
 
   /// Scroll to the read marker position ("读到此处")
-  void scrollToReadMarker() {
+  void scrollToReadMarker() async {
     if (readMarkerEventId.isEmpty) return;
+    if (timeline == null) {
+      final pendingLoad = loadTimelineFuture;
+      if (pendingLoad != null) {
+        try {
+          await pendingLoad;
+        } catch (_, __) {
+          return;
+        }
+        if (!mounted) return;
+      }
+    }
     scrollToEventId(readMarkerEventId, highlightEvent: false);
   }
 
@@ -1088,42 +1099,67 @@ class ChatController extends State<ChatPageWithRoom>
     });
   }
 
+  bool _isCurrentLoadTimelineFuture(Future<void>? future) =>
+      future != null && identical(loadTimelineFuture, future);
+
+  int _readMarkerEventIndexFor(Timeline currentTimeline) {
+    if (readMarkerEventId.isEmpty) {
+      return -1;
+    }
+    return currentTimeline.events
+        .filterByVisibleInGui(
+          exceptionEventId: readMarkerEventId,
+          threadId: activeThreadId,
+        )
+        .indexWhere((e) => e.eventId == readMarkerEventId);
+  }
+
   void _tryLoadTimeline() async {
     final initialEventId = widget.eventId;
-    loadTimelineFuture = _getTimeline();
+    final requestedTimelineFuture = loadTimelineFuture = _getTimeline();
     try {
-      await loadTimelineFuture;
+      await requestedTimelineFuture;
+      if (!mounted || !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
+        return;
+      }
+      final currentTimeline = timeline;
+      if (currentTimeline == null) {
+        Logs().w(
+          '[Chat] Timeline was cleared before initial load completed for room $roomId',
+        );
+        return;
+      }
       // We launched the chat with a given initial event ID:
       if (initialEventId != null) {
         scrollToEventId(initialEventId);
         return;
       }
 
-      var readMarkerEventIndex = readMarkerEventId.isEmpty
-          ? -1
-          : timeline!.events
-              .filterByVisibleInGui(
-                exceptionEventId: readMarkerEventId,
-                threadId: activeThreadId,
-              )
-              .indexWhere((e) => e.eventId == readMarkerEventId);
+      var readMarkerEventIndex = _readMarkerEventIndexFor(currentTimeline);
 
       // Read marker is existing but not found in first events. Try a single
       // requestHistory call before opening timeline on event context:
       if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
-        await timeline?.requestHistory(historyCount: _loadHistoryCount);
-        readMarkerEventIndex = timeline!.events
-            .filterByVisibleInGui(
-              exceptionEventId: readMarkerEventId,
-              threadId: activeThreadId,
-            )
-            .indexWhere((e) => e.eventId == readMarkerEventId);
+        await currentTimeline.requestHistory(historyCount: _loadHistoryCount);
+        if (!mounted || !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
+          return;
+        }
+        final refreshedTimeline = timeline;
+        if (refreshedTimeline == null) {
+          return;
+        }
+        readMarkerEventIndex = _readMarkerEventIndexFor(refreshedTimeline);
       }
 
       // PC 端直接滚动到最新消息，移动端保持原来的行为（滚动到未读标记位置）
       if (PlatformInfos.isDesktop) {
         // PC 端：延迟滚动到最新消息，确保 timeline 完全渲染
         Future.delayed(const Duration(milliseconds: 100), () {
+          if (!mounted ||
+              !_isCurrentLoadTimelineFuture(requestedTimelineFuture) ||
+              timeline == null) {
+            return;
+          }
           _jumpTimelineToBottomSafely(onSuccess: setReadMarker);
         });
       } else if (readMarkerEventIndex > 1) {
@@ -1207,8 +1243,9 @@ class ChatController extends State<ChatPageWithRoom>
         onInsert: onInsert,
       );
       if (!mounted) return;
-      if (e is TimeoutException || e is IOException) {
-        _showScrollUpMaterialBanner(eventContextId!);
+      if (eventContextId != null &&
+          (e is TimeoutException || e is IOException)) {
+        _showScrollUpMaterialBanner(eventContextId);
       }
     }
     timeline!.requestKeys(onlineKeyBackupOnly: false);
@@ -2545,13 +2582,15 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void scrollToEventId(String eventId, {bool highlightEvent = true}) async {
-    final foundEvent = timeline!.events.firstWhereOrNull(
+    final currentTimeline = timeline;
+    if (currentTimeline == null) return;
+    final foundEvent = currentTimeline.events.firstWhereOrNull(
       (event) => event.eventId == eventId,
     );
 
     final eventIndex = foundEvent == null
         ? -1
-        : timeline!.events
+        : currentTimeline.events
             .filterByVisibleInGui(
               exceptionEventId: eventId,
               threadId: activeThreadId,
@@ -2559,18 +2598,24 @@ class ChatController extends State<ChatPageWithRoom>
             .indexOf(foundEvent);
 
     if (eventIndex == -1) {
+      late final Future<void> requestedTimelineFuture;
       setState(() {
         timeline = null;
         _scrolledUp = false;
-        loadTimelineFuture = _getTimeline(eventContextId: eventId).onError(
+        requestedTimelineFuture =
+            loadTimelineFuture = _getTimeline(eventContextId: eventId).onError(
           ErrorReporter(
             context,
             'Unable to load timeline after scroll to ID',
           ).onErrorCallback,
         );
       });
-      await loadTimelineFuture;
+      await requestedTimelineFuture;
+      if (!mounted || !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
+        return;
+      }
       WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+        if (!mounted) return;
         scrollToEventId(eventId);
       });
       return;
@@ -2585,22 +2630,42 @@ class ChatController extends State<ChatPageWithRoom>
       duration: FluffyThemes.durationFast,
       preferPosition: AutoScrollPosition.middle,
     );
+    if (!mounted) return;
     _updateScrollController();
   }
 
   void scrollDown() async {
-    if (!timeline!.allowNewEvent) {
+    var currentTimeline = timeline;
+    if (currentTimeline == null) {
+      final pendingLoad = loadTimelineFuture;
+      if (pendingLoad != null) {
+        try {
+          await pendingLoad;
+        } catch (_, __) {
+          return;
+        }
+        if (!mounted) return;
+      }
+      currentTimeline = timeline;
+      if (currentTimeline == null) return;
+    }
+
+    if (!currentTimeline.allowNewEvent) {
+      late final Future<void> requestedTimelineFuture;
       setState(() {
         timeline = null;
         _scrolledUp = false;
-        loadTimelineFuture = _getTimeline().onError(
+        requestedTimelineFuture = loadTimelineFuture = _getTimeline().onError(
           ErrorReporter(
             context,
             'Unable to load timeline after scroll down',
           ).onErrorCallback,
         );
       });
-      await loadTimelineFuture;
+      await requestedTimelineFuture;
+      if (!mounted || !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
+        return;
+      }
     }
     _jumpTimelineToBottomSafely();
   }

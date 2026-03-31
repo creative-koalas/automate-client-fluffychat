@@ -2788,6 +2788,8 @@
   "@jumpToLastReadMessage": {},
   "readUpToHere": "Read up to here",
   "@readUpToHere": {},
+  "newMessages": "New messages",
+  "@newMessages": {},
   "jump": "Jump",
   "@jump": {},
   "openLinkInBrowser": "Open link in browser",
