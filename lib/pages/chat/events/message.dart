@@ -83,19 +83,38 @@ class Message extends StatelessWidget {
     super.key,
   });
 
-  ({Uri? avatarUrl, String displayName, bool isWorkingEmployee})
-      _resolveSenderPresentation(User user) {
+  ({
+    Uri? avatarUrl,
+    String displayName,
+    bool isWorkingEmployee,
+    Color? statusDotColor,
+  }) _resolveSenderPresentation(User user) {
     final agentService = AgentService.instance;
     agentService.ensureMatrixProfilePresentation(user);
     final agent = agentService.getAgentByMatrixUserId(user.id);
     final displayName = agentService.resolveDisplayName(user);
     final avatarUri = agentService.resolveAvatarUri(user);
+    final statusDotColor = agent == null
+        ? null
+        : _employeeWorkStatusColor(agent.computedWorkStatus);
 
     return (
       avatarUrl: avatarUri ?? user.avatarUrl,
       displayName: displayName,
       isWorkingEmployee: agent?.isWorking ?? false,
+      statusDotColor: statusDotColor,
     );
+  }
+
+  Color _employeeWorkStatusColor(String status) {
+    switch (status) {
+      case 'working':
+        return Colors.green;
+      case 'slacking':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   @override
@@ -406,11 +425,16 @@ class Message extends StatelessWidget {
                                                 context,
                                                 user,
                                               ),
-                                              presenceUserId: user.stateKey,
+                                              presenceUserId:
+                                                  sender.statusDotColor == null
+                                                  ? user.stateKey
+                                                  : null,
                                               presenceBackgroundColor:
                                                   wallpaperMode
                                                       ? Colors.transparent
                                                       : null,
+                                              statusDotColor:
+                                                  sender.statusDotColor,
                                             ),
                                           );
                                         },
@@ -447,11 +471,16 @@ class Message extends StatelessWidget {
                                                       user,
                                                     ),
                                                     presenceUserId:
-                                                        user.stateKey,
+                                                        sender.statusDotColor ==
+                                                                null
+                                                            ? user.stateKey
+                                                            : null,
                                                     presenceBackgroundColor:
                                                         wallpaperMode
                                                             ? Colors.transparent
                                                             : null,
+                                                    statusDotColor:
+                                                        sender.statusDotColor,
                                                   ),
                                                 );
                                               },

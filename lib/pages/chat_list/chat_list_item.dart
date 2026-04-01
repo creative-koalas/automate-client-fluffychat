@@ -225,8 +225,8 @@ class _ChatListItemState extends State<ChatListItem> {
     required String name,
     required double size,
     BorderSide? border,
-    String? presenceUserId,
     Color? presenceBackgroundColor,
+    Color? statusDotColor,
     void Function()? onTap,
   }) {
     final avatarUri = AgentService.instance.parseAvatarUri(avatarUrl);
@@ -236,10 +236,21 @@ class _ChatListItemState extends State<ChatListItem> {
       mxContent: avatarUri,
       size: size,
       name: name,
-      presenceUserId: presenceUserId,
       presenceBackgroundColor: presenceBackgroundColor,
+      statusDotColor: statusDotColor,
       onTap: onTap,
     );
+  }
+
+  Color _employeeWorkStatusColor(String status) {
+    switch (status) {
+      case 'working':
+        return Colors.green;
+      case 'slacking':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   @override
@@ -409,18 +420,43 @@ class _ChatListItemState extends State<ChatListItem> {
                                         : Avatar.defaultSize;
 
                                     if (directChatMatrixId != null) {
-                                      // 优先使用员工头像（直接使用 avatarUrl 字符串，和 EmployeeCard 一样）
                                       final agent = AgentService.instance
                                           .getAgentByMatrixUserId(
                                             directChatMatrixId,
                                           );
-                                      if (agent != null &&
-                                          agent.avatarUrl != null &&
-                                          agent.avatarUrl!.isNotEmpty) {
-                                        return _buildEmployeeAvatar(
-                                          avatarUrl: agent.avatarUrl!,
-                                          name: agent.displayName,
-                                          size: avatarSize,
+                                      if (agent != null) {
+                                        final statusDotColor =
+                                            _employeeWorkStatusColor(
+                                          agent.computedWorkStatus,
+                                        );
+                                        // 优先使用员工头像（直接使用 avatarUrl 字符串，和 EmployeeCard 一样）
+                                        if (agent.avatarUrl != null &&
+                                            agent.avatarUrl!.isNotEmpty) {
+                                          return _buildEmployeeAvatar(
+                                            avatarUrl: agent.avatarUrl!,
+                                            name: agent.displayName,
+                                            size: avatarSize,
+                                            border: currentSpace == null
+                                                ? null
+                                                : BorderSide(
+                                                    width: 2,
+                                                    color:
+                                                        backgroundColor ??
+                                                        theme.colorScheme.surface,
+                                                  ),
+                                            presenceBackgroundColor:
+                                                backgroundColor,
+                                            statusDotColor: statusDotColor,
+                                            onTap: () =>
+                                                onLongPress?.call(context),
+                                          );
+                                        }
+                                        // 员工没有头像时，使用 Matrix 头像，但状态点仍使用员工工作状态。
+                                        final user = room
+                                            .unsafeGetUserFromMemoryOrFallback(
+                                              directChatMatrixId,
+                                            );
+                                        return Avatar(
                                           border: currentSpace == null
                                               ? null
                                               : BorderSide(
@@ -429,14 +465,18 @@ class _ChatListItemState extends State<ChatListItem> {
                                                       backgroundColor ??
                                                       theme.colorScheme.surface,
                                                 ),
-                                          presenceUserId: directChatMatrixId,
+                                          borderRadius: null,
+                                          mxContent: user.avatarUrl,
+                                          size: avatarSize,
+                                          name: agent.displayName,
                                           presenceBackgroundColor:
                                               backgroundColor,
+                                          statusDotColor: statusDotColor,
                                           onTap: () =>
                                               onLongPress?.call(context),
                                         );
                                       }
-                                      // 非员工或员工没有头像，使用 Matrix 用户头像
+                                      // 非员工使用 Matrix 用户头像 + Matrix 在线状态点
                                       final user = room
                                           .unsafeGetUserFromMemoryOrFallback(
                                             directChatMatrixId,
