@@ -55,7 +55,6 @@ import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
-import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
@@ -230,7 +229,9 @@ class ChatController extends State<ChatPageWithRoom>
 
   String? activeThreadId;
 
-  late final String readMarkerEventId;
+  String _readMarkerEventId = '';
+
+  String get readMarkerEventId => _readMarkerEventId;
 
   String get roomId => widget.room.id;
 
@@ -243,6 +244,7 @@ class ChatController extends State<ChatPageWithRoom>
 
   Timer? typingCoolDown;
   Timer? typingTimeout;
+  Timer? _scrollToEventHighlightResetTimer;
   bool currentlyTyping = false;
   bool dragging = false;
   late final VoidCallback _agentServiceListener;
@@ -667,9 +669,23 @@ class ChatController extends State<ChatPageWithRoom>
       _scrolledUp || timeline?.allowNewEvent == false;
 
   /// Scroll to the read marker position ("读到此处")
-  void scrollToReadMarker() {
-    if (readMarkerEventId.isEmpty) return;
-    scrollToEventId(readMarkerEventId, highlightEvent: false);
+  void scrollToReadMarker() async {
+    final targetEventId = readMarkerEventId;
+    if (targetEventId.isEmpty) return;
+    if (timeline == null) {
+      final pendingLoad = loadTimelineFuture;
+      if (pendingLoad != null) {
+        try {
+          await pendingLoad;
+        } catch (e, s) {
+          Logs().w('[Chat] Unable to wait for timeline before read-marker jump',
+              e, s);
+          return;
+        }
+      }
+    }
+    if (!mounted || readMarkerEventId.isEmpty) return;
+    scrollToEventId(targetEventId, highlightEvent: false);
   }
 
   bool get selectMode => selectedEvents.isNotEmpty;
@@ -732,9 +748,10 @@ class ChatController extends State<ChatPageWithRoom>
     final timeline = this.timeline;
     if (timeline == null) return;
     Logs().v('Requesting future...');
-    final mostRecentEventId = timeline.events.first.eventId;
     await timeline.requestFuture(historyCount: _loadHistoryCount);
-    setReadMarker(eventId: mostRecentEventId);
+    if (!mounted) return;
+    _syncReadMarkerEventId(currentTimeline: timeline);
+    setReadMarker();
   }
 
   void _updateScrollController() {
@@ -759,6 +776,75 @@ class ChatController extends State<ChatPageWithRoom>
   bool _canJumpTimelineToBottom() =>
       scrollController.hasClients &&
       scrollController.position.hasContentDimensions;
+
+  bool _hasUnreadTimelinePosition() =>
+      _safeRoomHasNewMessages() || room.notificationCount > 0;
+
+  bool _isEventVisibleInActiveTimeline(Event event) {
+    final threadId = activeThreadId;
+    if (threadId != null &&
+        event.relationshipType != RelationshipTypes.reaction) {
+      if ((event.relationshipType != RelationshipTypes.thread ||
+              event.relationshipEventId != threadId) &&
+          event.eventId != threadId) {
+        return false;
+      }
+    } else if (event.relationshipType == RelationshipTypes.thread) {
+      return false;
+    }
+    return event.isVisibleInGui;
+  }
+
+  String _resolveReadMarkerEventId({Timeline? currentTimeline}) {
+    if (!_hasUnreadTimelinePosition()) {
+      return '';
+    }
+
+    final lastEvent = room.lastEvent;
+    final lastEventThreadId = lastEvent != null &&
+            lastEvent.relationshipType == RelationshipTypes.thread
+        ? lastEvent.relationshipEventId
+        : null;
+    final baseEventId = lastEventThreadId ?? room.fullyRead;
+    if (baseEventId.isEmpty) {
+      return '';
+    }
+
+    final current = currentTimeline ?? timeline;
+    if (current == null) {
+      return baseEventId;
+    }
+
+    final baseEvent = current.events.firstWhereOrNull(
+      (event) => event.eventId == baseEventId,
+    );
+    if (baseEvent == null) {
+      return baseEventId;
+    }
+
+    if (_isEventVisibleInActiveTimeline(baseEvent)) {
+      return baseEventId;
+    }
+
+    final baseEventIndex = current.events.indexOf(baseEvent);
+    for (var i = baseEventIndex + 1; i < current.events.length; i++) {
+      final event = current.events[i];
+      if (_isEventVisibleInActiveTimeline(event)) {
+        return event.eventId;
+      }
+    }
+
+    return baseEventId;
+  }
+
+  void _syncReadMarkerEventId({Timeline? currentTimeline}) {
+    _readMarkerEventId = _resolveReadMarkerEventId(
+      currentTimeline: currentTimeline,
+    );
+    if (_readMarkerEventId.isEmpty) {
+      scrollUpBannerEventId = null;
+    }
+  }
 
   static const int _jumpTimelineMaxAttempts = 10;
 
@@ -945,12 +1031,7 @@ class ChatController extends State<ChatPageWithRoom>
       AgentService.instance.attachLiveStatusWatcher();
       _groupLiveStatusWatcherAttached = true;
     }
-    final lastEventThreadId =
-        room.lastEvent?.relationshipType == RelationshipTypes.thread
-            ? room.lastEvent?.relationshipEventId
-            : null;
-    readMarkerEventId =
-        _safeRoomHasNewMessages() ? lastEventThreadId ?? room.fullyRead : '';
+    _syncReadMarkerEventId();
     WidgetsBinding.instance.addObserver(this);
     _tryLoadTimeline();
     unawaited(_loadEmployeeWorkTemplateVisibilityState());
@@ -1174,22 +1255,21 @@ class ChatController extends State<ChatPageWithRoom>
             .indexWhere((e) => e.eventId == readMarkerEventId);
       }
 
-      // PC 端直接滚动到最新消息，移动端保持原来的行为（滚动到未读标记位置）
-      if (PlatformInfos.isDesktop) {
-        // PC 端：延迟滚动到最新消息，确保 timeline 完全渲染
-        Future.delayed(const Duration(milliseconds: 100), () {
-          _jumpTimelineToBottomSafely(onSuccess: setReadMarker);
-        });
-      } else if (readMarkerEventIndex > 1) {
+      if (readMarkerEventIndex > 0) {
         Logs().v('Scroll up to visible event', readMarkerEventId);
         scrollToEventId(readMarkerEventId, highlightEvent: false);
         return;
       } else if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
         _showScrollUpMaterialBanner(readMarkerEventId);
+        return;
       }
 
-      // Mark room as read on first visit if requirements are fulfilled
-      setReadMarker();
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted || timeline == null || readMarkerEventId.isNotEmpty) {
+          return;
+        }
+        _jumpTimelineToBottomSafely(onSuccess: setReadMarker);
+      });
 
       if (!mounted) return;
     } catch (e, s) {
@@ -1211,6 +1291,7 @@ class ChatController extends State<ChatPageWithRoom>
 
   void updateView() {
     if (!mounted) return;
+    _syncReadMarkerEventId();
     setReadMarker();
     setState(() {});
   }
@@ -1261,12 +1342,14 @@ class ChatController extends State<ChatPageWithRoom>
         onInsert: onInsert,
       );
       if (!mounted) return;
-      if (e is TimeoutException || e is IOException) {
-        _showScrollUpMaterialBanner(eventContextId!);
+      if (eventContextId != null &&
+          (e is TimeoutException || e is IOException)) {
+        _showScrollUpMaterialBanner(eventContextId);
       }
     }
     timeline!.requestKeys(onlineKeyBackupOnly: false);
     if (room.markedUnread) room.markUnread(false);
+    _syncReadMarkerEventId(currentTimeline: timeline);
 
     return;
   }
@@ -1320,14 +1403,28 @@ class ChatController extends State<ChatPageWithRoom>
     if (timeline == null || timeline.events.isEmpty) return;
 
     Logs().d('Set read marker...', eventId);
+    final shouldClearLocalReadMarker = _readMarkerEventId.isNotEmpty &&
+        (eventId == null || eventId == timeline.room.lastEvent?.eventId);
+    if (shouldClearLocalReadMarker) {
+      setState(() {
+        _readMarkerEventId = '';
+        scrollUpBannerEventId = null;
+      });
+    }
     // ignore: unawaited_futures
     _setReadMarkerFuture = timeline
         .setReadMarker(
       eventId: eventId,
       public: AppSettings.sendPublicReadReceipts.value,
     )
-        .then((_) {
+        .catchError((e, s) {
+      Logs().w('[Chat] Unable to set read marker', e, s);
+    }).whenComplete(() {
       _setReadMarkerFuture = null;
+      _syncReadMarkerEventId(currentTimeline: this.timeline);
+      if (mounted) {
+        setState(() {});
+      }
     });
     if (eventId == null || eventId == timeline.room.lastEvent?.eventId) {
       matrix.backgroundPush?.cancelNotification(roomId);
@@ -1355,6 +1452,7 @@ class ChatController extends State<ChatPageWithRoom>
     inputFocus.removeListener(_inputFocusListener);
     onFocusSub?.cancel();
     _globalScreenshotHotkeySub?.cancel();
+    _scrollToEventHighlightResetTimer?.cancel();
     _disposePendingAttachments();
     super.dispose();
   }
@@ -1520,7 +1618,7 @@ class ChatController extends State<ChatPageWithRoom>
   void handleKeyboardInsertedContent(KeyboardInsertedContent content) async {
     final data = content.data;
     if (data == null) return;
-    final isImageData = content.mimeType?.startsWith('image/') ?? false;
+    final isImageData = content.mimeType.startsWith('image/');
     final normalizedData = isImageData
         ? (await _normalizedClipboardImageData(data) ?? data)
         : data;
@@ -2678,13 +2776,15 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void scrollToEventId(String eventId, {bool highlightEvent = true}) async {
-    final foundEvent = timeline!.events.firstWhereOrNull(
+    final currentTimeline = timeline;
+    if (currentTimeline == null) return;
+    final foundEvent = currentTimeline.events.firstWhereOrNull(
       (event) => event.eventId == eventId,
     );
 
     final eventIndex = foundEvent == null
         ? -1
-        : timeline!.events
+        : currentTimeline.events
             .filterByVisibleInGui(
               exceptionEventId: eventId,
               threadId: activeThreadId,
@@ -2704,13 +2804,21 @@ class ChatController extends State<ChatPageWithRoom>
       });
       await loadTimelineFuture;
       WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-        scrollToEventId(eventId);
+        if (!mounted) return;
+        scrollToEventId(eventId, highlightEvent: highlightEvent);
       });
       return;
     }
     if (highlightEvent) {
+      _scrollToEventHighlightResetTimer?.cancel();
       setState(() {
         scrollToEventIdMarker = eventId;
+      });
+      _scrollToEventHighlightResetTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted || scrollToEventIdMarker != eventId) return;
+        setState(() {
+          scrollToEventIdMarker = null;
+        });
       });
     }
     await scrollController.scrollToIndex(
@@ -2722,7 +2830,9 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void scrollDown() async {
-    if (!timeline!.allowNewEvent) {
+    final currentTimeline = timeline;
+    if (currentTimeline == null) return;
+    if (!currentTimeline.allowNewEvent) {
       setState(() {
         timeline = null;
         _scrolledUp = false;
@@ -2736,6 +2846,7 @@ class ChatController extends State<ChatPageWithRoom>
       await loadTimelineFuture;
     }
     _jumpTimelineToBottomSafely();
+    setReadMarker();
   }
 
   void onEmojiSelected(_, Emoji? emoji) {

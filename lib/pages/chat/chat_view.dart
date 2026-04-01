@@ -248,7 +248,6 @@ class ChatView extends StatelessWidget {
   }
 
   Widget _buildTimelinePane(BuildContext context) {
-    final theme = Theme.of(context);
     final isDesktop = PlatformInfos.isDesktop;
     final templateMargin = EdgeInsets.fromLTRB(
       isDesktop ? 16 : 12,
@@ -256,14 +255,13 @@ class ChatView extends StatelessWidget {
       isDesktop ? 16 : 12,
       8,
     );
-    final showEmployeeWorkTemplateBar =
-        controller.isEmployeeChat &&
+    final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
         controller.activeThreadId == null &&
         !controller.employeeWorkTemplateDismissed;
     final onCloseEmployeeWorkTemplate =
         controller.canDismissEmployeeWorkTemplateBar
-        ? controller.dismissEmployeeWorkTemplateBar
-        : null;
+            ? controller.dismissEmployeeWorkTemplateBar
+            : null;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
         ? _buildEmployeeWorkTemplateBar(
             context,
@@ -277,44 +275,9 @@ class ChatView extends StatelessWidget {
       children: [
         if (employeeWorkTemplateBar != null) employeeWorkTemplateBar,
         Expanded(
-          child: Stack(
-            children: [
-              GestureDetector(
-                onTap: controller.clearSingleSelectedEvent,
-                child: ChatEventList(controller: controller),
-              ),
-              if (controller.readMarkerEventId.isNotEmpty)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Material(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                    child: InkWell(
-                      onTap: controller.scrollToReadMarker,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.arrow_upward,
-                              size: 16,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                            const SizedBox(width: 4),
-                            const Text('新消息', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          child: GestureDetector(
+            onTap: controller.clearSingleSelectedEvent,
+            child: ChatEventList(controller: controller),
           ),
         ),
       ],
@@ -419,8 +382,7 @@ class ChatView extends StatelessWidget {
               if (agent == null) return const SizedBox.shrink();
               final theme = Theme.of(context);
               final l10n = L10n.of(context);
-              final isDisabled =
-                  !controller.webEntryOpen &&
+              final isDisabled = !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
                   !agent.canOpenWebEntry;
               final isVisuallyDisabled = isDisabled || agent.isResting;
@@ -431,12 +393,12 @@ class ChatView extends StatelessWidget {
                   tooltip: controller.webEntryOpen
                       ? '返回聊天'
                       : (isVisuallyDisabled
-                            ? l10n.agentWebEntryUnavailable
-                            : '打开 WebView'),
+                          ? l10n.agentWebEntryUnavailable
+                          : '打开 WebView'),
                   onPressed:
                       controller.webEntryOpen || controller.webEntryLoading
-                      ? controller.closeWebEntry
-                      : () => controller.openWebEntry(),
+                          ? controller.closeWebEntry
+                          : () => controller.openWebEntry(),
                   icon: controller.webEntryLoading
                       ? const SizedBox(
                           width: 20,
@@ -507,8 +469,7 @@ class ChatView extends StatelessWidget {
     final accountConfig = Matrix.of(context).client.applicationAccountConfig;
 
     return PopScope(
-      canPop:
-          controller.selectedEvents.isEmpty &&
+      canPop: controller.selectedEvents.isEmpty &&
           !controller.showEmojiPicker &&
           controller.activeThreadId == null &&
           !controller.webEntryOpen &&
@@ -572,8 +533,8 @@ class ChatView extends StatelessWidget {
                         ),
                         backgroundColor: controller.selectedEvents.isEmpty
                             ? controller.activeThreadId != null
-                                  ? theme.colorScheme.secondaryContainer
-                                  : null
+                                ? theme.colorScheme.secondaryContainer
+                                : null
                             : theme.colorScheme.tertiaryContainer,
                         automaticallyImplyLeading: false,
                         leading: controller.selectMode
@@ -584,31 +545,38 @@ class ChatView extends StatelessWidget {
                                 color: theme.colorScheme.onTertiaryContainer,
                               )
                             : activeThreadId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: controller.closeThread,
-                                tooltip: L10n.of(context).backToMainChat,
-                                color: theme.colorScheme.onSecondaryContainer,
-                              )
-                            : FluffyThemes.isColumnMode(context)
-                            ? null
-                            : StreamBuilder<Object>(
-                                stream: Matrix.of(context).client.onSync.stream
-                                    .where(
-                                      (syncUpdate) => syncUpdate.hasRoomUpdate,
-                                    ),
-                                builder: (context, _) => UnreadRoomsBadge(
-                                  filter: (r) => r.id != controller.roomId,
-                                  badgePosition: BadgePosition.topEnd(
-                                    end: 8,
-                                    top: 4,
-                                  ),
-                                  child: const Center(child: BackButton()),
-                                ),
-                              ),
-                        titleSpacing: FluffyThemes.isColumnMode(context)
-                            ? 24
-                            : 0,
+                                ? IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: controller.closeThread,
+                                    tooltip: L10n.of(context).backToMainChat,
+                                    color:
+                                        theme.colorScheme.onSecondaryContainer,
+                                  )
+                                : FluffyThemes.isColumnMode(context)
+                                    ? null
+                                    : StreamBuilder<Object>(
+                                        stream: Matrix.of(context)
+                                            .client
+                                            .onSync
+                                            .stream
+                                            .where(
+                                              (syncUpdate) =>
+                                                  syncUpdate.hasRoomUpdate,
+                                            ),
+                                        builder: (context, _) =>
+                                            UnreadRoomsBadge(
+                                          filter: (r) =>
+                                              r.id != controller.roomId,
+                                          badgePosition: BadgePosition.topEnd(
+                                            end: 8,
+                                            top: 4,
+                                          ),
+                                          child:
+                                              const Center(child: BackButton()),
+                                        ),
+                                      ),
+                        titleSpacing:
+                            FluffyThemes.isColumnMode(context) ? 24 : 0,
                         title: ChatAppBarTitle(controller),
                         actions: _appBarActions(context),
                         bottom: PreferredSize(
@@ -630,8 +598,7 @@ class ChatView extends StatelessWidget {
                                       ),
                                       style: TextButton.styleFrom(
                                         foregroundColor: theme
-                                            .colorScheme
-                                            .onSecondaryContainer,
+                                            .colorScheme.onSecondaryContainer,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             4,
@@ -658,6 +625,7 @@ class ChatView extends StatelessWidget {
                                     onPressed: () {
                                       controller.scrollToEventId(
                                         scrollUpBannerEventId,
+                                        highlightEvent: false,
                                       );
                                       controller.discardScrollUpBannerEventId();
                                     },
@@ -670,8 +638,7 @@ class ChatView extends StatelessWidget {
                       ),
                       floatingActionButtonLocation:
                           FloatingActionButtonLocation.miniCenterFloat,
-                      floatingActionButton:
-                          controller.showScrollDownButton &&
+                      floatingActionButton: controller.showScrollDownButton &&
                               controller.selectedEvents.isEmpty
                           ? Padding(
                               padding: const EdgeInsets.only(bottom: 56.0),
@@ -725,8 +692,8 @@ class ChatView extends StatelessWidget {
                                     sigmaY: accountConfig.wallpaperBlur ?? 0.0,
                                   ),
                                   child: MxcImage(
-                                    cacheKey: accountConfig.wallpaperUrl
-                                        .toString(),
+                                    cacheKey:
+                                        accountConfig.wallpaperUrl.toString(),
                                     uri: accountConfig.wallpaperUrl,
                                     fit: BoxFit.cover,
                                     height: MediaQuery.sizeOf(context).height,
@@ -740,8 +707,7 @@ class ChatView extends StatelessWidget {
                               child: Column(
                                 children: <Widget>[
                                   Expanded(
-                                    child:
-                                        controller.webEntryOpen &&
+                                    child: controller.webEntryOpen &&
                                             controller.webEntryUrl != null
                                         ? AgentWebEntryView(
                                             url: controller.webEntryUrl!,
@@ -768,8 +734,7 @@ class ChatView extends StatelessWidget {
                                       ),
                                     )
                                   else if (controller
-                                          .room
-                                          .canSendDefaultMessages &&
+                                          .room.canSendDefaultMessages &&
                                       controller.room.membership ==
                                           Membership.join)
                                     Column(
@@ -803,47 +768,39 @@ class ChatView extends StatelessWidget {
                                             children: [
                                               ValueListenableBuilder(
                                                 valueListenable: AgentService
-                                                    .instance
-                                                    .agentsNotifier,
+                                                    .instance.agentsNotifier,
                                                 builder: (context, _, __) =>
                                                     EmployeeWorkingIndicator(
-                                                      controller,
-                                                    ),
+                                                  controller,
+                                                ),
                                               ),
                                               if (controller
                                                       .hasOwnEmployeeInRoom &&
-                                                  controller
-                                                          .room
+                                                  controller.room
                                                           .isAbandonedDMRoom !=
                                                       true)
                                                 Padding(
                                                   padding:
                                                       const EdgeInsets.only(
-                                                        bottom: 8,
-                                                      ),
+                                                    bottom: 8,
+                                                  ),
                                                   child: ChatQuickTipsBar(
                                                     controller,
                                                   ),
                                                 ),
                                               Material(
                                                 clipBehavior: Clip.hardEdge,
-                                                color:
-                                                    controller
-                                                        .selectedEvents
+                                                color: controller.selectedEvents
                                                         .isNotEmpty
-                                                    ? theme
-                                                          .colorScheme
-                                                          .tertiaryContainer
-                                                    : theme
-                                                          .colorScheme
-                                                          .surfaceContainerHigh,
+                                                    ? theme.colorScheme
+                                                        .tertiaryContainer
+                                                    : theme.colorScheme
+                                                        .surfaceContainerHigh,
                                                 borderRadius:
                                                     const BorderRadius.all(
-                                                      Radius.circular(24),
-                                                    ),
-                                                child:
-                                                    controller
-                                                            .room
+                                                  Radius.circular(24),
+                                                ),
+                                                child: controller.room
                                                             .isAbandonedDMRoom ==
                                                         true
                                                     ? Row(
@@ -852,11 +809,13 @@ class ChatView extends StatelessWidget {
                                                                 .spaceEvenly,
                                                         children: [
                                                           TextButton.icon(
-                                                            style: TextButton.styleFrom(
+                                                            style: TextButton
+                                                                .styleFrom(
                                                               padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                16,
+                                                              ),
                                                               foregroundColor:
                                                                   theme
                                                                       .colorScheme
@@ -876,11 +835,13 @@ class ChatView extends StatelessWidget {
                                                             ),
                                                           ),
                                                           TextButton.icon(
-                                                            style: TextButton.styleFrom(
+                                                            style: TextButton
+                                                                .styleFrom(
                                                               padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                16,
+                                                              ),
                                                             ),
                                                             icon: const Icon(
                                                               Icons
@@ -1003,9 +964,8 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
   Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
     try {
       final page = await _repository.getUserAgents(limit: 50);
-      final agent = page.agents
-          .where((a) => a.matrixUserId == matrixUserId)
-          .firstOrNull;
+      final agent =
+          page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
       if (mounted && agent != null) {
         setState(() => _employee = agent);
       }
