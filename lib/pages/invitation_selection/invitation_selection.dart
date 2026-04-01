@@ -135,6 +135,29 @@ class InvitationSelectionController extends State<InvitationSelection> {
     return _agentService.getAgentByMatrixUserId(matrixUserId);
   }
 
+  String _resolveInviteTargetDisplayName({
+    required String matrixUserId,
+    required String fallbackDisplayName,
+    Agent? inviteTargetAgent,
+  }) {
+    final agentDisplayName = inviteTargetAgent?.displayName.trim() ?? '';
+    if (agentDisplayName.isNotEmpty) {
+      return agentDisplayName;
+    }
+
+    final resolved = _agentService
+        .resolveDisplayNameByMatrixUserId(
+          matrixUserId,
+          fallbackDisplayName: fallbackDisplayName,
+        )
+        .trim();
+    if (resolved.isNotEmpty) {
+      return resolved;
+    }
+
+    return matrixUserId.localpart ?? fallbackDisplayName;
+  }
+
   void inviteAction(BuildContext context, String id, String displayname) async {
     final l10n = L10n.of(context);
     final client = Matrix.of(context).client;
@@ -157,12 +180,17 @@ class InvitationSelectionController extends State<InvitationSelection> {
     final isDismissedOwnedAgent = inviteTargetAgent?.isActive == false ||
         (inviteTargetAgent == null &&
             _looksLikeOwnedAgentMatrixUserId(client, id));
+    final resolvedDisplayName = _resolveInviteTargetDisplayName(
+      matrixUserId: id,
+      fallbackDisplayName: displayname,
+      inviteTargetAgent: inviteTargetAgent,
+    );
 
     final success = await showFutureLoadingDialog(
       context: context,
       future: () async {
         if (isDismissedOwnedAgent) {
-          throw l10n.inviteRetiredEmployee(displayname);
+          throw l10n.inviteRetiredEmployee(resolvedDisplayName);
         }
         try {
           await room.invite(id);
@@ -184,7 +212,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
       _showInviteSuccessSnackBar(
         context,
         isOwnedAgent
-            ? l10n.youInvitedUser(displayname)
+            ? l10n.youInvitedUser(resolvedDisplayName)
             : l10n.contactHasBeenInvitedToTheGroup,
       );
     }
