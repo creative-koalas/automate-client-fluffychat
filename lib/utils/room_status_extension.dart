@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import '../config/app_config.dart';
 
 extension RoomStatusExtension on Room {
@@ -19,17 +20,18 @@ extension RoomStatusExtension on Room {
     } else if (typingUsers.length == 1) {
       typingText = L10n.of(context).isTyping;
       if (typingUsers.first.id != directChatMatrixID) {
-        typingText =
-            L10n.of(context).userIsTyping(typingUsers.first.calcDisplayname());
+        typingText = L10n.of(
+          context,
+        ).userIsTyping(typingUsers.first.calcDisplaynameWithAgents());
       }
     } else if (typingUsers.length == 2) {
       typingText = L10n.of(context).userAndUserAreTyping(
-        typingUsers.first.calcDisplayname(),
-        typingUsers[1].calcDisplayname(),
+        typingUsers.first.calcDisplaynameWithAgents(),
+        typingUsers[1].calcDisplaynameWithAgents(),
       );
     } else if (typingUsers.length > 2) {
       typingText = L10n.of(context).userAndOthersAreTyping(
-        typingUsers.first.calcDisplayname(),
+        typingUsers.first.calcDisplaynameWithAgents(),
         (typingUsers.length - 1),
       );
     }
