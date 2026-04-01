@@ -50,15 +50,17 @@ class ChatView extends StatelessWidget {
     required bool isVisuallyDisabled,
   }) {
     final l10n = L10n.of(context);
-    final isUpdated = agent.webEntryStatus == Agent.webEntryStatusUpdated;
-    final isAvailable = agent.canOpenWebEntry && !agent.isResting;
+    final isUpdated = agent.webEntryStatus == Agent.webEntryStatusUpdated &&
+        !isVisuallyDisabled;
+    final isEnabled = agent.webEntryStatus == Agent.webEntryStatusEnabled &&
+        !isVisuallyDisabled;
 
     return _WebEntryActionButton(
       key: controller.webEntryGuideKey,
       isOpen: controller.webEntryOpen,
       isLoading: controller.webEntryLoading,
       isDisabled: isVisuallyDisabled,
-      isAvailable: isAvailable,
+      isEnabled: isEnabled,
       isUpdated: isUpdated,
       unavailableTooltip: l10n.agentWebEntryUnavailable,
       onPressed: controller.webEntryOpen || controller.webEntryLoading
@@ -1075,7 +1077,7 @@ class _WebEntryActionButton extends StatefulWidget {
   final bool isOpen;
   final bool isLoading;
   final bool isDisabled;
-  final bool isAvailable;
+  final bool isEnabled;
   final bool isUpdated;
   final String unavailableTooltip;
   final VoidCallback onPressed;
@@ -1085,7 +1087,7 @@ class _WebEntryActionButton extends StatefulWidget {
     required this.isOpen,
     required this.isLoading,
     required this.isDisabled,
-    required this.isAvailable,
+    required this.isEnabled,
     required this.isUpdated,
     required this.unavailableTooltip,
     required this.onPressed,
@@ -1117,8 +1119,6 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
   void _syncAnimation() {
     if (widget.isUpdated) {
       _controller.repeat(reverse: true);
-    } else if (widget.isAvailable && !widget.isDisabled && !widget.isOpen) {
-      _controller.repeat(reverse: true);
     } else {
       _controller.stop();
       _controller.value = 0;
@@ -1135,18 +1135,25 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isHighlighted = !widget.isDisabled &&
-        !widget.isOpen &&
-        (widget.isAvailable || widget.isUpdated);
-    final availableStyle = _resolveAvailableStyle(colorScheme);
-    final updatedStyle = _resolveUpdatedStyle(colorScheme, availableStyle);
-    final stateStyle = widget.isUpdated ? updatedStyle : availableStyle;
+    final isUnavailable = widget.isDisabled && !widget.isOpen;
+    final isHighlighted =
+        !widget.isDisabled && !widget.isOpen && widget.isUpdated;
+    final enabledStyle = _resolveEnabledStyle(colorScheme);
+    final updatedStyle = _resolveUpdatedStyle(colorScheme, enabledStyle);
+    final disabledStyle = _resolveDisabledStyle(colorScheme);
+    final stateStyle = widget.isUpdated
+        ? updatedStyle
+        : widget.isEnabled
+            ? enabledStyle
+            : disabledStyle;
     final highlightColor = stateStyle.accent;
-    final baseBackground = widget.isDisabled
-        ? Colors.transparent
-        : isHighlighted
-            ? stateStyle.background
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.36);
+    final baseBackground = widget.isOpen
+        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.16)
+        : widget.isUpdated
+            ? updatedStyle.background
+            : widget.isEnabled
+                ? enabledStyle.background
+                : disabledStyle.background;
 
     final tooltip = widget.isOpen
         ? '返回聊天'
@@ -1154,16 +1161,15 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
             ? widget.unavailableTooltip
             : widget.isUpdated
                 ? '智能界面有更新'
-                : widget.isAvailable
-                    ? '智能界面可用'
+                : widget.isEnabled
+                    ? '打开 WebView'
                     : '打开 WebView';
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        final pulse = widget.isUpdated
-            ? 0.78 + (_controller.value * 0.18)
-            : 0.88 + (_controller.value * 0.1);
+        final pulse =
+            widget.isUpdated ? 0.78 + (_controller.value * 0.18) : 0.0;
         final glowOpacity = isHighlighted ? pulse : 0.0;
         final tooltipBackground = Color.alphaBlend(
           highlightColor.withValues(alpha: widget.isUpdated ? 0.14 : 0.08),
@@ -1175,6 +1181,26 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
                 alpha: widget.isUpdated ? 0.34 : 0.22,
               )
             : colorScheme.outlineVariant.withValues(alpha: 0.18);
+        final iconColor = widget.isOpen
+            ? colorScheme.onSurface
+            : widget.isUpdated
+                ? updatedStyle.accent
+                : widget.isEnabled
+                    ? enabledStyle.accent
+                    : disabledStyle.accent;
+        final iconData = widget.isOpen
+            ? Icons.arrow_back
+            : widget.isEnabled || widget.isUpdated
+                ? Icons.open_in_browser_rounded
+                : Icons.web_asset_off_outlined;
+        final showUpdateLabel = isHighlighted;
+        final borderColor = widget.isUpdated
+            ? highlightColor.withValues(alpha: stateStyle.borderOpacity)
+            : widget.isEnabled
+                ? enabledStyle.accent.withValues(alpha: 0.24)
+                : isUnavailable
+                    ? disabledStyle.accent.withValues(alpha: 0.16)
+                    : Colors.transparent;
 
         return Tooltip(
           message: tooltip,
@@ -1226,18 +1252,17 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: isHighlighted
-                        ? highlightColor.withValues(
-                            alpha: stateStyle.borderOpacity,
-                          )
-                        : colorScheme.outlineVariant.withValues(alpha: 0.28),
+                    color: borderColor,
                   ),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
                   onTap: widget.onPressed,
                   child: Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: showUpdateLabel ? 12 : 10,
+                      vertical: 10,
+                    ),
                     child: widget.isLoading
                         ? SizedBox(
                             width: 20,
@@ -1248,16 +1273,43 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
                                   AlwaysStoppedAnimation<Color>(highlightColor),
                             ),
                           )
-                        : Icon(
-                            widget.isOpen
-                                ? Icons.arrow_back
-                                : Icons.dashboard_customize_rounded,
-                            size: 20,
-                            color: widget.isDisabled
-                                ? colorScheme.onSurface.withValues(alpha: 0.38)
-                                : isHighlighted
-                                    ? highlightColor
-                                    : colorScheme.onSurfaceVariant,
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                iconData,
+                                size: 20,
+                                color: iconColor,
+                              ),
+                              if (showUpdateLabel) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: highlightColor.withValues(
+                                      alpha: 0.14,
+                                    ),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: highlightColor.withValues(
+                                        alpha: 0.22,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '有更新',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: highlightColor,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                   ),
                 ),
@@ -1294,25 +1346,6 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
                       ),
                     ),
                   ),
-                )
-              else if (!widget.isOpen &&
-                  widget.isAvailable &&
-                  !widget.isDisabled)
-                Positioned(
-                  right: -1,
-                  top: -1,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: highlightColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: colorScheme.surface,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
                 ),
             ],
           ),
@@ -1321,21 +1354,30 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
     );
   }
 
-  _WebEntryVisualStyle _resolveAvailableStyle(ColorScheme colorScheme) {
+  _WebEntryVisualStyle _resolveEnabledStyle(ColorScheme colorScheme) {
     return _WebEntryVisualStyle(
-      accent: colorScheme.primary,
-      background: colorScheme.primaryContainer.withValues(alpha: 0.2),
-      borderOpacity: 0.46,
-      dotCore: colorScheme.onPrimaryContainer,
+      accent: colorScheme.primary.withValues(alpha: 0.9),
+      background: colorScheme.primaryContainer.withValues(alpha: 0.16),
+      borderOpacity: 0.34,
+      dotCore: colorScheme.onPrimaryContainer.withValues(alpha: 0.88),
+    );
+  }
+
+  _WebEntryVisualStyle _resolveDisabledStyle(ColorScheme colorScheme) {
+    return _WebEntryVisualStyle(
+      accent: colorScheme.onSurfaceVariant.withValues(alpha: 0.44),
+      background: colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
+      borderOpacity: 0.16,
+      dotCore: colorScheme.onSurfaceVariant.withValues(alpha: 0.44),
     );
   }
 
   _WebEntryVisualStyle _resolveUpdatedStyle(
     ColorScheme colorScheme,
-    _WebEntryVisualStyle availableStyle,
+    _WebEntryVisualStyle enabledStyle,
   ) {
     final accent = colorScheme.tertiary;
-    final isTooClose = _colorDistance(accent, availableStyle.accent) < 72;
+    final isTooClose = _colorDistance(accent, enabledStyle.accent) < 72;
     if (!isTooClose) {
       return _WebEntryVisualStyle(
         accent: accent,
