@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:psygo/utils/resize_video.dart';
@@ -956,7 +957,8 @@ class ChatController extends State<ChatPageWithRoom>
     unawaited(_loadChatRoomGuideState());
     unawaited(_loadQuickTipTemplates());
     if (PlatformInfos.isWindows) {
-      _globalScreenshotHotkeySub = DesktopScreenshotCapture.onGlobalHotkey.listen(
+      _globalScreenshotHotkeySub =
+          DesktopScreenshotCapture.onGlobalHotkey.listen(
         (dynamic _) {
           unawaited(_handleWindowsGlobalScreenshotHotkey());
         },
@@ -1595,6 +1597,98 @@ class ChatController extends State<ChatPageWithRoom>
         Matrix.of(context).setActiveClient(c);
       });
 
+  int get _effectiveMessageTextLengthLimit {
+    final configuredLimit = AppSettings.textMessageMaxLength.value;
+    final pduLimit = (maxPDUSize / 3).floor();
+    return configuredLimit < pduLimit ? configuredLimit : pduLimit;
+  }
+
+  bool _messageTextExceedsLimit(String text) {
+    return text.characters.length > _effectiveMessageTextLengthLimit;
+  }
+
+  String get _generatedTextAttachmentName =>
+      'message-${DateTime.now().millisecondsSinceEpoch}.txt';
+
+  void _clearComposerAfterSuccessfulSend() {
+    _storeInputTimeoutTimer?.cancel();
+    final prefs = Matrix.of(context).store;
+    prefs.remove('draft_$roomId');
+    sendController.value = TextEditingValue(
+      text: pendingText,
+      selection: const TextSelection.collapsed(offset: 0),
+    );
+
+    setState(() {
+      sendController.text = pendingText;
+      _inputTextIsEmpty = pendingText.isEmpty;
+      _pendingQuickTipRewrite = null;
+      replyEvent = null;
+      editEvent = null;
+      pendingText = '';
+    });
+  }
+
+  Future<void> _sendCurrentTextAsAttachment() async {
+    final currentText = sendController.text;
+    if (currentText.trim().isEmpty) return;
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
+
+    try {
+      if (!room.otherPartyCanReceiveMessages) {
+        throw OtherPartyCanNotReceiveMessages();
+      }
+
+      _showLoadingSnackBar(scaffoldMessenger, l10n.prepareSendingAttachment);
+
+      final file = MatrixFile(
+        bytes: Uint8List.fromList(utf8.encode(currentText)),
+        name: _generatedTextAttachmentName,
+        mimeType: 'text/plain',
+      ).detectFileType;
+
+      await room.sendFileEvent(
+        file,
+        inReplyTo: replyEvent,
+        threadRootEventId: activeThreadId,
+        threadLastEventId: threadLastEventId,
+      );
+
+      scaffoldMessenger.clearSnackBars();
+      _clearComposerAfterSuccessfulSend();
+    } catch (error) {
+      scaffoldMessenger.clearSnackBars();
+      _showAttachmentError(scaffoldMessenger, error);
+    }
+  }
+
+  void _showMessageTooLongWarning() {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: theme.colorScheme.errorContainer,
+          closeIconColor: theme.colorScheme.onErrorContainer,
+          content: Text(
+            l10n.messageTooLongToSend(_effectiveMessageTextLengthLimit),
+            style: TextStyle(color: theme.colorScheme.onErrorContainer),
+          ),
+          action: SnackBarAction(
+            label: l10n.sendFile,
+            textColor: theme.colorScheme.primary,
+            onPressed: () => unawaited(_sendCurrentTextAsAttachment()),
+          ),
+          duration: const Duration(seconds: 12),
+          showCloseIcon: true,
+        ),
+      );
+  }
+
   Future<void> send() async {
     // If user sends a message while WebView is open, return to chat first.
     if (_webEntryOpen || _webEntryLoading) {
@@ -1603,6 +1697,11 @@ class ChatController extends State<ChatPageWithRoom>
 
     final trimmedText = sendController.text.trim();
     if (hasActiveQuickTipIntent && trimmedText.isEmpty) return;
+    if (trimmedText.isNotEmpty &&
+        _messageTextExceedsLimit(sendController.text)) {
+      _showMessageTooLongWarning();
+      return;
+    }
     final hasPending =
         PlatformInfos.isDesktop && _pendingAttachments.isNotEmpty;
     final hasPendingScreenshot =
@@ -1635,13 +1734,13 @@ class ChatController extends State<ChatPageWithRoom>
         sendController.selection = TextSelection.collapsed(
           offset: sendController.text.length,
         );
+        if (_messageTextExceedsLimit(sendController.text)) {
+          _showMessageTooLongWarning();
+          return;
+        }
       }
       // mention 为空字符串表示"直接发送"
     }
-
-    _storeInputTimeoutTimer?.cancel();
-    final prefs = Matrix.of(context).store;
-    prefs.remove('draft_$roomId');
 
     var outgoingText = replaceInputMentionsWithMatrixIds(
       room: room,
@@ -1655,6 +1754,10 @@ class ChatController extends State<ChatPageWithRoom>
         return;
       }
     }
+    if (_messageTextExceedsLimit(outgoingText)) {
+      _showMessageTooLongWarning();
+      return;
+    }
     // ignore: unawaited_futures
     room.sendTextEvent(
       outgoingText,
@@ -1663,19 +1766,7 @@ class ChatController extends State<ChatPageWithRoom>
       parseCommands: false,
       threadRootEventId: activeThreadId,
     );
-    sendController.value = TextEditingValue(
-      text: pendingText,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-
-    setState(() {
-      sendController.text = pendingText;
-      _inputTextIsEmpty = pendingText.isEmpty;
-      _pendingQuickTipRewrite = null;
-      replyEvent = null;
-      editEvent = null;
-      pendingText = '';
-    });
+    _clearComposerAfterSuccessfulSend();
   }
 
   /// 群聊发送时弹出 mention 提示。
@@ -2216,7 +2307,8 @@ class ChatController extends State<ChatPageWithRoom>
           await WindowToFront.activate();
           await Future<void>.delayed(const Duration(milliseconds: 180));
         } catch (error) {
-          debugPrint('[Screenshot] Failed to restore window after capture: $error');
+          debugPrint(
+              '[Screenshot] Failed to restore window after capture: $error');
         }
       }
     }
@@ -2306,26 +2398,24 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() {
       replyEvent = null;
     });
-    room
-        .sendFileEvent(
-          file,
-          inReplyTo: replyTo,
-          threadRootEventId: activeThreadId,
-          extraContent: {
-            'info': {...file.info, 'duration': duration},
-            'org.matrix.msc3245.voice': {},
-            'org.matrix.msc1767.audio': {
-              'duration': duration,
-              'waveform': waveform,
-            },
-          },
-        )
-        .catchError((e) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text((e as Object).toLocalizedString(context))),
-          );
-          return null;
-        });
+    room.sendFileEvent(
+      file,
+      inReplyTo: replyTo,
+      threadRootEventId: activeThreadId,
+      extraContent: {
+        'info': {...file.info, 'duration': duration},
+        'org.matrix.msc3245.voice': {},
+        'org.matrix.msc1767.audio': {
+          'duration': duration,
+          'waveform': waveform,
+        },
+      },
+    ).catchError((e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text((e as Object).toLocalizedString(context))),
+      );
+      return null;
+    });
     return;
   }
 
@@ -3070,13 +3160,13 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void cancelReplyEventAction() => setState(() {
-    if (editEvent != null) {
-      sendController.text = pendingText;
-      pendingText = '';
-    }
-    replyEvent = null;
-    editEvent = null;
-  });
+        if (editEvent != null) {
+          sendController.text = pendingText;
+          pendingText = '';
+        }
+        replyEvent = null;
+        editEvent = null;
+      });
   void clearReplyEventAfterMediaSend() {
     if (!mounted || replyEvent == null) return;
     setState(() => replyEvent = null);
