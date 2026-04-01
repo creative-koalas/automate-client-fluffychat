@@ -44,6 +44,7 @@ import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/macos_enter_ime_guard.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -158,6 +159,7 @@ class ChatController extends State<ChatPageWithRoom>
   Timer? typingTimeout;
   bool currentlyTyping = false;
   bool dragging = false;
+  final MacOsEnterImeGuard _macOsEnterImeGuard = MacOsEnterImeGuard();
   late final VoidCallback _agentServiceListener;
   bool _groupLiveStatusWatcherAttached = false;
 
@@ -731,6 +733,18 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   KeyEventResult _customEnterKeyHandling(FocusNode node, KeyEvent evt) {
+    final isEnterKey = evt.logicalKey == LogicalKeyboardKey.enter ||
+        evt.logicalKey == LogicalKeyboardKey.numpadEnter;
+    if (!isEnterKey) {
+      return KeyEventResult.ignored;
+    }
+    if (_macOsEnterImeGuard.shouldDeferEnter(isMacOS: PlatformInfos.isMacOS)) {
+      if (evt is KeyDownEvent) {
+        _macOsEnterImeGuard.consumeDeferredEnter();
+      }
+      return KeyEventResult.ignored;
+    }
+
     if (!HardwareKeyboard.instance.isShiftPressed &&
         evt.logicalKey.keyLabel == 'Enter' &&
         AppSettings.sendOnEnter.value) {
@@ -738,7 +752,7 @@ class ChatController extends State<ChatPageWithRoom>
         send();
       }
       return KeyEventResult.handled;
-    } else if (evt.logicalKey.keyLabel == 'Enter' && evt is KeyDownEvent) {
+    } else if (evt is KeyDownEvent) {
       final currentLineNum = sendController.text
               .substring(
                 0,
@@ -786,6 +800,7 @@ class ChatController extends State<ChatPageWithRoom>
 
     scrollController.addListener(_updateScrollController);
     inputFocus.addListener(_inputFocusListener);
+    sendController.addListener(_handleSendControllerChanged);
 
     _cleanupLegacyWaitingEmployeesPrefsOnce();
     _loadDraft();
@@ -1144,6 +1159,8 @@ class ChatController extends State<ChatPageWithRoom>
     timeline = null;
     inputFocus.removeListener(_inputFocusListener);
     onFocusSub?.cancel();
+    sendController.removeListener(_handleSendControllerChanged);
+    sendController.dispose();
     _disposePendingAttachments();
     super.dispose();
   }
@@ -2429,6 +2446,10 @@ class ChatController extends State<ChatPageWithRoom>
 
   Timer? _storeInputTimeoutTimer;
   static const Duration _storeInputTimeout = Duration(milliseconds: 500);
+
+  void _handleSendControllerChanged() {
+    _macOsEnterImeGuard.updateEditingValue(sendController.value);
+  }
 
   void onInputBarChanged(String text) {
     if (_inputTextIsEmpty != text.isEmpty) {

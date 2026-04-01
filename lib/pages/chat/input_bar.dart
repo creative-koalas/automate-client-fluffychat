@@ -13,7 +13,6 @@ import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
-import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
@@ -531,27 +530,6 @@ class InputBar extends StatelessWidget {
           },
           textCapitalization: TextCapitalization.sentences,
         );
-
-        // PC 端：按 Enter 发送消息（Shift+Enter 换行）
-        // Enter 键始终用于发送消息，自动补全只能通过点击选择
-        if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
-          return Focus(
-            onKeyEvent: (node, event) {
-              if (event is KeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.enter ||
-                      event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
-                  !HardwareKeyboard.instance.isShiftPressed) {
-                final text = textController.text.trim();
-                if (text.isNotEmpty) {
-                  onSubmitted?.call(text);
-                }
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: textField,
-          );
-        }
 
         return textField;
       },
