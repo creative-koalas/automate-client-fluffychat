@@ -2806,6 +2806,14 @@
   "@inviteGroupChat": {},
   "invitePrivateChat": "📨 Private chat invite",
   "@invitePrivateChat": {},
+  "inviteFailedTryAgain": "Invite failed. Try again.",
+  "@inviteFailedTryAgain": {},
+  "inviteRetiredEmployee": "Invite failed. {user} has already left.",
+  "@inviteRetiredEmployee": {
+    "placeholders": {
+      "user": {}
+    }
+  },
   "invalidInput": "Invalid input!",
   "@invalidInput": {},
   "wrongPinEntered": "Wrong pin entered! Try again in {seconds} seconds...",

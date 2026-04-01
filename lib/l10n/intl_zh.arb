@@ -2644,6 +2644,14 @@
     "@inviteGroupChat": {},
     "invitePrivateChat": "📨 私聊邀请",
     "@invitePrivateChat": {},
+    "inviteFailedTryAgain": "邀请失败，请重试",
+    "@inviteFailedTryAgain": {},
+    "inviteRetiredEmployee": "邀请失败，{user}已经离职了",
+    "@inviteRetiredEmployee": {
+        "placeholders": {
+            "user": {}
+        }
+    },
     "emoteKeyboardNoRecents": "最近使用过的表情会出现在这里...",
     "@emoteKeyboardNoRecents": {
         "type": "String",

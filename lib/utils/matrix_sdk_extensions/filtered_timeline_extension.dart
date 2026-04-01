@@ -6,29 +6,28 @@ extension VisibleInGuiExtension on List<Event> {
   List<Event> filterByVisibleInGui({
     String? exceptionEventId,
     String? threadId,
-  }) =>
-      where(
-        (event) {
-          if (threadId != null &&
-              event.relationshipType != RelationshipTypes.reaction) {
-            if ((event.relationshipType != RelationshipTypes.thread ||
-                    event.relationshipEventId != threadId) &&
-                event.eventId != threadId) {
-              return false;
-            }
-          } else if (event.relationshipType == RelationshipTypes.thread) {
-            return false;
-          }
-          return event.isVisibleInGui || event.eventId == exceptionEventId;
-        },
-      ).toList();
+  }) => where((event) {
+    if (threadId != null &&
+        event.relationshipType != RelationshipTypes.reaction) {
+      if ((event.relationshipType != RelationshipTypes.thread ||
+              event.relationshipEventId != threadId) &&
+          event.eventId != threadId) {
+        return false;
+      }
+    } else if (event.relationshipType == RelationshipTypes.thread) {
+      return false;
+    }
+    return event.isVisibleInGui || event.eventId == exceptionEventId;
+  }).toList();
 }
 
 extension IsStateExtension on Event {
   bool get isVisibleInGui =>
       // always filter out edit and reaction relationships
-      !{RelationshipTypes.edit, RelationshipTypes.reaction}
-          .contains(relationshipType) &&
+      !{
+        RelationshipTypes.edit,
+        RelationshipTypes.reaction,
+      }.contains(relationshipType) &&
       // always filter out m.key.* and other known but unimportant events
       !isKnownHiddenStates &&
       // event types to hide: redaction and reaction events
@@ -40,30 +39,27 @@ extension IsStateExtension on Event {
       (!AppSettings.hideUnknownEvents.value || isEventTypeKnown);
 
   bool get isState => !{
-        EventTypes.Message,
-        EventTypes.Sticker,
-        EventTypes.Encrypted,
-      }.contains(type);
+    EventTypes.Message,
+    EventTypes.Sticker,
+    EventTypes.Encrypted,
+  }.contains(type);
 
   bool get isCollapsedState => !{
-        EventTypes.Message,
-        EventTypes.Sticker,
-        EventTypes.Encrypted,
-        EventTypes.RoomCreate,
-        EventTypes.RoomTombstone,
-      }.contains(type);
+    EventTypes.Message,
+    EventTypes.Sticker,
+    EventTypes.Encrypted,
+    EventTypes.RoomCreate,
+    EventTypes.RoomTombstone,
+  }.contains(type);
 
   bool get isKnownHiddenStates =>
       isMembershipNoiseState ||
-      {
-        PollEventContent.responseType,
-      }.contains(type) ||
+      {PollEventContent.responseType}.contains(type) ||
       type.startsWith('m.key.verification.');
 
   bool get isMembershipNoiseState {
     if (type != EventTypes.RoomMember) return false;
     final membership = content['membership'];
-    return membership == Membership.join.name ||
-        membership == Membership.invite.name;
+    return membership == Membership.join.name;
   }
 }
