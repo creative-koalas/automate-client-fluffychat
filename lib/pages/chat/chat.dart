@@ -831,14 +831,19 @@ class ChatController extends State<ChatPageWithRoom>
       unawaited(_triggerScreenshotShortcut());
       return KeyEventResult.handled;
     }
-    if (!HardwareKeyboard.instance.isShiftPressed &&
-        evt.logicalKey.keyLabel == 'Enter' &&
-        AppSettings.sendOnEnter.value) {
-      if (evt is KeyDownEvent) {
-        send();
-      }
-      return KeyEventResult.handled;
-    } else if (evt.logicalKey.keyLabel == 'Enter' && evt is KeyDownEvent) {
+    final isEnterKey = evt.logicalKey == LogicalKeyboardKey.enter ||
+        evt.logicalKey == LogicalKeyboardKey.numpadEnter;
+    final isPlainEnter = isEnterKey &&
+        !HardwareKeyboard.instance.isShiftPressed &&
+        !HardwareKeyboard.instance.isControlPressed &&
+        !HardwareKeyboard.instance.isAltPressed &&
+        !HardwareKeyboard.instance.isMetaPressed;
+
+    if (AppSettings.sendOnEnter.value && isPlainEnter) {
+      // Let InputBar handle Enter first so autocomplete can confirm mentions
+      // before the chat composer falls back to sending the message.
+      return KeyEventResult.ignored;
+    } else if (isEnterKey && evt is KeyDownEvent) {
       final currentLineNum = sendController.text
               .substring(0, sendController.selection.baseOffset)
               .split('\n')
@@ -956,7 +961,8 @@ class ChatController extends State<ChatPageWithRoom>
     unawaited(_loadChatRoomGuideState());
     unawaited(_loadQuickTipTemplates());
     if (PlatformInfos.isWindows) {
-      _globalScreenshotHotkeySub = DesktopScreenshotCapture.onGlobalHotkey.listen(
+      _globalScreenshotHotkeySub =
+          DesktopScreenshotCapture.onGlobalHotkey.listen(
         (dynamic _) {
           unawaited(_handleWindowsGlobalScreenshotHotkey());
         },
@@ -2216,7 +2222,8 @@ class ChatController extends State<ChatPageWithRoom>
           await WindowToFront.activate();
           await Future<void>.delayed(const Duration(milliseconds: 180));
         } catch (error) {
-          debugPrint('[Screenshot] Failed to restore window after capture: $error');
+          debugPrint(
+              '[Screenshot] Failed to restore window after capture: $error');
         }
       }
     }
@@ -2306,26 +2313,24 @@ class ChatController extends State<ChatPageWithRoom>
     setState(() {
       replyEvent = null;
     });
-    room
-        .sendFileEvent(
-          file,
-          inReplyTo: replyTo,
-          threadRootEventId: activeThreadId,
-          extraContent: {
-            'info': {...file.info, 'duration': duration},
-            'org.matrix.msc3245.voice': {},
-            'org.matrix.msc1767.audio': {
-              'duration': duration,
-              'waveform': waveform,
-            },
-          },
-        )
-        .catchError((e) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text((e as Object).toLocalizedString(context))),
-          );
-          return null;
-        });
+    room.sendFileEvent(
+      file,
+      inReplyTo: replyTo,
+      threadRootEventId: activeThreadId,
+      extraContent: {
+        'info': {...file.info, 'duration': duration},
+        'org.matrix.msc3245.voice': {},
+        'org.matrix.msc1767.audio': {
+          'duration': duration,
+          'waveform': waveform,
+        },
+      },
+    ).catchError((e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text((e as Object).toLocalizedString(context))),
+      );
+      return null;
+    });
     return;
   }
 
@@ -3070,13 +3075,13 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void cancelReplyEventAction() => setState(() {
-    if (editEvent != null) {
-      sendController.text = pendingText;
-      pendingText = '';
-    }
-    replyEvent = null;
-    editEvent = null;
-  });
+        if (editEvent != null) {
+          sendController.text = pendingText;
+          pendingText = '';
+        }
+        replyEvent = null;
+        editEvent = null;
+      });
   void clearReplyEventAfterMediaSend() {
     if (!mounted || replyEvent == null) return;
     setState(() => replyEvent = null);
