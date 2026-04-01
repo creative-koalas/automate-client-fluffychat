@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/team_page.dart';
+import 'package:psygo/widgets/matrix.dart';
 
 /// Main screen container for Messages and Team pages
 /// Supports horizontal swipe navigation on mobile devices
@@ -25,11 +28,51 @@ class _MainScreenState extends State<MainScreen> {
   late PageController _pageController;
   int _currentPage = 0;
 
+  // 与 PC 顶部导航保持一致：消息未读总数（按 room.notificationCount 累加）
+  static int _cachedUnreadCount = 0;
+  int _unreadCount = 0;
+  StreamSubscription? _syncSubscription;
+
   @override
   void initState() {
     super.initState();
     _currentPage = widget.initialPage;
     _pageController = PageController(initialPage: _currentPage);
+    _unreadCount = _cachedUnreadCount;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateUnreadCount();
+      _setupSyncListener();
+    });
+  }
+
+  void _setupSyncListener() {
+    if (!mounted) return;
+    try {
+      final client = Matrix.of(context).clientOrNull;
+      if (client == null) return;
+      _syncSubscription = client.onSync.stream.listen((_) {
+        _updateUnreadCount();
+      });
+    } catch (_) {}
+  }
+
+  void _updateUnreadCount() {
+    if (!mounted) return;
+    try {
+      final client = Matrix.of(context).clientOrNull;
+      if (client == null) return;
+      var count = 0;
+      for (final room in client.rooms) {
+        if (room.isUnreadOrInvited) {
+          count += room.notificationCount;
+        }
+      }
+      _cachedUnreadCount = count;
+      if (_unreadCount != count) {
+        setState(() => _unreadCount = count);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -50,6 +93,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    _syncSubscription?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -138,6 +182,7 @@ class _MainScreenState extends State<MainScreen> {
                   selectedIcon: Icons.chat_bubble_rounded,
                   label: l10n.messages,
                   isSelected: _currentPage == 0,
+                  badgeCount: _unreadCount,
                   onTap: () => _onBottomNavTap(0),
                   theme: theme,
                 ),
@@ -164,6 +209,7 @@ class _NavItem extends StatelessWidget {
   final IconData selectedIcon;
   final String label;
   final bool isSelected;
+  final int badgeCount;
   final VoidCallback onTap;
   final ThemeData theme;
 
@@ -174,95 +220,125 @@ class _NavItem extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.theme,
+    this.badgeCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: FluffyThemes.durationFast,
-      curve: FluffyThemes.curveBounce,
-      decoration: BoxDecoration(
-        gradient: isSelected
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-                  theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
-                ],
-              )
-            : null,
-        borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
-        border: isSelected
-            ? Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                width: 1.5,
-              )
-            : null,
-        boxShadow: isSelected
-            ? FluffyThemes.layeredShadow(
-                context,
-                elevation: FluffyThemes.elevationMd,
-              )
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
-          splashColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-          highlightColor: theme.colorScheme.primary.withValues(alpha: 0.08),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal:
-                  isSelected ? FluffyThemes.spacing24 : FluffyThemes.spacing16,
-              vertical:
-                  isSelected ? FluffyThemes.spacing12 : FluffyThemes.spacing8,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedSwitcher(
-                  duration: FluffyThemes.durationFast,
-                  transitionBuilder: (child, animation) => ScaleTransition(
-                    scale: animation,
-                    child: child,
-                  ),
-                  child: Icon(
-                    isSelected ? selectedIcon : icon,
-                    key: ValueKey(isSelected),
-                    size: FluffyThemes.iconSizeMd,
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          duration: FluffyThemes.durationFast,
+          curve: FluffyThemes.curveBounce,
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+                    ],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
+            border: isSelected
+                ? Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                    width: 1.5,
+                  )
+                : null,
+            boxShadow: isSelected
+                ? FluffyThemes.layeredShadow(
+                    context,
+                    elevation: FluffyThemes.elevationMd,
+                  )
+                : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(FluffyThemes.radiusXl),
+              splashColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+              highlightColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal:
+                      isSelected ? FluffyThemes.spacing24 : FluffyThemes.spacing16,
+                  vertical:
+                      isSelected ? FluffyThemes.spacing12 : FluffyThemes.spacing8,
                 ),
-                AnimatedSize(
-                  duration: FluffyThemes.durationFast,
-                  curve: FluffyThemes.curveStandard,
-                  child: isSelected
-                      ? Padding(
-                          padding: const EdgeInsets.only(
-                            left: FluffyThemes.spacing8,
-                          ),
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: FluffyThemes.fontSizeMd,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: FluffyThemes.durationFast,
+                      transitionBuilder: (child, animation) => ScaleTransition(
+                        scale: animation,
+                        child: child,
+                      ),
+                      child: Icon(
+                        isSelected ? selectedIcon : icon,
+                        key: ValueKey(isSelected),
+                        size: FluffyThemes.iconSizeMd,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    AnimatedSize(
+                      duration: FluffyThemes.durationFast,
+                      curve: FluffyThemes.curveStandard,
+                      child: isSelected
+                          ? Padding(
+                              padding: const EdgeInsets.only(
+                                left: FluffyThemes.spacing8,
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: FluffyThemes.fontSizeMd,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+        if (badgeCount > 0)
+          Positioned(
+            top: -6,
+            right: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: theme.colorScheme.surface,
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                badgeCount > 99 ? '99+' : '$badgeCount',
+                style: TextStyle(
+                  color: theme.colorScheme.onError,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
