@@ -126,7 +126,7 @@ class ChatListController extends State<ChatList>
       case ActiveFilter.groups:
         return (room) => !room.isDirectChat;
       case ActiveFilter.unread:
-        return (room) => room.isUnreadOrInvited;
+        return (room) => room.isUnreadOrInvited || room.hasNewMessages;
     }
   }
 

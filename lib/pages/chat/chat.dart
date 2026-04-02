@@ -230,8 +230,11 @@ class ChatController extends State<ChatPageWithRoom>
   String? activeThreadId;
 
   String _readMarkerEventId = '';
+  String _sessionUnreadEventId = '';
 
-  String get readMarkerEventId => _readMarkerEventId;
+  String get readMarkerEventId => _sessionUnreadEventId.isNotEmpty
+      ? _sessionUnreadEventId
+      : _readMarkerEventId;
 
   String get roomId => widget.room.id;
 
@@ -678,14 +681,72 @@ class ChatController extends State<ChatPageWithRoom>
         try {
           await pendingLoad;
         } catch (e, s) {
-          Logs().w('[Chat] Unable to wait for timeline before read-marker jump',
-              e, s);
+          Logs().w(
+            '[Chat] Unable to wait for timeline before read-marker jump',
+            e,
+            s,
+          );
           return;
         }
       }
     }
     if (!mounted || readMarkerEventId.isEmpty) return;
     scrollToEventId(targetEventId, highlightEvent: false);
+  }
+
+  bool _shouldCaptureSessionUnreadAnchor({bool initial = false}) {
+    if (initial) return true;
+    if (_scrolledUp || scrollUpBannerEventId != null) return true;
+    if (timeline?.allowNewEvent == false) return true;
+    if (!scrollController.hasClients) return false;
+    return scrollController.position.pixels > 0;
+  }
+
+  void _captureSessionUnreadAnchor({
+    Timeline? currentTimeline,
+    bool initial = false,
+  }) {
+    if (!initial && _sessionUnreadEventId.isNotEmpty) return;
+    if (!_shouldCaptureSessionUnreadAnchor(initial: initial)) return;
+    final eventId = _resolveReadMarkerEventId(currentTimeline: currentTimeline);
+    if (eventId.isEmpty) return;
+    _sessionUnreadEventId = eventId;
+  }
+
+  void _clearSessionUnreadAnchor({bool clearBanner = false}) {
+    final shouldClearBanner = clearBanner && scrollUpBannerEventId != null;
+    if (_sessionUnreadEventId.isEmpty && !shouldClearBanner) return;
+    setState(() {
+      _sessionUnreadEventId = '';
+      if (clearBanner) {
+        scrollUpBannerEventId = null;
+      }
+    });
+  }
+
+  void dismissScrollUpPrompt() {
+    if (scrollUpBannerEventId == null) return;
+    final shouldClearSessionAnchor =
+        scrollUpBannerEventId == _sessionUnreadEventId;
+    setState(() {
+      if (shouldClearSessionAnchor) {
+        _sessionUnreadEventId = '';
+      }
+      scrollUpBannerEventId = null;
+    });
+  }
+
+  void jumpToScrollUpPrompt() {
+    final eventId = scrollUpBannerEventId;
+    if (eventId == null) return;
+    scrollToEventId(eventId, highlightEvent: false);
+    final shouldClearSessionAnchor = eventId == _sessionUnreadEventId;
+    setState(() {
+      if (shouldClearSessionAnchor) {
+        _sessionUnreadEventId = '';
+      }
+      scrollUpBannerEventId = null;
+    });
   }
 
   bool get selectMode => selectedEvents.isNotEmpty;
@@ -751,6 +812,7 @@ class ChatController extends State<ChatPageWithRoom>
     await timeline.requestFuture(historyCount: _loadHistoryCount);
     if (!mounted) return;
     _syncReadMarkerEventId(currentTimeline: timeline);
+    _captureSessionUnreadAnchor(currentTimeline: timeline);
     setReadMarker();
   }
 
@@ -764,6 +826,9 @@ class ChatController extends State<ChatPageWithRoom>
       setState(() => _scrolledUp = true);
     } else if (scrollController.position.pixels <= 0 && _scrolledUp == true) {
       setState(() => _scrolledUp = false);
+      if (_sessionUnreadEventId.isNotEmpty || scrollUpBannerEventId != null) {
+        _clearSessionUnreadAnchor(clearBanner: true);
+      }
       setReadMarker();
     }
 
@@ -844,6 +909,14 @@ class ChatController extends State<ChatPageWithRoom>
     if (_readMarkerEventId.isEmpty) {
       scrollUpBannerEventId = null;
     }
+  }
+
+  void _acknowledgeVisibleRoomUnread() {
+    final preserveSessionUnreadAnchor = _sessionUnreadEventId.isNotEmpty;
+    setReadMarker(
+      force: true,
+      preserveSessionUnreadAnchor: preserveSessionUnreadAnchor,
+    );
   }
 
   static const int _jumpTimelineMaxAttempts = 10;
@@ -1032,6 +1105,7 @@ class ChatController extends State<ChatPageWithRoom>
       _groupLiveStatusWatcherAttached = true;
     }
     _syncReadMarkerEventId();
+    _captureSessionUnreadAnchor(initial: true);
     WidgetsBinding.instance.addObserver(this);
     _tryLoadTimeline();
     unawaited(_loadEmployeeWorkTemplateVisibilityState());
@@ -1230,37 +1304,20 @@ class ChatController extends State<ChatPageWithRoom>
       await loadTimelineFuture;
       // We launched the chat with a given initial event ID:
       if (initialEventId != null) {
+        _acknowledgeVisibleRoomUnread();
         scrollToEventId(initialEventId);
         return;
       }
 
-      var readMarkerEventIndex = readMarkerEventId.isEmpty
-          ? -1
-          : timeline!.events
-              .filterByVisibleInGui(
-                exceptionEventId: readMarkerEventId,
-                threadId: activeThreadId,
-              )
-              .indexWhere((e) => e.eventId == readMarkerEventId);
-
-      // Read marker is existing but not found in first events. Try a single
-      // requestHistory call before opening timeline on event context:
-      if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
-        await timeline?.requestHistory(historyCount: _loadHistoryCount);
-        readMarkerEventIndex = timeline!.events
-            .filterByVisibleInGui(
-              exceptionEventId: readMarkerEventId,
-              threadId: activeThreadId,
-            )
-            .indexWhere((e) => e.eventId == readMarkerEventId);
-      }
-
-      if (readMarkerEventIndex > 0) {
-        Logs().v('Scroll up to visible event', readMarkerEventId);
-        scrollToEventId(readMarkerEventId, highlightEvent: false);
-        return;
-      } else if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
+      if (readMarkerEventId.isNotEmpty) {
         _showScrollUpMaterialBanner(readMarkerEventId);
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (!mounted || timeline == null) {
+            return;
+          }
+          _jumpTimelineToBottomSafely();
+        });
+        _acknowledgeVisibleRoomUnread();
         return;
       }
 
@@ -1270,6 +1327,8 @@ class ChatController extends State<ChatPageWithRoom>
         }
         _jumpTimelineToBottomSafely(onSuccess: setReadMarker);
       });
+
+      _acknowledgeVisibleRoomUnread();
 
       if (!mounted) return;
     } catch (e, s) {
@@ -1281,10 +1340,6 @@ class ChatController extends State<ChatPageWithRoom>
 
   String? scrollUpBannerEventId;
 
-  void discardScrollUpBannerEventId() => setState(() {
-        scrollUpBannerEventId = null;
-      });
-
   void _showScrollUpMaterialBanner(String eventId) => setState(() {
         scrollUpBannerEventId = eventId;
       });
@@ -1292,6 +1347,7 @@ class ChatController extends State<ChatPageWithRoom>
   void updateView() {
     if (!mounted) return;
     _syncReadMarkerEventId();
+    _captureSessionUnreadAnchor(currentTimeline: timeline);
     setReadMarker();
     setState(() {});
   }
@@ -1350,6 +1406,7 @@ class ChatController extends State<ChatPageWithRoom>
     timeline!.requestKeys(onlineKeyBackupOnly: false);
     if (room.markedUnread) room.markUnread(false);
     _syncReadMarkerEventId(currentTimeline: timeline);
+    _captureSessionUnreadAnchor(currentTimeline: timeline, initial: true);
 
     return;
   }
@@ -1374,11 +1431,15 @@ class ChatController extends State<ChatPageWithRoom>
     }
   }
 
-  void setReadMarker({String? eventId}) {
+  void setReadMarker({
+    String? eventId,
+    bool force = false,
+    bool preserveSessionUnreadAnchor = false,
+  }) {
     if (eventId?.isValidMatrixId == false) return;
     if (_setReadMarkerFuture != null) return;
-    if (_scrolledUp) return;
-    if (scrollUpBannerEventId != null) return;
+    if (!force && _scrolledUp) return;
+    if (!force && scrollUpBannerEventId != null) return;
     final matrix = Matrix.of(context);
     if (!matrix.client.isLogged()) return;
     final hasNewMessages = _safeRoomHasNewMessages();
@@ -1405,9 +1466,20 @@ class ChatController extends State<ChatPageWithRoom>
     Logs().d('Set read marker...', eventId);
     final shouldClearLocalReadMarker = _readMarkerEventId.isNotEmpty &&
         (eventId == null || eventId == timeline.room.lastEvent?.eventId);
+    final shouldClearSessionUnreadAnchor = !preserveSessionUnreadAnchor &&
+        _sessionUnreadEventId.isNotEmpty &&
+        (eventId == null || eventId == timeline.room.lastEvent?.eventId);
     if (shouldClearLocalReadMarker) {
       setState(() {
         _readMarkerEventId = '';
+        if (shouldClearSessionUnreadAnchor) {
+          _sessionUnreadEventId = '';
+          scrollUpBannerEventId = null;
+        }
+      });
+    } else if (shouldClearSessionUnreadAnchor) {
+      setState(() {
+        _sessionUnreadEventId = '';
         scrollUpBannerEventId = null;
       });
     }
@@ -2844,6 +2916,9 @@ class ChatController extends State<ChatPageWithRoom>
         );
       });
       await loadTimelineFuture;
+    }
+    if (_sessionUnreadEventId.isNotEmpty || scrollUpBannerEventId != null) {
+      _clearSessionUnreadAnchor(clearBanner: true);
     }
     _jumpTimelineToBottomSafely();
     setReadMarker();

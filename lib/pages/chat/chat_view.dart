@@ -616,18 +616,13 @@ class ChatView extends StatelessWidget {
                                     icon: const Icon(Icons.close),
                                     tooltip: L10n.of(context).close,
                                     onPressed: () {
-                                      controller.discardScrollUpBannerEventId();
-                                      controller.setReadMarker();
+                                      controller.dismissScrollUpPrompt();
                                     },
                                   ),
                                   title: L10n.of(context).jumpToLastReadMessage,
                                   trailing: TextButton(
                                     onPressed: () {
-                                      controller.scrollToEventId(
-                                        scrollUpBannerEventId,
-                                        highlightEvent: false,
-                                      );
-                                      controller.discardScrollUpBannerEventId();
+                                      controller.jumpToScrollUpPrompt();
                                     },
                                     child: Text(L10n.of(context).jump),
                                   ),
