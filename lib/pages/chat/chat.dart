@@ -1282,18 +1282,6 @@ class ChatController extends State<ChatPageWithRoom>
   bool _isCurrentLoadTimelineFuture(Future<void>? future) =>
       future != null && identical(loadTimelineFuture, future);
 
-  int _readMarkerEventIndexFor(Timeline currentTimeline) {
-    if (readMarkerEventId.isEmpty) {
-      return -1;
-    }
-    return currentTimeline.events
-        .filterByVisibleInGui(
-          exceptionEventId: readMarkerEventId,
-          threadId: activeThreadId,
-        )
-        .indexWhere((e) => e.eventId == readMarkerEventId);
-  }
-
   void _tryLoadTimeline() async {
     final initialEventId = widget.eventId;
     final requestedTimelineFuture = loadTimelineFuture = _getTimeline();
@@ -1315,52 +1303,12 @@ class ChatController extends State<ChatPageWithRoom>
         scrollToEventId(initialEventId);
         return;
       }
-
-      var readMarkerEventIndex = _readMarkerEventIndexFor(currentTimeline);
-
-      // Read marker is existing but not found in first events. Try a single
-      // requestHistory call before opening timeline on event context:
-      if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
-        await currentTimeline.requestHistory(historyCount: _loadHistoryCount);
-        if (!mounted || !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
-          return;
-        }
-        final refreshedTimeline = timeline;
-        if (refreshedTimeline == null) {
-          return;
-        }
-        readMarkerEventIndex = _readMarkerEventIndexFor(refreshedTimeline);
-      }
-
-      // PC 端直接滚动到最新消息，移动端保持原来的行为（滚动到未读标记位置）
-      if (PlatformInfos.isDesktop) {
-        // PC 端：延迟滚动到最新消息，确保 timeline 完全渲染
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (!mounted ||
-              !_isCurrentLoadTimelineFuture(requestedTimelineFuture) ||
-              timeline == null) {
-            return;
-          }
-          _jumpTimelineToBottomSafely(onSuccess: setReadMarker);
-        });
-      } else if (readMarkerEventIndex > 1) {
-        Logs().v('Scroll up to visible event', readMarkerEventId);
-        scrollToEventId(readMarkerEventId, highlightEvent: false);
-        return;
-      } else if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
-        _showScrollUpMaterialBanner(readMarkerEventId);
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (!mounted || timeline == null) {
-            return;
-          }
-          _jumpTimelineToBottomSafely();
-        });
-        _acknowledgeVisibleRoomUnread();
-        return;
-      }
-
+      // Entering a room always lands at the latest message on both mobile
+      // and desktop.
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (!mounted || timeline == null || readMarkerEventId.isNotEmpty) {
+        if (!mounted ||
+            !_isCurrentLoadTimelineFuture(requestedTimelineFuture) ||
+            timeline == null) {
           return;
         }
         _jumpTimelineToBottomSafely(onSuccess: setReadMarker);
