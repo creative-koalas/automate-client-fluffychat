@@ -2505,6 +2505,14 @@
     "@invite": {},
     "invitePrivateChat": "📨 邀請私人聊天室",
     "@invitePrivateChat": {},
+    "inviteFailedTryAgain": "邀請失敗，請再試一次",
+    "@inviteFailedTryAgain": {},
+    "inviteRetiredEmployee": "邀請失敗，{user}已經離職了",
+    "@inviteRetiredEmployee": {
+        "placeholders": {
+            "user": {}
+        }
+    },
     "removeDevicesDescription": "您將從這個裝置登出，並將不再能夠接收消息。",
     "@removeDevicesDescription": {},
     "unbanUserDescription": "如果該使用者嘗試，他們將能夠再次進入聊天室。",
