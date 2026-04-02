@@ -142,7 +142,7 @@ tobias:
   url_scheme: psygo
 
 msix_config:
-  display_name: OpenOcto
+  display_name: PsyGo
   publisher_display_name: 创意考拉
   identity_name: company.suite.flutterapp
   msix_version: 0.1.0.0

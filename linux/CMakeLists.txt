@@ -27,7 +27,7 @@ endif()
 if(DEFINED ENV{PSYGO_LINUX_WINDOW_TITLE} AND NOT "$ENV{PSYGO_LINUX_WINDOW_TITLE}" STREQUAL "")
   set(APP_WINDOW_TITLE "$ENV{PSYGO_LINUX_WINDOW_TITLE}")
 else()
-  set(APP_WINDOW_TITLE "OpenOcto")
+  set(APP_WINDOW_TITLE "PsyGo")
 endif()
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent

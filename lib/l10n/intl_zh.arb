@@ -798,7 +798,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "OpenOcto",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -970,7 +970,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} 邀请你使用 OpenOcto。 \n1. 安装 OpenOcto：https://psygoai.com \n2. 注册或登录 \n3. 打开邀请链接：\n {link}",
+    "inviteText": "{username} 邀请你使用 PsyGo。 \n1. 安装 PsyGo：https://psygoai.com \n2. 注册或登录 \n3. 打开邀请链接：\n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1146,7 +1146,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 OpenOcto 新消息",
+    "newMessageInPsygo": "💬 PsyGo 新消息",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1181,7 +1181,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "看起来你手机上没有 Firebase Cloud Messaging。如果仍希望接收 OpenOcto 的推送通知，推荐安装 ntfy。借助 ntfy 或另一个 Unified Push 程序，你可以以一种数据安全的方式接收推送通知。你可以从 PlayStore 或 F-Droid 商店下载 ntfy。",
+    "noGoogleServicesWarning": "看起来你手机上没有 Firebase Cloud Messaging。如果仍希望接收 PsyGo 的推送通知，推荐安装 ntfy。借助 ntfy 或另一个 Unified Push 程序，你可以以一种数据安全的方式接收推送通知。你可以从 PlayStore 或 F-Droid 商店下载 ntfy。",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1756,7 +1756,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "OpenOcto",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2406,7 +2406,7 @@
     "@dehydrateWarning": {},
     "indexedDbErrorTitle": "私有模式问题",
     "@indexedDbErrorTitle": {},
-    "indexedDbErrorLong": "遗憾的是，默认情况下未在私有模式下启用消息存储。\n请访问\n - about:config\n - 将 dom.indexedDB.privateBrowsing.enabled 设置为 true\n否则，无法运行 OpenOcto。",
+    "indexedDbErrorLong": "遗憾的是，默认情况下未在私有模式下启用消息存储。\n请访问\n - about:config\n - 将 dom.indexedDB.privateBrowsing.enabled 设置为 true\n否则，无法运行 PsyGo。",
     "@indexedDbErrorLong": {},
     "hydrateTorLong": "你上次是否导出 TOR 会话？ 快速导入它并继续聊天。",
     "@hydrateTorLong": {},
@@ -2445,13 +2445,13 @@
     "@allSpaces": {},
     "appearOnTop": "显示在其它应用上方",
     "@appearOnTop": {},
-    "appearOnTopDetails": "允许应用显示在顶部（如果你已经将 OpenOcto 设置为呼叫账户，则不需要授予此权限）",
+    "appearOnTopDetails": "允许应用显示在顶部（如果你已经将 PsyGo 设置为呼叫账户，则不需要授予此权限）",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "麦克风、摄像头和其它 OpenOcto 权限",
+    "otherCallingPermissions": "麦克风、摄像头和其它 PsyGo 权限",
     "@otherCallingPermissions": {},
     "callingPermissions": "呼叫权限",
     "@callingPermissions": {},
-    "callingAccountDetails": "允许 OpenOcto 使用本机 android 拨号器应用。",
+    "callingAccountDetails": "允许 PsyGo 使用本机 android 拨号器应用。",
     "@callingAccountDetails": {},
     "foregroundServiceRunning": "此通知在前台服务运行时出现。",
     "@foregroundServiceRunning": {},
@@ -2459,7 +2459,7 @@
     "@screenSharingTitle": {},
     "callingAccount": "呼叫账户",
     "@callingAccount": {},
-    "screenSharingDetail": "你正在 OpenOcto 中共享屏幕",
+    "screenSharingDetail": "你正在 PsyGo 中共享屏幕",
     "@screenSharingDetail": {},
     "numChats": "{number} 个聊天",
     "@numChats": {
@@ -2953,7 +2953,7 @@
             }
         }
     },
-    "appLockDescription": "用 pin 码在不用 OpenOcto 时锁定它",
+    "appLockDescription": "用 pin 码在不用 PsyGo 时锁定它",
     "@appLockDescription": {},
     "globalChatId": "全局聊天 ID",
     "@globalChatId": {},
@@ -3197,7 +3197,7 @@
     "@oneOfYourDevicesIsNotVerified": {},
     "noticeChatBackupDeviceVerification": "注意：当你连接所有设备到聊天备份时，这些设备将被自动验证。",
     "@noticeChatBackupDeviceVerification": {},
-    "welcomeText": "你好呀 👋 欢迎来到 OpenOcto。你可以登录任意兼容 https://matrix.org 的 homeserver，然后和任何人聊天。这是个巨大的去中心化消息网络！",
+    "welcomeText": "你好呀 👋 欢迎来到 PsyGo。你可以登录任意兼容 https://matrix.org 的 homeserver，然后和任何人聊天。这是个巨大的去中心化消息网络！",
     "@welcomeText": {},
     "continueText": "继续",
     "@continueText": {},
@@ -3287,7 +3287,7 @@
             }
         }
     },
-    "appIntroduction": "OpenOcto 让使用不同即时通信工具的你和你的好友得以聊天。 访问 https://matrix.org 了解详情或轻按 *继续*。",
+    "appIntroduction": "PsyGo 让使用不同即时通信工具的你和你的好友得以聊天。 访问 https://matrix.org 了解详情或轻按 *继续*。",
     "@appIntroduction": {},
     "newChatRequest": "📩 新的聊天请求",
     "@newChatRequest": {},
@@ -4052,7 +4052,7 @@
     "@orderInfo": {},
     "orderProduct": "商品",
     "@orderProduct": {},
-    "orderProductCredits": "OpenOcto 积分",
+    "orderProductCredits": "PsyGo 积分",
     "@orderProductCredits": {},
     "orderNumber": "订单号",
     "@orderNumber": {},
@@ -4244,7 +4244,7 @@
     "@authCheckAgain": {},
     "maintenanceBlockedTitle": "服务维护中",
     "@maintenanceBlockedTitle": {},
-    "maintenanceBlockedMessage": "OpenOcto 当前正在维护，发布完成后会重新开放使用。",
+    "maintenanceBlockedMessage": "PsyGo 当前正在维护，发布完成后会重新开放使用。",
     "@maintenanceBlockedMessage": {},
     "maintenanceBlockedReasonLabel": "维护通知",
     "@maintenanceBlockedReasonLabel": {},

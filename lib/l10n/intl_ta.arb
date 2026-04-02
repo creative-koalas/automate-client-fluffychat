@@ -47,7 +47,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "OpenOcto",
+  "title": "PsyGo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -436,7 +436,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "OpenOcto",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -894,7 +894,7 @@
   "@storeSecurlyOnThisDevice": {},
   "screenSharingTitle": "திரை பகிர்வு",
   "@screenSharingTitle": {},
-  "appearOnTopDetails": "பயன்பாடு மேலே தோன்ற அனுமதிக்கிறது (நீங்கள் ஏற்கனவே ஒரு அழைப்பு கணக்காக OpenOcto அமைப்பைக் கொண்டிருந்தால் தேவையில்லை)",
+  "appearOnTopDetails": "பயன்பாடு மேலே தோன்ற அனுமதிக்கிறது (நீங்கள் ஏற்கனவே ஒரு அழைப்பு கணக்காக PsyGo அமைப்பைக் கொண்டிருந்தால் தேவையில்லை)",
   "@appearOnTopDetails": {},
   "newGroup": "புதிய குழு",
   "@newGroup": {},
@@ -993,7 +993,7 @@
   "@sendingAttachment": {},
   "continueText": "தொடரவும்",
   "@continueText": {},
-  "welcomeText": "ஏய் ஏய் 👋 இது OpenOctoது. Https://matrix.org உடன் இணக்கமான எந்த ஓம்சர்வரில் நீங்கள் உள்நுழையலாம். பின்னர் யாருடனும் அரட்டையடிக்கவும். இது ஒரு பெரிய பரவலாக்கப்பட்ட செய்தியிடல் நெட்வொர்க்!",
+  "welcomeText": "ஏய் ஏய் 👋 இது PsyGoது. Https://matrix.org உடன் இணக்கமான எந்த ஓம்சர்வரில் நீங்கள் உள்நுழையலாம். பின்னர் யாருடனும் அரட்டையடிக்கவும். இது ஒரு பெரிய பரவலாக்கப்பட்ட செய்தியிடல் நெட்வொர்க்!",
   "@welcomeText": {},
   "name": "பெயர்",
   "@name": {},
@@ -1353,7 +1353,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInPsygo": "Fuf OpenOcto புதிய செய்தி",
+  "newMessageInPsygo": "Fuf PsyGo புதிய செய்தி",
   "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
@@ -2032,7 +2032,7 @@
       }
     }
   },
-  "inviteText": "{username} உங்களை OpenOctoதாக அழைத்தது.\n 1. psygoai.com ஐப் பார்வையிட்டு பயன்பாட்டை நிறுவவும்\n 2. பதிவு செய்யுங்கள் அல்லது உள்நுழைக\n 3. அழைப்பிதழ் இணைப்பைத் திறக்கவும்:\n {link}",
+  "inviteText": "{username} உங்களை PsyGoதாக அழைத்தது.\n 1. psygoai.com ஐப் பார்வையிட்டு பயன்பாட்டை நிறுவவும்\n 2. பதிவு செய்யுங்கள் அல்லது உள்நுழைக\n 3. அழைப்பிதழ் இணைப்பைத் திறக்கவும்:\n {link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -2471,7 +2471,7 @@
   "@nextAccount": {},
   "youJoinedTheChat": "நீங்கள் அரட்டையில் சேர்ந்தீர்கள்",
   "@youJoinedTheChat": {},
-  "indexedDbErrorLong": "செய்தி சேமிப்பு துரதிர்ச்டவசமாக இயல்புநிலையாக தனிப்பட்ட பயன்முறையில் இயக்கப்படவில்லை.\n தயவுசெய்து பார்வையிடவும்\n - பற்றி: கட்டமைப்பு\n - கணம் dom.indexedDB.privateBrowsing.enabled பெறுநர் true\n இல்லையெனில், OpenOctoவை இயக்க முடியாது.",
+  "indexedDbErrorLong": "செய்தி சேமிப்பு துரதிர்ச்டவசமாக இயல்புநிலையாக தனிப்பட்ட பயன்முறையில் இயக்கப்படவில்லை.\n தயவுசெய்து பார்வையிடவும்\n - பற்றி: கட்டமைப்பு\n - கணம் dom.indexedDB.privateBrowsing.enabled பெறுநர் true\n இல்லையெனில், PsyGoவை இயக்க முடியாது.",
   "@indexedDbErrorLong": {},
   "youAcceptedTheInvitation": "👍 நீங்கள் அழைப்பை ஏற்றுக்கொண்டீர்கள்",
   "@youAcceptedTheInvitation": {},
@@ -2547,15 +2547,15 @@
   "@custom": {},
   "foregroundServiceRunning": "முன்புற பணி இயங்கும்போது இந்த அறிவிப்பு தோன்றும்.",
   "@foregroundServiceRunning": {},
-  "screenSharingDetail": "உங்கள் திரையை OpenOcto இல் பகிர்கிறீர்கள்",
+  "screenSharingDetail": "உங்கள் திரையை PsyGo இல் பகிர்கிறீர்கள்",
   "@screenSharingDetail": {},
   "callingPermissions": "அழைப்பு அனுமதிகள்",
   "@callingPermissions": {},
   "callingAccount": "அழைப்பு கணக்கு",
   "@callingAccount": {},
-  "callingAccountDetails": "சொந்த ஆண்ட்ராய்டு டயலர் பயன்பாட்டைப் பயன்படுத்த OpenOctoது அனுமதிக்கிறது.",
+  "callingAccountDetails": "சொந்த ஆண்ட்ராய்டு டயலர் பயன்பாட்டைப் பயன்படுத்த PsyGoது அனுமதிக்கிறது.",
   "@callingAccountDetails": {},
-  "otherCallingPermissions": "மைக்ரோஃபோன், கேமரா மற்றும் பிற OpenOcto அனுமதிகள்",
+  "otherCallingPermissions": "மைக்ரோஃபோன், கேமரா மற்றும் பிற PsyGo அனுமதிகள்",
   "@otherCallingPermissions": {},
   "numChats": "{number} அரட்டைகள்",
   "@numChats": {
@@ -3218,7 +3218,7 @@
   "@open": {},
   "waitingForServer": "சேவையகத்திற்காக காத்திருக்கிறது ...",
   "@waitingForServer": {},
-  "appIntroduction": "வெவ்வேறு தூதர்களில் உங்கள் நண்பர்களுடன் அரட்டையடிக்க உங்களை OpenOctoது உங்களை அனுமதிக்கிறது. Https://matrix.org இல் மேலும் அறிக அல்லது *தொடரவும் *தட்டவும்.",
+  "appIntroduction": "வெவ்வேறு தூதர்களில் உங்கள் நண்பர்களுடன் அரட்டையடிக்க உங்களை PsyGoது உங்களை அனுமதிக்கிறது. Https://matrix.org இல் மேலும் அறிக அல்லது *தொடரவும் *தட்டவும்.",
   "@appIntroduction": {},
   "newChatRequest": "அரட்டை கோரிக்கை",
   "@newChatRequest": {},
