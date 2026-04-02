@@ -79,9 +79,11 @@ class SettingsController extends State<Settings> {
     );
     if (success.error == null) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.nicknameChangeSubmitted)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.nicknameChangeSubmitted)),
+        );
+        // 清除 profile 缓存，确保审核通过后能获取到新昵称
+        updateProfile();
       }
     }
   }
