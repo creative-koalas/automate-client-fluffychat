@@ -72,6 +72,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     debugPrint('[DesktopLayout] clearUserCache called');
     _cachedUnreadCount = 0;
     _profileVersion++; // 递增版本号，通知实例刷新
+    unawaited(WindowService.updateTrayUnreadCount(0));
   }
 
   // Profile Future（实例变量，和设置页面一样的模式）
@@ -163,6 +164,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       }
       // 更新缓存和状态
       _cachedUnreadCount = count;
+      unawaited(WindowService.updateTrayUnreadCount(count));
       if (_unreadCount != count) {
         setState(() => _unreadCount = count);
       }
