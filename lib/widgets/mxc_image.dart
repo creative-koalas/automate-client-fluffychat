@@ -26,8 +26,6 @@ class MxcImage extends StatefulWidget {
   final bool isThumbnail;
   final bool animated;
   final Duration retryDuration;
-  final Duration animationDuration;
-  final Curve animationCurve;
   final ThumbnailMethod thumbnailMethod;
   final Widget Function(BuildContext context)? placeholder;
   final String? cacheKey;
@@ -43,9 +41,7 @@ class MxcImage extends StatefulWidget {
     this.placeholder,
     this.isThumbnail = true,
     this.animated = false,
-    this.animationDuration = FluffyThemes.animationDuration,
     this.retryDuration = const Duration(milliseconds: 500),
-    this.animationCurve = FluffyThemes.animationCurve,
     this.thumbnailMethod = ThumbnailMethod.scale,
     this.cacheKey,
     this.client,
@@ -281,10 +277,9 @@ class _MxcImageState extends State<MxcImage> {
 
     // 使用稳定的 cacheKey 作为 key，避免 data 变化导致不必要的重建
     final stableKey = widget.cacheKey ?? widget.uri?.toString() ?? 'no_key';
-
     return RepaintBoundary(
       child: AnimatedSwitcher(
-        duration: FluffyThemes.animationDuration,
+        duration: FluffyThemes.durationFast,
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
         transitionBuilder: (child, animation) => FadeTransition(
