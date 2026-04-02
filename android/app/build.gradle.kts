@@ -121,7 +121,7 @@ android {
     // 从 dart-define 读取包名后缀；不合法时忽略，避免打出无效 applicationId
     val appIdSuffix = normalizeAndroidApplicationIdSuffix(getDartDefine("APP_ID_SUFFIX"))
     // 从 dart-define 读取 app 名称
-    val appName = getDartDefine("APP_NAME") ?: "OpenOcto"
+    val appName = getDartDefine("APP_NAME") ?: "PsyGo"
     val vivoAppId = getDartDefine("VIVO_APP_ID") ?: ""
     val vivoApiKey = getDartDefine("VIVO_API_KEY") ?: ""
     val xiaomiAppId = getDartDefine("XIAOMI_APP_ID") ?: ""

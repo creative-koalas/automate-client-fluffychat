@@ -59,9 +59,3 @@ fi
 MAIN_PLIST="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Info.plist"
 set_plist_key "${MAIN_PLIST}" "CFBundleDisplayName" "${APP_NAME}"
 set_plist_key "${MAIN_PLIST}" "CFBundleName" "${APP_NAME}"
-
-# Share extension display name (if bundled).
-for share_plist in "${TARGET_BUILD_DIR}/${WRAPPER_NAME}/PlugIns/"*Share*.appex/Info.plist; do
-  [ -e "${share_plist}" ] || continue
-  set_plist_key "${share_plist}" "CFBundleDisplayName" "${APP_NAME} Share"
-done

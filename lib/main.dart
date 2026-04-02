@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show kReleaseMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
@@ -74,6 +74,10 @@ Future<bool> _hasDesktopValidSessionForStartup() async {
 }
 
 void main() async {
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
+
   // 全局错误处理器：捕获并忽略第三方包的 setState 错误
   // swipe_to_action 包在 widget 销毁后仍会尝试 setState，这是包的 bug
   FlutterError.onError = (FlutterErrorDetails details) {

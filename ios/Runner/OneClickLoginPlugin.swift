@@ -254,12 +254,10 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
     private func buildAuthUIModel(termsUrl: String?, privacyUrl: String?) -> TXCustomModel {
         let model = TXCustomModel()
-        let resolvedTermsUrl = termsUrl?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .flatMap { $0.isEmpty ? nil : $0 }
-        let resolvedPrivacyUrl = privacyUrl?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .flatMap { $0.isEmpty ? nil : $0 }
+        let cleanedTermsUrl = termsUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedTermsUrl = (cleanedTermsUrl?.isEmpty ?? true) ? nil : cleanedTermsUrl
+        let cleanedPrivacyUrl = privacyUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedPrivacyUrl = (cleanedPrivacyUrl?.isEmpty ?? true) ? nil : cleanedPrivacyUrl
 
         // ========== 状态栏 ==========
         model.prefersStatusBarHidden = false
