@@ -44,6 +44,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
   Future<bool> loginMatrixAndRedirect() async {
     final matrixAccessToken = backend.auth.matrixAccessToken;
     final matrixUserId = backend.auth.matrixUserId;
+    final matrixDeviceId = backend.auth.matrixDeviceId;
 
     if (matrixAccessToken == null || matrixUserId == null) {
       debugPrint('Matrix access token 缺失，无法登录 Matrix');
@@ -101,6 +102,7 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       await client.init(
         newToken: matrixAccessToken,
         newUserID: matrixUserId,
+        newDeviceID: matrixDeviceId,
         newHomeserver: homeserverUrl,
         newDeviceName: PlatformInfos.clientName,
         // Do not block UI on first sync/load; background sync continues after init.
@@ -124,8 +126,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       if (PlatformInfos.isMobile) {
         unawaited(matrix.ensureAliyunPushRegistered(client));
         Future.delayed(const Duration(seconds: 1), () async {
-          final granted =
-              await PermissionService.instance.requestPushPermissions();
+          final granted = await PermissionService.instance
+              .requestPushPermissions();
           if (granted) {
             await matrix.ensureAliyunPushRegistered(client);
             await Future.delayed(const Duration(seconds: 3));
@@ -137,7 +139,8 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       // 导航到主页面（无员工时进入员工列表）
       final destination = await resolvePostLoginDestination();
       debugPrint(
-          '[LoginFlow] Matrix login success, navigating to $destination');
+        '[LoginFlow] Matrix login success, navigating to $destination',
+      );
       PsygoApp.router.go(destination);
       return true;
     } catch (e) {

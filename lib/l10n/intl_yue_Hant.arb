@@ -333,5 +333,7 @@
   "importFromZipFile": "喺 .zip 檔案導入",
   "@importFromZipFile": {},
   "setPermissionsLevelDescription": "請喺下面選擇一個預定義嘅角色，或輸入介乎0同100之間嘅自定義權限級別。",
-  "@setPermissionsLevelDescription": {}
+  "@setPermissionsLevelDescription": {},
+  "webEntryUpdatedHint": "有更新",
+  "@webEntryUpdatedHint": {}
 }

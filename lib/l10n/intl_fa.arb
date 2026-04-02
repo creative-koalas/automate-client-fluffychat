@@ -1122,7 +1122,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "فلافی‌چت",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -1217,7 +1217,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInPsygo": "💬 پیام جدید در فلافی‌چت",
+  "newMessageInPsygo": "💬 پیام جدید در PsyGo",
   "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
@@ -1579,7 +1579,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "noGoogleServicesWarning": "به نظر می‌رسد دستگاه شما سرویس‌های گوگل ندارد. این انتخاب خوبی برای حریم خصوصی است! برای دریافت آگاه‌سازها در فلافی‌چت، پیشنهاد می‌کنیم از https://ntfy.sh استفاده کنید. با ntfy یا یک فراهم‌کننده UnifiedPush می‌توانید آگاه‌سازهای امن دریافت کنید. می‌توانید ntfy را از Play Store یا F-Droid بارگیری کنید.",
+  "noGoogleServicesWarning": "به نظر می‌رسد دستگاه شما سرویس‌های گوگل ندارد. این انتخاب خوبی برای حریم خصوصی است! برای دریافت آگاه‌سازها در PsyGo، پیشنهاد می‌کنیم از https://ntfy.sh استفاده کنید. با ntfy یا یک فراهم‌کننده UnifiedPush می‌توانید آگاه‌سازهای امن دریافت کنید. می‌توانید ntfy را از Play Store یا F-Droid بارگیری کنید.",
   "@noGoogleServicesWarning": {
     "type": "String",
     "placeholders": {}
@@ -1640,7 +1640,7 @@
   },
   "serverRequiresEmail": "برای ثبت‌نام، این سرور باید نشانی رایانامه شما را تأیید کند.",
   "@serverRequiresEmail": {},
-  "inviteText": "{username} شما را به فلافی‌چت دعوت کرد.\n۱. به psygoai.com بروید و برنامه را نصب کنید\n۲. ثبت‌نام کنید یا وارد شوید\n۳. پیوند دعوت را باز کنید:\n {link}",
+  "inviteText": "{username} شما را به PsyGo دعوت کرد.\n۱. به psygoai.com بروید و برنامه را نصب کنید\n۲. ثبت‌نام کنید یا وارد شوید\n۳. پیوند دعوت را باز کنید:\n {link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -1910,7 +1910,7 @@
       }
     }
   },
-  "callingAccountDetails": "اجازه به فلافی‌چت برای استفاده از شماره‌گیر بومی اندروید.",
+  "callingAccountDetails": "اجازه به PsyGo برای استفاده از شماره‌گیر بومی اندروید.",
   "@callingAccountDetails": {},
   "noKeyForThisMessage": "اگر پیام پیش از ورود به حساب در این دستگاه فرستاده شده باشد، این مشکل ممکن است رخ دهد.\n\nهمچنین ممکن است فرستنده دستگاه شما را مسدود کرده باشد یا مشکلی در اتصال اینترنت وجود داشته باشد.\n\nآیا می‌توانید پیام را در نشست دیگری بخوانید؟ در این صورت، می‌توانید آن را منتقل کنید! به تنظیمات > دستگاه‌ها بروید و مطمئن شوید دستگاه‌هایتان یکدیگر را بازبینی کرده‌اند. هنگام باز کردن دوباره اتاق و فعال بودن هر دو نشست، کلیدها به‌صورت خودکار منتقل می‌شوند.\n\nآیا نمی‌خواهید هنگام خروج یا تغییر دستگاه کلیدها را گم کنید؟ مطمئن شوید پشتیبان گپ را در تنظیمات فعال کرده‌اید.",
   "@noKeyForThisMessage": {},
@@ -1931,11 +1931,11 @@
   "@newGroup": {},
   "foregroundServiceRunning": "این آگاه‌ساز زمانی ظاهر می‌شود که خدمت پیش‌زمینه فعال است.",
   "@foregroundServiceRunning": {},
-  "appearOnTopDetails": "اجازه به برنامه برای نمایش در بالا (اگر فلافی‌چت را به‌عنوان حساب تماس تنظیم کرده‌اید، لازم نیست)",
+  "appearOnTopDetails": "اجازه به برنامه برای نمایش در بالا (اگر PsyGo را به‌عنوان حساب تماس تنظیم کرده‌اید، لازم نیست)",
   "@appearOnTopDetails": {},
   "storeSecurlyOnThisDevice": "ذخیره امن در این دستگاه",
   "@storeSecurlyOnThisDevice": {},
-  "screenSharingDetail": "شما در حال هم‌رسانی صفحه‌نمایش خود در فلافی‌چت هستید",
+  "screenSharingDetail": "شما در حال هم‌رسانی صفحه‌نمایش خود در PsyGo هستید",
   "@screenSharingDetail": {},
   "newSpace": "فضای جدید",
   "@newSpace": {},
@@ -1957,7 +1957,7 @@
   "@callingAccount": {},
   "appearOnTop": "نمایش در بالا",
   "@appearOnTop": {},
-  "otherCallingPermissions": "میکروفون، دوربین و دیگر دسترسی‌های فلافی‌چت",
+  "otherCallingPermissions": "میکروفون، دوربین و دیگر دسترسی‌های PsyGo",
   "@otherCallingPermissions": {},
   "whyIsThisMessageEncrypted": "چرا این پیام خوانا نیست؟",
   "@whyIsThisMessageEncrypted": {},
@@ -2091,7 +2091,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "فلافی‌چت",
+  "title": "PsyGo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2350,7 +2350,7 @@
   "@pleaseEnterRecoveryKeyDescription": {},
   "confirmEventUnpin": "آیا از برداشتن سنجاق رویداد به صورت دائمی مطمئن هستید؟",
   "@confirmEventUnpin": {},
-  "indexedDbErrorLong": "متاسفانه فضای ذخیره‌سازی پیام‌ها، به صورت پیش‌فرض در حالت خصوصی فعال نیست.\nلطفا آدرس زیر را باز کنید:\nabout:config\nمقدار «dom.indexedDB.privateBrowsing.enabled» را به «true» تغییر دهید\nدر غیر این صورت، امکان اجرای فلافی‌چت وجود ندارد.",
+  "indexedDbErrorLong": "متاسفانه فضای ذخیره‌سازی پیام‌ها، به صورت پیش‌فرض در حالت خصوصی فعال نیست.\nلطفا آدرس زیر را باز کنید:\nabout:config\nمقدار «dom.indexedDB.privateBrowsing.enabled» را به «true» تغییر دهید\nدر غیر این صورت، امکان اجرای PsyGo وجود ندارد.",
   "@indexedDbErrorLong": {},
   "widgetEtherpad": "یادداشت متنی",
   "@widgetEtherpad": {},
@@ -3163,7 +3163,7 @@
   "@noticeChatBackupDeviceVerification": {},
   "continueText": "ادامه",
   "@continueText": {},
-  "welcomeText": "درود درود 👋 این فلافی‌چت است. میتوانید به هر سرور خانگی سازگار با https://matrix.org وارد شوید و با هر کسی گپ بزنید. این یک شبکه پیام‌رسانی غیرمتمرکز بزرگ است!",
+  "welcomeText": "درود درود 👋 این PsyGo است. میتوانید به هر سرور خانگی سازگار با https://matrix.org وارد شوید و با هر کسی گپ بزنید. این یک شبکه پیام‌رسانی غیرمتمرکز بزرگ است!",
   "@welcomeText": {},
   "blur": "محو کردن:",
   "@blur": {},
@@ -3224,7 +3224,7 @@
   "@open": {},
   "waitingForServer": "در انتظار سرور...",
   "@waitingForServer": {},
-  "appIntroduction": "فلافی‌چت به شما امکان گپ با دوستانتان در پیام‌رسان‌های مختلف را میدهد. اطلاعات بیشتر در https://matrix.org یا فقط روی *ادامه* بزنید.",
+  "appIntroduction": "PsyGo به شما امکان گپ با دوستانتان در پیام‌رسان‌های مختلف را میدهد. اطلاعات بیشتر در https://matrix.org یا فقط روی *ادامه* بزنید.",
   "@appIntroduction": {},
   "newChatRequest": "📩 درخواست گپ جدید",
   "@newChatRequest": {},

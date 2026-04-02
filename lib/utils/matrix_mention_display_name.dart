@@ -26,8 +26,20 @@ String renderMatrixMentionsWithDisplayName({
       fallbackDisplayName: matrixUserId.localpart,
     );
 
-    final displayName =
-        AgentService.instance.tryResolveDisplayNameByMatrixUserId(matrixUserId);
+    if (!room.isDirectChat) {
+      AgentService.instance.ensureGroupDisplayNameByMatrixUserId(matrixUserId);
+    }
+
+    final displayName = !room.isDirectChat
+        ? AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(
+              matrixUserId,
+            ) ??
+            AgentService.instance.tryResolveDisplayNameByMatrixUserId(
+              matrixUserId,
+            )
+        : AgentService.instance.tryResolveDisplayNameByMatrixUserId(
+            matrixUserId,
+          );
     final normalizedDisplayName = displayName?.trim() ?? '';
     if (normalizedDisplayName.isEmpty) {
       return match.group(0) ?? '';

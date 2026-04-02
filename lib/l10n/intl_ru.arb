@@ -826,7 +826,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Psygo",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -998,7 +998,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} пригласил(а) вас в Psygo. \n1. Посетите https://psygoai.com и установите приложение \n2. Зарегистрируйтесь или войдите \n3. Откройте ссылку приглашения: \n {link}",
+    "inviteText": "{username} пригласил(а) вас в PsyGo. \n1. Посетите https://psygoai.com и установите приложение \n2. Зарегистрируйтесь или войдите \n3. Откройте ссылку приглашения: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1170,7 +1170,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Новое сообщение во Psygo",
+    "newMessageInPsygo": "💬 Новое сообщение во PsyGo",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1205,7 +1205,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Похоже, у вас нет служб Google на вашем телефоне. Это хорошее решение для вашей конфиденциальности! Для получения push-уведомлений во Psygo мы рекомендуем использовать ntfy. С ntfy или другим провайдером единых уведомлений вы можете получать push-уведомления безопасным способом передачи данных. Скачать ntfy можно из F-Droid или из Play Маркета.",
+    "noGoogleServicesWarning": "Похоже, у вас нет служб Google на вашем телефоне. Это хорошее решение для вашей конфиденциальности! Для получения push-уведомлений во PsyGo мы рекомендуем использовать ntfy. С ntfy или другим провайдером единых уведомлений вы можете получать push-уведомления безопасным способом передачи данных. Скачать ntfy можно из F-Droid или из Play Маркета.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1792,7 +1792,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Psygo",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2351,7 +2351,7 @@
     },
     "dehydrateTor": "Пользователи TOR: Экспорт сеанса",
     "@dehydrateTor": {},
-    "indexedDbErrorLong": "К сожалению, по умолчанию хранилище сообщений не включено в приватном режиме.\nПожалуйста, посетите\n- about:config\n- установите для dom.indexedDB.privateBrowsing.enabled значение true\nВ противном случае запуск Psygo будет невозможен.",
+    "indexedDbErrorLong": "К сожалению, по умолчанию хранилище сообщений не включено в приватном режиме.\nПожалуйста, посетите\n- about:config\n- установите для dom.indexedDB.privateBrowsing.enabled значение true\nВ противном случае запуск PsyGo будет невозможен.",
     "@indexedDbErrorLong": {},
     "custom": "Пользовательское",
     "@custom": {},
@@ -2369,13 +2369,13 @@
     "@dehydrateWarning": {},
     "indexedDbErrorTitle": "Проблемы с приватным режимом",
     "@indexedDbErrorTitle": {},
-    "otherCallingPermissions": "Микрофон, камера и другие разрешения Psygo",
+    "otherCallingPermissions": "Микрофон, камера и другие разрешения PsyGo",
     "@otherCallingPermissions": {},
     "enterSpace": "Войти в пространство",
     "@enterSpace": {},
-    "screenSharingDetail": "Вы делитесь своим экраном в FuffyChat",
+    "screenSharingDetail": "Вы делитесь своим экраном в PsyGo",
     "@screenSharingDetail": {},
-    "callingAccountDetails": "Позволяет Psygo использовать родное android приложение для звонков.",
+    "callingAccountDetails": "Позволяет PsyGo использовать родное android приложение для звонков.",
     "@callingAccountDetails": {},
     "newSpace": "Новое пространство",
     "@newSpace": {},
@@ -2383,7 +2383,7 @@
     "@appearOnTop": {},
     "commandHint_markasdm": "Пометить как комнату личных сообщений",
     "@commandHint_markasdm": {},
-    "appearOnTopDetails": "Позволяет приложению отображаться сверху (не требуется, если у вас уже настроен Fluffychat как аккаунт для звонков)",
+    "appearOnTopDetails": "Позволяет приложению отображаться сверху (не требуется, если у вас уже настроен PsyGo как аккаунт для звонков)",
     "@appearOnTopDetails": {},
     "foregroundServiceRunning": "Это уведомление появляется, когда запущена основная служба.",
     "@foregroundServiceRunning": {},
@@ -3109,7 +3109,7 @@
             }
         }
     },
-    "welcomeText": "Привет. Это Psygo. Вы можете подписаться на любой сервер, который совместим с https://matrix.org. А потом поболтать с кем нибудь. Это огромная децентрализованная сеть обмена сообщениями!",
+    "welcomeText": "Привет. Это PsyGo. Вы можете подписаться на любой сервер, который совместим с https://matrix.org. А потом поболтать с кем нибудь. Это огромная децентрализованная сеть обмена сообщениями!",
     "@welcomeText": {},
     "noContactInformationProvided": "Сервер не предоставляет никакой правдивой контактной информации",
     "@noContactInformationProvided": {},
@@ -3260,7 +3260,7 @@
     "@open": {},
     "waitingForServer": "Ожидание сервера...",
     "@waitingForServer": {},
-    "appIntroduction": "Psygo позволяет вам общаться с друзьями с разными мессенджерами. Узнайте больше на https://matrix.org или просто нажмите *Продолжить*.",
+    "appIntroduction": "PsyGo позволяет вам общаться с друзьями с разными мессенджерами. Узнайте больше на https://matrix.org или просто нажмите *Продолжить*.",
     "@appIntroduction": {},
     "previous": "Предыдущий",
     "@previous": {},

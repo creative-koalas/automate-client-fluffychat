@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 
 import 'package:collection/collection.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
@@ -10,6 +12,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 
+import 'package:psygo/utils/chat_text_tokenizer.dart';
 import 'package:psygo/utils/code_highlight_theme.dart';
 import 'package:psygo/utils/event_checkbox_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
@@ -18,6 +21,8 @@ import 'package:psygo/widgets/mxc_image.dart';
 import '../../../utils/url_launcher.dart';
 
 class HtmlMessage extends StatelessWidget {
+  static const ChatTextTokenizer _textTokenizer = ChatTextTokenizer();
+
   final String html;
   final Room room;
   final Color textColor;
@@ -153,11 +158,7 @@ class HtmlMessage extends StatelessWidget {
   }
 
   /// Transforms a Node to an InlineSpan.
-  InlineSpan _renderHtml(
-    dom.Node node,
-    BuildContext context, {
-    int depth = 1,
-  }) {
+  InlineSpan _renderHtml(dom.Node node, BuildContext context, {int depth = 1}) {
     // We must not render elements nested more than 100 elements deep:
     if (depth >= 100) return const TextSpan();
 
@@ -176,12 +177,7 @@ class HtmlMessage extends StatelessWidget {
         return TextSpan(children: mentionSpans);
       }
 
-      return LinkifySpan(
-        text: text,
-        options: const LinkifyOptions(humanize: false),
-        linkStyle: linkStyle,
-        onOpen: onOpen,
-      );
+      return TextSpan(children: _buildPlainTextSpans(text, context));
     }
 
     // We must not render tags which are not in the allow list:
@@ -249,12 +245,48 @@ class HtmlMessage extends StatelessWidget {
             );
           }
         }
+        final sanitizedHref = _textTokenizer.extractLeadingUrl(href) ?? href;
+        final linkText = node.text;
+        final sanitizedLinkText = _textTokenizer.extractLeadingUrl(linkText);
+        final trailingText =
+            sanitizedLinkText != null && linkText.startsWith(sanitizedLinkText)
+                ? linkText.substring(sanitizedLinkText.length)
+                : '';
+        if (sanitizedLinkText != null && trailingText.isNotEmpty) {
+          return WidgetSpan(
+            child: Tooltip(
+              message: sanitizedHref,
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: sanitizedLinkText,
+                      style: linkStyle,
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => UrlLauncher(
+                              context,
+                              sanitizedHref,
+                              sanitizedLinkText,
+                            ).launchUrl(),
+                    ),
+                    TextSpan(
+                      text: trailingText,
+                      style: TextStyle(color: textColor),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(height: 1.25),
+              ),
+            ),
+          );
+        }
         return WidgetSpan(
           child: Tooltip(
-            message: href,
+            message: sanitizedHref,
             child: InkWell(
               splashColor: Colors.transparent,
-              onTap: () => UrlLauncher(context, href, node.text).launchUrl(),
+              onTap: () =>
+                  UrlLauncher(context, sanitizedHref, node.text).launchUrl(),
               child: Text.rich(
                 TextSpan(
                   children: _renderWithLineBreaks(
@@ -339,11 +371,7 @@ class HtmlMessage extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ..._renderWithLineBreaks(
-                    node.nodes,
-                    context,
-                    depth: depth,
-                  ),
+                  ..._renderWithLineBreaks(node.nodes, context, depth: depth),
                 ],
                 style: TextStyle(fontSize: fontSize, color: textColor),
               ),
@@ -355,12 +383,7 @@ class HtmlMessage extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.only(left: 8.0),
             decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: textColor,
-                  width: 5,
-                ),
-              ),
+              border: Border(left: BorderSide(color: textColor, width: 5)),
             ),
             child: Text.rich(
               TextSpan(
@@ -405,14 +428,9 @@ class HtmlMessage extends StatelessWidget {
             child: Padding(
               padding: isInline
                   ? const EdgeInsets.symmetric(horizontal: 4.0)
-                  : const EdgeInsets.symmetric(
-                      horizontal: 8.0,
-                      vertical: 4.0,
-                    ),
+                  : const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Text.rich(
-                TextSpan(
-                  children: [_renderCodeBlockNode(element)],
-                ),
+                TextSpan(children: [_renderCodeBlockNode(element)]),
                 selectionColor: hightlightTextColor.withAlpha(128),
               ),
             ),
@@ -481,10 +499,7 @@ class HtmlMessage extends StatelessWidget {
                       ),
                   ],
                 ),
-                style: TextStyle(
-                  fontSize: fontSize,
-                  color: textColor,
-                ),
+                style: TextStyle(fontSize: fontSize, color: textColor),
               ),
             ),
           ),
@@ -522,17 +537,13 @@ class HtmlMessage extends StatelessWidget {
       default:
         return TextSpan(
           style: switch (node.localName) {
-            'body' => TextStyle(
-                fontSize: fontSize,
-                color: textColor,
-              ),
+            'body' => TextStyle(fontSize: fontSize, color: textColor),
             'a' => linkStyle,
             'strong' => const TextStyle(fontWeight: FontWeight.bold),
             'em' || 'i' => const TextStyle(fontStyle: FontStyle.italic),
-            'del' ||
-            's' ||
-            'strikethrough' =>
-              const TextStyle(decoration: TextDecoration.lineThrough),
+            'del' || 's' || 'strikethrough' => const TextStyle(
+                decoration: TextDecoration.lineThrough,
+              ),
             'u' => const TextStyle(decoration: TextDecoration.underline),
             'h1' => TextStyle(fontSize: fontSize * 1.6, height: 2),
             'h2' => TextStyle(fontSize: fontSize * 1.5, height: 2),
@@ -547,16 +558,13 @@ class HtmlMessage extends StatelessWidget {
                 backgroundColor:
                     node.attributes['data-mx-bg-color']?.hexToColor,
               ),
-            'sup' =>
-              const TextStyle(fontFeatures: [FontFeature.superscripts()]),
+            'sup' => const TextStyle(
+                fontFeatures: [FontFeature.superscripts()],
+              ),
             'sub' => const TextStyle(fontFeatures: [FontFeature.subscripts()]),
             _ => null,
           },
-          children: _renderWithLineBreaks(
-            node.nodes,
-            context,
-            depth: depth,
-          ),
+          children: _renderWithLineBreaks(node.nodes, context, depth: depth),
         );
     }
   }
@@ -589,11 +597,7 @@ class HtmlMessage extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.groups,
-            size: fontSize * 1.1,
-            color: linkStyle.color,
-          ),
+          Icon(Icons.groups, size: fontSize * 1.1, color: linkStyle.color),
           const SizedBox(width: 4),
           Text(
             mentionEveryone,
@@ -632,14 +636,7 @@ class HtmlMessage extends StatelessWidget {
     for (final match in matches) {
       if (match.start > lastEnd) {
         final plainText = text.substring(lastEnd, match.start);
-        spans.add(
-          LinkifySpan(
-            text: plainText,
-            options: const LinkifyOptions(humanize: false),
-            linkStyle: linkStyle,
-            onOpen: onOpen,
-          ),
-        );
+        spans.addAll(_buildPlainTextSpans(plainText, context));
       }
 
       final segment = match.group(0);
@@ -696,15 +693,29 @@ class HtmlMessage extends StatelessWidget {
     if (lastEnd < text.length) {
       final trailingText = text.substring(lastEnd);
       if (trailingText.isNotEmpty) {
-        spans.add(
-          LinkifySpan(
-            text: trailingText,
-            options: const LinkifyOptions(humanize: false),
-            linkStyle: linkStyle,
-            onOpen: onOpen,
-          ),
-        );
+        spans.addAll(_buildPlainTextSpans(trailingText, context));
       }
+    }
+
+    return spans;
+  }
+
+  List<InlineSpan> _buildPlainTextSpans(String text, BuildContext context) {
+    if (text.isEmpty) return const [];
+
+    final spans = <InlineSpan>[];
+    final plainTextStyle = TextStyle(color: textColor);
+    for (final token in _textTokenizer.tokenize(text)) {
+      spans.add(
+        TextSpan(
+          text: token.text,
+          style: token.isUrl ? linkStyle : plainTextStyle,
+          recognizer: token.isUrl
+              ? (TapGestureRecognizer()
+                ..onTap = () => UrlLauncher(context, token.text).launchUrl())
+              : null,
+        ),
+      );
     }
 
     return spans;
@@ -713,15 +724,189 @@ class HtmlMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final element = parser.parse(html).body ?? dom.Element.html('');
-    return Text.rich(
-      _renderHtml(element, context),
-      style: TextStyle(
-        fontSize: fontSize,
-        color: textColor,
+    final textSpan = _renderHtml(element, context);
+    final textStyle = TextStyle(fontSize: fontSize, color: textColor);
+    final selectionColor = textColor.withAlpha(128);
+
+    if (!limitHeight) {
+      return Text.rich(
+        textSpan,
+        style: textStyle,
+        selectionColor: selectionColor,
+      );
+    }
+
+    return _CollapsibleHtmlText(
+      textSpan: textSpan,
+      textStyle: textStyle,
+      selectionColor: selectionColor,
+      actionColor: linkStyle.color ?? Theme.of(context).colorScheme.primary,
+      expandLabel: L10n.of(context).expandText,
+      collapseLabel: L10n.of(context).collapseText,
+    );
+  }
+}
+
+class _CollapsibleHtmlText extends StatefulWidget {
+  final InlineSpan textSpan;
+  final TextStyle textStyle;
+  final Color selectionColor;
+  final Color actionColor;
+  final String expandLabel;
+  final String collapseLabel;
+
+  const _CollapsibleHtmlText({
+    required this.textSpan,
+    required this.textStyle,
+    required this.selectionColor,
+    required this.actionColor,
+    required this.expandLabel,
+    required this.collapseLabel,
+  });
+
+  @override
+  State<_CollapsibleHtmlText> createState() => _CollapsibleHtmlTextState();
+}
+
+class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
+  static const int _collapsedMaxLines = 80;
+  static const LinearGradient _collapsedFadeGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: [0.0, 0.78, 1.0],
+    colors: [Colors.black, Colors.black, Colors.transparent],
+  );
+
+  final GlobalKey _collapsedTextKey = GlobalKey();
+  bool _isExpanded = false;
+  bool _isOverflowing = false;
+  double? _lastMeasuredWidth;
+  bool _overflowCheckScheduled = false;
+
+  @override
+  void didUpdateWidget(covariant _CollapsibleHtmlText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.textSpan.toPlainText() != widget.textSpan.toPlainText() ||
+        oldWidget.textStyle != widget.textStyle) {
+      _isExpanded = false;
+      _isOverflowing = false;
+      _lastMeasuredWidth = null;
+      _overflowCheckScheduled = false;
+    }
+  }
+
+  void _scheduleOverflowCheck(BoxConstraints constraints) {
+    if (_isExpanded) return;
+    final maxWidth = constraints.maxWidth;
+    if (!maxWidth.isFinite) return;
+    if (_overflowCheckScheduled && _lastMeasuredWidth == maxWidth) return;
+    if (_lastMeasuredWidth == maxWidth) return;
+
+    _lastMeasuredWidth = maxWidth;
+    _overflowCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _overflowCheckScheduled = false;
+      if (!mounted || _isExpanded) return;
+
+      final renderObject = _collapsedTextKey.currentContext?.findRenderObject();
+      final didOverflow =
+          renderObject is RenderParagraph && renderObject.didExceedMaxLines;
+      if (didOverflow != _isOverflowing) {
+        setState(() => _isOverflowing = didOverflow);
+      }
+    });
+  }
+
+  Widget _buildText(BuildContext context, {required bool collapsed}) {
+    return RichText(
+      text: TextSpan(
+        style: widget.textStyle,
+        children: [widget.textSpan],
       ),
-      maxLines: limitHeight ? 128 : null,
-      overflow: TextOverflow.fade,
-      selectionColor: textColor.withAlpha(128),
+      key: collapsed ? _collapsedTextKey : null,
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      selectionRegistrar: SelectionContainer.maybeOf(context),
+      maxLines: collapsed ? _collapsedMaxLines : null,
+      overflow: collapsed ? TextOverflow.clip : TextOverflow.visible,
+      selectionColor: widget.selectionColor,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!_isExpanded) {
+          _scheduleOverflowCheck(constraints);
+        }
+
+        final collapsed = !_isExpanded;
+        Widget text = _buildText(context, collapsed: collapsed);
+        if (collapsed && _isOverflowing) {
+          text = ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) =>
+                _collapsedFadeGradient.createShader(bounds),
+            child: text,
+          );
+        }
+
+        if (!_isOverflowing) {
+          return text;
+        }
+
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              text,
+              if (_isOverflowing)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => setState(() => _isExpanded = !_isExpanded),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _isExpanded
+                                  ? widget.collapseLabel
+                                  : widget.expandLabel,
+                              style: widget.textStyle.copyWith(
+                                color: widget.actionColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              _isExpanded
+                                  ? Icons.keyboard_arrow_up_rounded
+                                  : Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                              color: widget.actionColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -752,11 +937,7 @@ class MatrixPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Avatar(
-            mxContent: avatar,
-            name: name,
-            size: 16,
-          ),
+          Avatar(mxContent: avatar, name: name, size: 16),
           const SizedBox(width: 6),
           Text(
             name,

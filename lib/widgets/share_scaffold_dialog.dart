@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/chat/send_file_dialog.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
@@ -42,7 +43,7 @@ class ShareScaffoldDialog extends StatefulWidget {
 class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
   final TextEditingController _filterController = TextEditingController();
 
-  String? selectedRoomId;
+  final Set<String> _selectedRoomIds = <String>{};
   bool _isForwarding = false;
 
   void _closeDialog() {
@@ -54,7 +55,11 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
 
   void _toggleRoom(String roomId) {
     setState(() {
-      selectedRoomId = roomId;
+      if (_selectedRoomIds.contains(roomId)) {
+        _selectedRoomIds.remove(roomId);
+      } else {
+        _selectedRoomIds.add(roomId);
+      }
     });
   }
 
@@ -84,44 +89,64 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
 
   void _forwardAction() async {
     if (_isForwarding) return;
-    final roomId = selectedRoomId;
-    if (roomId == null) {
+    if (_selectedRoomIds.isEmpty) {
       throw Exception(
-        'Started forward action before room was selected. This should never happen.',
+        'Started forward action before any room was selected. This should never happen.',
       );
     }
-    final room = Matrix.of(context).client.getRoomById(roomId);
-    if (room == null) {
+    final rooms = _selectedRoomIds
+        .map(Matrix.of(context).client.getRoomById)
+        .whereType<Room>()
+        .toList();
+    if (rooms.length != _selectedRoomIds.length) {
       _showErrorSnackBar(L10n.of(context).oopsSomethingWentWrong);
       return;
     }
 
     final hasFiles = widget.items.any((item) => item is FileShareItem);
     if (hasFiles) {
-      final router = GoRouter.of(context);
+      final rootContext = Navigator.of(context, rootNavigator: true).context;
+      final files = widget.items
+          .whereType<FileShareItem>()
+          .map((item) => item.value)
+          .toList();
       _closeDialog();
-      router.go('/rooms/$roomId', extra: widget.items);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showAdaptiveDialog<void>(
+          context: rootContext,
+          builder: (dialogContext) => SendFileDialog(
+            rooms: rooms,
+            files: files,
+            outerContext: rootContext,
+            replyEvent: null,
+            threadRootEventId: null,
+            threadLastEventId: null,
+          ),
+        );
+      });
       return;
     }
 
     setState(() => _isForwarding = true);
     try {
-      if (!room.otherPartyCanReceiveMessages) {
-        throw OtherPartyCanNotReceiveMessages();
-      }
-      for (final item in widget.items) {
-        String? sentEventId;
-        if (item is TextShareItem) {
-          sentEventId = await room.sendTextEvent(
-            item.value,
-            parseCommands: false,
-          );
-        } else if (item is ContentShareItem) {
-          sentEventId =
-              await room.sendEvent(_sanitizeForwardContent(item.value));
+      for (final room in rooms) {
+        if (!room.otherPartyCanReceiveMessages) {
+          throw OtherPartyCanNotReceiveMessages();
         }
-        if (sentEventId == null) {
-          throw L10n.of(context).serverError;
+        for (final item in widget.items) {
+          String? sentEventId;
+          if (item is TextShareItem) {
+            sentEventId = await room.sendTextEvent(
+              item.value,
+              parseCommands: false,
+            );
+          } else if (item is ContentShareItem) {
+            sentEventId =
+                await room.sendEvent(_sanitizeForwardContent(item.value));
+          }
+          if (sentEventId == null) {
+            throw L10n.of(context).serverError;
+          }
         }
       }
     } catch (e) {
@@ -134,9 +159,11 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
       }
     }
 
-    final router = GoRouter.of(context);
     _closeDialog();
-    router.go('/rooms/$roomId');
+    if (rooms.length == 1) {
+      final router = GoRouter.of(context);
+      router.go('/rooms/${rooms.single.id}');
+    }
   }
 
   @override
@@ -239,7 +266,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
               final displayname = room.getLocalizedDisplayname(
                 MatrixLocals(L10n.of(context)),
               );
-              final value = selectedRoomId == room.id;
+              final value = _selectedRoomIds.contains(room.id);
               final filterOut = !displayname.toLowerCase().contains(filter);
               if (!value && filterOut) {
                 return const SizedBox.shrink();
@@ -276,7 +303,7 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    value: selectedRoomId == room.id,
+                    value: value,
                     onChanged: (_) => _toggleRoom(room.id),
                   ),
                 ),
@@ -286,9 +313,9 @@ class _ShareScaffoldDialogState extends State<ShareScaffoldDialog> {
         ],
       ),
       bottomNavigationBar: AnimatedSize(
-        duration: FluffyThemes.animationDuration,
-        curve: FluffyThemes.animationCurve,
-        child: selectedRoomId == null
+        duration: FluffyThemes.durationFast,
+        curve: FluffyThemes.curveStandard,
+        child: _selectedRoomIds.isEmpty
             ? const SizedBox.shrink()
             : Container(
                 decoration: BoxDecoration(

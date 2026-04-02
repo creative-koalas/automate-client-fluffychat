@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/l10n/l10n_branding.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/tap_dismiss_snackbar.dart';
 import '../widgets/matrix.dart';
@@ -38,7 +39,7 @@ abstract class FluffyShare {
     final client = Matrix.of(context).client;
     final ownProfile = await client.fetchOwnProfile();
     await FluffyShare.share(
-      L10n.of(context).inviteText(
+      L10n.of(context).brandedInviteText(
         ownProfile.displayName ?? client.userID!,
         'https://psygoai.com',
       ),

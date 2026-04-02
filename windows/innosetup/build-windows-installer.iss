@@ -1,4 +1,4 @@
-; PsyGo Setup (Admin + Program Files + Chinese + VC++ runtime)
+; App Setup (Admin + Program Files + Chinese + VC++ runtime)
 
 #define MyAppName "PsyGo"
 #ifndef MyAppVersion
@@ -44,7 +44,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline
 
-OutputBaseFilename=PsyGo-Setup
+OutputBaseFilename={#MyAppName}-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

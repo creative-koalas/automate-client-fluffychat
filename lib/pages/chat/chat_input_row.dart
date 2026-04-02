@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -61,6 +59,9 @@ class ChatInputRow extends StatelessWidget {
         PlatformInfos.isDesktop && controller.hasPendingAttachments;
 
     const height = 48.0;
+    const actionButtonWidth = 36.0;
+    const actionIconTapSize = 36.0;
+    const leadingButtonsInset = 2.0;
 
     if (!controller.room.otherPartyCanReceiveMessages) {
       return Center(
@@ -218,10 +219,11 @@ class ChatInputRow extends StatelessWidget {
           );
         }
         final canSend = controller.canSendCurrentDraft;
+        final sendWithMentionHint =
+            controller.isGroupChat && controller.groupSendShouldPromptMention;
         final mobileShouldCollapseInputActions = PlatformInfos.isMobile &&
             (controller.inputFocus.hasFocus ||
                 controller.sendController.text.isNotEmpty);
-
         // 正常输入模式
         return SizedBox(
           width: double.infinity,
@@ -233,25 +235,26 @@ class ChatInputRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: leadingButtonsInset),
                   AnimatedContainer(
                     duration: FluffyThemes.durationFast,
                     curve: FluffyThemes.curveStandard,
-                    width: mobileShouldCollapseInputActions ||
-                            controller.sendController.text.isNotEmpty
-                        ? 0
-                        : height,
+                    width: actionButtonWidth,
                     height: height,
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(),
                     clipBehavior: Clip.hardEdge,
                     child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: actionIconTapSize,
+                        height: actionIconTapSize,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 22,
                       icon: const Icon(Icons.add_circle_outline),
-                      color: controller.isAgentResting
-                          ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-                          : theme.colorScheme.onPrimaryContainer,
+                      color: theme.colorScheme.onPrimaryContainer,
                       onPressed: () {
-                        if (controller.blockFileIfResting()) return;
                         _showAttachmentBottomSheet(context, controller);
                       },
                     ),
@@ -262,25 +265,27 @@ class ChatInputRow extends StatelessWidget {
                       curve: FluffyThemes.curveStandard,
                       width: mobileShouldCollapseInputActions
                           ? 0
-                          : height,
+                          : actionButtonWidth,
                       height: height,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
                       clipBehavior: Clip.hardEdge,
                       // 禁用录像功能，点击相机按钮直接拍照
                       child: IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: actionIconTapSize,
+                          height: actionIconTapSize,
+                        ),
+                        visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.camera_alt_outlined),
                         onPressed: () {
-                          if (controller.blockFileIfResting()) return;
                           controller.onAddPopupMenuButtonSelected(
                             AddPopupMenuActions.photoCamera,
                           );
                         },
-                        iconSize: height * 0.5,
-                        color: controller.isAgentResting
-                            ? theme.colorScheme.onSurface
-                                .withValues(alpha: 0.38)
-                            : theme.colorScheme.onPrimaryContainer,
+                        iconSize: 20,
+                        color: theme.colorScheme.onPrimaryContainer,
                       ),
                       // child: PopupMenuButton(
                       //   useRootNavigator: true,
@@ -325,10 +330,9 @@ class ChatInputRow extends StatelessWidget {
                     AnimatedContainer(
                       duration: FluffyThemes.durationFast,
                       curve: FluffyThemes.curveStandard,
-                      width: mobileShouldCollapseInputActions ||
-                              controller.sendController.text.isNotEmpty
+                      width: controller.sendController.text.isNotEmpty
                           ? 0
-                          : height,
+                          : actionButtonWidth,
                       height: height,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(),
@@ -355,8 +359,8 @@ class ChatInputRow extends StatelessWidget {
                                     value: 'hide_window',
                                     child: Text(
                                       Localizations.localeOf(
-                                            context,
-                                          ).languageCode.startsWith('zh')
+                                        context,
+                                      ).languageCode.startsWith('zh')
                                           ? '隐藏窗口后截图'
                                           : 'Hide window before capture',
                                     ),
@@ -380,15 +384,15 @@ class ChatInputRow extends StatelessWidget {
                               },
                               child: IconButton(
                                 padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: actionIconTapSize,
+                                  height: actionIconTapSize,
+                                ),
                                 visualDensity: VisualDensity.compact,
                                 icon: const Icon(
                                   Icons.screenshot_monitor_outlined,
                                 ),
-                                color: controller.isAgentResting
-                                    ? theme.colorScheme.onSurface.withValues(
-                                        alpha: 0.38,
-                                      )
-                                    : theme.colorScheme.onPrimaryContainer,
+                                color: theme.colorScheme.onPrimaryContainer,
                                 onPressed: () {
                                   controller.captureScreenshotAction();
                                 },
@@ -403,11 +407,18 @@ class ChatInputRow extends StatelessWidget {
                     curve: FluffyThemes.curveStandard,
                     height: height,
                     // Keep emoji button visible on mobile while input actions collapse.
-                    width: height,
+                    width: actionButtonWidth,
                     alignment: Alignment.center,
                     clipBehavior: Clip.hardEdge,
                     decoration: const BoxDecoration(),
                     child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: actionIconTapSize,
+                        height: actionIconTapSize,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 22,
                       tooltip: L10n.of(context).emojis,
                       color: theme.colorScheme.onPrimaryContainer,
                       icon: PageTransitionSwitcher(
@@ -471,7 +482,8 @@ class ChatInputRow extends StatelessWidget {
                               keyboardType: TextInputType.multiline,
                               textInputAction:
                                   AppSettings.sendOnEnter.value == true &&
-                                          PlatformInfos.isMobile
+                                          (PlatformInfos.isMobile ||
+                                              PlatformInfos.isMacOS)
                                       ? TextInputAction.send
                                       : null,
                               onSubmitted: controller.onInputBarSubmitted,
@@ -494,6 +506,8 @@ class ChatInputRow extends StatelessWidget {
                                 filled: false,
                               ),
                               onChanged: controller.onInputBarChanged,
+                              macOsEnterImeGuard:
+                                  controller.macOsInputBarEnterImeGuard,
                               suggestionEmojis: getDefaultEmojiLocale(
                                 AppSettings
                                         .emojiSuggestionLocale.value.isNotEmpty
@@ -525,8 +539,10 @@ class ChatInputRow extends StatelessWidget {
                         curve: FluffyThemes.curveBounce,
                         scale: canSend ? 1.0 : 0.9,
                         child: IconButton(
-                          tooltip: L10n.of(context).send,
-                          onPressed: canSend ? controller.send : null,
+                          tooltip: sendWithMentionHint
+                              ? L10n.of(context).mentionHintTitle
+                              : L10n.of(context).send,
+                          onPressed: canSend ? () => controller.send() : null,
                           style: IconButton.styleFrom(
                             backgroundColor: theme.bubbleColor,
                             foregroundColor: theme.onBubbleColor,
@@ -534,7 +550,17 @@ class ChatInputRow extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          icon: const Icon(Icons.send_rounded, size: 22),
+                          icon: sendWithMentionHint
+                              ? Text(
+                                  '@',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.onBubbleColor,
+                                    height: 1,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 22),
                         ),
                       ),
                     ),
@@ -709,8 +735,7 @@ class _InputQuickTipsBar extends StatelessWidget {
         cards.add(const SizedBox(width: 8));
       }
       final tip = tips[i];
-      final isSelected =
-          tip.intentId.trim() == activeIntentId.trim() &&
+      final isSelected = tip.intentId.trim() == activeIntentId.trim() &&
           activeIntentId.trim().isNotEmpty;
       cards.add(
         _InputQuickTipCard(
@@ -758,8 +783,7 @@ class _InputQuickTipsBar extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final tip = tips[index];
-          final isSelected =
-              tip.intentId.trim() == activeIntentId.trim() &&
+          final isSelected = tip.intentId.trim() == activeIntentId.trim() &&
               activeIntentId.trim().isNotEmpty;
           return _InputQuickTipCard(
             tip: tip,
@@ -793,13 +817,15 @@ class _InputQuickTipCard extends StatelessWidget {
             .withValues(alpha: isDark ? 0.76 : 0.92);
     final cardBorderColor = selected
         ? theme.colorScheme.primary
-        : theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.44 : 0.6);
+        : theme.colorScheme.outlineVariant
+            .withValues(alpha: isDark ? 0.44 : 0.6);
     final iconBackgroundColor = selected
         ? theme.colorScheme.primary.withValues(alpha: 0.18)
         : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9);
     final iconColor = theme.colorScheme.primary;
-    final textColor =
-        selected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface;
+    final textColor = selected
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurface;
 
     return Material(
       color: cardColor,

@@ -83,19 +83,38 @@ class Message extends StatelessWidget {
     super.key,
   });
 
-  ({Uri? avatarUrl, String displayName, bool isWorkingEmployee})
-      _resolveSenderPresentation(User user) {
+  ({
+    Uri? avatarUrl,
+    String displayName,
+    bool isWorkingEmployee,
+    Color? statusDotColor,
+  }) _resolveSenderPresentation(User user) {
     final agentService = AgentService.instance;
     agentService.ensureMatrixProfilePresentation(user);
     final agent = agentService.getAgentByMatrixUserId(user.id);
     final displayName = agentService.resolveDisplayName(user);
     final avatarUri = agentService.resolveAvatarUri(user);
+    final statusDotColor = agent == null
+        ? null
+        : _employeeWorkStatusColor(agent.computedWorkStatus);
 
     return (
       avatarUrl: avatarUri ?? user.avatarUrl,
       displayName: displayName,
       isWorkingEmployee: agent?.isWorking ?? false,
+      statusDotColor: statusDotColor,
     );
+  }
+
+  Color _employeeWorkStatusColor(String status) {
+    switch (status) {
+      case 'working':
+        return Colors.green;
+      case 'slacking':
+        return Colors.blue;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   @override
@@ -406,11 +425,16 @@ class Message extends StatelessWidget {
                                                 context,
                                                 user,
                                               ),
-                                              presenceUserId: user.stateKey,
+                                              presenceUserId:
+                                                  sender.statusDotColor == null
+                                                  ? user.stateKey
+                                                  : null,
                                               presenceBackgroundColor:
                                                   wallpaperMode
                                                       ? Colors.transparent
                                                       : null,
+                                              statusDotColor:
+                                                  sender.statusDotColor,
                                             ),
                                           );
                                         },
@@ -447,11 +471,16 @@ class Message extends StatelessWidget {
                                                       user,
                                                     ),
                                                     presenceUserId:
-                                                        user.stateKey,
+                                                        sender.statusDotColor ==
+                                                                null
+                                                            ? user.stateKey
+                                                            : null,
                                                     presenceBackgroundColor:
                                                         wallpaperMode
                                                             ? Colors.transparent
                                                             : null,
+                                                    statusDotColor:
+                                                        sender.statusDotColor,
                                                   ),
                                                 );
                                               },
@@ -1127,30 +1156,44 @@ class Message extends StatelessWidget {
                 ),
               ),
             // 消息行：勾选框 + 消息内容
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 勾选框始终在最左边
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: SizedBox(
-                    width: Avatar.defaultSize,
-                    height: 32,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      tooltip: L10n.of(context).select,
-                      icon: Icon(
-                        selected ? Icons.check_circle : Icons.circle_outlined,
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onSelect(event),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 勾选框始终在最左边
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: SizedBox(
+                      width: Avatar.defaultSize,
+                      height: 32,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        tooltip: L10n.of(context).select,
+                        icon: Icon(
+                          selected ? Icons.check_circle : Icons.circle_outlined,
+                        ),
+                        onPressed: () => onSelect(event),
                       ),
-                      onPressed: () => onSelect(event),
                     ),
                   ),
-                ),
-                // 消息内容填充剩余空间
-                Expanded(child: messageWidget),
-              ],
+                  // 消息内容填充剩余空间
+                  Expanded(child: messageWidget),
+                ],
+              ),
             ),
           ],
+        ),
+      );
+    }
+
+    if (longPressSelect && !PlatformInfos.isDesktop && !event.redacted) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onSelect(event),
+        child: AbsorbPointer(
+          child: messageWidget,
         ),
       );
     }

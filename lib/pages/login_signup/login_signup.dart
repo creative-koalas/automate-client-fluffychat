@@ -129,6 +129,11 @@ class LoginSignupController extends State<LoginSignup>
       return;
     }
 
+    // 尝试提前加载协议 URL，授权页下方协议与手机号登录页保持一致
+    if (_termsUrl == null || _privacyUrl == null) {
+      await _loadAgreements();
+    }
+
     setState(() {
       phoneError = null;
       loading = true;
@@ -142,6 +147,8 @@ class LoginSignupController extends State<LoginSignup>
       final fusionToken = await OneClickLoginService.performOneClickLogin(
         secretKey: PsygoConfig.aliyunOneClickSecretKey,
         timeout: 10000,
+        termsUrl: _termsUrl,
+        privacyUrl: _privacyUrl,
       );
 
       debugPrint('=== 调用后端一键登录 ===');
@@ -156,15 +163,15 @@ class LoginSignupController extends State<LoginSignup>
         await OneClickLoginService.quitLoginPage();
       }
     } on SwitchLoginMethodException {
-      // 用户点击了"其他方式登录"按钮（但按钮已隐藏，理论上不会触发）
-      // 不跳转，只显示错误提示
-      debugPrint('用户选择其他登录方式（不应该发生）');
+      // 用户点击授权页“其他号码登录”，跳转到手机号验证码登录
+      debugPrint('用户选择其他号码登录，跳转手机号验证码登录');
+      _isInAuthFlow = false;
+      await OneClickLoginService.quitLoginPage();
       if (!mounted) return;
       setState(() {
-        _isInAuthFlow = false;
-        phoneError = l10n.authOnlyOneClickSupported;
         loading = false;
       });
+      context.go('/login/phone');
     } catch (e, stackTrace) {
       debugPrint('一键登录错误: $e');
       debugPrint('堆栈: $stackTrace');

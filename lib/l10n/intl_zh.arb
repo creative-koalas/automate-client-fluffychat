@@ -1559,6 +1559,14 @@
         "type": "String",
         "placeholders": {}
     },
+    "messageTooLongToSend": "文本过长，无法直接发送。当前上限为 {max} 个字符，建议改为文件发送。",
+    "@messageTooLongToSend": {
+        "placeholders": {
+            "max": {
+                "type": "int"
+            }
+        }
+    },
     "takeScreenshot": "截图",
     "@takeScreenshot": {},
     "sendImage": "发送图像",
@@ -2437,7 +2445,7 @@
     "@allSpaces": {},
     "appearOnTop": "显示在其它应用上方",
     "@appearOnTop": {},
-    "appearOnTopDetails": "允许应用显示在顶部（如果你已经将 Fluffychat 设置为呼叫账户，则不需要授予此权限）",
+    "appearOnTopDetails": "允许应用显示在顶部（如果你已经将 PsyGo 设置为呼叫账户，则不需要授予此权限）",
     "@appearOnTopDetails": {},
     "otherCallingPermissions": "麦克风、摄像头和其它 PsyGo 权限",
     "@otherCallingPermissions": {},
@@ -2530,6 +2538,8 @@
     "@jumpToLastReadMessage": {},
     "readUpToHere": "读到此处",
     "@readUpToHere": {},
+    "newMessages": "新消息",
+    "@newMessages": {},
     "jump": "跳转",
     "@jump": {},
     "openLinkInBrowser": "在浏览器中打开链接",
@@ -2557,6 +2567,21 @@
             }
         }
     },
+    "downloadLocation": "下载位置",
+    "@downloadLocation": {},
+    "downloadLocationSystemDefault": "系统下载目录",
+    "@downloadLocationSystemDefault": {},
+    "downloadLocationUpdated": "下载位置已更新为 {path}",
+    "@downloadLocationUpdated": {
+        "type": "String",
+        "placeholders": {
+            "path": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadLocationReset": "下载位置已重置为系统默认目录",
+    "@downloadLocationReset": {},
     "reportErrorDescription": "😭 哦不。出了点差错。如果你愿意，可以向开发人员报告此错误。",
     "@reportErrorDescription": {},
     "noBackupWarning": "警告！如果退出登录你的员工将会停止工作。",
@@ -2644,6 +2669,14 @@
     "@inviteGroupChat": {},
     "invitePrivateChat": "📨 私聊邀请",
     "@invitePrivateChat": {},
+    "inviteFailedTryAgain": "邀请失败，请重试",
+    "@inviteFailedTryAgain": {},
+    "inviteRetiredEmployee": "邀请失败，{user}已经离职了",
+    "@inviteRetiredEmployee": {
+        "placeholders": {
+            "user": {}
+        }
+    },
     "emoteKeyboardNoRecents": "最近使用过的表情会出现在这里...",
     "@emoteKeyboardNoRecents": {
         "type": "String",
@@ -3432,6 +3465,10 @@
     "@customReaction": {},
     "moreEvents": "更多事件",
     "@moreEvents": {},
+    "expandText": "展开",
+    "@expandText": {},
+    "collapseText": "收起",
+    "@collapseText": {},
     "declineInvitation": "拒绝邀请",
     "@declineInvitation": {},
     "leaveChat": "退出房间",
@@ -3577,7 +3614,7 @@
     "@employeeWorkingHint": {},
     "employeeSlackingHint": "可随时安排工作",
     "@employeeSlackingHint": {},
-    "employeeSleepingHint": "激活员工需要一点时间",
+    "employeeSleepingHint": "发送任意消息即可唤醒",
     "@employeeSleepingHint": {},
     "employeeWorkingNotice1": "员工正在处理你的任务...",
     "@employeeWorkingNotice1": {},
@@ -4231,6 +4268,8 @@
     "@webEntryLoadFailed": {},
     "chatWebEntryNotEnabled": "该 Agent 尚未开启 Web 入口",
     "@chatWebEntryNotEnabled": {},
+    "webEntryUpdatedHint": "有更新",
+    "@webEntryUpdatedHint": {},
     "chatOpenFailedRetryLater": "打开失败，请稍后重试",
     "@chatOpenFailedRetryLater": {},
     "sendFileUnnamed": "未命名文件",

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/l10n/l10n_branding.dart';
 import 'package:psygo/widgets/layouts/login_scaffold.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'homeserver_picker.dart';
@@ -96,7 +97,7 @@ class HomeserverPickerView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32.0),
                       child: SelectableLinkify(
-                        text: L10n.of(context).appIntroduction,
+                        text: L10n.of(context).brandedAppIntroduction,
                         textScaleFactor:
                             MediaQuery.textScalerOf(context).scale(1),
                         textAlign: TextAlign.center,
@@ -127,7 +128,8 @@ class HomeserverPickerView extends StatelessWidget {
                                 AppConfig.borderRadius,
                               ),
                               border: Border.all(
-                                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                                color: theme.colorScheme.outline
+                                    .withValues(alpha: 0.3),
                               ),
                             ),
                             child: Row(
@@ -139,18 +141,22 @@ class HomeserverPickerView extends StatelessWidget {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         L10n.of(context).homeserver,
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         controller.homeserverController.text,
-                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),

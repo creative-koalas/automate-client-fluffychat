@@ -1914,6 +1914,14 @@
     "type": "String",
     "placeholders": {}
   },
+  "messageTooLongToSend": "This message is too long to send. The limit is {max} characters. Try sending it as a file instead.",
+  "@messageTooLongToSend": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "takeScreenshot": "Screenshot",
   "@takeScreenshot": {},
   "sendImage": "Send image",
@@ -2683,7 +2691,7 @@
   "@foregroundServiceRunning": {},
   "screenSharingTitle": "screen sharing",
   "@screenSharingTitle": {},
-  "screenSharingDetail": "You are sharing your screen in FuffyChat",
+  "screenSharingDetail": "You are sharing your screen in PsyGo",
   "@screenSharingDetail": {},
   "callingPermissions": "Calling permissions",
   "@callingPermissions": {},
@@ -2693,7 +2701,7 @@
   "@callingAccountDetails": {},
   "appearOnTop": "Appear on top",
   "@appearOnTop": {},
-  "appearOnTopDetails": "Allows the app to appear on top (not needed if you already have Fluffychat setup as a calling account)",
+  "appearOnTopDetails": "Allows the app to appear on top (not needed if you already have PsyGo setup as a calling account)",
   "@appearOnTopDetails": {},
   "otherCallingPermissions": "Microphone, camera and other PsyGo permissions",
   "@otherCallingPermissions": {},
@@ -2769,10 +2777,27 @@
       }
     }
   },
+  "downloadLocation": "Download location",
+  "@downloadLocation": {},
+  "downloadLocationSystemDefault": "System Downloads folder",
+  "@downloadLocationSystemDefault": {},
+  "downloadLocationUpdated": "Download location updated to {path}",
+  "@downloadLocationUpdated": {
+    "type": "String",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadLocationReset": "Download location reset to system default",
+  "@downloadLocationReset": {},
   "jumpToLastReadMessage": "Jump to last read message",
   "@jumpToLastReadMessage": {},
   "readUpToHere": "Read up to here",
   "@readUpToHere": {},
+  "newMessages": "New messages",
+  "@newMessages": {},
   "jump": "Jump",
   "@jump": {},
   "openLinkInBrowser": "Open link in browser",
@@ -2806,6 +2831,14 @@
   "@inviteGroupChat": {},
   "invitePrivateChat": "📨 Private chat invite",
   "@invitePrivateChat": {},
+  "inviteFailedTryAgain": "Invite failed. Try again.",
+  "@inviteFailedTryAgain": {},
+  "inviteRetiredEmployee": "Invite failed. {user} has already left.",
+  "@inviteRetiredEmployee": {
+    "placeholders": {
+      "user": {}
+    }
+  },
   "invalidInput": "Invalid input!",
   "@invalidInput": {},
   "wrongPinEntered": "Wrong pin entered! Try again in {seconds} seconds...",
@@ -3286,7 +3319,7 @@
   "@notificationRuleMaster": {},
   "notificationRuleMasterDescription": "Overrides all other rules and disables all notifications.",
   "@notificationRuleMasterDescription": {},
-  "notificationRuleSuppressNotices": "Suppress Psygod Messages",
+  "notificationRuleSuppressNotices": "Suppress PsyGod Messages",
   "@notificationRuleSuppressNotices": {},
   "notificationRuleSuppressNoticesDescription": "Suppresses notifications from automated clients like bots.",
   "@notificationRuleSuppressNoticesDescription": {},
@@ -3421,6 +3454,10 @@
   "@customReaction": {},
   "moreEvents": "More events",
   "@moreEvents": {},
+  "expandText": "Expand",
+  "@expandText": {},
+  "collapseText": "Collapse",
+  "@collapseText": {},
   "declineInvitation": "Decline invitation",
   "@declineInvitation": {},
   "leaveChat": "Leave chat",
@@ -3550,7 +3587,7 @@
   "@employeeWorkingHint": {},
   "employeeSlackingHint": "Available for new tasks.",
   "@employeeSlackingHint": {},
-  "employeeSleepingHint": "Waking the employee may take a moment.",
+  "employeeSleepingHint": "Send any message to wake them up.",
   "@employeeSleepingHint": {},
   "employeeWorkingNotice1": "The employee is working on your request...",
   "@employeeWorkingNotice1": {},
@@ -4196,6 +4233,8 @@
   "@webEntryLoadFailed": {},
   "chatWebEntryNotEnabled": "This agent has not enabled web entry yet.",
   "@chatWebEntryNotEnabled": {},
+  "webEntryUpdatedHint": "Updated",
+  "@webEntryUpdatedHint": {},
   "chatOpenFailedRetryLater": "Unable to open. Please try again later.",
   "@chatOpenFailedRetryLater": {},
   "sendFileUnnamed": "Unnamed file",

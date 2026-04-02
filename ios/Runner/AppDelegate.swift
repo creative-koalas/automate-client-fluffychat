@@ -1,5 +1,6 @@
 import UIKit
 import Flutter
+import qr_code_scanner_plus
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -8,6 +9,9 @@ import Flutter
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    if let qrRegistrar = registrar(forPlugin: "FlutterQrPlusPlugin") {
+      SwiftFlutterQrPlusPlugin.register(with: qrRegistrar)
+    }
 
     // 注册一键登录插件
     if let registrar = self.registrar(forPlugin: "OneClickLoginPlugin") {
@@ -38,7 +42,7 @@ import Flutter
     // Set FlutterViewController background color to prevent black screen
     // when native modal views (like Aliyun auth) are dismissed
     if let controller = window?.rootViewController as? FlutterViewController {
-      controller.view.backgroundColor = UIColor.white
+      controller.view.backgroundColor = UIColor.systemBackground
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

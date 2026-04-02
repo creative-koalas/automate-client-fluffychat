@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:badges/badges.dart';
+import 'package:badges/badges.dart' as badges;
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:matrix/matrix.dart';
 import 'package:psygo/config/setting_keys.dart';
@@ -43,6 +44,32 @@ class ChatView extends StatelessWidget {
   final ChatController controller;
 
   const ChatView(this.controller, {super.key});
+
+  Widget _buildWebEntryActionButton(
+    BuildContext context, {
+    required Agent agent,
+    required bool isVisuallyDisabled,
+  }) {
+    final l10n = L10n.of(context);
+    final isUpdated = agent.webEntryStatus == Agent.webEntryStatusUpdated &&
+        !isVisuallyDisabled;
+    final isEnabled = agent.webEntryStatus == Agent.webEntryStatusEnabled &&
+        !isVisuallyDisabled;
+
+    return _WebEntryActionButton(
+      key: controller.webEntryGuideKey,
+      isOpen: controller.webEntryOpen,
+      isLoading: controller.webEntryLoading,
+      isDisabled: isVisuallyDisabled,
+      isEnabled: isEnabled,
+      isUpdated: isUpdated,
+      updateHintText: l10n.webEntryUpdatedHint,
+      unavailableTooltip: l10n.agentWebEntryUnavailable,
+      onPressed: controller.webEntryOpen || controller.webEntryLoading
+          ? controller.closeWebEntry
+          : controller.openWebEntry,
+    );
+  }
 
   Widget _buildGuideStatusItem(
     BuildContext context, {
@@ -100,7 +127,7 @@ class ChatView extends StatelessWidget {
               title: l10n.chatRoomGuideWorkStatusTitle,
               description: l10n.chatRoomGuideWorkStatusBody,
               preferredPlacement: GuideBubblePlacement.below,
-              estimatedContentHeight: 148,
+              estimatedContentHeight: 120,
               contentBuilder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,27 +150,6 @@ class ChatView extends StatelessWidget {
                     color: theme.colorScheme.outline,
                     label: l10n.employeeSleeping,
                     hint: l10n.employeeSleepingHint,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l10n.guideRestingFeatureUnavailable,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -181,7 +187,24 @@ class ChatView extends StatelessWidget {
     );
   }
 
-  List<EmployeeWorkTemplateItem> _employeeWorkTemplates(BuildContext context) {
+  static IconData _iconForEmployeeWorkTemplateId(String templateId) {
+    switch (templateId.trim()) {
+      case 'bmi_calculator_ui':
+        return Icons.today_outlined;
+      case 'bnct_heavy_ion_report':
+        return Icons.notes_rounded;
+      case 'godot_tower_defense_game':
+        return Icons.sports_esports_rounded;
+      case 'daily_ai_briefing':
+        return Icons.newspaper_rounded;
+      default:
+        return Icons.assignment_rounded;
+    }
+  }
+
+  List<EmployeeWorkTemplateItem> _defaultEmployeeWorkTemplates(
+    BuildContext context,
+  ) {
     final l10n = L10n.of(context);
     return [
       EmployeeWorkTemplateItem(
@@ -209,6 +232,23 @@ class ChatView extends StatelessWidget {
         message: l10n.employeeWorkTemplateDailyMessage,
       ),
     ];
+  }
+
+  List<EmployeeWorkTemplateItem> _employeeWorkTemplates(BuildContext context) {
+    if (controller.employeeWorkTemplates.isNotEmpty) {
+      return controller.employeeWorkTemplates
+          .where((template) => template.enabled)
+          .map(
+            (template) => EmployeeWorkTemplateItem(
+              icon: _iconForEmployeeWorkTemplateId(template.templateId),
+              title: template.title,
+              description: template.description,
+              message: template.message,
+            ),
+          )
+          .toList(growable: false);
+    }
+    return _defaultEmployeeWorkTemplates(context);
   }
 
   Future<void> _handleEmployeeWorkTemplateTap(
@@ -256,14 +296,13 @@ class ChatView extends StatelessWidget {
       isDesktop ? 16 : 12,
       8,
     );
-    final showEmployeeWorkTemplateBar =
-        controller.isEmployeeChat &&
+    final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
         controller.activeThreadId == null &&
         !controller.employeeWorkTemplateDismissed;
     final onCloseEmployeeWorkTemplate =
         controller.canDismissEmployeeWorkTemplateBar
-        ? controller.dismissEmployeeWorkTemplateBar
-        : null;
+            ? controller.dismissEmployeeWorkTemplateBar
+            : null;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
         ? _buildEmployeeWorkTemplateBar(
             context,
@@ -307,7 +346,10 @@ class ChatView extends StatelessWidget {
                               color: theme.colorScheme.onPrimaryContainer,
                             ),
                             const SizedBox(width: 4),
-                            const Text('新消息', style: TextStyle(fontSize: 12)),
+                            Text(
+                              L10n.of(context).newMessages,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                       ),
@@ -417,63 +459,15 @@ class ChatView extends StatelessWidget {
                 directChatMatrixID,
               );
               if (agent == null) return const SizedBox.shrink();
-              final theme = Theme.of(context);
-              final l10n = L10n.of(context);
-              final isDisabled =
-                  !controller.webEntryOpen &&
+              final isDisabled = !controller.webEntryOpen &&
                   !controller.webEntryLoading &&
                   !agent.canOpenWebEntry;
               final isVisuallyDisabled = isDisabled || agent.isResting;
 
-              return KeyedSubtree(
-                key: controller.webEntryGuideKey,
-                child: IconButton(
-                  tooltip: controller.webEntryOpen
-                      ? '返回聊天'
-                      : (isVisuallyDisabled
-                            ? l10n.agentWebEntryUnavailable
-                            : '打开 WebView'),
-                  onPressed:
-                      controller.webEntryOpen || controller.webEntryLoading
-                      ? controller.closeWebEntry
-                      : () => controller.openWebEntry(),
-                  icon: controller.webEntryLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(
-                              controller.webEntryOpen
-                                  ? Icons.arrow_back
-                                  : Icons.web_outlined,
-                              color: isVisuallyDisabled
-                                  ? theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.38,
-                                    )
-                                  : null,
-                            ),
-                            if (!controller.webEntryOpen &&
-                                agent.webEntryStatus ==
-                                    Agent.webEntryStatusUpdated)
-                              Positioned(
-                                right: -1,
-                                top: -1,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.error,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                ),
+              return _buildWebEntryActionButton(
+                context,
+                agent: agent,
+                isVisuallyDisabled: isVisuallyDisabled,
               );
             },
           ),
@@ -502,13 +496,36 @@ class ChatView extends StatelessWidget {
       );
     }
     final bottomSheetPadding = FluffyThemes.isColumnMode(context) ? 16.0 : 8.0;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final sendModeSwitchWidth =
+        (viewportWidth * 0.12).clamp(40.0, 56.0).toDouble();
+    final sendModeSwitchHeight = (sendModeSwitchWidth * 0.58)
+        .clamp(22.0, 30.0)
+        .toDouble();
+    final sendModeSwitchRightInset =
+        ((viewportWidth * 0.035) - 5.0).clamp(6.0, 21.0).toDouble();
+    final sendModeSwitchPadding = (sendModeSwitchHeight * 0.12)
+        .clamp(2.0, 4.0)
+        .toDouble();
+    final sendModeSwitchRadius = sendModeSwitchHeight / 2;
+    final sendModeSwitchKnobSize =
+        sendModeSwitchHeight - (sendModeSwitchPadding * 2);
+    final sendModeSwitchTrackIconSize = (sendModeSwitchHeight * 0.45)
+        .clamp(10.0, 14.0)
+        .toDouble();
+    final sendModeSwitchKnobIconSize = (sendModeSwitchKnobSize * 0.58)
+        .clamp(10.0, 14.0)
+        .toDouble();
+    final shouldShowGroupSendSwitch =
+        controller.isGroupChat &&
+        controller.selectedEvents.isEmpty &&
+        controller.room.isAbandonedDMRoom != true;
     final scrollUpBannerEventId = controller.scrollUpBannerEventId;
 
     final accountConfig = Matrix.of(context).client.applicationAccountConfig;
 
     return PopScope(
-      canPop:
-          controller.selectedEvents.isEmpty &&
+      canPop: controller.selectedEvents.isEmpty &&
           !controller.showEmojiPicker &&
           controller.activeThreadId == null &&
           !controller.webEntryOpen &&
@@ -572,8 +589,8 @@ class ChatView extends StatelessWidget {
                         ),
                         backgroundColor: controller.selectedEvents.isEmpty
                             ? controller.activeThreadId != null
-                                  ? theme.colorScheme.secondaryContainer
-                                  : null
+                                ? theme.colorScheme.secondaryContainer
+                                : null
                             : theme.colorScheme.tertiaryContainer,
                         automaticallyImplyLeading: false,
                         leading: controller.selectMode
@@ -599,7 +616,7 @@ class ChatView extends StatelessWidget {
                                     ),
                                 builder: (context, _) => UnreadRoomsBadge(
                                   filter: (r) => r.id != controller.roomId,
-                                  badgePosition: BadgePosition.topEnd(
+                                  badgePosition: badges.BadgePosition.topEnd(
                                     end: 8,
                                     top: 4,
                                   ),
@@ -630,8 +647,7 @@ class ChatView extends StatelessWidget {
                                       ),
                                       style: TextButton.styleFrom(
                                         foregroundColor: theme
-                                            .colorScheme
-                                            .onSecondaryContainer,
+                                            .colorScheme.onSecondaryContainer,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             4,
@@ -649,17 +665,13 @@ class ChatView extends StatelessWidget {
                                     icon: const Icon(Icons.close),
                                     tooltip: L10n.of(context).close,
                                     onPressed: () {
-                                      controller.discardScrollUpBannerEventId();
-                                      controller.setReadMarker();
+                                      controller.dismissScrollUpPrompt();
                                     },
                                   ),
                                   title: L10n.of(context).jumpToLastReadMessage,
                                   trailing: TextButton(
                                     onPressed: () {
-                                      controller.scrollToEventId(
-                                        scrollUpBannerEventId,
-                                      );
-                                      controller.discardScrollUpBannerEventId();
+                                      controller.jumpToScrollUpPrompt();
                                     },
                                     child: Text(L10n.of(context).jump),
                                   ),
@@ -670,8 +682,7 @@ class ChatView extends StatelessWidget {
                       ),
                       floatingActionButtonLocation:
                           FloatingActionButtonLocation.miniCenterFloat,
-                      floatingActionButton:
-                          controller.showScrollDownButton &&
+                      floatingActionButton: controller.showScrollDownButton &&
                               controller.selectedEvents.isEmpty
                           ? Padding(
                               padding: const EdgeInsets.only(bottom: 56.0),
@@ -725,8 +736,8 @@ class ChatView extends StatelessWidget {
                                     sigmaY: accountConfig.wallpaperBlur ?? 0.0,
                                   ),
                                   child: MxcImage(
-                                    cacheKey: accountConfig.wallpaperUrl
-                                        .toString(),
+                                    cacheKey:
+                                        accountConfig.wallpaperUrl.toString(),
                                     uri: accountConfig.wallpaperUrl,
                                     fit: BoxFit.cover,
                                     height: MediaQuery.sizeOf(context).height,
@@ -740,8 +751,7 @@ class ChatView extends StatelessWidget {
                               child: Column(
                                 children: <Widget>[
                                   Expanded(
-                                    child:
-                                        controller.webEntryOpen &&
+                                    child: controller.webEntryOpen &&
                                             controller.webEntryUrl != null
                                         ? AgentWebEntryView(
                                             url: controller.webEntryUrl!,
@@ -768,8 +778,7 @@ class ChatView extends StatelessWidget {
                                       ),
                                     )
                                   else if (controller
-                                          .room
-                                          .canSendDefaultMessages &&
+                                          .room.canSendDefaultMessages &&
                                       controller.room.membership ==
                                           Membership.join)
                                     Column(
@@ -801,49 +810,183 @@ class ChatView extends StatelessWidget {
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              ValueListenableBuilder(
-                                                valueListenable: AgentService
-                                                    .instance
-                                                    .agentsNotifier,
-                                                builder: (context, _, __) =>
-                                                    EmployeeWorkingIndicator(
-                                                      controller,
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  Expanded(
+                                                    child: ValueListenableBuilder(
+                                                      valueListenable:
+                                                          AgentService
+                                                              .instance
+                                                              .agentsNotifier,
+                                                      builder:
+                                                          (
+                                                            context,
+                                                            _,
+                                                            __,
+                                                          ) =>
+                                                              EmployeeWorkingIndicator(
+                                                                controller,
+                                                              ),
                                                     ),
+                                                  ),
+                                                  if (shouldShowGroupSendSwitch)
+                                                    Padding(
+                                                      padding: EdgeInsets.only(
+                                                        right:
+                                                            sendModeSwitchRightInset,
+                                                      ),
+                                                      child: Tooltip(
+                                                        message: controller
+                                                                .groupSendShouldPromptMention
+                                                            ? L10n.of(context)
+                                                                .mentionHintTitle
+                                                            : L10n.of(context)
+                                                                .sendDirectly,
+                                                        child: GestureDetector(
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .opaque,
+                                                          onTap: controller
+                                                              .toggleGroupSendMode,
+                                                          child:
+                                                              AnimatedContainer(
+                                                            duration: FluffyThemes
+                                                                .durationFast,
+                                                            curve: FluffyThemes
+                                                                .curveStandard,
+                                                            width:
+                                                                sendModeSwitchWidth,
+                                                            height:
+                                                                sendModeSwitchHeight,
+                                                            padding:
+                                                                EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      sendModeSwitchPadding,
+                                                                ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .surfaceContainerHigh,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                        sendModeSwitchRadius,
+                                                                      ),
+                                                              border: Border.all(
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .outlineVariant,
+                                                              ),
+                                                            ),
+                                                            child: Stack(
+                                                              alignment:
+                                                                  Alignment
+                                                                      .center,
+                                                              children: [
+                                                                Row(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .spaceBetween,
+                                                                  children: [
+                                                                    Icon(
+                                                                      Icons
+                                                                          .alternate_email_rounded,
+                                                                      size:
+                                                                          sendModeSwitchTrackIconSize,
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .onSurfaceVariant,
+                                                                    ),
+                                                                    Icon(
+                                                                      Icons
+                                                                          .send_rounded,
+                                                                      size:
+                                                                          sendModeSwitchTrackIconSize,
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .onSurfaceVariant,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                                AnimatedAlign(
+                                                                  duration:
+                                                                      FluffyThemes
+                                                                          .durationFast,
+                                                                  curve: FluffyThemes
+                                                                      .curveBounce,
+                                                                  alignment:
+                                                                      controller.groupSendShouldPromptMention
+                                                                      ? Alignment
+                                                                            .centerLeft
+                                                                      : Alignment
+                                                                            .centerRight,
+                                                                  child:
+                                                                      Container(
+                                                                    width:
+                                                                        sendModeSwitchKnobSize,
+                                                                    height:
+                                                                        sendModeSwitchKnobSize,
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .primary,
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            sendModeSwitchKnobSize /
+                                                                                2,
+                                                                          ),
+                                                                    ),
+                                                                    child: Icon(
+                                                                      controller.groupSendShouldPromptMention
+                                                                          ? Icons.alternate_email_rounded
+                                                                          : Icons.send_rounded,
+                                                                      size:
+                                                                          sendModeSwitchKnobIconSize,
+                                                                      color: theme
+                                                                          .colorScheme
+                                                                          .onPrimary,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
                                               if (controller
                                                       .hasOwnEmployeeInRoom &&
-                                                  controller
-                                                          .room
+                                                  controller.room
                                                           .isAbandonedDMRoom !=
                                                       true)
                                                 Padding(
                                                   padding:
                                                       const EdgeInsets.only(
-                                                        bottom: 8,
-                                                      ),
+                                                    bottom: 8,
+                                                  ),
                                                   child: ChatQuickTipsBar(
                                                     controller,
                                                   ),
                                                 ),
                                               Material(
                                                 clipBehavior: Clip.hardEdge,
-                                                color:
-                                                    controller
-                                                        .selectedEvents
+                                                color: controller.selectedEvents
                                                         .isNotEmpty
-                                                    ? theme
-                                                          .colorScheme
-                                                          .tertiaryContainer
-                                                    : theme
-                                                          .colorScheme
-                                                          .surfaceContainerHigh,
+                                                    ? theme.colorScheme
+                                                        .tertiaryContainer
+                                                    : theme.colorScheme
+                                                        .surfaceContainerHigh,
                                                 borderRadius:
                                                     const BorderRadius.all(
-                                                      Radius.circular(24),
-                                                    ),
-                                                child:
-                                                    controller
-                                                            .room
+                                                  Radius.circular(24),
+                                                ),
+                                                child: controller.room
                                                             .isAbandonedDMRoom ==
                                                         true
                                                     ? Row(
@@ -852,11 +995,13 @@ class ChatView extends StatelessWidget {
                                                                 .spaceEvenly,
                                                         children: [
                                                           TextButton.icon(
-                                                            style: TextButton.styleFrom(
+                                                            style: TextButton
+                                                                .styleFrom(
                                                               padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                16,
+                                                              ),
                                                               foregroundColor:
                                                                   theme
                                                                       .colorScheme
@@ -876,18 +1021,21 @@ class ChatView extends StatelessWidget {
                                                             ),
                                                           ),
                                                           TextButton.icon(
-                                                            style: TextButton.styleFrom(
+                                                            style: TextButton
+                                                                .styleFrom(
                                                               padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                16,
+                                                              ),
                                                             ),
                                                             icon: const Icon(
                                                               Icons
                                                                   .forum_outlined,
                                                             ),
-                                                            onPressed: controller
-                                                                .recreateChat,
+                                                            onPressed:
+                                                                controller
+                                                                    .recreateChat,
                                                             label: Text(
                                                               L10n.of(
                                                                 context,
@@ -951,6 +1099,262 @@ class ChatView extends StatelessWidget {
   }
 }
 
+class _WebEntryActionButton extends StatefulWidget {
+  final bool isOpen;
+  final bool isLoading;
+  final bool isDisabled;
+  final bool isEnabled;
+  final bool isUpdated;
+  final String updateHintText;
+  final String unavailableTooltip;
+  final VoidCallback onPressed;
+
+  const _WebEntryActionButton({
+    super.key,
+    required this.isOpen,
+    required this.isLoading,
+    required this.isDisabled,
+    required this.isEnabled,
+    required this.isUpdated,
+    required this.updateHintText,
+    required this.unavailableTooltip,
+    required this.onPressed,
+  });
+
+  @override
+  State<_WebEntryActionButton> createState() => _WebEntryActionButtonState();
+}
+
+class _WebEntryActionButtonState extends State<_WebEntryActionButton> {
+  static const Duration _updateHintDuration = Duration(seconds: 1);
+  Timer? _updateHintTimer;
+  bool _showUpdateHintBubble = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isUpdated && !widget.isOpen && !widget.isLoading) {
+      _showUpdateHintTemporarily();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _WebEntryActionButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final becameUpdated = !oldWidget.isUpdated && widget.isUpdated;
+    if (becameUpdated && !widget.isOpen && !widget.isLoading) {
+      _showUpdateHintTemporarily();
+    }
+    if ((widget.isOpen || !widget.isUpdated) && _showUpdateHintBubble) {
+      _hideUpdateHintBubble();
+    }
+  }
+
+  void _showUpdateHintTemporarily() {
+    _updateHintTimer?.cancel();
+    if (!_showUpdateHintBubble && mounted) {
+      setState(() => _showUpdateHintBubble = true);
+    } else {
+      _showUpdateHintBubble = true;
+    }
+    _updateHintTimer = Timer(_updateHintDuration, () {
+      if (!mounted) return;
+      setState(() => _showUpdateHintBubble = false);
+    });
+  }
+
+  void _hideUpdateHintBubble() {
+    _updateHintTimer?.cancel();
+    if (!mounted || !_showUpdateHintBubble) return;
+    setState(() => _showUpdateHintBubble = false);
+  }
+
+  @override
+  void dispose() {
+    _updateHintTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    const updatedDotColor = Color(0xFFE65454);
+    final isUnavailable = widget.isDisabled && !widget.isOpen;
+    final enabledStyle = _resolveEnabledStyle(colorScheme);
+    final disabledStyle = _resolveDisabledStyle(colorScheme);
+    final stateStyle = widget.isEnabled || widget.isUpdated
+        ? enabledStyle
+        : disabledStyle;
+    final highlightColor = stateStyle.accent;
+    final baseBackground = widget.isOpen
+        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.16)
+        : stateStyle.background;
+
+    final tooltip = widget.isOpen
+        ? l10n.backToMainChat
+        : widget.isDisabled
+            ? widget.unavailableTooltip
+            : l10n.chatRoomGuideWebEntryTitle;
+
+    final tooltipBackground = Color.alphaBlend(
+      highlightColor.withValues(alpha: 0.08),
+      colorScheme.surfaceContainerHighest,
+    );
+    final tooltipTextColor = colorScheme.onSurface;
+    final tooltipBorderColor = colorScheme.outlineVariant.withValues(
+      alpha: 0.18,
+    );
+    final iconColor = widget.isOpen ? colorScheme.onSurface : stateStyle.accent;
+    final iconData = widget.isOpen
+        ? Icons.arrow_back
+        : widget.isEnabled || widget.isUpdated
+            ? Icons.open_in_browser_rounded
+            : Icons.web_asset_off_outlined;
+    final borderColor = widget.isEnabled || widget.isUpdated
+        ? enabledStyle.accent.withValues(alpha: 0.24)
+        : isUnavailable
+            ? disabledStyle.accent.withValues(alpha: 0.16)
+            : Colors.transparent;
+
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 180),
+      showDuration: const Duration(seconds: 2),
+      preferBelow: false,
+      verticalOffset: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      textStyle: theme.textTheme.bodySmall?.copyWith(
+        color: tooltipTextColor,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.1,
+      ),
+      decoration: BoxDecoration(
+        color: tooltipBackground.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tooltipBorderColor),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          if (_showUpdateHintBubble && !widget.isOpen && widget.isUpdated)
+            Positioned(
+              right: 38,
+              child: IgnorePointer(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: 0.14),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    widget.updateHintText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Material(
+            color: baseBackground,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: borderColor),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: widget.onPressed,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: widget.isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            highlightColor,
+                          ),
+                        ),
+                      )
+                    : Icon(iconData, size: 20, color: iconColor),
+              ),
+            ),
+          ),
+          if (!widget.isOpen && widget.isUpdated)
+            Positioned(
+              right: -1,
+              top: -1,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: updatedDotColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colorScheme.surface,
+                    width: 1.2,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  _WebEntryVisualStyle _resolveEnabledStyle(ColorScheme colorScheme) {
+    return _WebEntryVisualStyle(
+      accent: colorScheme.primary.withValues(alpha: 0.9),
+      background: colorScheme.primaryContainer.withValues(alpha: 0.16),
+    );
+  }
+
+  _WebEntryVisualStyle _resolveDisabledStyle(ColorScheme colorScheme) {
+    return _WebEntryVisualStyle(
+      accent: colorScheme.onSurfaceVariant.withValues(alpha: 0.44),
+      background: colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
+    );
+  }
+}
+
+class _WebEntryVisualStyle {
+  final Color accent;
+  final Color background;
+
+  const _WebEntryVisualStyle({
+    required this.accent,
+    required this.background,
+  });
+}
+
 /// AI 内容免责声明
 /// 只要聊天中有员工就显示
 class _AiContentDisclaimer extends StatefulWidget {
@@ -1003,9 +1407,8 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
   Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
     try {
       final page = await _repository.getUserAgents(limit: 50);
-      final agent = page.agents
-          .where((a) => a.matrixUserId == matrixUserId)
-          .firstOrNull;
+      final agent =
+          page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
       if (mounted && agent != null) {
         setState(() => _employee = agent);
       }

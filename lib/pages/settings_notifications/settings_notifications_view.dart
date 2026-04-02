@@ -34,12 +34,12 @@ class SettingsNotificationsView extends StatelessWidget {
       body: MaxWidthBody(
         child: StreamBuilder(
           stream: Matrix.of(context).client.onSync.stream.where(
-                (syncUpdate) =>
-                    syncUpdate.accountData?.any(
-                      (accountData) => accountData.type == 'm.push_rules',
-                    ) ??
-                    false,
-              ),
+            (syncUpdate) =>
+                syncUpdate.accountData?.any(
+                  (accountData) => accountData.type == 'm.push_rules',
+                ) ??
+                false,
+          ),
           builder: (BuildContext context, _) {
             final theme = Theme.of(context);
             return SelectionArea(
@@ -58,53 +58,28 @@ class SettingsNotificationsView extends StatelessWidget {
                       ),
                       for (final rule in category.rules)
                         // 隐藏加密相关的通知规则
-                        if (rule.ruleId != '.m.rule.encrypted_room_one_to_one' &&
+                        if (rule.ruleId !=
+                                '.m.rule.encrypted_room_one_to_one' &&
                             rule.ruleId != '.m.rule.room_one_to_one' &&
                             rule.ruleId != '.m.rule.encrypted')
                           ListTile(
                             title: Text(rule.getPushRuleName(L10n.of(context))),
-                            subtitle: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: rule.getPushRuleDescription(
-                                      L10n.of(context),
-                                    ),
-                                  ),
-                                  const TextSpan(text: ' '),
-                                  WidgetSpan(
-                                    child: InkWell(
-                                      onTap: () => controller.editPushRule(
-                                        rule,
-                                        category.kind,
-                                      ),
-                                      child: Text(
-                                        L10n.of(context).more,
-                                        style: TextStyle(
-                                          color: theme.colorScheme.primary,
-                                          decoration: TextDecoration.underline,
-                                          decorationColor:
-                                              theme.colorScheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            subtitle: Text(
+                              rule.getPushRuleDescription(L10n.of(context)),
                             ),
                             trailing: Switch.adaptive(
                               value: rule.enabled,
                               onChanged: controller.isLoading
                                   ? null
                                   : rule.ruleId != '.m.rule.master' &&
-                                          Matrix.of(context)
-                                              .client
-                                              .allPushNotificationsMuted
-                                      ? null
-                                      : (_) => controller.togglePushRule(
-                                            category.kind,
-                                            rule,
-                                          ),
+                                        Matrix.of(
+                                          context,
+                                        ).client.allPushNotificationsMuted
+                                  ? null
+                                  : (_) => controller.togglePushRule(
+                                      category.kind,
+                                      rule,
+                                    ),
                             ),
                           ),
                       Divider(color: theme.dividerColor),

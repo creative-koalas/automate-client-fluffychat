@@ -6,6 +6,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/matrix_mention_display_name.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import '../../../config/app_config.dart';
 
@@ -31,15 +32,17 @@ class ReplyContent extends StatelessWidget {
     final theme = Theme.of(context);
 
     final timeline = this.timeline;
-    final displayEvent =
-        timeline != null ? replyEvent.getDisplayEvent(timeline) : replyEvent;
+    final displayEvent = timeline != null
+        ? replyEvent.getDisplayEvent(timeline)
+        : replyEvent;
     final fontSize =
         AppConfig.messageFontSize * AppSettings.fontSizeFactor.value;
     final color = theme.brightness == Brightness.dark
         ? theme.colorScheme.onTertiaryContainer
         : ownMessage
-            ? theme.colorScheme.tertiaryContainer
-            : theme.colorScheme.tertiary;
+        ? theme.colorScheme.tertiaryContainer
+        : theme.colorScheme.tertiary;
+    final matrixLocals = MatrixLocals(L10n.of(context));
     final senderPresentationListenable = Listenable.merge([
       AgentService.instance.agentsNotifier,
       AgentService.instance.profileNotifier,
@@ -61,25 +64,33 @@ class ReplyContent extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                ListenableBuilder(
-                  listenable: senderPresentationListenable,
-                  builder: (context, _) => FutureBuilder<User?>(
-                    initialData: displayEvent.senderFromMemoryOrFallback,
-                    future: displayEvent.fetchSenderUser(),
-                    builder: (context, snapshot) {
-                      final sender = snapshot.data ??
-                          displayEvent.senderFromMemoryOrFallback;
-                      AgentService.instance.ensureMatrixProfilePresentation(
-                        sender,
-                      );
-                      final senderDisplayName =
-                          AgentService.instance.resolveDisplayName(sender);
-                      return Text(
+            child: ListenableBuilder(
+              listenable: senderPresentationListenable,
+              builder: (context, _) => FutureBuilder<User?>(
+                initialData: displayEvent.senderFromMemoryOrFallback,
+                future: displayEvent.fetchSenderUser(),
+                builder: (context, snapshot) {
+                  final sender =
+                      snapshot.data ?? displayEvent.senderFromMemoryOrFallback;
+                  AgentService.instance.ensureMatrixProfilePresentation(sender);
+                  final senderDisplayName = sender.calcDisplaynameWithAgents(
+                    i18n: matrixLocals,
+                  );
+                  final replyBody = renderMatrixMentionsWithDisplayName(
+                    text: displayEvent.calcLocalizedBodyFallbackWithAgents(
+                      matrixLocals,
+                      withSenderNamePrefix: false,
+                      hideReply: true,
+                    ),
+                    room: displayEvent.room,
+                  );
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
                         '$senderDisplayName:',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -88,31 +99,24 @@ class ReplyContent extends StatelessWidget {
                           color: color,
                           fontSize: fontSize,
                         ),
-                      );
-                    },
-                  ),
-                ),
-                Text(
-                  renderMatrixMentionsWithDisplayName(
-                    text: displayEvent.calcLocalizedBodyFallback(
-                      MatrixLocals(L10n.of(context)),
-                      withSenderNamePrefix: false,
-                      hideReply: true,
-                    ),
-                    room: displayEvent.room,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: theme.brightness == Brightness.dark
-                        ? theme.colorScheme.onSurface
-                        : ownMessage
-                            ? theme.colorScheme.onTertiary
-                            : theme.colorScheme.onSurface,
-                    fontSize: fontSize,
-                  ),
-                ),
-              ],
+                      ),
+                      Text(
+                        replyBody,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: theme.brightness == Brightness.dark
+                              ? theme.colorScheme.onSurface
+                              : ownMessage
+                              ? theme.colorScheme.onTertiary
+                              : theme.colorScheme.onSurface,
+                          fontSize: fontSize,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(width: 6),

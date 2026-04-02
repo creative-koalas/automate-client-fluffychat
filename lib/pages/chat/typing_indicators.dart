@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/pages/chat/chat.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 
@@ -27,6 +28,9 @@ class TypingIndicators extends StatelessWidget {
       builder: (context, _) {
         final typingUsers = controller.room.typingUsers
           ..removeWhere((u) => u.stateKey == Matrix.of(context).client.userID);
+        final typingPresentations = typingUsers
+            .map((user) => user.getPresentation())
+            .toList(growable: false);
 
         return Container(
           width: double.infinity,
@@ -59,8 +63,8 @@ class TypingIndicators extends StatelessWidget {
                       if (typingUsers.isNotEmpty)
                         Avatar(
                           size: avatarSize,
-                          mxContent: typingUsers.first.avatarUrl,
-                          name: typingUsers.first.calcDisplayname(),
+                          mxContent: typingPresentations.first.avatarUrl,
+                          name: typingPresentations.first.displayName,
                         ),
                       if (typingUsers.length == 2)
                         Padding(
@@ -68,10 +72,10 @@ class TypingIndicators extends StatelessWidget {
                           child: Avatar(
                             size: avatarSize,
                             mxContent: typingUsers.length == 2
-                                ? typingUsers.last.avatarUrl
+                                ? typingPresentations.last.avatarUrl
                                 : null,
                             name: typingUsers.length == 2
-                                ? typingUsers.last.calcDisplayname()
+                                ? typingPresentations.last.displayName
                                 : '+${typingUsers.length - 1}',
                           ),
                         ),

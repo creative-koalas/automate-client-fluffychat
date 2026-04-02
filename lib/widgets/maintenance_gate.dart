@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/l10n.dart';
+import '../l10n/l10n_branding.dart';
 import '../services/maintenance_status_controller.dart';
 
 class MaintenanceGate extends StatelessWidget {
@@ -32,9 +33,7 @@ class MaintenanceGate extends StatelessWidget {
         ),
         Positioned.fill(
           child: Material(
-            color: isDark
-                ? const Color(0xFF09131F)
-                : const Color(0xFFF4F1EA),
+            color: isDark ? const Color(0xFF09131F) : const Color(0xFFF4F1EA),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -86,8 +85,10 @@ class MaintenanceGate extends StatelessWidget {
                           height: 64,
                           decoration: BoxDecoration(
                             color: isDark
-                                ? const Color(0xFFFA8072).withValues(alpha: 0.14)
-                                : const Color(0xFFD06744).withValues(alpha: 0.12),
+                                ? const Color(0xFFFA8072)
+                                    .withValues(alpha: 0.14)
+                                : const Color(0xFFD06744)
+                                    .withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Icon(
@@ -103,14 +104,13 @@ class MaintenanceGate extends StatelessWidget {
                           l10n.maintenanceBlockedTitle,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF18242D),
+                            color:
+                                isDark ? Colors.white : const Color(0xFF18242D),
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          l10n.maintenanceBlockedMessage,
+                          l10n.brandedMaintenanceBlockedMessage,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             height: 1.45,
                             color: isDark

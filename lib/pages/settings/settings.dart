@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
@@ -7,8 +9,10 @@ import 'package:psygo/core/config.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/backend/auth_state.dart';
+import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/core/token_manager.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/utils/download_save_directory.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/profanity_checker.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -34,12 +38,15 @@ class SettingsController extends State<Settings> {
   bool profileUpdated = false;
   bool _logoutInProgress = false;
 
+  String get configuredDownloadSaveDirectory =>
+      AppSettings.downloadSaveDirectory.value.trim();
+
   void updateProfile() => setState(() {
-        profileUpdated = true;
-        profileFuture = null;
-        // 清除侧边栏的 profile 缓存，确保头像同步更新
-        DesktopLayout.clearUserCache();
-      });
+    profileUpdated = true;
+    profileFuture = null;
+    // 清除侧边栏的 profile 缓存，确保头像同步更新
+    DesktopLayout.clearUserCache();
+  });
 
   void setDisplaynameAction() async {
     final profile = await profileFuture;
@@ -75,6 +82,8 @@ class SettingsController extends State<Settings> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.nicknameChangeSubmitted)),
         );
+        // 清除 profile 缓存，确保审核通过后能获取到新昵称
+        updateProfile();
       }
     }
   }
@@ -103,11 +112,9 @@ class SettingsController extends State<Settings> {
           response.bodyBytes,
           filename: 'avatar.png',
         );
-        await client.setProfileField(
-          client.userID!,
-          'avatar_url',
-          {'avatar_url': mxcUri.toString()},
-        );
+        await client.setProfileField(client.userID!, 'avatar_url', {
+          'avatar_url': mxcUri.toString(),
+        });
       },
     );
 
@@ -171,9 +178,9 @@ class SettingsController extends State<Settings> {
     final error = success.error;
     if (error != null) {
       debugPrint('[Settings] Delete account failed: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.settingsDeleteAccountFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.settingsDeleteAccountFailed)));
       return;
     }
 
@@ -207,6 +214,35 @@ class SettingsController extends State<Settings> {
     }
   }
 
+  void selectDownloadSaveDirectoryAction() async {
+    final initialDirectory = await getPreferredDownloadSaveDirectory();
+    final selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      initialDirectory: initialDirectory,
+    );
+    if (selectedDirectory == null) return;
+
+    await AppSettings.downloadSaveDirectory.setItem(selectedDirectory);
+    if (!mounted) return;
+
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text(L10n.of(context).downloadLocationUpdated(selectedDirectory)),
+      ),
+    );
+  }
+
+  void resetDownloadSaveDirectoryAction() async {
+    await AppSettings.downloadSaveDirectory.setItem('');
+    if (!mounted) return;
+
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(L10n.of(context).downloadLocationReset)),
+    );
+  }
+
   void logoutAction() async {
     if (_logoutInProgress) {
       debugPrint(
@@ -226,9 +262,7 @@ class SettingsController extends State<Settings> {
       context: context,
       barrierDismissible: true,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Container(
           width: dialogWidth,
@@ -241,8 +275,9 @@ class SettingsController extends State<Settings> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color:
-                      theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  color: theme.colorScheme.primaryContainer.withValues(
+                    alpha: 0.3,
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -329,9 +364,7 @@ class SettingsController extends State<Settings> {
                       ),
                       child: Text(
                         l10n.logout,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -364,7 +397,9 @@ class SettingsController extends State<Settings> {
       // - 清除缓存
       // - 切换窗口大小
       // - 跳转到登录页
-      await auth.markLoggedOut().timeout(const Duration(seconds: 8));
+      await auth
+          .markLoggedOut(revokeRemoteSession: true)
+          .timeout(const Duration(seconds: 8));
       await auth.load();
       if (auth.isLoggedIn) {
         debugPrint(
@@ -465,8 +500,8 @@ class SettingsController extends State<Settings> {
         await client.encryption?.crossSigning.isCached() ?? false;
     final needsBootstrap =
         await client.encryption?.keyManager.isCached() == false ||
-            client.encryption?.crossSigning.enabled == false ||
-            crossSigning == false;
+        client.encryption?.crossSigning.enabled == false ||
+        crossSigning == false;
     final isUnknownSession = client.isUnknownSession;
     setState(() {
       showChatBackupBanner = needsBootstrap || isUnknownSession;
@@ -476,7 +511,7 @@ class SettingsController extends State<Settings> {
   bool? crossSigningCached;
   bool? showChatBackupBanner;
 
-  void firstRunBootstrapAction([_]) async {
+  void firstRunBootstrapAction([Object? _]) async {
     if (showChatBackupBanner != true) {
       showOkAlertDialog(
         context: context,
@@ -486,9 +521,7 @@ class SettingsController extends State<Settings> {
       );
       return;
     }
-    await BootstrapDialog(
-      client: Matrix.of(context).client,
-    ).show(context);
+    await BootstrapDialog(client: Matrix.of(context).client).show(context);
     checkBootstrap();
   }
 
@@ -522,8 +555,10 @@ class _AvatarPickerDialogState extends State<_AvatarPickerDialog> {
     const styles = DiceBearStyle.values;
     final style = styles[random.nextInt(styles.length)];
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    final seed =
-        List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
+    final seed = List.generate(
+      8,
+      (_) => chars[random.nextInt(chars.length)],
+    ).join();
     return '${PsygoConfig.dicebearBaseUrl}/${style.apiName}/png?seed=$seed&size=256';
   }
 
@@ -535,17 +570,17 @@ class _AvatarPickerDialogState extends State<_AvatarPickerDialog> {
     final isDesktop = PlatformInfos.isDesktop;
     final horizontalInset = isDesktop ? 24.0 : 16.0;
     final maxDialogWidth = isDesktop ? 400.0 : 420.0;
-    final dialogWidth =
-        min(screenWidth - horizontalInset * 2, maxDialogWidth).toDouble();
+    final dialogWidth = min(
+      screenWidth - horizontalInset * 2,
+      maxDialogWidth,
+    ).toDouble();
 
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
         horizontal: horizontalInset,
         vertical: 24,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: dialogWidth),
         child: Padding(

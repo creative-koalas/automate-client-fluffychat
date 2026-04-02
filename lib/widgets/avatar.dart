@@ -22,6 +22,7 @@ class Avatar extends StatelessWidget {
   final BorderSide? border;
   final Color? backgroundColor;
   final Color? textColor;
+  final Color? statusDotColor;
   final bool showShadow;
   final bool showWorkingPulse;
   final Color? workingPulseColor;
@@ -39,11 +40,52 @@ class Avatar extends StatelessWidget {
     this.icon,
     this.backgroundColor,
     this.textColor,
+    this.statusDotColor,
     this.showShadow = false,
     this.showWorkingPulse = false,
     this.workingPulseColor,
     super.key,
   });
+
+  Widget _buildStatusDot(
+    BuildContext context,
+    ThemeData theme,
+    Color dotColor,
+  ) {
+    return Positioned(
+      bottom: -3,
+      right: -3,
+      child: AnimatedContainer(
+        duration: FluffyThemes.durationFast,
+        curve: FluffyThemes.curveBounce,
+        width: FluffyThemes.iconSizeXs,
+        height: FluffyThemes.iconSizeXs,
+        decoration: BoxDecoration(
+          color: presenceBackgroundColor ?? theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
+          boxShadow: FluffyThemes.shadow(
+            context,
+            elevation: FluffyThemes.elevationXs,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: AnimatedContainer(
+          duration: FluffyThemes.durationFast,
+          curve: FluffyThemes.curveStandard,
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: dotColor,
+            borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
+            border: Border.all(
+              width: 1,
+              color: theme.colorScheme.surface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +197,13 @@ class Avatar extends StatelessWidget {
             ),
           ),
         ),
-        if (presenceUserId != null)
+        if (statusDotColor != null)
+          _buildStatusDot(
+            context,
+            theme,
+            statusDotColor!,
+          )
+        else if (presenceUserId != null)
           PresenceBuilder(
             client: client,
             userId: presenceUserId,
@@ -170,39 +218,7 @@ class Avatar extends StatelessWidget {
                   : presence.presence.isUnavailable
                       ? Colors.orange
                       : Colors.grey;
-              return Positioned(
-                bottom: -3,
-                right: -3,
-                child: AnimatedContainer(
-                  duration: FluffyThemes.durationFast,
-                  curve: FluffyThemes.curveBounce,
-                  width: FluffyThemes.iconSizeXs,
-                  height: FluffyThemes.iconSizeXs,
-                  decoration: BoxDecoration(
-                    color: presenceBackgroundColor ?? theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
-                    boxShadow: FluffyThemes.shadow(
-                      context,
-                      elevation: FluffyThemes.elevationXs,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: AnimatedContainer(
-                    duration: FluffyThemes.durationFast,
-                    curve: FluffyThemes.curveStandard,
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: dotColor,
-                      borderRadius: BorderRadius.circular(FluffyThemes.radiusFull),
-                      border: Border.all(
-                        width: 1,
-                        color: theme.colorScheme.surface,
-                      ),
-                    ),
-                  ),
-                ),
-              );
+              return _buildStatusDot(context, theme, dotColor);
             },
           ),
       ],
