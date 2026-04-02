@@ -25,7 +25,12 @@ class UnreadRoomsBadge extends StatelessWidget {
         .client
         .rooms
         .where(filter)
-        .where((r) => (r.isUnread || r.membership == Membership.invite))
+        .where(
+          (r) =>
+              r.membership == Membership.invite ||
+              r.isUnread ||
+              r.hasNewMessages,
+        )
         .length;
     return b.Badge(
       badgeStyle: b.BadgeStyle(

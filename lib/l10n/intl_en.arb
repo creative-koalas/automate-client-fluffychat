@@ -1914,6 +1914,14 @@
     "type": "String",
     "placeholders": {}
   },
+  "messageTooLongToSend": "This message is too long to send. The limit is {max} characters. Try sending it as a file instead.",
+  "@messageTooLongToSend": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "takeScreenshot": "Screenshot",
   "@takeScreenshot": {},
   "sendImage": "Send image",

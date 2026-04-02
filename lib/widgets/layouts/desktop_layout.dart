@@ -155,9 +155,11 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       if (client == null) return;
       var count = 0;
       for (final room in client.rooms) {
-        if (room.isUnreadOrInvited) {
-          count += room.notificationCount;
-        }
+        final hasUnreadState = room.membership == Membership.invite ||
+            room.isUnread ||
+            room.hasNewMessages;
+        if (!hasUnreadState) continue;
+        count += room.notificationCount > 0 ? room.notificationCount : 1;
       }
       // 更新缓存和状态
       _cachedUnreadCount = count;
