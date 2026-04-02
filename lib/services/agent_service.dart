@@ -183,7 +183,7 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示名称
-  /// 优先级：自己的员工名称 > Matrix profile 缓存 > fallback
+  /// 优先级：自己的员工名称 > fallback（房间实时数据）> Matrix profile 缓存
   String? tryResolveDisplayNameByMatrixUserId(
     String? matrixUserId, {
     String? fallbackDisplayName,
@@ -199,16 +199,16 @@ class AgentService {
       return ownName;
     }
 
+    final fallback = _normalizeDisplayNameCandidate(fallbackDisplayName, key);
+    if (fallback != null) {
+      return fallback;
+    }
+
     final remote = _profilePresentationByUserId[key];
     final remoteName =
         _normalizeDisplayNameCandidate(remote?.displayName, key);
     if (remoteName != null) {
       return remoteName;
-    }
-
-    final fallback = _normalizeDisplayNameCandidate(fallbackDisplayName, key);
-    if (fallback != null) {
-      return fallback;
     }
 
     return null;
@@ -237,7 +237,7 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示头像
-  /// 优先级：自己的员工头像 > Matrix profile 缓存 > fallback
+  /// 优先级：自己的员工头像 > fallback（房间实时数据）> Matrix profile 缓存
   Uri? resolveAvatarUriByMatrixUserId(
     String? matrixUserId, {
     Uri? fallbackAvatarUri,
@@ -253,13 +253,17 @@ class AgentService {
       return ownAvatar;
     }
 
+    if (fallbackAvatarUri != null) {
+      return fallbackAvatarUri;
+    }
+
     final remote = _profilePresentationByUserId[key];
     final remoteAvatar = parseAvatarUri(remote?.avatarUrl);
     if (remoteAvatar != null) {
       return remoteAvatar;
     }
 
-    return fallbackAvatarUri;
+    return null;
   }
 
   /// 解析 User 的展示名称（含远端 profile 覆盖）

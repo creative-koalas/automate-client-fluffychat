@@ -13,6 +13,14 @@ String resolveDisplayNameForMatrixUserId({
   if (key.isEmpty) {
     return '';
   }
+  final user = room.unsafeGetUserFromMemoryOrFallback(key);
+  AgentService.instance.ensureMatrixProfilePresentationById(
+    client: room.client,
+    matrixUserId: key,
+    fallbackDisplayName:
+        user.displayName ?? user.calcDisplayname(i18n: matrixLocals),
+    fallbackAvatarUri: user.avatarUrl,
+  );
   if (!room.isDirectChat) {
     AgentService.instance.ensureGroupDisplayNameByMatrixUserId(key);
     final groupDisplayName =
@@ -21,13 +29,10 @@ String resolveDisplayNameForMatrixUserId({
       return groupDisplayName;
     }
   }
-  final agent = AgentService.instance.getAgentByMatrixUserId(key);
-  final agentName = agent?.displayName.trim() ?? '';
-  if (agentName.isNotEmpty) {
-    return agentName;
-  }
-  final user = room.unsafeGetUserFromMemoryOrFallback(key);
-  return user.calcDisplayname(i18n: matrixLocals);
+  return AgentService.instance.resolveDisplayNameByMatrixUserId(
+    key,
+    fallbackDisplayName: user.calcDisplayname(i18n: matrixLocals),
+  );
 }
 
 String resolveRoomDisplayName({
