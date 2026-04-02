@@ -1058,7 +1058,6 @@ class ChatController extends State<ChatPageWithRoom>
       _maybeStartChatRoomGuide();
       setState(() {});
     };
-    AgentService.instance.agentsNotifier.addListener(_agentServiceListener);
 
     scrollController.addListener(_updateScrollController);
     inputFocus.addListener(_inputFocusListener);
@@ -1073,6 +1072,7 @@ class ChatController extends State<ChatPageWithRoom>
     );
 
     sendingClient = Matrix.of(context).client;
+    AgentService.instance.agentsNotifier.addListener(_agentServiceListener);
     if (room.directChatMatrixID == null) {
       AgentService.instance.attachLiveStatusWatcher();
       _groupLiveStatusWatcherAttached = true;

@@ -4233,6 +4233,8 @@
   "@webEntryLoadFailed": {},
   "chatWebEntryNotEnabled": "This agent has not enabled web entry yet.",
   "@chatWebEntryNotEnabled": {},
+  "webEntryUpdatedHint": "Updated",
+  "@webEntryUpdatedHint": {},
   "chatOpenFailedRetryLater": "Unable to open. Please try again later.",
   "@chatOpenFailedRetryLater": {},
   "sendFileUnnamed": "Unnamed file",
