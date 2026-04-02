@@ -1017,7 +1017,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "OpenOcto",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -1204,7 +1204,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} invited you to OpenOcto.\n1. Visit psygoai.com and install the app \n2. Sign up or sign in \n3. Open the invite link: \n {link}",
+  "inviteText": "{username} invited you to PsyGo.\n1. Visit psygoai.com and install the app \n2. Sign up or sign in \n3. Open the invite link: \n {link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -1406,7 +1406,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInPsygo": "💬 New message in OpenOcto",
+  "newMessageInPsygo": "💬 New message in PsyGo",
   "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
@@ -2163,7 +2163,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "OpenOcto",
+  "title": "PsyGo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2526,7 +2526,7 @@
   "@emailOrUsername": {},
   "indexedDbErrorTitle": "Private mode issues",
   "@indexedDbErrorTitle": {},
-  "indexedDbErrorLong": "The message storage is unfortunately not enabled in private mode by default.\nPlease visit\n - about:config\n - set dom.indexedDB.privateBrowsing.enabled to true\nOtherwise, it is not possible to run OpenOcto.",
+  "indexedDbErrorLong": "The message storage is unfortunately not enabled in private mode by default.\nPlease visit\n - about:config\n - set dom.indexedDB.privateBrowsing.enabled to true\nOtherwise, it is not possible to run PsyGo.",
   "@indexedDbErrorLong": {},
   "switchToAccount": "Switch to account {number}",
   "@switchToAccount": {
@@ -2691,19 +2691,19 @@
   "@foregroundServiceRunning": {},
   "screenSharingTitle": "screen sharing",
   "@screenSharingTitle": {},
-  "screenSharingDetail": "You are sharing your screen in OpenOcto",
+  "screenSharingDetail": "You are sharing your screen in PsyGo",
   "@screenSharingDetail": {},
   "callingPermissions": "Calling permissions",
   "@callingPermissions": {},
   "callingAccount": "Calling account",
   "@callingAccount": {},
-  "callingAccountDetails": "Allows OpenOcto to use the native android dialer app.",
+  "callingAccountDetails": "Allows PsyGo to use the native android dialer app.",
   "@callingAccountDetails": {},
   "appearOnTop": "Appear on top",
   "@appearOnTop": {},
-  "appearOnTopDetails": "Allows the app to appear on top (not needed if you already have OpenOcto setup as a calling account)",
+  "appearOnTopDetails": "Allows the app to appear on top (not needed if you already have PsyGo setup as a calling account)",
   "@appearOnTopDetails": {},
-  "otherCallingPermissions": "Microphone, camera and other OpenOcto permissions",
+  "otherCallingPermissions": "Microphone, camera and other PsyGo permissions",
   "@otherCallingPermissions": {},
   "whyIsThisMessageEncrypted": "Why is this message unreadable?",
   "@whyIsThisMessageEncrypted": {},
@@ -3236,7 +3236,7 @@
   "@noticeChatBackupDeviceVerification": {},
   "continueText": "Continue",
   "@continueText": {},
-  "welcomeText": "Hey Hey 👋 This is OpenOcto. You can sign in to any homeserver, which is compatible with https://matrix.org. And then chat with anyone. It's a huge decentralized messaging network!",
+  "welcomeText": "Hey Hey 👋 This is PsyGo. You can sign in to any homeserver, which is compatible with https://matrix.org. And then chat with anyone. It's a huge decentralized messaging network!",
   "@welcomeText": {},
   "blur": "Blur:",
   "@blur": {},
@@ -3297,7 +3297,7 @@
   "@open": {},
   "waitingForServer": "Waiting for server...",
   "@waitingForServer": {},
-  "appIntroduction": "OpenOcto lets you chat with your friends across different messengers. Learn more at https://matrix.org or just tap *Continue*.",
+  "appIntroduction": "PsyGo lets you chat with your friends across different messengers. Learn more at https://matrix.org or just tap *Continue*.",
   "@appIntroduction": {},
   "newChatRequest": "📩 New chat request",
   "@newChatRequest": {},
@@ -3319,7 +3319,7 @@
   "@notificationRuleMaster": {},
   "notificationRuleMasterDescription": "Overrides all other rules and disables all notifications.",
   "@notificationRuleMasterDescription": {},
-  "notificationRuleSuppressNotices": "Suppress OpenOctod Messages",
+  "notificationRuleSuppressNotices": "Suppress PsyGo Messages",
   "@notificationRuleSuppressNotices": {},
   "notificationRuleSuppressNoticesDescription": "Suppresses notifications from automated clients like bots.",
   "@notificationRuleSuppressNoticesDescription": {},
@@ -4027,7 +4027,7 @@
   "@orderInfo": {},
   "orderProduct": "Product",
   "@orderProduct": {},
-  "orderProductCredits": "OpenOcto Credits",
+  "orderProductCredits": "PsyGo Credits",
   "@orderProductCredits": {},
   "orderNumber": "Order No.",
   "@orderNumber": {},
@@ -4209,7 +4209,7 @@
   "@authCheckAgain": {},
   "maintenanceBlockedTitle": "Service temporarily unavailable",
   "@maintenanceBlockedTitle": {},
-  "maintenanceBlockedMessage": "OpenOcto is under maintenance. Access will reopen after the release is complete.",
+  "maintenanceBlockedMessage": "PsyGo is under maintenance. Access will reopen after the release is complete.",
   "@maintenanceBlockedMessage": {},
   "maintenanceBlockedReasonLabel": "Notice",
   "@maintenanceBlockedReasonLabel": {},

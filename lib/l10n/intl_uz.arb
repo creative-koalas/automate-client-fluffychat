@@ -908,7 +908,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "OpenOcto",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1090,7 +1090,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} sizni OpenOcto’ga taklif qildi.\n1. psygoai.com saytiga tashrif buyuring va ilovani oʻrnating.\n2. Roʻyxatdan oʻting yoki tizimga kiring.\n3. Taklif havolasini oching:\n{link}",
+    "inviteText": "{username} sizni PsyGo’ga taklif qildi.\n1. psygoai.com saytiga tashrif buyuring va ilovani oʻrnating.\n2. Roʻyxatdan oʻting yoki tizimga kiring.\n3. Taklif havolasini oching:\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1380,7 +1380,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 OpenOcto yangi xabarlar",
+    "newMessageInPsygo": "💬 PsyGo yangi xabarlar",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -2100,7 +2100,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "OpenOcto",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2454,19 +2454,19 @@
     "@foregroundServiceRunning": {},
     "screenSharingTitle": "Ekranni ulashish",
     "@screenSharingTitle": {},
-    "screenSharingDetail": "Siz ekraningizni OpenOcto’da ulashmoqdasiz",
+    "screenSharingDetail": "Siz ekraningizni PsyGo’da ulashmoqdasiz",
     "@screenSharingDetail": {},
     "callingPermissions": "Qoʻngʻiroq qilish ruxsatlar",
     "@callingPermissions": {},
     "callingAccount": "Qoʻngʻiroq qilishi hisobi",
     "@callingAccount": {},
-    "callingAccountDetails": "OpenOcto’ga mahalliy android terish ilovasidan foydalanishga ruxsat beradi.",
+    "callingAccountDetails": "PsyGo’ga mahalliy android terish ilovasidan foydalanishga ruxsat beradi.",
     "@callingAccountDetails": {},
     "appearOnTop": "Teppada paydo boʻladi",
     "@appearOnTop": {},
-    "appearOnTopDetails": "Ilovaning yuqori qismida koʻrinishiga ruxsat beradi (agar sizda OpenOcto qoʻngʻiroq qiluvchi hisobi sifatida oʻrnatilgan boʻlsa, kerak emas)",
+    "appearOnTopDetails": "Ilovaning yuqori qismida koʻrinishiga ruxsat beradi (agar sizda PsyGo qoʻngʻiroq qiluvchi hisobi sifatida oʻrnatilgan boʻlsa, kerak emas)",
     "@appearOnTopDetails": {},
-    "otherCallingPermissions": "Mikrofon, kamera va boshqa OpenOcto ruxsatnomalari",
+    "otherCallingPermissions": "Mikrofon, kamera va boshqa PsyGo ruxsatnomalari",
     "@otherCallingPermissions": {},
     "whyIsThisMessageEncrypted": "Nima uchun bu xabarni oʻqib boʻlmaydi?",
     "@whyIsThisMessageEncrypted": {},
@@ -2510,7 +2510,7 @@
     "@newSpaceDescription": {},
     "openChat": "Suhbatni ochish",
     "@openChat": {},
-    "indexedDbErrorLong": "Xabarlarni saqlash, afsuski, sukut bo'yicha maxfiy rejimda yoqilmagan.\nIltimos, tashrif buyuring\n- about:config\n- dom.indexedDB.privateBrowsing.enabled ga true berilgan\nAks holda, OpenOcto ni ishga tushirish mumkin emas.",
+    "indexedDbErrorLong": "Xabarlarni saqlash, afsuski, sukut bo'yicha maxfiy rejimda yoqilmagan.\nIltimos, tashrif buyuring\n- about:config\n- dom.indexedDB.privateBrowsing.enabled ga true berilgan\nAks holda, PsyGo ni ishga tushirish mumkin emas.",
     "@indexedDbErrorLong": {},
     "youJoinedTheChat": "Siz suhbatga qoʻshildingiz",
     "@youJoinedTheChat": {},
@@ -2592,11 +2592,11 @@
     "@chatPermissionsDescription": {},
     "noticeChatBackupDeviceVerification": "Eslatma: Barcha qurilmalaringizni suhbat zaxira nusxasiga ulaganingizda, ular avtomatik ravishda tasdiqlanadi.",
     "@noticeChatBackupDeviceVerification": {},
-    "welcomeText": "Hey Hey 👋 Bu OpenOcto. Siz https://matrix.org bilan mos keladigan istalgan uy serveriga kirishingiz mumkin. Va keyin istalgan kishi bilan suhbatlashishingiz mumkin. Bu ulkan markazlashtirilmagan xabar almashish tarmog'i!",
+    "welcomeText": "Hey Hey 👋 Bu PsyGo. Siz https://matrix.org bilan mos keladigan istalgan uy serveriga kirishingiz mumkin. Va keyin istalgan kishi bilan suhbatlashishingiz mumkin. Bu ulkan markazlashtirilmagan xabar almashish tarmog'i!",
     "@welcomeText": {},
     "unableToJoinChat": "Chatga qoʻshilib boʻlmadi. Ehtimol, boshqa tomon suhbatni allaqachon yopib qoʻygan.",
     "@unableToJoinChat": {},
-    "appIntroduction": "OpenOcto sizga turli messenjerlar orqali doʻstlaringiz bilan suhbatlashish imkonini beradi. Batafsil maʼlumotni https://matrix.org saytida oling yoki shunchaki *Davom etish* tugmasini bosing.",
+    "appIntroduction": "PsyGo sizga turli messenjerlar orqali doʻstlaringiz bilan suhbatlashish imkonini beradi. Batafsil maʼlumotni https://matrix.org saytida oling yoki shunchaki *Davom etish* tugmasini bosing.",
     "@appIntroduction": {},
     "newChatRequest": "📩 Yangi suhbat uchun soʻrov",
     "@newChatRequest": {},

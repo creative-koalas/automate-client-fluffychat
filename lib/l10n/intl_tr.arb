@@ -830,7 +830,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "OpenOcto",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -1002,7 +1002,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} sizi OpenOcto'e davet etti.\n1. psygoai.com adresini ziyaret edin ve uygulamayı kurun \n2. Kaydolun veya oturum açın \n3. Davet bağlantısını açın: \n {link}",
+    "inviteText": "{username} sizi PsyGo'e davet etti.\n1. psygoai.com adresini ziyaret edin ve uygulamayı kurun \n2. Kaydolun veya oturum açın \n3. Davet bağlantısını açın: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1174,7 +1174,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 OpenOcto'te yeni mesaj",
+    "newMessageInPsygo": "💬 PsyGo'te yeni mesaj",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1796,7 +1796,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "OpenOcto",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2352,7 +2352,7 @@
     "@dehydrateWarning": {},
     "hydrateTorLong": "TOR'da en son oturumunuzu dışa aktardınız mı? Hızlıca içe aktarın ve sohbete devam edin.",
     "@hydrateTorLong": {},
-    "indexedDbErrorLong": "Mesaj saklama özelliği ne yazık ki öntanımlı olarak gizli modda etkin değildir.\nLütfen\n - about:config sayfasına gidin ve\n - dom.indexedDB.privateBrowsing.enabled seçeneğini true olarak ayarlayın\nAksi takdirde OpenOcto çalıştırılamaz.",
+    "indexedDbErrorLong": "Mesaj saklama özelliği ne yazık ki öntanımlı olarak gizli modda etkin değildir.\nLütfen\n - about:config sayfasına gidin ve\n - dom.indexedDB.privateBrowsing.enabled seçeneğini true olarak ayarlayın\nAksi takdirde PsyGo çalıştırılamaz.",
     "@indexedDbErrorLong": {},
     "user": "Kullanıcı",
     "@user": {},
@@ -2381,7 +2381,7 @@
     "@screenSharingTitle": {},
     "callingPermissions": "Arama izinleri",
     "@callingPermissions": {},
-    "callingAccountDetails": "OpenOcto'in yerel android telefon uygulamasını kullanmasına izin verir.",
+    "callingAccountDetails": "PsyGo'in yerel android telefon uygulamasını kullanmasına izin verir.",
     "@callingAccountDetails": {},
     "appearOnTop": "Üstte görün",
     "@appearOnTop": {},
@@ -2391,19 +2391,19 @@
     "@enterRoom": {},
     "allSpaces": "Tüm alanlar",
     "@allSpaces": {},
-    "otherCallingPermissions": "Mikrofon, kamera ve diğer OpenOcto izinleri",
+    "otherCallingPermissions": "Mikrofon, kamera ve diğer PsyGo izinleri",
     "@otherCallingPermissions": {},
     "foregroundServiceRunning": "Bu bildirim, ön plan hizmeti çalışırken görünür.",
     "@foregroundServiceRunning": {},
     "callingAccount": "Arama hesabı",
     "@callingAccount": {},
-    "appearOnTopDetails": "Uygulamanın üstte görünmesine izin verir (OpenOcto'ı zaten bir arama hesabı olarak ayarladıysanız gerekli değildir)",
+    "appearOnTopDetails": "Uygulamanın üstte görünmesine izin verir (PsyGo'ı zaten bir arama hesabı olarak ayarladıysanız gerekli değildir)",
     "@appearOnTopDetails": {},
     "newGroup": "Yeni grup",
     "@newGroup": {},
     "newSpace": "Yeni alan",
     "@newSpace": {},
-    "screenSharingDetail": "Ekranınızı OpenOcto'te paylaşıyorsunuz",
+    "screenSharingDetail": "Ekranınızı PsyGo'te paylaşıyorsunuz",
     "@screenSharingDetail": {},
     "numChats": "{number} sohbet",
     "@numChats": {
@@ -3176,7 +3176,7 @@
             }
         }
     },
-    "welcomeText": "Hey Hey 👋 Karşınızda OpenOcto. https://matrix.org ile uyumlu herhangi bir homeserver'a giriş yapabilirsiniz. Ve herkesle konuşabilirsiniz. Bu koca bir merkeziyetsiz mesajlaşma ağı!",
+    "welcomeText": "Hey Hey 👋 Karşınızda PsyGo. https://matrix.org ile uyumlu herhangi bir homeserver'a giriş yapabilirsiniz. Ve herkesle konuşabilirsiniz. Bu koca bir merkeziyetsiz mesajlaşma ağı!",
     "@welcomeText": {},
     "setCustomPermissionLevel": "Özel izin düzeyi ayarla",
     "@setCustomPermissionLevel": {},

@@ -29,7 +29,7 @@ cp env.json.example env.json
 2. 编辑 `env.json` 文件，填入实际值：
 ```json
 {
-  "APP_NAME": "OpenOcto",
+  "APP_NAME": "PsyGo",
   "APP_ID_SUFFIX": "",
   "K8S_NAMESPACE": "prod",
   "API_BASE_URL": "https://api.example.com/assistant",

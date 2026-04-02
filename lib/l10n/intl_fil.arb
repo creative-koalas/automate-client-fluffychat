@@ -953,7 +953,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "OpenOcto",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}

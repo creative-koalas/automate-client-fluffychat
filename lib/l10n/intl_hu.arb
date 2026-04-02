@@ -548,7 +548,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "OpenOcto",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -680,7 +680,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} meghívta a OpenOcto-be.\n1. Keresse fel a psygoai.com oldalt, és telepítse az alkalmazást \n2. Regisztráljon vagy jelentkezzen be \n3. Nyissa meg a meghívó linket: \n {link}",
+    "inviteText": "{username} meghívta a PsyGo-be.\n1. Keresse fel a psygoai.com oldalt, és telepítse az alkalmazást \n2. Regisztráljon vagy jelentkezzen be \n3. Nyissa meg a meghívó linket: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -827,7 +827,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Új OpenOcto üzenet",
+    "newMessageInPsygo": "💬 Új PsyGo üzenet",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1204,7 +1204,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "OpenOcto",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2076,7 +2076,7 @@
     "@widgetJitsi": {},
     "messageType": "Üzenet típus",
     "@messageType": {},
-    "indexedDbErrorLong": "Sajnos az üzenet mentés alapból nincs bekapcsolva privát módban.\nKeresse meg a\n - about:config\n - állítsa a dom.indexedDB.privateBrowsing.enabled \"true\"-ra\nMáskülönben nem lehetséges a OpenOcto futtatása.",
+    "indexedDbErrorLong": "Sajnos az üzenet mentés alapból nincs bekapcsolva privát módban.\nKeresse meg a\n - about:config\n - állítsa a dom.indexedDB.privateBrowsing.enabled \"true\"-ra\nMáskülönben nem lehetséges a PsyGo futtatása.",
     "@indexedDbErrorLong": {},
     "oneClientLoggedOut": "Az egyik kliense kijelentkezett",
     "@oneClientLoggedOut": {},
@@ -2151,7 +2151,7 @@
     },
     "youRejectedTheInvitation": "Visszautasította a meghívást",
     "@youRejectedTheInvitation": {},
-    "otherCallingPermissions": "Mikrofon, kamera, és más egyéb OpenOcto engedélyek",
+    "otherCallingPermissions": "Mikrofon, kamera, és más egyéb PsyGo engedélyek",
     "@otherCallingPermissions": {},
     "messagesStyle": "Üzenetek:",
     "@messagesStyle": {},
@@ -2163,7 +2163,7 @@
     "@newSpaceDescription": {},
     "chatDescription": "Csevegés leírás",
     "@chatDescription": {},
-    "callingAccountDetails": "Engedélyezés a OpenOcto számára hogy használja a natív android hívás applikációt.",
+    "callingAccountDetails": "Engedélyezés a PsyGo számára hogy használja a natív android hívás applikációt.",
     "@callingAccountDetails": {},
     "pleaseFollowInstructionsOnWeb": "Kérem, kövesse az instrukciókat az oldalon, és nyomjon a tovább gombra.",
     "@pleaseFollowInstructionsOnWeb": {
@@ -2373,7 +2373,7 @@
             }
         }
     },
-    "appearOnTopDetails": "Engedélyezi az app számára, hogy mindig legfelül jelenjen meg (nem szükséges, ha a OpenOcto hívó fiókként lett beállítva)",
+    "appearOnTopDetails": "Engedélyezi az app számára, hogy mindig legfelül jelenjen meg (nem szükséges, ha a PsyGo hívó fiókként lett beállítva)",
     "@appearOnTopDetails": {},
     "enterRoom": "Belépés a szobába",
     "@enterRoom": {},
@@ -2636,7 +2636,7 @@
     "@unsupportedAndroidVersionLong": {},
     "storeSecurlyOnThisDevice": "Biztonságos tárolás az eszközön",
     "@storeSecurlyOnThisDevice": {},
-    "screenSharingDetail": "Megosztja a képernyőjét a OpenOcto-ben",
+    "screenSharingDetail": "Megosztja a képernyőjét a PsyGo-ben",
     "@screenSharingDetail": {},
     "placeCall": "Tér hívás",
     "@placeCall": {},
@@ -3226,7 +3226,7 @@
     "@appWantsToUseForLoginDescription": {},
     "waitingForServer": "Várakozás a szerverre...",
     "@waitingForServer": {},
-    "appIntroduction": "A OpenOcto segítségével cseveghet barátaival, akár más üzenetküldő alkalmazásokon keresztül is. Tudjon meg erről többet a https://matrix.org oldalon, vagy nyomjon a \"Folytatás\" gombra.",
+    "appIntroduction": "A PsyGo segítségével cseveghet barátaival, akár más üzenetküldő alkalmazásokon keresztül is. Tudjon meg erről többet a https://matrix.org oldalon, vagy nyomjon a \"Folytatás\" gombra.",
     "@appIntroduction": {},
     "open": "Megnyitás",
     "@open": {},
@@ -3314,7 +3314,7 @@
     "@continueText": {},
     "opacity": "Átlátszóság:",
     "@opacity": {},
-    "welcomeText": "Üdv 👋 Ez a OpenOcto. Bejelentkezhet bármely matrix-kiszolgálóhoz amely kompatibilis a https://matrix.org címmel. Ezután cseveghet bárkivel. Így képez egy óriási decentralizált üzenetküldő hálózatot!",
+    "welcomeText": "Üdv 👋 Ez a PsyGo. Bejelentkezhet bármely matrix-kiszolgálóhoz amely kompatibilis a https://matrix.org címmel. Ezután cseveghet bárkivel. Így képez egy óriási decentralizált üzenetküldő hálózatot!",
     "@welcomeText": {},
     "addLink": "Hivatkozás hozzáadása",
     "@addLink": {},

@@ -7,7 +7,7 @@
 #include "utils.h"
 
 namespace {
-constexpr wchar_t kAppDisplayName[] = L"OpenOcto";
+constexpr wchar_t kAppDisplayName[] = L"PsyGo";
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,

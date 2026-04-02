@@ -624,7 +624,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "automate": "OpenOcto",
+  "automate": "PsyGo",
   "@automate": {
     "type": "String",
     "placeholders": {}
@@ -766,7 +766,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} t'ha convidat a OpenOcto.\n1. Visita psygoai.com i instaŀla l'app\n2. Registra't o inicia sessió\n3. Obre l'enllaç d'invitació:\n{link}",
+  "inviteText": "{username} t'ha convidat a PsyGo.\n1. Visita psygoai.com i instaŀla l'app\n2. Registra't o inicia sessió\n3. Obre l'enllaç d'invitació:\n{link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {
@@ -928,7 +928,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "newMessageInPsygo": "💬 Missatge nou al OpenOcto",
+  "newMessageInPsygo": "💬 Missatge nou al PsyGo",
   "@newMessageInPsygo": {
     "type": "String",
     "placeholders": {}
@@ -953,7 +953,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "noGoogleServicesWarning": "Sembla que no teniu els Serveis de Google al telèfon. Això és una bona decisió respecte a la vostra privadesa! Per a rebre notificacions automàtiques del OpenOcto, us recomanem instaŀlar ntfy. Amb ntfy o qualsevol altre proveïdor de Unified Push, pots rebre notificacions de forma segura i lliure. Pots instaŀlar ntfy des de la PlayStore o des de F-Droid.",
+  "noGoogleServicesWarning": "Sembla que no teniu els Serveis de Google al telèfon. Això és una bona decisió respecte a la vostra privadesa! Per a rebre notificacions automàtiques del PsyGo, us recomanem instaŀlar ntfy. Amb ntfy o qualsevol altre proveïdor de Unified Push, pots rebre notificacions de forma segura i lliure. Pots instaŀlar ntfy des de la PlayStore o des de F-Droid.",
   "@noGoogleServicesWarning": {
     "type": "String",
     "placeholders": {}
@@ -1393,7 +1393,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "title": "OpenOcto",
+  "title": "PsyGo",
   "@title": {
     "description": "Title for the application",
     "type": "String",
@@ -2065,7 +2065,7 @@
   "@widgetJitsi": {},
   "messageType": "Tipus de missatge",
   "@messageType": {},
-  "indexedDbErrorLong": "L'emmagatzematge de missatges no està disponible per defecte en el mode privat.\nVisita\n - about:config\n - posa a true l'opció dom.indexedDB.privateBrowsing.enabled\nSi no ho fas, no podràs fer servir OpenOcto en mode privat.",
+  "indexedDbErrorLong": "L'emmagatzematge de missatges no està disponible per defecte en el mode privat.\nVisita\n - about:config\n - posa a true l'opció dom.indexedDB.privateBrowsing.enabled\nSi no ho fas, no podràs fer servir PsyGo en mode privat.",
   "@indexedDbErrorLong": {},
   "oneClientLoggedOut": "Una de les teves aplicacions ha tancat la sessió",
   "@oneClientLoggedOut": {},
@@ -2137,7 +2137,7 @@
   "@unbanUserDescription": {},
   "youRejectedTheInvitation": "Has rebutjat la invitació",
   "@youRejectedTheInvitation": {},
-  "otherCallingPermissions": "Micròfon, càmera i altres permisos del OpenOcto",
+  "otherCallingPermissions": "Micròfon, càmera i altres permisos del PsyGo",
   "@otherCallingPermissions": {},
   "messagesStyle": "Missatges:",
   "@messagesStyle": {},
@@ -2149,7 +2149,7 @@
   "@newSpaceDescription": {},
   "chatDescription": "Descripció del xat",
   "@chatDescription": {},
-  "callingAccountDetails": "Permet al OpenOcto de fer servir l'app de trucades nativa de l'Android.",
+  "callingAccountDetails": "Permet al PsyGo de fer servir l'app de trucades nativa de l'Android.",
   "@callingAccountDetails": {},
   "editRoomAliases": "Canvia els àlies de la sala",
   "@editRoomAliases": {
@@ -2332,7 +2332,7 @@
       }
     }
   },
-  "appearOnTopDetails": "Permet a l'app que aparegui sobre d'altres apps. No cal si ja has afegit OpenOcto com a compte de trucades",
+  "appearOnTopDetails": "Permet a l'app que aparegui sobre d'altres apps. No cal si ja has afegit PsyGo com a compte de trucades",
   "@appearOnTopDetails": {},
   "enterRoom": "Entra a la sala",
   "@enterRoom": {},
@@ -2635,7 +2635,7 @@
   "@unsupportedAndroidVersionLong": {},
   "storeSecurlyOnThisDevice": "Desa de forma segura en aquest dispositiu",
   "@storeSecurlyOnThisDevice": {},
-  "screenSharingDetail": "Estàs compartint la teva pantalla a OpenOcto",
+  "screenSharingDetail": "Estàs compartint la teva pantalla a PsyGo",
   "@screenSharingDetail": {},
   "placeCall": "Truca",
   "@placeCall": {},
@@ -3134,7 +3134,7 @@
   },
   "oneOfYourDevicesIsNotVerified": "Un dels teus dispositius no està verificat",
   "@oneOfYourDevicesIsNotVerified": {},
-  "welcomeText": "Hola hola! 👋 Això és OpenOcto. Pots iniciar sessió en qualsevol servidor compatible amb https://matrix.org. I llavors xatejar amb qualsevol. És una xarxa enorme de missatgeria descentralitzada !",
+  "welcomeText": "Hola hola! 👋 Això és PsyGo. Pots iniciar sessió en qualsevol servidor compatible amb https://matrix.org. I llavors xatejar amb qualsevol. És una xarxa enorme de missatgeria descentralitzada !",
   "@welcomeText": {},
   "blur": "Difumina:",
   "@blur": {},
@@ -3316,7 +3316,7 @@
   "@appWantsToUseForLoginDescription": {},
   "open": "Obre",
   "@open": {},
-  "appIntroduction": "El OpenOcto et permet xatejar amb amiguis entre diverses aplicacions. Llegeix-ne més a https://matrix.org o pica \"Continua\".",
+  "appIntroduction": "El PsyGo et permet xatejar amb amiguis entre diverses aplicacions. Llegeix-ne més a https://matrix.org o pica \"Continua\".",
   "@appIntroduction": {},
   "waitingForServer": "S'està esperant el servidor...",
   "@waitingForServer": {},

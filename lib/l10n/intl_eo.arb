@@ -815,7 +815,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "OpenOcto",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -987,7 +987,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} invitis vin al OpenOcto. \n1. Instalu la aplikaĵon OpenOcto: https://psygoai.com \n2. Registriĝu aŭ salutu \n3. Malfermu la invitan ligilon: {link}",
+    "inviteText": "{username} invitis vin al PsyGo. \n1. Instalu la aplikaĵon PsyGo: https://psygoai.com \n2. Registriĝu aŭ salutu \n3. Malfermu la invitan ligilon: {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1149,7 +1149,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "Nova mesaĝo en OpenOcto",
+    "newMessageInPsygo": "Nova mesaĝo en PsyGo",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1184,7 +1184,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "noGoogleServicesWarning": "Ŝajnas, ke via telefono ne havas servojn de Google. Tio estas bona decido por via privateco! Por ricevadi pasivajn sciigojn en OpenOcto, ni rekomendas, ke vi uzu la https://microg.org/ aŭ https://unifiedpush.org/.",
+    "noGoogleServicesWarning": "Ŝajnas, ke via telefono ne havas servojn de Google. Tio estas bona decido por via privateco! Por ricevadi pasivajn sciigojn en PsyGo, ni rekomendas, ke vi uzu la https://microg.org/ aŭ https://unifiedpush.org/.",
     "@noGoogleServicesWarning": {
         "type": "String",
         "placeholders": {}
@@ -1750,7 +1750,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "OpenOcto",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",

@@ -1,6 +1,6 @@
 ; App Setup (Admin + Program Files + Chinese + VC++ runtime)
 
-#define MyAppName "OpenOcto"
+#define MyAppName "PsyGo"
 #ifndef MyAppVersion
   #define MyAppVersion "1.0"
 #endif
