@@ -57,6 +57,128 @@ class InputBar extends StatelessWidget {
     super.key,
   });
 
+  int _resolvedHighlightedSuggestionIndex({
+    required int? highlightedIndex,
+    required int suggestionsLength,
+  }) {
+    if (suggestionsLength <= 0) {
+      return -1;
+    }
+    if (highlightedIndex != null &&
+        highlightedIndex >= 0 &&
+        highlightedIndex < suggestionsLength) {
+      return highlightedIndex;
+    }
+    return 0;
+  }
+
+  TextEditingValue _suggestionTextEditingValue(
+    TextEditingValue value,
+    Map<String, String?> suggestion,
+  ) {
+    final replaceText = value.text.substring(0, value.selection.baseOffset);
+    var startText = '';
+    final afterText = replaceText == value.text
+        ? ''
+        : value.text.substring(value.selection.baseOffset + 1);
+    var insertText = '';
+    if (suggestion['type'] == 'command') {
+      insertText = '${suggestion['name']!} ';
+      startText = replaceText.replaceAllMapped(
+        RegExp(r'^(/\w*)$'),
+        (Match m) => '/$insertText',
+      );
+    }
+    if (suggestion['type'] == 'emoji') {
+      insertText = '${suggestion['emoji']!} ';
+      startText = replaceText.replaceAllMapped(
+        suggestion['current_word']!,
+        (Match m) => insertText,
+      );
+    }
+    if (suggestion['type'] == 'emote') {
+      var isUnique = true;
+      final insertEmote = suggestion['name'];
+      final insertPack = suggestion['pack'];
+      final emotePacks = room.getImagePacks(ImagePackUsage.emoticon);
+      for (final pack in emotePacks.entries) {
+        if (pack.key == insertPack) {
+          continue;
+        }
+        for (final emote in pack.value.images.entries) {
+          if (emote.key == insertEmote) {
+            isUnique = false;
+            break;
+          }
+        }
+        if (!isUnique) {
+          break;
+        }
+      }
+      insertText = ':${isUnique ? '' : '${insertPack!}~'}$insertEmote: ';
+      startText = replaceText.replaceAllMapped(
+        RegExp(r'(\s|^)(:(?:[-\w]+~)?[-\w]+)$'),
+        (Match m) => '${m[1]}$insertText',
+      );
+    }
+    if (suggestion['type'] == 'user') {
+      insertText = '${suggestion['mention']!} ';
+      startText = replaceText.replaceAllMapped(
+        RegExp(r'(\s|^)(@\S*)$'),
+        (Match m) => '${m[1]}$insertText',
+      );
+    }
+    if (suggestion['type'] == 'room') {
+      insertText = '${suggestion['mxid']!} ';
+      startText = replaceText.replaceAllMapped(
+        RegExp(r'(\s|^)(#[-\w]*)$'),
+        (Match m) => '${m[1]}$insertText',
+      );
+    }
+
+    return value.copyWith(
+      text: startText + afterText,
+      selection: TextSelection.collapsed(offset: startText.length),
+      composing: TextRange.empty,
+    );
+  }
+
+  bool _commitHighlightedSuggestion({
+    required BuildContext context,
+    required TextEditingController textController,
+    required ValueNotifier<int?> highlightedSuggestionIndex,
+  }) {
+    final suggestions = getSuggestions(textController.value, context);
+    if (suggestions.isEmpty) {
+      highlightedSuggestionIndex.value = null;
+      return false;
+    }
+
+    final resolvedIndex = _resolvedHighlightedSuggestionIndex(
+      highlightedIndex: highlightedSuggestionIndex.value,
+      suggestionsLength: suggestions.length,
+    );
+    if (resolvedIndex < 0) {
+      highlightedSuggestionIndex.value = null;
+      return false;
+    }
+
+    final nextValue = _suggestionTextEditingValue(
+      textController.value,
+      suggestions[resolvedIndex],
+    );
+    if (nextValue.text == textController.text &&
+        nextValue.selection == textController.selection) {
+      highlightedSuggestionIndex.value = null;
+      return false;
+    }
+
+    textController.value = nextValue;
+    highlightedSuggestionIndex.value = null;
+    onChanged?.call(nextValue.text);
+    return true;
+  }
+
   List<Map<String, String?>> getSuggestions(
     TextEditingValue text,
     BuildContext context,
@@ -491,70 +613,7 @@ class InputBar extends StatelessWidget {
   }
 
   String insertSuggestion(Map<String, String?> suggestion) {
-    final replaceText = controller!.text.substring(
-      0,
-      controller!.selection.baseOffset,
-    );
-    var startText = '';
-    final afterText = replaceText == controller!.text
-        ? ''
-        : controller!.text.substring(controller!.selection.baseOffset + 1);
-    var insertText = '';
-    if (suggestion['type'] == 'command') {
-      insertText = '${suggestion['name']!} ';
-      startText = replaceText.replaceAllMapped(
-        RegExp(r'^(/\w*)$'),
-        (Match m) => '/$insertText',
-      );
-    }
-    if (suggestion['type'] == 'emoji') {
-      insertText = '${suggestion['emoji']!} ';
-      startText = replaceText.replaceAllMapped(
-        suggestion['current_word']!,
-        (Match m) => insertText,
-      );
-    }
-    if (suggestion['type'] == 'emote') {
-      var isUnique = true;
-      final insertEmote = suggestion['name'];
-      final insertPack = suggestion['pack'];
-      final emotePacks = room.getImagePacks(ImagePackUsage.emoticon);
-      for (final pack in emotePacks.entries) {
-        if (pack.key == insertPack) {
-          continue;
-        }
-        for (final emote in pack.value.images.entries) {
-          if (emote.key == insertEmote) {
-            isUnique = false;
-            break;
-          }
-        }
-        if (!isUnique) {
-          break;
-        }
-      }
-      insertText = ':${isUnique ? '' : '${insertPack!}~'}$insertEmote: ';
-      startText = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(:(?:[-\w]+~)?[-\w]+)$'),
-        (Match m) => '${m[1]}$insertText',
-      );
-    }
-    if (suggestion['type'] == 'user') {
-      insertText = '${suggestion['mention']!} ';
-      startText = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@\S*)$'),
-        (Match m) => '${m[1]}$insertText',
-      );
-    }
-    if (suggestion['type'] == 'room') {
-      insertText = '${suggestion['mxid']!} ';
-      startText = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(#[-\w]*)$'),
-        (Match m) => '${m[1]}$insertText',
-      );
-    }
-
-    return startText + afterText;
+    return _suggestionTextEditingValue(controller!.value, suggestion).text;
   }
 
   String _normalizedEveryoneMentionLabel(String label) {
@@ -634,6 +693,7 @@ class InputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final overlayLayout = _mentionAutocompleteLayout(context);
+    final highlightedSuggestionIndex = ValueNotifier<int?>(null);
     return Autocomplete<Map<String, String?>>(
       focusNode: focusNode,
       textEditingController: controller,
@@ -691,12 +751,12 @@ class InputBar extends StatelessWidget {
           ],
           onSubmitted: (text) {
             if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
-              final hasSuggestions = getSuggestions(
-                textController.value,
-                context,
-              ).isNotEmpty;
-              if (hasSuggestions) {
-                onFieldSubmitted();
+              final committedSuggestion = _commitHighlightedSuggestion(
+                context: context,
+                textController: textController,
+                highlightedSuggestionIndex: highlightedSuggestionIndex,
+              );
+              if (committedSuggestion) {
                 return;
               }
             }
@@ -727,12 +787,12 @@ class InputBar extends StatelessWidget {
                       !HardwareKeyboard.instance.isAltPressed &&
                       !HardwareKeyboard.instance.isMetaPressed;
               if (event is KeyDownEvent && isPlainEnter) {
-                final hasSuggestions = getSuggestions(
-                  textController.value,
-                  context,
-                ).isNotEmpty;
-                if (hasSuggestions) {
-                  onFieldSubmitted();
+                final committedSuggestion = _commitHighlightedSuggestion(
+                  context: context,
+                  textController: textController,
+                  highlightedSuggestionIndex: highlightedSuggestionIndex,
+                );
+                if (committedSuggestion) {
                   return KeyEventResult.handled;
                 }
 
@@ -814,6 +874,9 @@ class InputBar extends StatelessWidget {
                             suggestions: suggestions,
                             onSelected: onSelected,
                             showSeparators: overlayLayout.mobileSheetStyle,
+                            onHighlightedIndexChanged: (index) {
+                              highlightedSuggestionIndex.value = index;
+                            },
                             suggestionBuilder: (
                               context,
                               suggestion,
@@ -849,6 +912,7 @@ class _AutocompleteOptionsList extends StatefulWidget {
   final List<Map<String, String?>> suggestions;
   final AutocompleteOnSelected<Map<String, String?>> onSelected;
   final bool showSeparators;
+  final ValueChanged<int?>? onHighlightedIndexChanged;
   final Widget Function(
     BuildContext context,
     Map<String, String?> suggestion,
@@ -861,6 +925,7 @@ class _AutocompleteOptionsList extends StatefulWidget {
     required this.suggestions,
     required this.onSelected,
     required this.showSeparators,
+    this.onHighlightedIndexChanged,
     required this.suggestionBuilder,
   });
 
@@ -887,6 +952,7 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
     if (_suggestionsSignature(oldWidget.suggestions) !=
         _suggestionsSignature(widget.suggestions)) {
       _lastAutoScrolledHighlightedIndex = null;
+      widget.onHighlightedIndexChanged?.call(null);
     }
   }
 
@@ -948,6 +1014,7 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
                 AutocompleteHighlightedOption.of(itemContext) == index;
             if (highlighted && _lastAutoScrolledHighlightedIndex != index) {
               _lastAutoScrolledHighlightedIndex = index;
+              widget.onHighlightedIndexChanged?.call(index);
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!itemContext.mounted) return;
                 _scrollHighlightedIntoView(itemContext);
