@@ -1,15 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
-
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 
 import 'package:psygo/backend/backend.dart';
-import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/config/routes.dart';
 import 'package:psygo/config/themes.dart';
@@ -109,7 +106,7 @@ class PsygoApp extends StatelessWidget {
   }
 }
 
-/// Professional AuthGate with token refresh and direct one-click login
+/// Professional AuthGate with token refresh and manual credential login
 ///
 /// Flow:
 /// 1. App launch -> check stored token
@@ -135,7 +132,6 @@ class _AutomateAuthGate extends StatefulWidget {
 enum _AuthState {
   checking, // Checking stored token
   refreshing, // Refreshing expired token
-  authenticating, // Performing one-click login
   authenticated, // Successfully authenticated
   needsLogin, // Needs login, show login page
   error, // Error occurred
@@ -154,29 +150,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   static const int _maxResumeRetries = 3; // Max retries on resume
   bool _authCheckInProgress = false;
   bool _authCheckQueued = false;
-  static const Set<String> _oneClickFallbackCodes = {
-    '600002', // Auth page failed to present
-    '600004', // Operator config fetch failed
-    '600005', // Device not secure
-    '600007', // No SIM detected
-    '600008', // Cellular network not available
-    '600009', // Unknown operator
-    '600010', // Unknown error
-    '600011', // Get token failed
-    '600012', // Pre-login failed
-    '600013', // Operator maintenance (unavailable)
-    '600014', // Operator maintenance (rate limit)
-    '600015', // Token request timeout
-    '600017', // App info decode failed
-    '600021', // Carrier changed
-    '600025', // Environment check failed
-    '600026', // Pre-login called while auth page open
-  };
   bool _blockedByForceUpdate = false; // Track if blocked by force update
   bool _updateCheckInProgress = false; // 防止并发触发重复检查
-  bool _isLoggingOut = false; // 防止登出过程中重复触发一键登录
-  bool _pendingOneClickLogin = false; // 延迟触发一键登录（等待 app 回到前台）
-  bool _forceManualLogin = false; // 一键登录不可用时，直接进入手动登录入口
+  bool _isLoggingOut = false;
   bool _hasResolvedPostLoginDestination = false;
   bool _isResolvingPostLoginDestination = false;
   bool _isAutoResettingFromError = false;
@@ -191,13 +167,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
-
-  // Aliyun SDK secret key
-  // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
-  static const _secretKey = String.fromEnvironment(
-    'ALIYUN_SECRET_KEY',
-    defaultValue: '',
-  );
 
   @override
   void dispose() {
@@ -220,10 +189,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     final auth = context.read<PsygoAuthState>();
     debugPrint('[AuthGate] Auth state changed: isLoggedIn=${auth.isLoggedIn}');
-
-    if (auth.isLoggedIn && _forceManualLogin) {
-      _forceManualLogin = false;
-    }
 
     // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
@@ -357,7 +322,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 当应用从后台恢复时
     if (state == AppLifecycleState.resumed) {
       debugPrint(
-          '[AuthGate] App resumed from background, state=$_state, pendingOneClickLogin=$_pendingOneClickLogin, hasTriedAuth=$_hasTriedAuth');
+          '[AuthGate] App resumed from background, state=$_state, hasTriedAuth=$_hasTriedAuth');
 
       // 应用恢复时检查更新（先检查 App 更新，再检查协议）
       AppUpdateService.onAppResumed();
@@ -368,40 +333,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // 协议检查（仅已登录用户）
       if (_state == _AuthState.authenticated) {
         AgreementCheckService.onAppResumed();
-      }
-
-      if (_forceManualLogin) {
-        debugPrint(
-            '[AuthGate] Manual login mode active, skipping auto one-click retry');
-        return;
-      }
-
-      // 如果有延迟的一键登录请求，现在执行
-      if (_pendingOneClickLogin) {
-        debugPrint(
-            '[AuthGate] Executing pending one-click login after app resumed');
-        _pendingOneClickLogin = false;
-        // 稍微延迟一下确保 app 完全恢复
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) _checkAuthStateSafe();
-        });
-        return;
-      }
-
-      // 如果在 checking 状态且已尝试过登录，说明一键登录授权页可能被系统关闭了
-      // 需要重新触发登录流程
-      if (_state == _AuthState.checking &&
-          _hasTriedAuth &&
-          PlatformInfos.isMobile) {
-        debugPrint(
-            '[AuthGate] Auth page might have been dismissed, retrying one-click login');
-        setState(() {
-          _hasTriedAuth = false;
-        });
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) _checkAuthStateSafe();
-        });
-        return;
       }
 
       // iOS FIX: Handle permission approval during auth check
@@ -431,11 +362,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Future<void> _checkAuthStateSafe() async {
-    if (_forceManualLogin) {
-      debugPrint('[AuthGate] Manual login mode active, skipping auth check');
-      return;
-    }
-
     if (_authCheckInProgress) {
       _authCheckQueued = true;
       debugPrint(
@@ -480,11 +406,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Future<void> _checkAuthState() async {
-    if (_forceManualLogin) {
-      debugPrint('[AuthGate] Manual login mode active, skipping auth check');
-      return;
-    }
-
     final auth = context.read<PsygoAuthState>();
     final api = context.read<PsygoApiClient>();
 
@@ -504,16 +425,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // iOS CRITICAL FIX: Handle retry after stale credentials detected
     if (_needsRetryAfterStaleCredentials) {
       debugPrint(
-          '[AuthGate] Retrying after stale credentials, directly triggering one-click login...');
+          '[AuthGate] Retrying after stale credentials, redirecting to manual login...');
       _needsRetryAfterStaleCredentials = false;
-
-      // On mobile only, directly trigger one-click login
-      if (PlatformInfos.isMobile && !_hasTriedAuth) {
-        _hasTriedAuth = true;
-        await _performDirectLogin();
-      } else {
-        _redirectToLoginPage();
-      }
+      _redirectToLoginPage();
       return;
     }
 
@@ -622,140 +536,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Could not access Matrix: $e');
     }
 
-    // On web or desktop, redirect to login page (one-click login SDK not supported)
-    // One-click login SDK only works on mobile (Android/iOS)
-    if (kIsWeb || PlatformInfos.isDesktop) {
-      _redirectToLoginPage();
-      return;
-    }
-
-    // On mobile only, directly trigger one-click login
-    if (!_hasTriedAuth) {
-      _hasTriedAuth = true;
-      await _performDirectLogin();
-    } else {
-      // Already tried once, show login page for manual retry
-      _redirectToLoginPage();
-    }
-  }
-
-  Future<void> _performDirectLogin() async {
-    // 不设置 authenticating 状态，避免显示"正在登录"
-    // SDK 授权页会直接弹出覆盖当前界面
-    _errorMessage = null;
-
-    try {
-      debugPrint('[AuthGate] Starting one-click login...');
-
-      // 先关闭可能存在的授权页，避免 "授权页已存在" 错误
-      await OneClickLoginService.quitLoginPage();
-
-      // Perform the complete one-click login flow
-      final loginToken = await OneClickLoginService.performOneClickLogin(
-        secretKey: _secretKey,
-        timeout: 10000,
-      );
-
-      debugPrint('[AuthGate] Got token from Aliyun, calling backend...');
-
-      final api = context.read<PsygoApiClient>();
-      final authResponse = await api.oneClickLogin(loginToken);
-      debugPrint(
-          '[AuthGate] Backend oneClickLogin success, userId=${authResponse.userId}');
-
-      if (!mounted) return;
-
-      // CRITICAL iOS FIX: Change state BEFORE closing auth page to prevent auto-retry
-      setState(() => _state = _AuthState.authenticating);
-
-      await OneClickLoginService.quitLoginPage();
-      await _loginMatrixAndProceed();
-    } on SwitchLoginMethodException {
-      // User clicked "其他方式登录" button, redirect to login page
-      debugPrint('[AuthGate] User chose to switch login method');
-      // SDK 已自动关闭授权页，无需手动关闭
-      _forceManualLogin = true;
-      setState(() => _state = _AuthState.needsLogin);
-      _redirectToManualLoginPage();
-      return;
-    } catch (e) {
-      debugPrint('[AuthGate] One-click login error: $e');
-      // 出错时关闭授权页
-      await OneClickLoginService.quitLoginPage();
-
-      // Check if user cancelled
-      final errorStr = e.toString();
-      if (PlatformInfos.isMobile) {
-        debugPrint(
-            '[AuthGate] One-click login failed on mobile, redirecting to manual login');
-        _forceManualLogin = true;
-        setState(() => _state = _AuthState.needsLogin);
-        _redirectToManualLoginPage();
-        return;
-      }
-
-      if (_shouldFallbackToManualLogin(errorStr)) {
-        debugPrint(
-            '[AuthGate] One-click login unavailable, redirecting to manual login');
-        _forceManualLogin = true;
-        setState(() => _state = _AuthState.needsLogin);
-        _redirectToManualLoginPage();
-        return;
-      }
-
-      if (errorStr.contains('USER_CANCEL') || errorStr.contains('用户取消')) {
-        _redirectToLoginPage();
-        return;
-      }
-
-      // If we still have retry attempts, stay in checking state (don't show error)
-      // Will be automatically retried when app resumes
-      if (_resumeRetryCount < _maxResumeRetries) {
-        debugPrint(
-            '[AuthGate] Login error but retries available ($_resumeRetryCount/$_maxResumeRetries), staying in checking state');
-        // Keep state as checking, will be retried
-        return;
-      }
-
-      // No more retries, show error
-      setState(() {
-        _state = _AuthState.error;
-        _errorMessage = _parseErrorMessage(errorStr);
-      });
-    }
-  }
-
-  bool _shouldFallbackToManualLogin(String errorStr) {
-    if (errorStr.contains('预取号失败')) {
-      return true;
-    }
-    if (errorStr.contains('蜂窝网络未开启') ||
-        errorStr.contains('未检测到sim卡') ||
-        errorStr.contains('未检测到SIM卡') ||
-        errorStr.contains('网络环境不支持')) {
-      return true;
-    }
-    final codeMatch = RegExp(r'code:\s*(\d{6})').firstMatch(errorStr);
-    final code = codeMatch?.group(1);
-    return code != null && _oneClickFallbackCodes.contains(code);
-  }
-
-  String _parseErrorMessage(String error) {
-    final l10n = L10n.of(context);
-    // 网络权限被拒绝的常见错误
-    if (error.contains('网络不可用') ||
-        error.contains('Network is unreachable') ||
-        error.contains('网络连接失败') ||
-        error.contains('Connection failed')) {
-      return l10n.authOneClickNetworkErrorHint;
-    }
-    if (error.contains('预取号失败')) {
-      return l10n.authOneClickUnsupportedNetworkHint;
-    }
-    if (error.contains('SDK初始化失败')) {
-      return l10n.authOneClickInitFailedHint;
-    }
-    return l10n.authLoginFailedRetryLater;
+    _redirectToLoginPage();
   }
 
   Future<void> _ensurePostLoginDestination() async {
@@ -1010,14 +791,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   static const int _maxRedirectRetries = 5;
 
   void _redirectToLoginPage() {
-    // Mobile only: Stay in AuthGate, don't redirect to /login-signup
-    // AuthGate will handle one-click login automatically
-    if (PlatformInfos.isMobile) {
-      setState(() => _state = _AuthState.error);
-      return;
-    }
-
-    // Web and Desktop: redirect to /login-signup for manual login options
     _hasResolvedPostLoginDestination = false;
     _isResolvingPostLoginDestination = false;
     setState(() => _state = _AuthState.needsLogin);
@@ -1046,16 +819,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       if (router.routerDelegate.currentConfiguration.fullPath !=
           '/login-signup') {
         router.go('/login-signup');
-      }
-    });
-  }
-
-  void _redirectToManualLoginPage() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (PsygoApp.router.routerDelegate.currentConfiguration.fullPath !=
-          '/login-signup') {
-        PsygoApp.router.go('/login-signup');
       }
     });
   }
@@ -1230,27 +993,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _isResolvingPostLoginDestination = false;
     setState(() {
       _state = _AuthState.checking;
-      _hasTriedAuth = false; // 允许一键登录重新触发
+      _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
     });
 
-    // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
-    if (PlatformInfos.isMobile) {
-      debugPrint(
-          '[AuthGate] Force logout complete, setting pending one-click login flag');
-      _pendingOneClickLogin = true;
-      // 如果 app 已经在前台，立即触发
-      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-        debugPrint(
-            '[AuthGate] App is in foreground, triggering one-click login immediately');
-        _pendingOneClickLogin = false;
-        await _checkAuthStateSafe();
-      }
-    } else {
-      debugPrint('[AuthGate] Force logout complete, redirecting to login page');
-      PsygoApp.router.go('/login-signup');
-    }
+    debugPrint('[AuthGate] Force logout complete, redirecting to login page');
+    PsygoApp.router.go('/login-signup');
 
     _isLoggingOut = false;
   }
@@ -1320,33 +1069,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _hasResolvedPostLoginDestination = false;
     _isResolvingPostLoginDestination = false;
     setState(() {
-      // PC端/Web端：设置为 needsLogin，显示登录页面
-      // 移动端：设置为 checking，等待一键登录
-      _state =
-          PlatformInfos.isMobile ? _AuthState.checking : _AuthState.needsLogin;
+      _state = _AuthState.needsLogin;
       _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
     });
 
-    // 移动端：设置延迟登录标志，等待 app 回到前台后再触发一键登录
-    // 这是因为在后台触发一键登录可能导致授权页无法正确显示
-    // PC端/Web端：跳转到登录页
-    if (PlatformInfos.isMobile) {
-      debugPrint(
-          '[AuthGate] Auth state cleared, setting pending one-click login flag');
-      _pendingOneClickLogin = true;
-      // 如果 app 已经在前台，立即触发
-      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-        debugPrint(
-            '[AuthGate] App is in foreground, triggering one-click login immediately');
-        _pendingOneClickLogin = false;
-        await _checkAuthStateSafe();
-      }
-    } else {
-      debugPrint('[AuthGate] Auth state cleared, redirecting to login page');
-      PsygoApp.router.go('/login-signup');
-    }
+    debugPrint('[AuthGate] Auth state cleared, redirecting to login page');
+    PsygoApp.router.go('/login-signup');
 
     _isLoggingOut = false;
   }
@@ -1366,9 +1096,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       case _AuthState.refreshing:
         return _buildLoadingScreen(l10n.authValidatingLoginState);
 
-      case _AuthState.authenticating:
-        return _buildLoadingScreen(l10n.authSigningIn);
-
       case _AuthState.error:
         return _buildErrorScreen();
 
@@ -1377,15 +1104,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         if (_blockedByForceUpdate) {
           return _buildForceUpdateBlockedScreen();
         }
-        // 移动端：需要登录时显示加载界面，等待一键登录 SDK 弹出
-        // 这样可以避免短暂显示聊天列表后再弹出登录页
-        if (PlatformInfos.isMobile) {
-          if (_forceManualLogin) {
-            return widget.child ?? const SizedBox.shrink();
-          }
-          return _buildLoadingScreen(l10n.authPreparingLogin);
-        }
-        // PC端/Web端：显示登录页面
         return widget.child ?? const SizedBox.shrink();
 
       case _AuthState.authenticated:

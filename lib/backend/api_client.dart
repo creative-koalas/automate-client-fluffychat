@@ -107,8 +107,7 @@ class PsygoApiClient {
 
     MaintenanceStatusSnapshot? status;
     if (_isMaintenanceStatusPath(response.requestOptions.path)) {
-      status =
-          MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
+      status = MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
     } else if (response.statusCode == 503) {
       status = MaintenanceStatusSnapshot.tryParseClosedErrorPayload(
         response.data,
@@ -142,8 +141,7 @@ class PsygoApiClient {
       '${PsygoConfig.baseUrl}$path',
     );
 
-    final status =
-        MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
+    final status = MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
     if (res.statusCode != 200 || status == null) {
       throw AutomateBackendException(
         'Failed to get maintenance status',
@@ -304,6 +302,26 @@ class PsygoApiClient {
       data: {
         'phone': phone,
         'code': code,
+        'auth_device_id': authDeviceID,
+        'auth_device_platform': authDevicePlatform,
+      },
+    );
+    return _handleAuthResponse(res, '登录失败');
+  }
+
+  /// 账号密码登录
+  Future<AuthResponse> accountPasswordLogin(
+    String account,
+    String password,
+  ) async {
+    final authDeviceID = await _getOrCreateAuthDeviceId();
+    final authDevicePlatform = _authDevicePlatform();
+    final normalizedAccount = account.trim();
+    final res = await _dio.post<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/v1/auth/login',
+      data: {
+        'account': normalizedAccount,
+        'password': password,
         'auth_device_id': authDeviceID,
         'auth_device_platform': authDevicePlatform,
       },
