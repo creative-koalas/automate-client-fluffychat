@@ -38,6 +38,7 @@ import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
+import 'package:psygo/services/employee_work_template_service.dart';
 import 'package:psygo/services/employee_work_template_visibility_service.dart';
 import 'package:psygo/services/quick_tip_template_service.dart';
 import 'package:psygo/utils/adaptive_bottom_sheet.dart';
@@ -252,6 +253,8 @@ class ChatController extends State<ChatPageWithRoom>
 
   // Agent Web entry (reverse-tunnel) state.
   final AgentRepository _webEntryRepository = AgentRepository();
+  final EmployeeWorkTemplateService _employeeWorkTemplateService =
+      EmployeeWorkTemplateService.instance;
   final QuickTipTemplateService _quickTipTemplateService =
       QuickTipTemplateService.instance;
   int _webEntryRequestId = 0;
@@ -274,6 +277,7 @@ class ChatController extends State<ChatPageWithRoom>
   ChatRoomGuideType? _chatRoomGuideType;
   bool _employeeChatRoomGuideCompleted = false;
   bool _employeeWorkTemplateDismissed = false;
+  List<EmployeeWorkTemplateConfig> _employeeWorkTemplates = const [];
   List<ChatQuickTipTemplate> _quickTipTemplates = const [];
 
   bool get webEntryOpen => _webEntryOpen;
@@ -290,6 +294,8 @@ class ChatController extends State<ChatPageWithRoom>
   String get activeQuickTipIntentId => _pendingQuickTipRewrite?.intentId ?? '';
   String get activeQuickTipPlaceholder =>
       _pendingQuickTipRewrite?.placeholder ?? '';
+  List<EmployeeWorkTemplateConfig> get employeeWorkTemplates =>
+      _employeeWorkTemplates;
   List<ChatQuickTipTemplate> get quickTipTemplates => _quickTipTemplates;
   bool get isEmployeeChatGuide =>
       _chatRoomGuideType == ChatRoomGuideType.employee;
@@ -926,6 +932,7 @@ class ChatController extends State<ChatPageWithRoom>
     WidgetsBinding.instance.addObserver(this);
     _tryLoadTimeline();
     unawaited(_loadEmployeeWorkTemplateVisibilityState());
+    unawaited(_loadEmployeeWorkTemplates());
     unawaited(_loadChatRoomGuideState());
     unawaited(_loadQuickTipTemplates());
     if (PlatformInfos.isWindows) {
@@ -948,6 +955,16 @@ class ChatController extends State<ChatPageWithRoom>
     }
     setState(() {
       _employeeWorkTemplateDismissed = dismissed;
+    });
+  }
+
+  Future<void> _loadEmployeeWorkTemplates() async {
+    final templates = await _employeeWorkTemplateService.getTemplates();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _employeeWorkTemplates = templates;
     });
   }
 

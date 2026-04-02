@@ -185,7 +185,24 @@ class ChatView extends StatelessWidget {
     );
   }
 
-  List<EmployeeWorkTemplateItem> _employeeWorkTemplates(BuildContext context) {
+  static IconData _iconForEmployeeWorkTemplateId(String templateId) {
+    switch (templateId.trim()) {
+      case 'bmi_calculator_ui':
+        return Icons.today_outlined;
+      case 'bnct_heavy_ion_report':
+        return Icons.notes_rounded;
+      case 'godot_tower_defense_game':
+        return Icons.sports_esports_rounded;
+      case 'daily_ai_briefing':
+        return Icons.newspaper_rounded;
+      default:
+        return Icons.assignment_rounded;
+    }
+  }
+
+  List<EmployeeWorkTemplateItem> _defaultEmployeeWorkTemplates(
+    BuildContext context,
+  ) {
     final l10n = L10n.of(context);
     return [
       EmployeeWorkTemplateItem(
@@ -213,6 +230,23 @@ class ChatView extends StatelessWidget {
         message: l10n.employeeWorkTemplateDailyMessage,
       ),
     ];
+  }
+
+  List<EmployeeWorkTemplateItem> _employeeWorkTemplates(BuildContext context) {
+    if (controller.employeeWorkTemplates.isNotEmpty) {
+      return controller.employeeWorkTemplates
+          .where((template) => template.enabled)
+          .map(
+            (template) => EmployeeWorkTemplateItem(
+              icon: _iconForEmployeeWorkTemplateId(template.templateId),
+              title: template.title,
+              description: template.description,
+              message: template.message,
+            ),
+          )
+          .toList(growable: false);
+    }
+    return _defaultEmployeeWorkTemplates(context);
   }
 
   Future<void> _handleEmployeeWorkTemplateTap(
