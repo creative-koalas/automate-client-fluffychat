@@ -216,4 +216,34 @@ post_install do |installer|
     end
   end
 
+  # Workaround: flutter_vodozemac (cargokit) sometimes writes rust deps into
+  # TARGET_TEMP_DIR under DerivedData, which can be removed mid-build by Xcode.
+  # Patch build script to use a stable target dir inside plugin workspace.
+  vodozemac_build_script = File.join(
+    __dir__,
+    '.symlinks',
+    'plugins',
+    'flutter_vodozemac',
+    'cargokit',
+    'build_pod.sh',
+  )
+  if File.exist?(vodozemac_build_script)
+    original_script = File.read(vodozemac_build_script)
+    unless original_script.include?('CARGOKIT_STABLE_TARGET_TEMP_DIR')
+      patched_script = original_script.sub(
+        'export CARGOKIT_TARGET_TEMP_DIR=$TARGET_TEMP_DIR',
+        <<~SCRIPT.strip
+          # Keep Cargo target-dir in plugin workspace to avoid transient DerivedData cleanup.
+          CARGOKIT_STABLE_TARGET_TEMP_DIR="$PODS_TARGET_SRCROOT/../.cargokit_target/${PLATFORM_NAME}-${CONFIGURATION}"
+          mkdir -p "$CARGOKIT_STABLE_TARGET_TEMP_DIR"
+          export CARGOKIT_TARGET_TEMP_DIR="$CARGOKIT_STABLE_TARGET_TEMP_DIR"
+        SCRIPT
+      )
+      if patched_script != original_script
+        File.write(vodozemac_build_script, patched_script)
+        puts "✅ 已修复 flutter_vodozemac Rust 构建目录"
+      end
+    end
+  end
+
 end

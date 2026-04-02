@@ -55,6 +55,15 @@ if [ -z "${APP_NAME}" ]; then
   exit 0
 fi
 
+# Cleanup one-time legacy extension artifact after brand rename.
+# If both old/new appex exist in Runner.app, iOS install can fail because they
+# share the same bundle identifier.
+PLUGINS_DIR="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/PlugIns"
+LEGACY_SHARE_APPEX="${PLUGINS_DIR}/OpenOcto Share.appex"
+if [ -d "${LEGACY_SHARE_APPEX}" ]; then
+  rm -rf "${LEGACY_SHARE_APPEX}"
+fi
+
 # Main app bundle display name.
 MAIN_PLIST="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Info.plist"
 set_plist_key "${MAIN_PLIST}" "CFBundleDisplayName" "${APP_NAME}"
