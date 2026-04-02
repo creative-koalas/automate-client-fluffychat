@@ -956,7 +956,9 @@ class ChatController extends State<ChatPageWithRoom>
       if (evt is KeyDownEvent) {
         _macOsEnterImeGuard.consumeDeferredEnter();
       }
-      return KeyEventResult.ignored;
+      // Prevent bubbling to InputBar's desktop Enter handler while IME is
+      // still finalizing composition on macOS.
+      return KeyEventResult.handled;
     }
     final isPlainEnter = isEnterKey &&
         !HardwareKeyboard.instance.isShiftPressed &&
