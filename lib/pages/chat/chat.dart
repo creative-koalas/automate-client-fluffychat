@@ -958,14 +958,17 @@ class ChatController extends State<ChatPageWithRoom>
       }
       return KeyEventResult.ignored;
     }
-    if (!HardwareKeyboard.instance.isShiftPressed &&
-        evt.logicalKey.keyLabel == 'Enter' &&
-        AppSettings.sendOnEnter.value) {
-      if (evt is KeyDownEvent) {
-        send();
-      }
-      return KeyEventResult.handled;
-    } else if (evt is KeyDownEvent) {
+    final isPlainEnter = isEnterKey &&
+        !HardwareKeyboard.instance.isShiftPressed &&
+        !HardwareKeyboard.instance.isControlPressed &&
+        !HardwareKeyboard.instance.isAltPressed &&
+        !HardwareKeyboard.instance.isMetaPressed;
+
+    if (AppSettings.sendOnEnter.value && isPlainEnter) {
+      // Let InputBar handle Enter first so autocomplete can confirm mentions
+      // before the chat composer falls back to sending the message.
+      return KeyEventResult.ignored;
+    } else if (isEnterKey && evt is KeyDownEvent) {
       final currentLineNum = sendController.text
               .substring(0, sendController.selection.baseOffset)
               .split('\n')
