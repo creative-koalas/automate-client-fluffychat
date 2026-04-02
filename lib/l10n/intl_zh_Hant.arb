@@ -3430,6 +3430,8 @@
     "@guideRestingFeatureUnavailable": {},
     "agentWebEntryUnavailable": "該員工當前未開放入口",
     "@agentWebEntryUnavailable": {},
+    "webEntryUpdatedHint": "有更新",
+    "@webEntryUpdatedHint": {},
     "maintenanceBlockedTitle": "服務維護中",
     "@maintenanceBlockedTitle": {},
     "maintenanceBlockedMessage": "PsyGo 目前正在維護，待發布完成後會重新開放使用。",

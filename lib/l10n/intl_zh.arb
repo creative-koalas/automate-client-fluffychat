@@ -4268,6 +4268,8 @@
     "@webEntryLoadFailed": {},
     "chatWebEntryNotEnabled": "该 Agent 尚未开启 Web 入口",
     "@chatWebEntryNotEnabled": {},
+    "webEntryUpdatedHint": "有更新",
+    "@webEntryUpdatedHint": {},
     "chatOpenFailedRetryLater": "打开失败，请稍后重试",
     "@chatOpenFailedRetryLater": {},
     "sendFileUnnamed": "未命名文件",

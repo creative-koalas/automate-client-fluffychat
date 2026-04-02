@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,6 +63,7 @@ class ChatView extends StatelessWidget {
       isDisabled: isVisuallyDisabled,
       isEnabled: isEnabled,
       isUpdated: isUpdated,
+      updateHintText: l10n.webEntryUpdatedHint,
       unavailableTooltip: l10n.agentWebEntryUnavailable,
       onPressed: controller.webEntryOpen || controller.webEntryLoading
           ? controller.closeWebEntry
@@ -1103,6 +1105,7 @@ class _WebEntryActionButton extends StatefulWidget {
   final bool isDisabled;
   final bool isEnabled;
   final bool isUpdated;
+  final String updateHintText;
   final String unavailableTooltip;
   final VoidCallback onPressed;
 
@@ -1113,6 +1116,7 @@ class _WebEntryActionButton extends StatefulWidget {
     required this.isDisabled,
     required this.isEnabled,
     required this.isUpdated,
+    required this.updateHintText,
     required this.unavailableTooltip,
     required this.onPressed,
   });
@@ -1121,260 +1125,208 @@ class _WebEntryActionButton extends StatefulWidget {
   State<_WebEntryActionButton> createState() => _WebEntryActionButtonState();
 }
 
-class _WebEntryActionButtonState extends State<_WebEntryActionButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1500),
-  );
+class _WebEntryActionButtonState extends State<_WebEntryActionButton> {
+  static const Duration _updateHintDuration = Duration(seconds: 1);
+  Timer? _updateHintTimer;
+  bool _showUpdateHintBubble = false;
 
   @override
   void initState() {
     super.initState();
-    _syncAnimation();
+    if (widget.isUpdated && !widget.isOpen && !widget.isLoading) {
+      _showUpdateHintTemporarily();
+    }
   }
 
   @override
   void didUpdateWidget(covariant _WebEntryActionButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncAnimation();
+    final becameUpdated = !oldWidget.isUpdated && widget.isUpdated;
+    if (becameUpdated && !widget.isOpen && !widget.isLoading) {
+      _showUpdateHintTemporarily();
+    }
+    if ((widget.isOpen || !widget.isUpdated) && _showUpdateHintBubble) {
+      _hideUpdateHintBubble();
+    }
   }
 
-  void _syncAnimation() {
-    if (widget.isUpdated) {
-      _controller.repeat(reverse: true);
+  void _showUpdateHintTemporarily() {
+    _updateHintTimer?.cancel();
+    if (!_showUpdateHintBubble && mounted) {
+      setState(() => _showUpdateHintBubble = true);
     } else {
-      _controller.stop();
-      _controller.value = 0;
+      _showUpdateHintBubble = true;
     }
+    _updateHintTimer = Timer(_updateHintDuration, () {
+      if (!mounted) return;
+      setState(() => _showUpdateHintBubble = false);
+    });
+  }
+
+  void _hideUpdateHintBubble() {
+    _updateHintTimer?.cancel();
+    if (!mounted || !_showUpdateHintBubble) return;
+    setState(() => _showUpdateHintBubble = false);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _updateHintTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    const updatedDotColor = Color(0xFFE65454);
     final isUnavailable = widget.isDisabled && !widget.isOpen;
-    final isHighlighted =
-        !widget.isDisabled && !widget.isOpen && widget.isUpdated;
     final enabledStyle = _resolveEnabledStyle(colorScheme);
-    final updatedStyle = _resolveUpdatedStyle(colorScheme, enabledStyle);
     final disabledStyle = _resolveDisabledStyle(colorScheme);
-    final stateStyle = widget.isUpdated
-        ? updatedStyle
-        : widget.isEnabled
-            ? enabledStyle
-            : disabledStyle;
+    final stateStyle = widget.isEnabled || widget.isUpdated
+        ? enabledStyle
+        : disabledStyle;
     final highlightColor = stateStyle.accent;
     final baseBackground = widget.isOpen
         ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.16)
-        : widget.isUpdated
-            ? updatedStyle.background
-            : widget.isEnabled
-                ? enabledStyle.background
-                : disabledStyle.background;
+        : stateStyle.background;
 
     final tooltip = widget.isOpen
-        ? '返回聊天'
+        ? l10n.backToMainChat
         : widget.isDisabled
             ? widget.unavailableTooltip
-            : widget.isUpdated
-                ? '智能界面有更新'
-                : widget.isEnabled
-                    ? '打开 WebView'
-                    : '打开 WebView';
+            : l10n.chatRoomGuideWebEntryTitle;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final pulse =
-            widget.isUpdated ? 0.78 + (_controller.value * 0.18) : 0.0;
-        final glowOpacity = isHighlighted ? pulse : 0.0;
-        final tooltipBackground = Color.alphaBlend(
-          highlightColor.withValues(alpha: widget.isUpdated ? 0.14 : 0.08),
-          colorScheme.surfaceContainerHighest,
-        );
-        final tooltipTextColor = colorScheme.onSurface;
-        final tooltipBorderColor = isHighlighted
-            ? highlightColor.withValues(
-                alpha: widget.isUpdated ? 0.34 : 0.22,
-              )
-            : colorScheme.outlineVariant.withValues(alpha: 0.18);
-        final iconColor = widget.isOpen
-            ? colorScheme.onSurface
-            : widget.isUpdated
-                ? updatedStyle.accent
-                : widget.isEnabled
-                    ? enabledStyle.accent
-                    : disabledStyle.accent;
-        final iconData = widget.isOpen
-            ? Icons.arrow_back
-            : widget.isEnabled || widget.isUpdated
-                ? Icons.open_in_browser_rounded
-                : Icons.web_asset_off_outlined;
-        final showUpdateLabel = isHighlighted;
-        final borderColor = widget.isUpdated
-            ? highlightColor.withValues(alpha: stateStyle.borderOpacity)
-            : widget.isEnabled
-                ? enabledStyle.accent.withValues(alpha: 0.24)
-                : isUnavailable
-                    ? disabledStyle.accent.withValues(alpha: 0.16)
-                    : Colors.transparent;
+    final tooltipBackground = Color.alphaBlend(
+      highlightColor.withValues(alpha: 0.08),
+      colorScheme.surfaceContainerHighest,
+    );
+    final tooltipTextColor = colorScheme.onSurface;
+    final tooltipBorderColor = colorScheme.outlineVariant.withValues(
+      alpha: 0.18,
+    );
+    final iconColor = widget.isOpen ? colorScheme.onSurface : stateStyle.accent;
+    final iconData = widget.isOpen
+        ? Icons.arrow_back
+        : widget.isEnabled || widget.isUpdated
+            ? Icons.open_in_browser_rounded
+            : Icons.web_asset_off_outlined;
+    final borderColor = widget.isEnabled || widget.isUpdated
+        ? enabledStyle.accent.withValues(alpha: 0.24)
+        : isUnavailable
+            ? disabledStyle.accent.withValues(alpha: 0.16)
+            : Colors.transparent;
 
-        return Tooltip(
-          message: tooltip,
-          waitDuration: const Duration(milliseconds: 180),
-          showDuration: const Duration(seconds: 2),
-          preferBelow: false,
-          verticalOffset: 18,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          textStyle: theme.textTheme.bodySmall?.copyWith(
-            color: tooltipTextColor,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 180),
+      showDuration: const Duration(seconds: 2),
+      preferBelow: false,
+      verticalOffset: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      textStyle: theme.textTheme.bodySmall?.copyWith(
+        color: tooltipTextColor,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.1,
+      ),
+      decoration: BoxDecoration(
+        color: tooltipBackground.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tooltipBorderColor),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          decoration: BoxDecoration(
-            color: tooltipBackground.withValues(alpha: 0.98),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: tooltipBorderColor),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadow.withValues(alpha: 0.12),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              if (isHighlighted)
-                Container(
-                  width: widget.isUpdated ? 42 : 38,
-                  height: widget.isUpdated ? 42 : 38,
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          if (_showUpdateHintBubble && !widget.isOpen && widget.isUpdated)
+            Positioned(
+              right: 38,
+              child: IgnorePointer(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: highlightColor.withValues(
-                          alpha: glowOpacity * (widget.isUpdated ? 0.22 : 0.14),
-                        ),
-                        blurRadius: widget.isUpdated ? 14 : 10,
-                        spreadRadius: widget.isUpdated ? 2 : 1,
+                        color: colorScheme.shadow.withValues(alpha: 0.14),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                ),
-              Material(
-                color: baseBackground,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: borderColor,
-                  ),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: widget.onPressed,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: showUpdateLabel ? 12 : 10,
-                      vertical: 10,
+                  child: Text(
+                    widget.updateHintText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: widget.isLoading
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(highlightColor),
-                            ),
-                          )
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                iconData,
-                                size: 20,
-                                color: iconColor,
-                              ),
-                              if (showUpdateLabel) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: highlightColor.withValues(
-                                      alpha: 0.14,
-                                    ),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: highlightColor.withValues(
-                                        alpha: 0.22,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    '有更新',
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: highlightColor,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
                   ),
                 ),
               ),
-              if (!widget.isOpen && widget.isUpdated)
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: highlightColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: colorScheme.surface,
-                        width: 1.6,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: highlightColor.withValues(alpha: 0.3),
-                          blurRadius: 8,
+            ),
+          Material(
+            color: baseBackground,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: borderColor),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: widget.onPressed,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: widget.isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            highlightColor,
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 4,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: updatedStyle.dotCore,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
+                      )
+                    : Icon(iconData, size: 20, color: iconColor),
+              ),
+            ),
+          ),
+          if (!widget.isOpen && widget.isUpdated)
+            Positioned(
+              right: -1,
+              top: -1,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: updatedDotColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colorScheme.surface,
+                    width: 1.2,
                   ),
                 ),
-            ],
-          ),
-        );
-      },
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -1382,8 +1334,6 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
     return _WebEntryVisualStyle(
       accent: colorScheme.primary.withValues(alpha: 0.9),
       background: colorScheme.primaryContainer.withValues(alpha: 0.16),
-      borderOpacity: 0.34,
-      dotCore: colorScheme.onPrimaryContainer.withValues(alpha: 0.88),
     );
   }
 
@@ -1391,61 +1341,17 @@ class _WebEntryActionButtonState extends State<_WebEntryActionButton>
     return _WebEntryVisualStyle(
       accent: colorScheme.onSurfaceVariant.withValues(alpha: 0.44),
       background: colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
-      borderOpacity: 0.16,
-      dotCore: colorScheme.onSurfaceVariant.withValues(alpha: 0.44),
     );
-  }
-
-  _WebEntryVisualStyle _resolveUpdatedStyle(
-    ColorScheme colorScheme,
-    _WebEntryVisualStyle enabledStyle,
-  ) {
-    final accent = colorScheme.tertiary;
-    final isTooClose = _colorDistance(accent, enabledStyle.accent) < 72;
-    if (!isTooClose) {
-      return _WebEntryVisualStyle(
-        accent: accent,
-        background: colorScheme.tertiaryContainer.withValues(alpha: 0.28),
-        borderOpacity: 0.72,
-        dotCore: colorScheme.onTertiaryContainer,
-      );
-    }
-
-    final fallbackAccent = Color.alphaBlend(
-      colorScheme.inversePrimary.withValues(alpha: 0.72),
-      colorScheme.primary,
-    );
-    final fallbackBackground = Color.alphaBlend(
-      colorScheme.secondaryContainer.withValues(alpha: 0.85),
-      colorScheme.surfaceContainerHighest,
-    );
-    return _WebEntryVisualStyle(
-      accent: fallbackAccent,
-      background: fallbackBackground.withValues(alpha: 0.34),
-      borderOpacity: 0.86,
-      dotCore: colorScheme.onSecondaryContainer,
-    );
-  }
-
-  double _colorDistance(Color a, Color b) {
-    final dr = (a.r - b.r).abs();
-    final dg = (a.g - b.g).abs();
-    final db = (a.b - b.b).abs();
-    return dr + dg + db;
   }
 }
 
 class _WebEntryVisualStyle {
   final Color accent;
   final Color background;
-  final double borderOpacity;
-  final Color dotCore;
 
   const _WebEntryVisualStyle({
     required this.accent,
     required this.background,
-    required this.borderOpacity,
-    required this.dotCore,
   });
 }
 
