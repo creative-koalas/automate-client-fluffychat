@@ -294,14 +294,13 @@ class ChatView extends StatelessWidget {
       isDesktop ? 16 : 12,
       8,
     );
-    final showEmployeeWorkTemplateBar =
-        controller.isEmployeeChat &&
+    final showEmployeeWorkTemplateBar = controller.isEmployeeChat &&
         controller.activeThreadId == null &&
         !controller.employeeWorkTemplateDismissed;
     final onCloseEmployeeWorkTemplate =
         controller.canDismissEmployeeWorkTemplateBar
-        ? controller.dismissEmployeeWorkTemplateBar
-        : null;
+            ? controller.dismissEmployeeWorkTemplateBar
+            : null;
     final employeeWorkTemplateBar = showEmployeeWorkTemplateBar
         ? _buildEmployeeWorkTemplateBar(
             context,
@@ -524,8 +523,7 @@ class ChatView extends StatelessWidget {
     final accountConfig = Matrix.of(context).client.applicationAccountConfig;
 
     return PopScope(
-      canPop:
-          controller.selectedEvents.isEmpty &&
+      canPop: controller.selectedEvents.isEmpty &&
           !controller.showEmojiPicker &&
           controller.activeThreadId == null &&
           !controller.webEntryOpen &&
@@ -589,8 +587,8 @@ class ChatView extends StatelessWidget {
                         ),
                         backgroundColor: controller.selectedEvents.isEmpty
                             ? controller.activeThreadId != null
-                                  ? theme.colorScheme.secondaryContainer
-                                  : null
+                                ? theme.colorScheme.secondaryContainer
+                                : null
                             : theme.colorScheme.tertiaryContainer,
                         automaticallyImplyLeading: false,
                         leading: controller.selectMode
@@ -647,8 +645,7 @@ class ChatView extends StatelessWidget {
                                       ),
                                       style: TextButton.styleFrom(
                                         foregroundColor: theme
-                                            .colorScheme
-                                            .onSecondaryContainer,
+                                            .colorScheme.onSecondaryContainer,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             4,
@@ -666,17 +663,13 @@ class ChatView extends StatelessWidget {
                                     icon: const Icon(Icons.close),
                                     tooltip: L10n.of(context).close,
                                     onPressed: () {
-                                      controller.discardScrollUpBannerEventId();
-                                      controller.setReadMarker();
+                                      controller.dismissScrollUpPrompt();
                                     },
                                   ),
                                   title: L10n.of(context).jumpToLastReadMessage,
                                   trailing: TextButton(
                                     onPressed: () {
-                                      controller.scrollToEventId(
-                                        scrollUpBannerEventId,
-                                      );
-                                      controller.discardScrollUpBannerEventId();
+                                      controller.jumpToScrollUpPrompt();
                                     },
                                     child: Text(L10n.of(context).jump),
                                   ),
@@ -687,8 +680,7 @@ class ChatView extends StatelessWidget {
                       ),
                       floatingActionButtonLocation:
                           FloatingActionButtonLocation.miniCenterFloat,
-                      floatingActionButton:
-                          controller.showScrollDownButton &&
+                      floatingActionButton: controller.showScrollDownButton &&
                               controller.selectedEvents.isEmpty
                           ? Padding(
                               padding: const EdgeInsets.only(bottom: 56.0),
@@ -742,8 +734,8 @@ class ChatView extends StatelessWidget {
                                     sigmaY: accountConfig.wallpaperBlur ?? 0.0,
                                   ),
                                   child: MxcImage(
-                                    cacheKey: accountConfig.wallpaperUrl
-                                        .toString(),
+                                    cacheKey:
+                                        accountConfig.wallpaperUrl.toString(),
                                     uri: accountConfig.wallpaperUrl,
                                     fit: BoxFit.cover,
                                     height: MediaQuery.sizeOf(context).height,
@@ -757,8 +749,7 @@ class ChatView extends StatelessWidget {
                               child: Column(
                                 children: <Widget>[
                                   Expanded(
-                                    child:
-                                        controller.webEntryOpen &&
+                                    child: controller.webEntryOpen &&
                                             controller.webEntryUrl != null
                                         ? AgentWebEntryView(
                                             url: controller.webEntryUrl!,
@@ -785,8 +776,7 @@ class ChatView extends StatelessWidget {
                                       ),
                                     )
                                   else if (controller
-                                          .room
-                                          .canSendDefaultMessages &&
+                                          .room.canSendDefaultMessages &&
                                       controller.room.membership ==
                                           Membership.join)
                                     Column(
@@ -970,38 +960,31 @@ class ChatView extends StatelessWidget {
                                               ),
                                               if (controller
                                                       .hasOwnEmployeeInRoom &&
-                                                  controller
-                                                          .room
+                                                  controller.room
                                                           .isAbandonedDMRoom !=
                                                       true)
                                                 Padding(
                                                   padding:
                                                       const EdgeInsets.only(
-                                                        bottom: 8,
-                                                      ),
+                                                    bottom: 8,
+                                                  ),
                                                   child: ChatQuickTipsBar(
                                                     controller,
                                                   ),
                                                 ),
                                               Material(
                                                 clipBehavior: Clip.hardEdge,
-                                                color:
-                                                    controller
-                                                        .selectedEvents
+                                                color: controller.selectedEvents
                                                         .isNotEmpty
-                                                    ? theme
-                                                          .colorScheme
-                                                          .tertiaryContainer
-                                                    : theme
-                                                          .colorScheme
-                                                          .surfaceContainerHigh,
+                                                    ? theme.colorScheme
+                                                        .tertiaryContainer
+                                                    : theme.colorScheme
+                                                        .surfaceContainerHigh,
                                                 borderRadius:
                                                     const BorderRadius.all(
-                                                      Radius.circular(24),
-                                                    ),
-                                                child:
-                                                    controller
-                                                            .room
+                                                  Radius.circular(24),
+                                                ),
+                                                child: controller.room
                                                             .isAbandonedDMRoom ==
                                                         true
                                                     ? Row(
@@ -1010,11 +993,13 @@ class ChatView extends StatelessWidget {
                                                                 .spaceEvenly,
                                                         children: [
                                                           TextButton.icon(
-                                                            style: TextButton.styleFrom(
+                                                            style: TextButton
+                                                                .styleFrom(
                                                               padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                16,
+                                                              ),
                                                               foregroundColor:
                                                                   theme
                                                                       .colorScheme
@@ -1034,11 +1019,13 @@ class ChatView extends StatelessWidget {
                                                             ),
                                                           ),
                                                           TextButton.icon(
-                                                            style: TextButton.styleFrom(
+                                                            style: TextButton
+                                                                .styleFrom(
                                                               padding:
-                                                                  const EdgeInsets.all(
-                                                                    16,
-                                                                  ),
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                16,
+                                                              ),
                                                             ),
                                                             icon: const Icon(
                                                               Icons
@@ -1514,9 +1501,8 @@ class _AiContentDisclaimerState extends State<_AiContentDisclaimer> {
   Future<void> _fetchAndCheckEmployee(String matrixUserId) async {
     try {
       final page = await _repository.getUserAgents(limit: 50);
-      final agent = page.agents
-          .where((a) => a.matrixUserId == matrixUserId)
-          .firstOrNull;
+      final agent =
+          page.agents.where((a) => a.matrixUserId == matrixUserId).firstOrNull;
       if (mounted && agent != null) {
         setState(() => _employee = agent);
       }

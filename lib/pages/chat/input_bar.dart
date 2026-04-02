@@ -54,6 +54,12 @@ class InputBar extends StatelessWidget {
     super.key,
   });
 
+  int get _effectiveTextLengthLimit {
+    final configuredLimit = AppSettings.textMessageMaxLength.value;
+    final pduLimit = (maxPDUSize / 3).floor();
+    return configuredLimit < pduLimit ? configuredLimit : pduLimit;
+  }
+
   List<Map<String, String?>> getSuggestions(
     TextEditingValue text,
     BuildContext context,
@@ -458,6 +464,7 @@ class InputBar extends StatelessWidget {
       optionsBuilder: (text) => getSuggestions(text, context),
       fieldViewBuilder:
           (context, textController, autocompleteFocusNode, onFieldSubmitted) {
+        final effectiveTextLengthLimit = _effectiveTextLengthLimit;
         final textField = TextField(
           controller: textController,
           focusNode: focusNode ?? autocompleteFocusNode,
@@ -507,15 +514,13 @@ class InputBar extends StatelessWidget {
           keyboardType: keyboardType!,
           textInputAction: textInputAction,
           autofocus: autofocus!,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter((maxPDUSize / 3).floor()),
-          ],
           onSubmitted: (text) {
             // fix for library for now
             // it sets the types for the callback incorrectly
             onSubmitted!(text);
           },
-          maxLength: AppSettings.textMessageMaxLength.value,
+          maxLength: effectiveTextLengthLimit,
+          maxLengthEnforcement: MaxLengthEnforcement.none,
           decoration: decoration,
           onChanged: (text) {
             // fix for the library for now

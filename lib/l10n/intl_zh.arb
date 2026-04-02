@@ -1559,6 +1559,14 @@
         "type": "String",
         "placeholders": {}
     },
+    "messageTooLongToSend": "文本过长，无法直接发送。当前上限为 {max} 个字符，建议改为文件发送。",
+    "@messageTooLongToSend": {
+        "placeholders": {
+            "max": {
+                "type": "int"
+            }
+        }
+    },
     "takeScreenshot": "截图",
     "@takeScreenshot": {},
     "sendImage": "发送图像",
