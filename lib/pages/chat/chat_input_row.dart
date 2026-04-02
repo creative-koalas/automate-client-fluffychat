@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -361,8 +359,8 @@ class ChatInputRow extends StatelessWidget {
                                     value: 'hide_window',
                                     child: Text(
                                       Localizations.localeOf(
-                                            context,
-                                          ).languageCode.startsWith('zh')
+                                        context,
+                                      ).languageCode.startsWith('zh')
                                           ? '隐藏窗口后截图'
                                           : 'Hide window before capture',
                                     ),
@@ -484,7 +482,8 @@ class ChatInputRow extends StatelessWidget {
                               keyboardType: TextInputType.multiline,
                               textInputAction:
                                   AppSettings.sendOnEnter.value == true &&
-                                          PlatformInfos.isMobile
+                                          (PlatformInfos.isMobile ||
+                                              PlatformInfos.isMacOS)
                                       ? TextInputAction.send
                                       : null,
                               onSubmitted: controller.onInputBarSubmitted,
@@ -507,6 +506,8 @@ class ChatInputRow extends StatelessWidget {
                                 filled: false,
                               ),
                               onChanged: controller.onInputBarChanged,
+                              macOsEnterImeGuard:
+                                  controller.macOsInputBarEnterImeGuard,
                               suggestionEmojis: getDefaultEmojiLocale(
                                 AppSettings
                                         .emojiSuggestionLocale.value.isNotEmpty
@@ -734,8 +735,7 @@ class _InputQuickTipsBar extends StatelessWidget {
         cards.add(const SizedBox(width: 8));
       }
       final tip = tips[i];
-      final isSelected =
-          tip.intentId.trim() == activeIntentId.trim() &&
+      final isSelected = tip.intentId.trim() == activeIntentId.trim() &&
           activeIntentId.trim().isNotEmpty;
       cards.add(
         _InputQuickTipCard(
@@ -783,8 +783,7 @@ class _InputQuickTipsBar extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final tip = tips[index];
-          final isSelected =
-              tip.intentId.trim() == activeIntentId.trim() &&
+          final isSelected = tip.intentId.trim() == activeIntentId.trim() &&
               activeIntentId.trim().isNotEmpty;
           return _InputQuickTipCard(
             tip: tip,
@@ -818,13 +817,15 @@ class _InputQuickTipCard extends StatelessWidget {
             .withValues(alpha: isDark ? 0.76 : 0.92);
     final cardBorderColor = selected
         ? theme.colorScheme.primary
-        : theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.44 : 0.6);
+        : theme.colorScheme.outlineVariant
+            .withValues(alpha: isDark ? 0.44 : 0.6);
     final iconBackgroundColor = selected
         ? theme.colorScheme.primary.withValues(alpha: 0.18)
         : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9);
     final iconColor = theme.colorScheme.primary;
-    final textColor =
-        selected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface;
+    final textColor = selected
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurface;
 
     return Material(
       color: cardColor,

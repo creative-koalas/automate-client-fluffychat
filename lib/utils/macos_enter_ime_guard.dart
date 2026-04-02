@@ -1,42 +1,27 @@
 import 'package:flutter/services.dart';
 
-enum MacOsEnterImeGuardState {
-  idle,
-  composing,
-  committedAwaitingEnter,
-}
-
 class MacOsEnterImeGuard {
-  MacOsEnterImeGuardState _state = MacOsEnterImeGuardState.idle;
+  bool _skipNextSubmit = false;
 
-  MacOsEnterImeGuardState get state => _state;
-
-  void updateEditingValue(TextEditingValue value) {
+  bool markSubmitToSkipIfComposing(TextEditingValue value) {
     final hasActiveComposition =
         value.composing.isValid && !value.composing.isCollapsed;
-
-    if (hasActiveComposition) {
-      _state = MacOsEnterImeGuardState.composing;
-      return;
+    if (!hasActiveComposition) {
+      return false;
     }
-
-    if (_state == MacOsEnterImeGuardState.composing) {
-      _state = MacOsEnterImeGuardState.committedAwaitingEnter;
-    }
+    _skipNextSubmit = true;
+    return true;
   }
 
-  bool shouldDeferEnter({required bool isMacOS}) {
-    if (!isMacOS) return false;
-    return _state != MacOsEnterImeGuardState.idle;
-  }
-
-  void consumeDeferredEnter() {
-    if (_state != MacOsEnterImeGuardState.idle) {
-      _state = MacOsEnterImeGuardState.idle;
+  bool consumeSkippedSubmit() {
+    if (!_skipNextSubmit) {
+      return false;
     }
+    _skipNextSubmit = false;
+    return true;
   }
 
   void reset() {
-    _state = MacOsEnterImeGuardState.idle;
+    _skipNextSubmit = false;
   }
 }

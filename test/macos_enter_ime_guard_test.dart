@@ -4,24 +4,25 @@ import 'package:psygo/utils/macos_enter_ime_guard.dart';
 
 void main() {
   group('MacOsEnterImeGuard', () {
-    test('stays idle without composition', () {
+    test('does not defer without active composition', () {
       final guard = MacOsEnterImeGuard();
 
-      guard.updateEditingValue(
+      final handled = guard.markSubmitToSkipIfComposing(
         const TextEditingValue(
           text: 'hello',
           selection: TextSelection.collapsed(offset: 5),
+          composing: TextRange.empty,
         ),
       );
 
-      expect(guard.state, MacOsEnterImeGuardState.idle);
-      expect(guard.shouldDeferEnter(isMacOS: true), isFalse);
+      expect(handled, isFalse);
+      expect(guard.consumeSkippedSubmit(), isFalse);
     });
 
-    test('defers enter while composing', () {
+    test('defers exactly one submit when enter confirms composition', () {
       final guard = MacOsEnterImeGuard();
 
-      guard.updateEditingValue(
+      final handled = guard.markSubmitToSkipIfComposing(
         const TextEditingValue(
           text: 'ni',
           selection: TextSelection.collapsed(offset: 2),
@@ -29,22 +30,25 @@ void main() {
         ),
       );
 
-      expect(guard.state, MacOsEnterImeGuardState.composing);
-      expect(guard.shouldDeferEnter(isMacOS: true), isTrue);
+      expect(handled, isTrue);
+      expect(guard.consumeSkippedSubmit(), isTrue);
+      expect(guard.consumeSkippedSubmit(), isFalse);
     });
 
-    test('defers first enter after composition commits', () {
+    test('does not keep swallowing the next normal enter after ime commit', () {
       final guard = MacOsEnterImeGuard();
 
-      guard.updateEditingValue(
+      guard.markSubmitToSkipIfComposing(
         const TextEditingValue(
           text: 'ni',
           selection: TextSelection.collapsed(offset: 2),
           composing: TextRange(start: 0, end: 2),
         ),
       );
-      guard.consumeDeferredEnter();
-      guard.updateEditingValue(
+
+      expect(guard.consumeSkippedSubmit(), isTrue);
+
+      final handled = guard.markSubmitToSkipIfComposing(
         const TextEditingValue(
           text: '你',
           selection: TextSelection.collapsed(offset: 1),
@@ -52,39 +56,26 @@ void main() {
         ),
       );
 
-      expect(guard.state, MacOsEnterImeGuardState.idle);
-      expect(guard.shouldDeferEnter(isMacOS: true), isFalse);
+      expect(handled, isFalse);
+      expect(guard.consumeSkippedSubmit(), isFalse);
     });
 
-    test('defers committed composition until enter is consumed', () {
+    test('reset clears pending skipped submit', () {
       final guard = MacOsEnterImeGuard();
 
-      guard.updateEditingValue(
+      final handled = guard.markSubmitToSkipIfComposing(
         const TextEditingValue(
-          text: 'abc',
-          selection: TextSelection.collapsed(offset: 3),
-          composing: TextRange(start: 0, end: 3),
-        ),
-      );
-      guard.updateEditingValue(
-        const TextEditingValue(
-          text: 'abc',
-          selection: TextSelection.collapsed(offset: 3),
-          composing: TextRange.empty,
+          text: 'ni',
+          selection: TextSelection.collapsed(offset: 2),
+          composing: TextRange(start: 0, end: 2),
         ),
       );
 
-      expect(
-        guard.state,
-        MacOsEnterImeGuardState.committedAwaitingEnter,
-      );
-      expect(guard.shouldDeferEnter(isMacOS: true), isTrue);
+      expect(handled, isTrue);
 
-      guard.consumeDeferredEnter();
+      guard.reset();
 
-      expect(guard.state, MacOsEnterImeGuardState.idle);
-      expect(guard.shouldDeferEnter(isMacOS: true), isFalse);
-      expect(guard.shouldDeferEnter(isMacOS: false), isFalse);
+      expect(guard.consumeSkippedSubmit(), isFalse);
     });
   });
 }

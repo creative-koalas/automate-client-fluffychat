@@ -13,6 +13,7 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
+import 'package:psygo/utils/macos_enter_ime_guard.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -34,6 +35,7 @@ class InputBar extends StatelessWidget {
   final TextEditingController? controller;
   final InputDecoration decoration;
   final ValueChanged<String>? onChanged;
+  final MacOsEnterImeGuard? macOsEnterImeGuard;
   final bool? autofocus;
   final bool readOnly;
   final List<Emoji> suggestionEmojis;
@@ -50,6 +52,7 @@ class InputBar extends StatelessWidget {
     this.controller,
     required this.decoration,
     this.onChanged,
+    this.macOsEnterImeGuard,
     this.autofocus,
     this.textInputAction,
     this.readOnly = false,
@@ -89,9 +92,8 @@ class InputBar extends StatelessWidget {
         : rawOffset;
     final replaceText = fullText.substring(0, safeOffset);
     var startText = '';
-    final afterText = safeOffset >= fullText.length
-        ? ''
-        : fullText.substring(safeOffset);
+    final afterText =
+        safeOffset >= fullText.length ? '' : fullText.substring(safeOffset);
     var insertText = '';
     if (suggestion['type'] == 'command') {
       insertText = '${suggestion['name']!} ';
@@ -138,7 +140,8 @@ class InputBar extends StatelessWidget {
         RegExp(r'(\s|^)(@\S*)$'),
         (Match m) => '${m[1]}$insertText',
       );
-      startText = replaced == replaceText ? '$replaceText$insertText' : replaced;
+      startText =
+          replaced == replaceText ? '$replaceText$insertText' : replaced;
     }
     if (suggestion['type'] == 'room') {
       insertText = '${suggestion['mxid']!} ';
@@ -761,6 +764,15 @@ class InputBar extends StatelessWidget {
           textInputAction: textInputAction,
           autofocus: autofocus!,
           onSubmitted: (text) {
+            if (PlatformInfos.isDesktop && !PlatformInfos.isMacOS) {
+              // Desktop Enter handling is routed through keyboard events so
+              // IME commit actions do not bypass the send-on-enter guard.
+              return;
+            }
+            if (PlatformInfos.isMacOS &&
+                (macOsEnterImeGuard?.consumeSkippedSubmit() ?? false)) {
+              return;
+            }
             if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
               final committedSuggestion = _commitHighlightedSuggestion(
                 context: context,
@@ -799,6 +811,13 @@ class InputBar extends StatelessWidget {
                       !HardwareKeyboard.instance.isAltPressed &&
                       !HardwareKeyboard.instance.isMetaPressed;
               if (event is KeyDownEvent && isPlainEnter) {
+                if (PlatformInfos.isMacOS &&
+                    (macOsEnterImeGuard?.markSubmitToSkipIfComposing(
+                            textController.value) ??
+                        false)) {
+                  return KeyEventResult.ignored;
+                }
+
                 final committedSuggestion = _commitHighlightedSuggestion(
                   context: context,
                   textController: textController,

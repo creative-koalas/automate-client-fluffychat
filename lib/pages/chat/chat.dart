@@ -952,14 +952,6 @@ class ChatController extends State<ChatPageWithRoom>
     if (!isEnterKey) {
       return KeyEventResult.ignored;
     }
-    if (_macOsEnterImeGuard.shouldDeferEnter(isMacOS: PlatformInfos.isMacOS)) {
-      if (evt is KeyDownEvent) {
-        _macOsEnterImeGuard.consumeDeferredEnter();
-      }
-      // Prevent bubbling to InputBar's desktop Enter handler while IME is
-      // still finalizing composition on macOS.
-      return KeyEventResult.handled;
-    }
     final isPlainEnter = isEnterKey &&
         !HardwareKeyboard.instance.isShiftPressed &&
         !HardwareKeyboard.instance.isControlPressed &&
@@ -1062,8 +1054,6 @@ class ChatController extends State<ChatPageWithRoom>
 
     scrollController.addListener(_updateScrollController);
     inputFocus.addListener(_inputFocusListener);
-    sendController.addListener(_handleSendControllerChanged);
-
     _cleanupLegacyWaitingEmployeesPrefsOnce();
     _loadDraft();
     WidgetsBinding.instance.addPostFrameCallback(_shareItems);
@@ -1324,7 +1314,8 @@ class ChatController extends State<ChatPageWithRoom>
       // requestHistory call before opening timeline on event context:
       if (readMarkerEventId.isNotEmpty && readMarkerEventIndex == -1) {
         await currentTimeline.requestHistory(historyCount: _loadHistoryCount);
-        if (!mounted || !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
+        if (!mounted ||
+            !_isCurrentLoadTimelineFuture(requestedTimelineFuture)) {
           return;
         }
         final refreshedTimeline = timeline;
@@ -1564,7 +1555,6 @@ class ChatController extends State<ChatPageWithRoom>
     inputFocus.removeListener(_inputFocusListener);
     onFocusSub?.cancel();
     _globalScreenshotHotkeySub?.cancel();
-    sendController.removeListener(_handleSendControllerChanged);
     sendController.dispose();
     _scrollToEventHighlightResetTimer?.cancel();
     _disposePendingAttachments();
@@ -1947,8 +1937,7 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
-    final shouldPromptMention =
-        isGroupChat &&
+    final shouldPromptMention = isGroupChat &&
         (promptMentionIfMissing ?? _groupSendShouldPromptMention);
     // 群聊中，消息不含 @ 时按发送模式弹出 mention 提示
     if (shouldPromptMention && !trimmedText.contains('@')) {
@@ -3130,6 +3119,8 @@ class ChatController extends State<ChatPageWithRoom>
     unawaited(_submitInputBarOnce());
   }
 
+  MacOsEnterImeGuard get macOsInputBarEnterImeGuard => _macOsEnterImeGuard;
+
   void onAddPopupMenuButtonSelected(AddPopupMenuActions choice) {
     switch (choice) {
       case AddPopupMenuActions.image:
@@ -3198,10 +3189,6 @@ class ChatController extends State<ChatPageWithRoom>
 
   Timer? _storeInputTimeoutTimer;
   static const Duration _storeInputTimeout = Duration(milliseconds: 500);
-
-  void _handleSendControllerChanged() {
-    _macOsEnterImeGuard.updateEditingValue(sendController.value);
-  }
 
   void onInputBarChanged(String text) {
     if (_inputTextIsEmpty != text.isEmpty) {
