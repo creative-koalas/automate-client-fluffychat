@@ -15,6 +15,7 @@ import 'package:psygo/utils/chat_upload_limits.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
