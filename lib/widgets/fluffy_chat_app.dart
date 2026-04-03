@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
@@ -22,6 +23,7 @@ import 'package:psygo/utils/permission_service.dart';
 import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/utils/macos_global_screenshot_hotkey.dart';
+import 'package:psygo/utils/contact_invite_link.dart';
 import 'package:psygo/widgets/app_lock.dart';
 import 'package:psygo/widgets/share_scaffold_dialog.dart';
 import 'package:psygo/widgets/theme_builder.dart';
@@ -98,10 +100,7 @@ class PsygoApp extends StatelessWidget {
                     create: (context) => ForceUpdateController(
                       context.read<PsygoApiClient>(),
                       dialogContextProvider: () => PsygoApp
-                          .router
-                          .routerDelegate
-                          .navigatorKey
-                          .currentContext,
+                          .router.routerDelegate.navigatorKey.currentContext,
                     )..start(),
                     child: MaintenanceGate(
                       child: ForceUpdateGate(
@@ -264,7 +263,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // 检查 Matrix 是否也已登录
       try {
         final matrix = Matrix.of(context);
-        Client? loggedInClient = matrix.clientOrNull;
+        var loggedInClient = matrix.clientOrNull;
         if (loggedInClient == null || !loggedInClient.isLogged()) {
           for (final client in matrix.widget.clients) {
             if (client.isLogged()) {
@@ -305,6 +304,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     WidgetsBinding.instance.addObserver(this);
     unawaited(MacosGlobalScreenshotHotkey.initialize());
     _initReceiveSharingIntent();
+    unawaited(_captureInitialInviteLink());
 
     // 监听认证状态变化（保存引用以便在 dispose 中使用）
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -326,6 +326,24 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
+  Future<void> _captureInitialInviteLink() async {
+    if (kIsWeb || PsygoApp.gotInitialLink) {
+      return;
+    }
+    PsygoApp.gotInitialLink = true;
+    try {
+      final uri = await AppLinks().getInitialLink();
+      final token =
+          uri == null ? null : ContactInviteLink.extractTokenFromUri(uri);
+      if (token == null || token.isEmpty) {
+        return;
+      }
+      await ContactInviteLink.rememberPendingToken(token);
+    } catch (e) {
+      debugPrint('[AuthGate] Failed to capture initial invite link: $e');
+    }
+  }
+
   void _initReceiveSharingIntent() {
     if (!PlatformInfos.isMobile) return;
 
@@ -345,17 +363,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
   List<ShareItem> _mapSharedMediaToItems(List<SharedMediaFile> files) =>
       files.map((file) {
-        if ({
-          SharedMediaType.text,
-          SharedMediaType.url,
-        }.contains(file.type)) {
+        if ({SharedMediaType.text, SharedMediaType.url}.contains(file.type)) {
           return TextShareItem(file.path);
         }
         return FileShareItem(
-          XFile(
-            file.path.replaceFirst('file://', ''),
-            mimeType: file.mimeType,
-          ),
+          XFile(file.path.replaceFirst('file://', ''), mimeType: file.mimeType),
         );
       }).toList();
 
@@ -406,6 +418,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       }
     }
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -1059,8 +1072,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Stack trace: $stackTrace');
 
       final errorStr = e.toString();
-      final isInvalidToken =
-          errorStr.contains('M_UNKNOWN_TOKEN') ||
+      final isInvalidToken = errorStr.contains('M_UNKNOWN_TOKEN') ||
           errorStr.contains('Invalid access token');
 
       // Token 失效：清除所有状态并跳转到登录页
@@ -1436,9 +1448,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     setState(() {
       // PC端/Web端：设置为 needsLogin，显示登录页面
       // 移动端：设置为 checking，等待一键登录
-      _state = PlatformInfos.isMobile
-          ? _AuthState.checking
-          : _AuthState.needsLogin;
+      _state =
+          PlatformInfos.isMobile ? _AuthState.checking : _AuthState.needsLogin;
       _hasTriedAuth = false;
       _hasRetriedMatrixLogin = false;
       _resumeRetryCount = 0;
@@ -1588,9 +1599,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final subtitleColor = isDark
           ? Colors.white.withValues(alpha: 0.7)
           : const Color(0xFF666666);
-      final accentColor = isDark
-          ? const Color(0xFF00FF9F)
-          : const Color(0xFF00A878);
+      final accentColor =
+          isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
       const errorColor = Color(0xFFFF6B6B);
 
       return Scaffold(
@@ -1781,16 +1791,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
               Text(
                 l10n.authLoginFailedTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 12),
               Text(
                 _errorMessage ?? l10n.authUnknownError,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 32),
               Wrap(

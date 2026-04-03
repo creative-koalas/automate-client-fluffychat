@@ -12,11 +12,7 @@ import '../core/token_manager.dart';
 import '../utils/auth_device_identity.dart';
 import '../utils/custom_http_client.dart';
 
-enum TokenRefreshOutcome {
-  success,
-  transientFailure,
-  invalidSession,
-}
+enum TokenRefreshOutcome { success, transientFailure, invalidSession }
 
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio})
@@ -57,11 +53,13 @@ class PsygoApiClient {
         if (refreshOutcome != TokenRefreshOutcome.success) {
           if (refreshOutcome == TokenRefreshOutcome.invalidSession) {
             debugPrint(
-                '[API] Token refresh failed with invalid session, logging out');
+              '[API] Token refresh failed with invalid session, logging out',
+            );
             await auth.markLoggedOut();
           } else {
             debugPrint(
-                '[API] Token refresh failed due to transient error, keep session');
+              '[API] Token refresh failed due to transient error, keep session',
+            );
           }
           return handler.next(error);
         }
@@ -106,8 +104,7 @@ class PsygoApiClient {
 
     MaintenanceStatusSnapshot? status;
     if (_isMaintenanceStatusPath(response.requestOptions.path)) {
-      status =
-          MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
+      status = MaintenanceStatusSnapshot.tryParsePublicPayload(response.data);
     } else if (response.statusCode == 503) {
       status = MaintenanceStatusSnapshot.tryParseClosedErrorPayload(
         response.data,
@@ -156,8 +153,7 @@ class PsygoApiClient {
       '${PsygoConfig.baseUrl}$path',
     );
 
-    final status =
-        MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
+    final status = MaintenanceStatusSnapshot.tryParsePublicPayload(res.data);
     if (res.statusCode != 200 || status == null) {
       throw AutomateBackendException(
         'Failed to get maintenance status',
@@ -185,7 +181,8 @@ class PsygoApiClient {
     }
 
     debugPrint(
-        '[API] Unauthorized code=$firstCode, attempting token refresh...');
+      '[API] Unauthorized code=$firstCode, attempting token refresh...',
+    );
     final refreshOutcome = await refreshAccessTokenWithOutcome();
     if (refreshOutcome != TokenRefreshOutcome.success) {
       if (refreshOutcome == TokenRefreshOutcome.invalidSession) {
@@ -345,7 +342,8 @@ class PsygoApiClient {
       'platform=${AuthDeviceIdentity.platformName}',
     );
 
-    if ((authResponse.expiresIn ?? 0) > 0 && authResponse.refreshToken == null) {
+    if ((authResponse.expiresIn ?? 0) > 0 &&
+        authResponse.refreshToken == null) {
       debugPrint(
         '[API] Auth response missing refresh_token '
         '(platform=${AuthDeviceIdentity.platformName}, expires_in=${authResponse.expiresIn})',
@@ -511,10 +509,7 @@ class PsygoApiClient {
           formData.files.add(
             MapEntry(
               'files',
-              MultipartFile.fromBytes(
-                await file.readAsBytes(),
-                filename: name,
-              ),
+              MultipartFile.fromBytes(await file.readAsBytes(), filename: name),
             ),
           );
         }
@@ -524,9 +519,7 @@ class PsygoApiClient {
       return _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/feedback',
         data: requestData,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     });
 
@@ -567,6 +560,121 @@ class PsygoApiClient {
     }
 
     return BindInvitationResponse.fromJson(respData);
+  }
+
+  Future<ContactInviteCreateResult> createContactInvite({
+    String? source,
+    Map<String, String>? metadata,
+  }) async {
+    final res = await _requestWithAuthRetry((token) {
+      return _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/contact-invites',
+        data: <String, dynamic>{
+          if (source != null && source.isNotEmpty) 'source': source,
+          if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '创建邀请链接失败',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return ContactInviteCreateResult.fromJson(respData);
+  }
+
+  Future<ContactInvitePreview> previewContactInvite(String token) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '${PsygoConfig.baseUrl}/api/contact-invites/$token/preview',
+    );
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '获取邀请信息失败',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return ContactInvitePreview.fromJson(respData);
+  }
+
+  Future<ContactInviteClaimResult> claimContactInvite(String token) async {
+    final res = await _requestWithAuthRetry((tokenValue) {
+      return _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/contact-invites/$token/claim',
+        options: Options(headers: {'Authorization': 'Bearer $tokenValue'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '接受邀请失败',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return ContactInviteClaimResult.fromJson(respData);
+  }
+
+  Future<ContactInviteCompleteResult> completeContactInvite(
+    String token, {
+    required String acceptedRoomId,
+    Map<String, String>? metadata,
+  }) async {
+    final res = await _requestWithAuthRetry((tokenValue) {
+      return _dio.post<Map<String, dynamic>>(
+        '${PsygoConfig.baseUrl}/api/contact-invites/$token/complete',
+        data: <String, dynamic>{
+          'accepted_room_id': acceptedRoomId,
+          if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $tokenValue'}),
+      );
+    });
+
+    final data = res.data ?? {};
+    final respCode = data['code'] as int? ?? -1;
+    if (res.statusCode != 200 || respCode != 0) {
+      await _handleAuthError(respCode);
+      throw AutomateBackendException(
+        data['message']?.toString() ?? '完成邀请失败',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final respData = data['data'] as Map<String, dynamic>?;
+    if (respData == null) {
+      throw AutomateBackendException('Empty response data');
+    }
+
+    return ContactInviteCompleteResult.fromJson(respData);
   }
 
   /// 获取邀请信息
@@ -1159,6 +1267,140 @@ class InviteeInfo {
       nickname: json['nickname'] as String? ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+    );
+  }
+}
+
+class ContactInviteCreateResult {
+  final String inviteToken;
+  final String inviteUrl;
+  final DateTime? expiresAt;
+
+  ContactInviteCreateResult({
+    required this.inviteToken,
+    required this.inviteUrl,
+    this.expiresAt,
+  });
+
+  factory ContactInviteCreateResult.fromJson(Map<String, dynamic> json) {
+    return ContactInviteCreateResult(
+      inviteToken: json['invite_token'] as String? ?? '',
+      inviteUrl: json['invite_url'] as String? ?? '',
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+    );
+  }
+}
+
+class ContactInviteInviterPreview {
+  final String displayName;
+  final String avatarUrl;
+
+  ContactInviteInviterPreview({
+    required this.displayName,
+    required this.avatarUrl,
+  });
+
+  factory ContactInviteInviterPreview.fromJson(Map<String, dynamic> json) {
+    return ContactInviteInviterPreview(
+      displayName: json['display_name'] as String? ?? '',
+      avatarUrl: json['avatar_url'] as String? ?? '',
+    );
+  }
+}
+
+class ContactInvitePreview {
+  final String status;
+  final DateTime? expiresAt;
+  final ContactInviteInviterPreview? inviter;
+
+  ContactInvitePreview({required this.status, this.expiresAt, this.inviter});
+
+  bool get canAttemptClaim => status == 'active' || status == 'used';
+
+  factory ContactInvitePreview.fromJson(Map<String, dynamic> json) {
+    final inviterJson = json['inviter'] as Map<String, dynamic>?;
+    return ContactInvitePreview(
+      status: json['status'] as String? ?? '',
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+      inviter: inviterJson == null
+          ? null
+          : ContactInviteInviterPreview.fromJson(inviterJson),
+    );
+  }
+}
+
+class ContactInviteInviterClaim {
+  final String displayName;
+  final String avatarUrl;
+  final String matrixUserId;
+
+  ContactInviteInviterClaim({
+    required this.displayName,
+    required this.avatarUrl,
+    required this.matrixUserId,
+  });
+
+  factory ContactInviteInviterClaim.fromJson(Map<String, dynamic> json) {
+    return ContactInviteInviterClaim(
+      displayName: json['display_name'] as String? ?? '',
+      avatarUrl: json['avatar_url'] as String? ?? '',
+      matrixUserId: json['matrix_user_id'] as String? ?? '',
+    );
+  }
+}
+
+class ContactInviteClaimResult {
+  final String status;
+  final DateTime? expiresAt;
+  final ContactInviteInviterClaim? inviter;
+
+  ContactInviteClaimResult({
+    required this.status,
+    this.expiresAt,
+    this.inviter,
+  });
+
+  factory ContactInviteClaimResult.fromJson(Map<String, dynamic> json) {
+    final inviterJson = json['inviter'] as Map<String, dynamic>?;
+    return ContactInviteClaimResult(
+      status: json['status'] as String? ?? '',
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+      inviter: inviterJson == null
+          ? null
+          : ContactInviteInviterClaim.fromJson(inviterJson),
+    );
+  }
+}
+
+class ContactInviteCompleteResult {
+  final String status;
+  final String acceptedRoomId;
+  final DateTime? expiresAt;
+  final DateTime? completedAt;
+
+  ContactInviteCompleteResult({
+    required this.status,
+    required this.acceptedRoomId,
+    this.expiresAt,
+    this.completedAt,
+  });
+
+  factory ContactInviteCompleteResult.fromJson(Map<String, dynamic> json) {
+    return ContactInviteCompleteResult(
+      status: json['status'] as String? ?? '',
+      acceptedRoomId: json['accepted_room_id'] as String? ?? '',
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+      completedAt: json['completed_at'] != null
+          ? DateTime.tryParse(json['completed_at'] as String)
           : null,
     );
   }
