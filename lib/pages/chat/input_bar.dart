@@ -39,19 +39,34 @@ class _MentionDeleteFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    if (!_isSingleCharacterBackspace(oldValue, newValue) ||
-        _hasActiveComposition(oldValue) ||
-        _hasActiveComposition(newValue)) {
-      return newValue;
+    return maybeFormatWholeMentionDelete(
+          oldValue: oldValue,
+          newValue: newValue,
+          mentionTokens: _knownMentionTokens(),
+        ) ??
+        newValue;
+  }
+
+  static TextEditingValue? maybeFormatWholeMentionDelete({
+    required TextEditingValue oldValue,
+    required TextEditingValue newValue,
+    required Iterable<String> mentionTokens,
+  }) {
+    final cursorOffset = _singleCharacterBackspaceCursorOffset(
+      oldValue,
+      newValue,
+    );
+    if (cursorOffset == null) {
+      return null;
     }
 
     final deleteRange = findWholeInputMentionDeleteRange(
       text: oldValue.text,
-      cursorOffset: oldValue.selection.baseOffset,
-      mentionTokens: _knownMentionTokens(),
+      cursorOffset: cursorOffset,
+      mentionTokens: mentionTokens,
     );
     if (deleteRange == null) {
-      return newValue;
+      return null;
     }
 
     final nextText = oldValue.text.replaceRange(
@@ -66,27 +81,38 @@ class _MentionDeleteFormatter extends TextInputFormatter {
     );
   }
 
-  bool _isSingleCharacterBackspace(
+  static int? _singleCharacterBackspaceCursorOffset(
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    if (!oldValue.selection.isCollapsed ||
-        !newValue.selection.isCollapsed ||
-        oldValue.selection.baseOffset <= 0 ||
-        newValue.text.length != oldValue.text.length - 1 ||
-        newValue.selection.baseOffset != oldValue.selection.baseOffset - 1) {
-      return false;
+    if (!newValue.selection.isCollapsed ||
+        newValue.text.length != oldValue.text.length - 1) {
+      return null;
     }
 
-    final deleteIndex = newValue.selection.baseOffset;
-    return oldValue.text.substring(0, deleteIndex) ==
-            newValue.text.substring(0, deleteIndex) &&
-        oldValue.text.substring(deleteIndex + 1) ==
-            newValue.text.substring(deleteIndex);
-  }
+    final maxSharedPrefix = math.min(oldValue.text.length, newValue.text.length);
+    var deleteIndex = 0;
+    while (deleteIndex < maxSharedPrefix &&
+        oldValue.text.codeUnitAt(deleteIndex) ==
+            newValue.text.codeUnitAt(deleteIndex)) {
+      deleteIndex++;
+    }
 
-  bool _hasActiveComposition(TextEditingValue value) =>
-      value.composing.isValid && !value.composing.isCollapsed;
+    if (oldValue.text.substring(deleteIndex + 1) !=
+        newValue.text.substring(deleteIndex)) {
+      return null;
+    }
+
+    if (oldValue.selection.isCollapsed && oldValue.selection.baseOffset > 0) {
+      final selectionCursorOffset = oldValue.selection.baseOffset;
+      if (selectionCursorOffset == deleteIndex + 1 ||
+          selectionCursorOffset == deleteIndex) {
+        return selectionCursorOffset;
+      }
+    }
+
+    return deleteIndex + 1;
+  }
 
   List<String> _knownMentionTokens() {
     final tokens = <String>{
@@ -158,6 +184,7 @@ class _InputBarState extends State<InputBar> {
       const <Map<String, String?>>[];
   int? _desktopHighlightedSuggestionIndex;
   int _desktopSuggestionsRequestId = 0;
+  TextEditingValue? _lastIosTextEditingValue;
 
   Room get room => widget.room;
   int? get minLines => widget.minLines;
@@ -183,6 +210,7 @@ class _InputBarState extends State<InputBar> {
   void initState() {
     super.initState();
     _attachDesktopInputListeners();
+    _attachIosMentionDeleteListener();
     AgentService.instance.profileNotifier.addListener(_handleProfileUpdated);
   }
 
@@ -193,6 +221,8 @@ class _InputBarState extends State<InputBar> {
         oldWidget.focusNode != widget.focusNode) {
       _detachDesktopInputListeners(oldWidget);
       _attachDesktopInputListeners();
+      _detachIosMentionDeleteListener(oldWidget);
+      _attachIosMentionDeleteListener();
       if (_usesCustomDesktopSuggestions) {
         unawaited(_refreshDesktopSuggestions());
       }
@@ -202,6 +232,7 @@ class _InputBarState extends State<InputBar> {
   @override
   void dispose() {
     _detachDesktopInputListeners(widget);
+    _detachIosMentionDeleteListener(widget);
     AgentService.instance.profileNotifier.removeListener(_handleProfileUpdated);
     super.dispose();
   }
@@ -235,6 +266,73 @@ class _InputBarState extends State<InputBar> {
     }
     targetWidget.controller?.removeListener(_handleDesktopTextChanged);
     targetWidget.focusNode?.removeListener(_handleDesktopFocusChanged);
+  }
+
+  void _attachIosMentionDeleteListener() {
+    if (!PlatformInfos.isIOS) {
+      _lastIosTextEditingValue = null;
+      return;
+    }
+    final textController = widget.controller;
+    if (textController == null) {
+      _lastIosTextEditingValue = null;
+      return;
+    }
+    _lastIosTextEditingValue = textController.value;
+    textController.addListener(_handleIosMentionDeleteChanged);
+  }
+
+  void _detachIosMentionDeleteListener(InputBar targetWidget) {
+    if (!PlatformInfos.isIOS) {
+      _lastIosTextEditingValue = null;
+      return;
+    }
+    targetWidget.controller?.removeListener(_handleIosMentionDeleteChanged);
+    _lastIosTextEditingValue = null;
+  }
+
+  void _handleIosMentionDeleteChanged() {
+    if (!PlatformInfos.isIOS || !mounted) {
+      return;
+    }
+    final textController = controller;
+    if (textController == null) {
+      return;
+    }
+
+    final currentValue = textController.value;
+    final previousValue = _lastIosTextEditingValue;
+    if (previousValue == null || currentValue == previousValue) {
+      _lastIosTextEditingValue = currentValue;
+      return;
+    }
+
+    final correctedValue = _MentionDeleteFormatter.maybeFormatWholeMentionDelete(
+      oldValue: previousValue,
+      newValue: currentValue,
+      mentionTokens: _knownMentionDeleteTokens(
+        _normalizedEveryoneMentionLabel(L10n.of(context).mentionEveryone),
+      ),
+    );
+    if (correctedValue == null || correctedValue == currentValue) {
+      _lastIosTextEditingValue = currentValue;
+      return;
+    }
+
+    _lastIosTextEditingValue = correctedValue;
+    textController.value = correctedValue;
+  }
+
+  List<String> _knownMentionDeleteTokens(String mentionEveryone) {
+    final tokens = <String>{
+      mentionEveryone,
+      '@room',
+    };
+    for (final participant in room.getParticipants()) {
+      tokens.add(buildInputMentionByUser(room: room, user: participant));
+    }
+    tokens.removeWhere((token) => token.trim().isEmpty);
+    return tokens.toList();
   }
 
   void _handleDesktopTextChanged() {
