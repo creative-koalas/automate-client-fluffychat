@@ -77,6 +77,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   // Profile Future（实例变量，和设置页面一样的模式）
   Future<Profile>? _profileFuture;
   int _lastProfileVersion = 0; // 记录上次使用的版本号
+  String _selfRoomPresentationStamp = '';
 
   // 消息列表最小/最大宽度
   static const double _minChatListWidth = 280.0;
@@ -128,8 +129,53 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       if (client == null) return;
       _syncSubscription = client.onSync.stream.listen((_) {
         _updateUnreadCount();
+        _maybeRefreshSelfPresentationOnSync(client);
       });
     } catch (_) {}
+  }
+
+  void _maybeRefreshSelfPresentationOnSync(Client client) {
+    final userId = client.userID?.trim() ?? '';
+    if (userId.isEmpty || !mounted) return;
+    final roomPresentation = _resolveSelfRoomPresentation(
+      client: client,
+      userId: userId,
+    );
+    final nextStamp =
+        '${roomPresentation.displayName ?? ''}|${roomPresentation.avatarUrl?.toString() ?? ''}';
+    if (nextStamp == _selfRoomPresentationStamp) {
+      return;
+    }
+    setState(() => _selfRoomPresentationStamp = nextStamp);
+  }
+
+  ({String? displayName, Uri? avatarUrl}) _resolveSelfRoomPresentation({
+    required Client client,
+    required String userId,
+  }) {
+    String? displayName;
+    Uri? avatarUrl;
+    for (final room in client.rooms) {
+      final user = room.unsafeGetUserFromMemoryOrFallback(userId);
+      final candidateDisplayName = _normalizeSelfDisplayNameCandidate(
+        user.displayName ?? user.calcDisplayname(),
+        userId,
+      );
+      displayName ??= candidateDisplayName;
+      avatarUrl ??= user.avatarUrl;
+      if (displayName != null && avatarUrl != null) {
+        break;
+      }
+    }
+    return (displayName: displayName, avatarUrl: avatarUrl);
+  }
+
+  String? _normalizeSelfDisplayNameCandidate(String? value, String userId) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty || trimmed == userId) {
+      return null;
+    }
+    return trimmed;
   }
 
   @override
@@ -519,8 +565,14 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           localpart = userId.substring(1, userId.indexOf(':'));
         }
         final profile = snapshot.data;
-        final fallbackDisplayName = profile?.displayName ?? localpart;
-        final fallbackAvatarUrl = profile?.avatarUrl;
+        final roomPresentation = _resolveSelfRoomPresentation(
+          client: client,
+          userId: userId,
+        );
+        final fallbackDisplayName =
+            roomPresentation.displayName ?? profile?.displayName ?? localpart;
+        final fallbackAvatarUrl =
+            roomPresentation.avatarUrl ?? profile?.avatarUrl;
         final agentService = AgentService.instance;
         agentService.ensureMatrixProfilePresentationById(
           client: client,

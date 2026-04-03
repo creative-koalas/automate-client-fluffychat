@@ -35,7 +35,7 @@ class AgentService {
   final Map<String, String> _groupDisplayNameByMatrixUserId = {};
   final Set<String> _groupDisplayLookupInFlight = {};
   final Map<String, DateTime> _groupDisplayLookupLastAttemptAt = {};
-  static const Duration _groupDisplayLookupCooldown = Duration(minutes: 1);
+  static const Duration _groupDisplayLookupCooldown = Duration(seconds: 5);
   int _liveStatusWatcherCount = 0;
   Timer? _liveStatusPollingTimer;
   static const Duration _liveStatusPollingInterval = Duration(seconds: 2);
@@ -464,9 +464,6 @@ class AgentService {
     if (key.isEmpty) {
       return;
     }
-    if (_groupDisplayNameByMatrixUserId.containsKey(key)) {
-      return;
-    }
     if (_groupDisplayLookupInFlight.contains(key)) {
       return;
     }
@@ -487,10 +484,15 @@ class AgentService {
         <String>[matrixUserId],
       );
       final groupDisplayName = (mapping[matrixUserId] ?? '').trim();
+      final previous = _groupDisplayNameByMatrixUserId[matrixUserId];
       if (groupDisplayName.isEmpty) {
+        if (previous != null) {
+          _groupDisplayNameByMatrixUserId.remove(matrixUserId);
+          _notifyChanged();
+          profileNotifier.value++;
+        }
         return;
       }
-      final previous = _groupDisplayNameByMatrixUserId[matrixUserId];
       if (previous == groupDisplayName) {
         return;
       }
