@@ -12,6 +12,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_upload_limits.dart';
+import 'package:psygo/utils/input_mention_query.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/macos_enter_ime_guard.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
@@ -136,12 +137,15 @@ class InputBar extends StatelessWidget {
     }
     if (suggestion['type'] == 'user') {
       insertText = '${suggestion['mention']!} ';
-      final replaced = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@\S*)$'),
-        (Match m) => '${m[1]}$insertText',
+      final mentionQuery = findActiveInputMentionQuery(
+        text: fullText,
+        cursorOffset: safeOffset,
       );
-      startText =
-          replaced == replaceText ? '$replaceText$insertText' : replaced;
+      final mentionStart = mentionQuery?.start ?? safeOffset;
+      final beforeMention = fullText.substring(0, mentionStart);
+      final prefixNeedsSpace = beforeMention.isNotEmpty &&
+          !RegExp(r'\s').hasMatch(beforeMention[beforeMention.length - 1]);
+      startText = '${beforeMention}${prefixNeedsSpace ? ' ' : ''}$insertText';
     }
     if (suggestion['type'] == 'room') {
       insertText = '${suggestion['mxid']!} ';
@@ -292,13 +296,12 @@ class InputBar extends StatelessWidget {
         }
       }
     }
-    // Trigger mention suggestions immediately after typing '@'.
-    final userMatch = RegExp(r'(?:\s|^)@([-\w]*)$').firstMatch(searchText);
-    // Also match CJK/localized input like @所有人 and plain '@'.
-    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
-    final effectiveMatch = userMatch ?? cjkMentionMatch;
-    if (effectiveMatch != null) {
-      final userSearch = effectiveMatch[1]!.toLowerCase();
+    final mentionQuery = findActiveInputMentionQuery(
+      text: text.text,
+      cursorOffset: text.selection.baseOffset,
+    );
+    if (mentionQuery != null) {
+      final userSearch = mentionQuery.query.toLowerCase();
 
       // Add localized "@everyone" option in group chats
       final isGroupChat = room.directChatMatrixID == null;
@@ -638,9 +641,7 @@ class InputBar extends StatelessWidget {
     return trimmed.startsWith('@') ? trimmed : '@$trimmed';
   }
 
-  _MentionAutocompleteLayout _mentionAutocompleteLayout(
-    BuildContext context,
-  ) {
+  _MentionAutocompleteLayout _mentionAutocompleteLayout(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final size = mediaQuery.size;
     final availableHeight = size.height -
@@ -813,7 +814,8 @@ class InputBar extends StatelessWidget {
               if (event is KeyDownEvent && isPlainEnter) {
                 if (PlatformInfos.isMacOS &&
                     (macOsEnterImeGuard?.markSubmitToSkipIfComposing(
-                            textController.value) ??
+                          textController.value,
+                        ) ??
                         false)) {
                   return KeyEventResult.ignored;
                 }
@@ -968,7 +970,9 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
   late final ScrollController _scrollController = ScrollController();
   int? _lastAutoScrolledHighlightedIndex;
 
-  String _suggestionsSignature(List<Map<String, String?>> suggestions) =>
+  String _suggestionsSignature(
+    List<Map<String, String?>> suggestions,
+  ) =>
       suggestions
           .map(
             (suggestion) =>
