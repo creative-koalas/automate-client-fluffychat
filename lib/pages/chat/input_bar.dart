@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -22,6 +23,24 @@ import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
 import 'command_hints.dart';
 
+final Expando<_MobileMentionPickerSession> _mobileMentionPickerSessions =
+    Expando<_MobileMentionPickerSession>('mobileMentionPickerSessions');
+
+class _MobileMentionPickerSession {
+  bool isOpen = false;
+  String? lastHandledToken;
+}
+
+class _MentionQueryContext {
+  final String token;
+  final String query;
+
+  const _MentionQueryContext({
+    required this.token,
+    required this.query,
+  });
+}
+
 class InputBar extends StatelessWidget {
   final Room room;
   final int? minLines;
@@ -39,6 +58,7 @@ class InputBar extends StatelessWidget {
   final bool? autofocus;
   final bool readOnly;
   final List<Emoji> suggestionEmojis;
+  final Future<void> Function()? ensureMentionParticipantsLoaded;
 
   const InputBar({
     required this.room,
@@ -57,6 +77,7 @@ class InputBar extends StatelessWidget {
     this.textInputAction,
     this.readOnly = false,
     required this.suggestionEmojis,
+    this.ensureMentionParticipantsLoaded,
     super.key,
   });
 
@@ -194,6 +215,210 @@ class InputBar extends StatelessWidget {
     return true;
   }
 
+  _MobileMentionPickerSession _mobileMentionPickerSession(
+    TextEditingController textController,
+  ) {
+    final session = _mobileMentionPickerSessions[textController];
+    if (session != null) {
+      return session;
+    }
+    final created = _MobileMentionPickerSession();
+    _mobileMentionPickerSessions[textController] = created;
+    return created;
+  }
+
+  _MentionQueryContext? _mentionQueryContextForValue(TextEditingValue text) {
+    if (text.selection.baseOffset != text.selection.extentOffset ||
+        text.selection.baseOffset < 0) {
+      return null;
+    }
+    final safeOffset = math.min(text.selection.baseOffset, text.text.length);
+    final searchText = text.text.substring(0, safeOffset);
+    final userMatch = RegExp(r'(?:\s|^)@([-\w]*)$').firstMatch(searchText);
+    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
+    final effectiveMatch = userMatch ?? cjkMentionMatch;
+    if (effectiveMatch == null) {
+      return null;
+    }
+    return _MentionQueryContext(
+      token: effectiveMatch.group(0) ?? '@',
+      query: effectiveMatch.group(1) ?? '',
+    );
+  }
+
+  bool _shouldUseMobileMentionPicker(TextEditingValue text) {
+    return PlatformInfos.isMobile &&
+        room.directChatMatrixID == null &&
+        _mentionQueryContextForValue(text) != null;
+  }
+
+  List<Map<String, String?>> _buildMentionSuggestions(
+    BuildContext context, {
+    required String userSearch,
+  }) {
+    final l10n = L10n.of(context);
+    final normalizedSearch = userSearch.toLowerCase();
+    final mentionEveryone = _normalizedEveryoneMentionLabel(
+      l10n.mentionEveryone,
+    );
+    final suggestions = <Map<String, String?>>[];
+
+    final everyoneAliases = <String>{
+      'all',
+      'everyone',
+      'room',
+      '所有人',
+      '所有',
+      '所',
+    };
+    final localizedAlias = mentionEveryone.startsWith('@')
+        ? mentionEveryone.substring(1)
+        : mentionEveryone;
+    if (localizedAlias.isNotEmpty) {
+      everyoneAliases.add(localizedAlias.toLowerCase());
+    }
+    if (everyoneAliases.any((alias) => alias.startsWith(normalizedSearch))) {
+      suggestions.add({
+        'type': 'user',
+        'mxid': '@room',
+        'mention': mentionEveryone,
+        'displayname': mentionEveryone,
+        'avatar_url': null,
+      });
+    }
+
+    final participants = room.getParticipants().toList()
+      ..sort((a, b) {
+        final selfId = room.client.userID;
+        if (a.id == selfId && b.id != selfId) return 1;
+        if (b.id == selfId && a.id != selfId) return -1;
+
+        final powerLevelCompare = b.powerLevel.compareTo(a.powerLevel);
+        if (powerLevelCompare != 0) {
+          return powerLevelCompare;
+        }
+
+        final displayNameA = AgentService.instance.resolveDisplayName(a);
+        final displayNameB = AgentService.instance.resolveDisplayName(b);
+        final displayNameCompare = displayNameA.toLowerCase().compareTo(
+              displayNameB.toLowerCase(),
+            );
+        if (displayNameCompare != 0) {
+          return displayNameCompare;
+        }
+
+        return a.id.toLowerCase().compareTo(b.id.toLowerCase());
+      });
+
+    for (final user in participants) {
+      AgentService.instance.ensureMatrixProfilePresentation(user);
+      final resolvedDisplayName = AgentService.instance.resolveDisplayName(
+        user,
+      );
+      final resolvedAvatar = AgentService.instance.resolveAvatarUri(user);
+      final mentionText = buildInputMentionByUser(room: room, user: user);
+      if (normalizedSearch.isEmpty ||
+          resolvedDisplayName.toLowerCase().contains(normalizedSearch) ||
+          slugify(
+            resolvedDisplayName.toLowerCase(),
+          ).contains(normalizedSearch) ||
+          user.id.split(':')[0].toLowerCase().contains(normalizedSearch)) {
+        suggestions.add({
+          'type': 'user',
+          'mxid': user.id,
+          'mention': mentionText,
+          'displayname': resolvedDisplayName,
+          'avatar_url': resolvedAvatar?.toString(),
+        });
+      }
+    }
+
+    return suggestions;
+  }
+
+  Future<void> _maybeShowMobileMentionPicker(
+    BuildContext context,
+    TextEditingController textController,
+  ) async {
+    if (readOnly ||
+        room.directChatMatrixID != null ||
+        !PlatformInfos.isMobile) {
+      return;
+    }
+
+    final mentionContext = _mentionQueryContextForValue(textController.value);
+    final session = _mobileMentionPickerSession(textController);
+
+    if (mentionContext == null) {
+      session.lastHandledToken = null;
+      return;
+    }
+    if (session.isOpen || session.lastHandledToken == mentionContext.token) {
+      return;
+    }
+
+    session.isOpen = true;
+    session.lastHandledToken = mentionContext.token;
+
+    Map<String, String?>? selectedSuggestion;
+    try {
+      await ensureMentionParticipantsLoaded?.call();
+
+      final liveMentionContext = _mentionQueryContextForValue(
+        textController.value,
+      );
+      if (liveMentionContext == null) {
+        return;
+      }
+      if (!context.mounted) {
+        return;
+      }
+
+      selectedSuggestion = await showModalBottomSheet<Map<String, String?>>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: false,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => _MobileMentionPickerSheet(
+          title: L10n.of(sheetContext).mention,
+          searchHint: L10n.of(sheetContext).searchForUsers,
+          initialQuery: liveMentionContext.query,
+          suggestionProvider: (query) => _buildMentionSuggestions(
+            sheetContext,
+            userSearch: query,
+          ),
+          itemBuilder: (itemContext, suggestion, onTap) => buildSuggestion(
+            itemContext,
+            suggestion,
+            (_) => onTap(),
+            Matrix.of(itemContext).client,
+            false,
+          ),
+        ),
+      );
+    } finally {
+      session.isOpen = false;
+      session.lastHandledToken = null;
+    }
+
+    if (selectedSuggestion == null) {
+      focusNode?.requestFocus();
+      return;
+    }
+
+    final nextValue = _suggestionTextEditingValue(
+      textController.value,
+      selectedSuggestion,
+    );
+    if (nextValue.text != textController.text ||
+        nextValue.selection != textController.selection) {
+      textController.value = nextValue;
+      onChanged?.call(nextValue.text);
+    }
+    focusNode?.requestFocus();
+  }
+
   List<Map<String, String?>> getSuggestions(
     TextEditingValue text,
     BuildContext context,
@@ -202,10 +427,6 @@ class InputBar extends StatelessWidget {
         text.selection.baseOffset < 0) {
       return []; // no entries if there is selected text
     }
-    final l10n = L10n.of(context);
-    final mentionEveryone = _normalizedEveryoneMentionLabel(
-      l10n.mentionEveryone,
-    );
     final searchText = text.text.substring(0, text.selection.baseOffset);
     final ret = <Map<String, String?>>[];
     const maxResults = 30;
@@ -231,11 +452,11 @@ class InputBar extends StatelessWidget {
                 'mxc': emote.value.url.toString(),
               });
             }
-            if (ret.length > maxResults) {
+            if (ret.length >= maxResults) {
               break;
             }
           }
-          if (ret.length > maxResults) {
+          if (ret.length >= maxResults) {
             break;
           }
         }
@@ -253,7 +474,7 @@ class InputBar extends StatelessWidget {
               'mxc': emote.value.url.toString(),
             });
           }
-          if (ret.length > maxResults) {
+          if (ret.length >= maxResults) {
             break;
           }
         }
@@ -287,7 +508,7 @@ class InputBar extends StatelessWidget {
           'label': emoji.name,
           'current_word': ':$emoteSearch',
         });
-        if (ret.length > maxResults) {
+        if (ret.length >= maxResults) {
           break;
         }
       }
@@ -298,83 +519,12 @@ class InputBar extends StatelessWidget {
     final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
     final effectiveMatch = userMatch ?? cjkMentionMatch;
     if (effectiveMatch != null) {
-      final userSearch = effectiveMatch[1]!.toLowerCase();
-
-      // Add localized "@everyone" option in group chats
-      final isGroupChat = room.directChatMatrixID == null;
-      if (isGroupChat) {
-        final everyoneAliases = <String>{
-          'all',
-          'everyone',
-          'room',
-          '所有人',
-          '所有',
-          '所',
-        };
-        final localizedAlias = mentionEveryone.startsWith('@')
-            ? mentionEveryone.substring(1)
-            : mentionEveryone;
-        if (localizedAlias.isNotEmpty) {
-          everyoneAliases.add(localizedAlias.toLowerCase());
-        }
-        if (everyoneAliases.any((alias) => alias.startsWith(userSearch))) {
-          ret.add({
-            'type': 'user',
-            'mxid': '@room',
-            'mention': mentionEveryone,
-            'displayname': mentionEveryone,
-            'avatar_url': null,
-          });
-        }
-      }
-
-      final participants = room.getParticipants().toList()
-        ..sort((a, b) {
-          final selfId = room.client.userID;
-          if (a.id == selfId && b.id != selfId) return 1;
-          if (b.id == selfId && a.id != selfId) return -1;
-
-          final powerLevelCompare = b.powerLevel.compareTo(a.powerLevel);
-          if (powerLevelCompare != 0) {
-            return powerLevelCompare;
-          }
-
-          final displayNameA = AgentService.instance.resolveDisplayName(a);
-          final displayNameB = AgentService.instance.resolveDisplayName(b);
-          final displayNameCompare = displayNameA.toLowerCase().compareTo(
-                displayNameB.toLowerCase(),
-              );
-          if (displayNameCompare != 0) {
-            return displayNameCompare;
-          }
-
-          return a.id.toLowerCase().compareTo(b.id.toLowerCase());
-        });
-
-      for (final user in participants) {
-        AgentService.instance.ensureMatrixProfilePresentation(user);
-        final resolvedDisplayName = AgentService.instance.resolveDisplayName(
-          user,
-        );
-        final resolvedAvatar = AgentService.instance.resolveAvatarUri(user);
-        final mentionText = buildInputMentionByUser(room: room, user: user);
-        if ((resolvedDisplayName.toLowerCase().contains(userSearch) ||
-                slugify(
-                  resolvedDisplayName.toLowerCase(),
-                ).contains(userSearch)) ||
-            user.id.split(':')[0].toLowerCase().contains(userSearch)) {
-          ret.add({
-            'type': 'user',
-            'mxid': user.id,
-            'mention': mentionText,
-            'displayname': resolvedDisplayName,
-            'avatar_url': resolvedAvatar?.toString(),
-          });
-        }
-        if (ret.length > maxResults) {
-          break;
-        }
-      }
+      ret.addAll(
+        _buildMentionSuggestions(
+          context,
+          userSearch: effectiveMatch[1] ?? '',
+        ),
+      );
     }
     final roomMatch = RegExp(r'(?:\s|^)#([-\w]+)$').firstMatch(searchText);
     if (roomMatch != null) {
@@ -408,7 +558,7 @@ class InputBar extends StatelessWidget {
             'avatar_url': r.avatar?.toString(),
           });
         }
-        if (ret.length > maxResults) {
+        if (ret.length >= maxResults) {
           break;
         }
       }
@@ -713,7 +863,9 @@ class InputBar extends StatelessWidget {
     return Autocomplete<Map<String, String?>>(
       focusNode: focusNode,
       textEditingController: controller,
-      optionsBuilder: (text) => getSuggestions(text, context),
+      optionsBuilder: (text) => _shouldUseMobileMentionPicker(text)
+          ? const <Map<String, String?>>[]
+          : getSuggestions(text, context),
       fieldViewBuilder:
           (context, textController, autocompleteFocusNode, onFieldSubmitted) {
         final effectiveTextLengthLimit = _effectiveTextLengthLimit;
@@ -794,6 +946,7 @@ class InputBar extends StatelessWidget {
             // fix for the library for now
             // it sets the types for the callback incorrectly
             onChanged!(text);
+            unawaited(_maybeShowMobileMentionPicker(context, textController));
           },
           textCapitalization: TextCapitalization.sentences,
         );
@@ -813,7 +966,8 @@ class InputBar extends StatelessWidget {
               if (event is KeyDownEvent && isPlainEnter) {
                 if (PlatformInfos.isMacOS &&
                     (macOsEnterImeGuard?.markSubmitToSkipIfComposing(
-                            textController.value) ??
+                          textController.value,
+                        ) ??
                         false)) {
                   return KeyEventResult.ignored;
                 }
@@ -1079,6 +1233,193 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileMentionPickerSheet extends StatefulWidget {
+  final String title;
+  final String searchHint;
+  final String initialQuery;
+  final List<Map<String, String?>> Function(String query) suggestionProvider;
+  final Widget Function(
+    BuildContext context,
+    Map<String, String?> suggestion,
+    VoidCallback onTap,
+  ) itemBuilder;
+
+  const _MobileMentionPickerSheet({
+    required this.title,
+    required this.searchHint,
+    required this.initialQuery,
+    required this.suggestionProvider,
+    required this.itemBuilder,
+  });
+
+  @override
+  State<_MobileMentionPickerSheet> createState() =>
+      _MobileMentionPickerSheetState();
+}
+
+class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
+  late final TextEditingController _searchController = TextEditingController(
+    text: widget.initialQuery,
+  );
+  late final FocusNode _searchFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _searchFocusNode.requestFocus();
+      _searchController.selection = TextSelection.collapsed(
+        offset: _searchController.text.length,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final query = _searchController.text.trim();
+    final suggestions = widget.suggestionProvider(query);
+
+    return FractionallySizedBox(
+      heightFactor: 0.78,
+      child: Material(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.35,
+                ),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${suggestions.length}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: widget.searchHint,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Divider(
+              height: 1,
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+            Expanded(
+              child: suggestions.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 44,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              query.isEmpty
+                                  ? l10n.nothingFound
+                                  : l10n.noUsersFoundWithQuery(query),
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: suggestions.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        indent: 64,
+                        endIndent: 16,
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.28,
+                        ),
+                      ),
+                      itemBuilder: (context, index) {
+                        final suggestion = suggestions[index];
+                        return widget.itemBuilder(
+                          context,
+                          suggestion,
+                          () => Navigator.of(context).pop(suggestion),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

@@ -508,6 +508,8 @@ class ChatInputRow extends StatelessWidget {
                               onChanged: controller.onInputBarChanged,
                               macOsEnterImeGuard:
                                   controller.macOsInputBarEnterImeGuard,
+                              ensureMentionParticipantsLoaded:
+                                  controller.ensureMentionParticipantsLoaded,
                               suggestionEmojis: getDefaultEmojiLocale(
                                 AppSettings
                                         .emojiSuggestionLocale.value.isNotEmpty
