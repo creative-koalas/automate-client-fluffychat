@@ -965,6 +965,7 @@ class _AutocompleteOptionsList extends StatefulWidget {
 }
 
 class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
+  final GlobalKey _scrollViewportKey = GlobalKey();
   late final ScrollController _scrollController = ScrollController();
   int? _lastAutoScrolledHighlightedIndex;
 
@@ -988,31 +989,46 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
 
   void _scrollHighlightedIntoView(BuildContext itemContext) {
     if (!_scrollController.hasClients) return;
-    final renderObject = itemContext.findRenderObject();
-    if (renderObject == null || !renderObject.attached) return;
-
-    final viewport = RenderAbstractViewport.of(renderObject);
-
-    final position = _scrollController.position;
-    final leading = viewport.getOffsetToReveal(renderObject, 0).offset - 8;
-    final trailing = viewport.getOffsetToReveal(renderObject, 1).offset + 8;
-
-    double? targetOffset;
-    if (leading < position.pixels) {
-      targetOffset = math.max(position.minScrollExtent, leading);
-    } else if (trailing > position.pixels + position.viewportDimension) {
-      targetOffset = math.min(
-        position.maxScrollExtent,
-        trailing - position.viewportDimension,
-      );
+    final itemRenderObject = itemContext.findRenderObject();
+    final viewportRenderObject = _scrollViewportKey.currentContext
+        ?.findRenderObject();
+    if (itemRenderObject is! RenderBox ||
+        viewportRenderObject is! RenderBox ||
+        !itemRenderObject.attached ||
+        !viewportRenderObject.attached) {
+      return;
     }
 
-    if (targetOffset == null || (targetOffset - position.pixels).abs() < 1) {
+    const edgePadding = 8.0;
+    final position = _scrollController.position;
+    final itemTop = itemRenderObject
+        .localToGlobal(Offset.zero, ancestor: viewportRenderObject)
+        .dy;
+    final itemBottom = itemTop + itemRenderObject.size.height;
+    final visibleTop = edgePadding;
+    final visibleBottom = viewportRenderObject.size.height - edgePadding;
+
+    double? targetOffset;
+    if (itemTop < visibleTop) {
+      targetOffset = position.pixels + (itemTop - visibleTop);
+    } else if (itemBottom > visibleBottom) {
+      targetOffset = position.pixels + (itemBottom - visibleBottom);
+    }
+
+    if (targetOffset == null) {
+      return;
+    }
+
+    final clampedTarget = math.max(
+      position.minScrollExtent,
+      math.min(position.maxScrollExtent, targetOffset),
+    );
+    if ((clampedTarget - position.pixels).abs() < 1) {
       return;
     }
 
     _scrollController.animateTo(
-      targetOffset,
+      clampedTarget,
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
     );
@@ -1033,52 +1049,62 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
       thumbVisibility: showScrollbar,
       interactive: true,
       radius: const Radius.circular(999),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        shrinkWrap: true,
-        itemCount: widget.suggestions.length,
-        itemBuilder: (context, index) => Builder(
-          builder: (itemContext) {
-            final highlighted =
-                AutocompleteHighlightedOption.of(itemContext) == index;
-            if (highlighted && _lastAutoScrolledHighlightedIndex != index) {
-              _lastAutoScrolledHighlightedIndex = index;
-              widget.onHighlightedIndexChanged?.call(index);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!itemContext.mounted) return;
-                _scrollHighlightedIntoView(itemContext);
-              });
-            }
-
-            final child = widget.suggestionBuilder(
-              itemContext,
-              widget.suggestions[index],
-              widget.onSelected,
-              Matrix.of(itemContext).client,
-              highlighted,
-            );
-
-            if (!widget.showSeparators ||
-                index == widget.suggestions.length - 1) {
-              return child;
-            }
-
-            return Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          key: _scrollViewportKey,
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                child,
-                Divider(
-                  height: 1,
-                  indent: 64,
-                  endIndent: 16,
-                  color: Theme.of(
-                    itemContext,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.35),
-                ),
-              ],
-            );
-          },
+              children: List.generate(widget.suggestions.length, (index) {
+                return Builder(
+                  builder: (itemContext) {
+                    final highlighted =
+                        AutocompleteHighlightedOption.of(itemContext) == index;
+                    if (highlighted &&
+                        _lastAutoScrolledHighlightedIndex != index) {
+                      _lastAutoScrolledHighlightedIndex = index;
+                      widget.onHighlightedIndexChanged?.call(index);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!itemContext.mounted) return;
+                        _scrollHighlightedIntoView(itemContext);
+                      });
+                    }
+
+                    final child = widget.suggestionBuilder(
+                      itemContext,
+                      widget.suggestions[index],
+                      widget.onSelected,
+                      Matrix.of(itemContext).client,
+                      highlighted,
+                    );
+
+                    if (!widget.showSeparators ||
+                        index == widget.suggestions.length - 1) {
+                      return child;
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        child,
+                        Divider(
+                          height: 1,
+                          indent: 64,
+                          endIndent: 16,
+                          color: Theme.of(
+                            itemContext,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.35),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );
