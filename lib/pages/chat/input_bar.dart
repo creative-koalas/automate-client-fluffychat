@@ -221,7 +221,7 @@ class InputBar extends StatelessWidget {
       final beforeMention = fullText.substring(0, mentionStart);
       final prefixNeedsSpace = beforeMention.isNotEmpty &&
           !RegExp(r'\s').hasMatch(beforeMention[beforeMention.length - 1]);
-      startText = '${beforeMention}${prefixNeedsSpace ? ' ' : ''}$insertText';
+      startText = '$beforeMention${prefixNeedsSpace ? ' ' : ''}$insertText';
     }
     if (suggestion['type'] == 'room') {
       insertText = '${suggestion['mxid']!} ';
@@ -376,7 +376,9 @@ class InputBar extends StatelessWidget {
       text: text.text,
       cursorOffset: text.selection.baseOffset,
     );
-    if (mentionQuery != null) {
+    final allowInlineMentionSuggestions =
+        !(PlatformInfos.isMobile && room.directChatMatrixID == null);
+    if (mentionQuery != null && allowInlineMentionSuggestions) {
       final userSearch = mentionQuery.query.toLowerCase();
 
       // Add localized "@everyone" option in group chats
