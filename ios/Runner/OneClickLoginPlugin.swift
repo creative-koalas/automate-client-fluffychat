@@ -68,10 +68,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // 开启日志（SDK 2.14.12 已移除此方法）
         // TXCommonHandler.sharedInstance().getReporter().setLoggerEnable(true)
 
-        TXCommonHandler.sharedInstance().setAuthSDKInfo(secretKey) { [weak self] resultDic in
-            // resultDic 在新版 SDK 中不再是 Optional 类型
-            let resultDic = resultDic as! [AnyHashable: Any]
-
+        TXCommonHandler.sharedInstance().setAuthSDKInfo(secretKey) { resultDic in
             let code = resultDic["resultCode"] as? String ?? "600010"
             let msg = resultDic["msg"] as? String ?? "未知错误"
 
@@ -97,9 +94,6 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         let timeoutSeconds = TimeInterval(timeout) / 1000.0
 
         TXCommonHandler.sharedInstance().accelerateLoginPage(withTimeout: timeoutSeconds) { [weak self] resultDic in
-            // resultDic 在新版 SDK 中不再是 Optional 类型
-            let resultDic = resultDic as! [AnyHashable: Any]
-
             let code = resultDic["resultCode"] as? String ?? "600010"
             let msg = resultDic["msg"] as? String ?? "未知错误"
 
@@ -161,9 +155,6 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         let model = buildAuthUIModel(termsUrl: termsUrl, privacyUrl: privacyUrl)
 
         TXCommonHandler.sharedInstance().getLoginToken(withTimeout: timeoutSeconds, controller: viewController, model: model) { [weak self] resultDic in
-            // resultDic 在新版 SDK 中不再是 Optional 类型
-            let resultDic = resultDic as! [AnyHashable: Any]
-
             let code = resultDic["resultCode"] as? String ?? "600010"
             let msg = resultDic["msg"] as? String ?? "未知错误"
 
@@ -258,20 +249,41 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         let resolvedTermsUrl = (cleanedTermsUrl?.isEmpty ?? true) ? nil : cleanedTermsUrl
         let cleanedPrivacyUrl = privacyUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedPrivacyUrl = (cleanedPrivacyUrl?.isEmpty ?? true) ? nil : cleanedPrivacyUrl
+        let isDarkMode = currentInterfaceStyle() == .dark
+        let backgroundColor = isDarkMode
+            ? UIColor(red: 0x12 / 255.0, green: 0x12 / 255.0, blue: 0x12 / 255.0, alpha: 1.0)
+            : .white
+        let primaryTextColor = isDarkMode
+            ? UIColor(red: 0xE0 / 255.0, green: 0xE0 / 255.0, blue: 0xE0 / 255.0, alpha: 1.0)
+            : UIColor(red: 0x1A / 255.0, green: 0x1A / 255.0, blue: 0x1A / 255.0, alpha: 1.0)
+        let secondaryTextColor = isDarkMode
+            ? UIColor(red: 0x9E / 255.0, green: 0x9E / 255.0, blue: 0x9E / 255.0, alpha: 1.0)
+            : UIColor(red: 0x99 / 255.0, green: 0x99 / 255.0, blue: 0x99 / 255.0, alpha: 1.0)
+        let privacyLinkColor = isDarkMode
+            ? UIColor(red: 0x64 / 255.0, green: 0xB5 / 255.0, blue: 0xF6 / 255.0, alpha: 1.0)
+            : UIColor(red: 0x00 / 255.0, green: 0x7A / 255.0, blue: 0xFF / 255.0, alpha: 1.0)
+        let alertBackgroundColor = isDarkMode
+            ? UIColor(red: 0x1E / 255.0, green: 0x1E / 255.0, blue: 0x1E / 255.0, alpha: 1.0)
+            : .white
+        let alertContentColor = isDarkMode
+            ? UIColor(red: 0xBD / 255.0, green: 0xBD / 255.0, blue: 0xBD / 255.0, alpha: 1.0)
+            : UIColor(red: 0x66 / 255.0, green: 0x66 / 255.0, blue: 0x66 / 255.0, alpha: 1.0)
+        let closeIconImage = createCloseIconImage(color: primaryTextColor)
 
         // ========== 状态栏 ==========
         model.prefersStatusBarHidden = false
         if #available(iOS 13.0, *) {
-            model.preferredStatusBarStyle = .darkContent  // 黑色文字（浅色状态栏）
+            model.preferredStatusBarStyle = isDarkMode ? .lightContent : .darkContent
         } else {
-            model.preferredStatusBarStyle = .default
+            model.preferredStatusBarStyle = isDarkMode ? .lightContent : .default
         }
 
         // ========== 页面背景 ==========
-        model.backgroundColor = .white
+        model.backgroundColor = backgroundColor
 
         // ========== 导航栏（隐藏） ==========
         model.navIsHidden = true
+        model.navColor = backgroundColor
 
         // 获取状态栏高度，用于适配安全区域
         let statusBarHeight: CGFloat
@@ -283,7 +295,10 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
         // ========== Logo ==========
         model.logoIsHidden = false
-        if let logoImage = UIImage(named: "auth_logo") {
+        if let baseLogoImage = UIImage(named: "auth_logo") {
+            let logoImage = isDarkMode
+                ? tintedImage(baseLogoImage, color: .white) ?? baseLogoImage
+                : baseLogoImage
             model.logoImage = logoImage
         }
         model.logoFrameBlock = { screenSize, superViewSize, frame in
@@ -302,7 +317,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.sloganText = NSAttributedString(
             string: appDisplayName,
             attributes: [
-                .foregroundColor: UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0),  // #1A1A1A
+                .foregroundColor: primaryTextColor,
                 .font: UIFont.systemFont(ofSize: 20, weight: .medium)  // 与 Android 一致
             ]
         )
@@ -316,7 +331,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         }
 
         // ========== 手机号（SDK 默认居中显示）==========
-        model.numberColor = UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0)  // #1A1A1A
+        model.numberColor = primaryTextColor
         model.numberFont = UIFont.systemFont(ofSize: 28, weight: .medium)
         // 注意：numberFrameBlock 只有 x、y 生效，SDK会自动计算宽高
         // 不设置 x 则默认居中，这里只设置 y 值
@@ -372,9 +387,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.changeBtnTitle = NSAttributedString(
             string: "其他号码登录",
             attributes: [
-                .foregroundColor: UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0),
-                .font: UIFont.systemFont(ofSize: 15, weight: .medium),
-                .underlineStyle: NSUnderlineStyle.single.rawValue
+                .foregroundColor: privacyLinkColor,
+                .font: UIFont.systemFont(ofSize: 15, weight: .medium)
             ]
         )
         model.changeBtnFrameBlock = { _, superViewSize, _ in
@@ -392,8 +406,12 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.checkBoxIsHidden = false
         model.checkBoxIsChecked = false  // 默认未勾选
         model.checkBoxWH = 20
-        if let uncheckedImage = UIImage(named: "auth_checkbox_unchecked"),
-           let checkedImage = UIImage(named: "auth_checkbox_checked") {
+        let uncheckedImage = isDarkMode
+            ? createCheckboxImage(isChecked: false, color: secondaryTextColor)
+            : UIImage(named: "auth_checkbox_unchecked")
+        let checkedImage = UIImage(named: "auth_checkbox_checked")
+            ?? createCheckboxImage(isChecked: true, color: privacyLinkColor)
+        if let uncheckedImage {
             model.checkBoxImages = [uncheckedImage, checkedImage]
         }
 
@@ -408,8 +426,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         }
         model.privacyConectTexts = ["和", "、", "、"]
         model.privacyColors = [
-            UIColor(red: 0x99/255.0, green: 0x99/255.0, blue: 0x99/255.0, alpha: 1.0),  // #999999
-            UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0)   // #007AFF
+            secondaryTextColor,
+            privacyLinkColor
         ]
         model.privacyFont = UIFont.systemFont(ofSize: 12)
         model.privacyAlignment = .center
@@ -423,7 +441,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
             let privacyHeight: CGFloat = 50
             return CGRect(
                 x: horizontalMargin,
-                y: superViewSize.height - bottomMargin,
+                y: superViewSize.height - bottomMargin - privacyHeight,
                 width: superViewSize.width - horizontalMargin * 2,
                 height: privacyHeight
             )
@@ -436,7 +454,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         // 弹窗标题
         model.privacyAlertTitleContent = "温馨提示"
         model.privacyAlertTitleFont = UIFont.systemFont(ofSize: 17, weight: .medium)
-        model.privacyAlertTitleColor = UIColor(red: 0x1A/255.0, green: 0x1A/255.0, blue: 0x1A/255.0, alpha: 1.0)  // #1A1A1A
+        model.privacyAlertTitleColor = primaryTextColor
         model.privacyAlertTitleAlignment = .center
 
         // 弹窗内容（只显示协议链接，不要前后缀文案，保持和 Android 一致）
@@ -445,8 +463,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.privacyAlertContentFont = UIFont.systemFont(ofSize: 14)
         model.privacyAlertContentAlignment = .center
         model.privacyAlertContentColors = [
-            UIColor(red: 0x66/255.0, green: 0x66/255.0, blue: 0x66/255.0, alpha: 1.0),  // #666666
-            UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0xFF/255.0, alpha: 1.0)   // #007AFF
+            alertContentColor,
+            privacyLinkColor
         ]
 
         // 弹窗按钮
@@ -454,11 +472,13 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         model.privacyAlertButtonFont = UIFont.systemFont(ofSize: 15, weight: .medium)
         model.privacyAlertButtonTextColors = [UIColor.white, UIColor.white]
         model.privacyAlertBtnBackgroundImages = [btnNormalImage, btnHighlightedImage]
+        model.privacyAlertBackgroundColor = alertBackgroundColor
         model.privacyAlertCloseButtonIsNeedShow = true  // 显示关闭按钮
+        model.privacyAlertCloseButtonImage = closeIconImage
 
         // 弹窗背景遮罩
         model.privacyAlertMaskIsNeedShow = true
-        model.privacyAlertMaskAlpha = 0.3
+        model.privacyAlertMaskAlpha = isDarkMode ? 0.5 : 0.3
         model.privacyAlertCornerRadiusArray = [
             NSNumber(value: 16), NSNumber(value: 16),
             NSNumber(value: 16), NSNumber(value: 16)
@@ -466,8 +486,8 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
         // 弹窗尺寸和位置（自适应布局）
         model.privacyAlertFrameBlock = { screenSize, superViewSize, frame in
-            let alertWidth = screenSize.width - 80  // 左右各留40边距
-            let alertHeight: CGFloat = 220
+            let alertWidth = min(screenSize.width - 40, 280)
+            let alertHeight: CGFloat = 200
             return CGRect(
                 x: (screenSize.width - alertWidth) / 2,
                 y: (screenSize.height - alertHeight) / 2,
@@ -489,7 +509,7 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
         // 弹窗内容区域（自适应）
         model.privacyAlertPrivacyContentFrameBlock = { screenSize, superViewSize, frame in
-            let margin: CGFloat = 20
+            let margin: CGFloat = 16
             let titleHeight: CGFloat = 25
             let titleMargin: CGFloat = 20
             let contentTop = titleMargin + titleHeight + 10  // 标题下方留10pt间距
@@ -503,12 +523,12 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
         // 弹窗按钮（自适应）
         model.privacyAlertButtonFrameBlock = { screenSize, superViewSize, frame in
-            let margin: CGFloat = 20
+            let btnWidth: CGFloat = min(superViewSize.width - 40, 240)
             let btnHeight: CGFloat = 42
             return CGRect(
-                x: margin,
-                y: superViewSize.height - btnHeight - margin,
-                width: superViewSize.width - margin * 2,
+                x: (superViewSize.width - btnWidth) / 2,
+                y: superViewSize.height - btnHeight - 20,
+                width: btnWidth,
                 height: btnHeight
             )
         }
@@ -531,13 +551,10 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
 
         // ========== 协议详情页（使用 SDK 内置 WebView） ==========
         model.privacyVCIsCustomized = false  // 使用 SDK 内置 WebView
-        model.privacyNavColor = .white
+        model.privacyNavColor = backgroundColor
         model.privacyNavTitleFont = UIFont.systemFont(ofSize: 18, weight: .medium)
-        model.privacyNavTitleColor = .black
-        // 设置返回按钮图片，确保导航栏正确显示
-        if let backImage = UIImage(named: "auth_close") {
-            model.privacyNavBackImage = backImage
-        }
+        model.privacyNavTitleColor = primaryTextColor
+        model.privacyNavBackImage = closeIconImage
 
         return model
     }
@@ -599,6 +616,86 @@ class OneClickLoginPlugin: NSObject, FlutterPlugin {
         UIGraphicsEndImageContext()
 
         return image?.resizableImage(withCapInsets: UIEdgeInsets(top: cornerRadius, left: cornerRadius, bottom: cornerRadius, right: cornerRadius), resizingMode: .stretch) ?? UIImage()
+    }
+
+    private func createCloseIconImage(color: UIColor, size: CGFloat = 24, lineWidth: CGFloat = 2) -> UIImage {
+        let imageSize = CGSize(width: size, height: size)
+        UIGraphicsBeginImageContextWithOptions(imageSize, false, UIScreen.main.scale)
+
+        guard let context = UIGraphicsGetCurrentContext() else {
+            return UIImage()
+        }
+
+        context.setStrokeColor(color.cgColor)
+        context.setLineWidth(lineWidth)
+        context.setLineCap(.round)
+
+        let inset = size * 0.28
+        context.move(to: CGPoint(x: inset, y: inset))
+        context.addLine(to: CGPoint(x: size - inset, y: size - inset))
+        context.move(to: CGPoint(x: size - inset, y: inset))
+        context.addLine(to: CGPoint(x: inset, y: size - inset))
+        context.strokePath()
+
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        return image ?? UIImage()
+    }
+
+    private func createCheckboxImage(isChecked: Bool, color: UIColor, size: CGFloat = 20) -> UIImage {
+        let imageSize = CGSize(width: size, height: size)
+        UIGraphicsBeginImageContextWithOptions(imageSize, false, UIScreen.main.scale)
+
+        let rect = CGRect(origin: .zero, size: imageSize)
+        let path = UIBezierPath(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: 4)
+        color.setStroke()
+        path.lineWidth = 2
+        path.stroke()
+
+        if isChecked {
+            color.setFill()
+            path.fill()
+
+            let checkPath = UIBezierPath()
+            checkPath.move(to: CGPoint(x: size * 0.28, y: size * 0.54))
+            checkPath.addLine(to: CGPoint(x: size * 0.45, y: size * 0.7))
+            checkPath.addLine(to: CGPoint(x: size * 0.74, y: size * 0.34))
+            UIColor.white.setStroke()
+            checkPath.lineWidth = 2
+            checkPath.lineCapStyle = .round
+            checkPath.lineJoinStyle = .round
+            checkPath.stroke()
+        }
+
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        return image ?? UIImage()
+    }
+
+    private func tintedImage(_ image: UIImage, color: UIColor) -> UIImage? {
+        let rect = CGRect(origin: .zero, size: image.size)
+        UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+        color.setFill()
+        UIRectFill(rect)
+        image.draw(in: rect, blendMode: .destinationIn, alpha: 1.0)
+        let tinted = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return tinted
+    }
+
+    private func currentInterfaceStyle() -> UIUserInterfaceStyle {
+        if #available(iOS 13.0, *) {
+            if let viewController = getTopViewController() {
+                return viewController.traitCollection.userInterfaceStyle
+            }
+            if let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+               let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
+                return keyWindow.traitCollection.userInterfaceStyle
+            }
+        }
+        return .light
     }
 
     private func handleProtocolClick(url: String) {

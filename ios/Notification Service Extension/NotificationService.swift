@@ -5,6 +5,7 @@
 //  Created by Christian Pauly on 26.08.25.
 //
 
+import Foundation
 import UserNotifications
 import os
 
@@ -22,9 +23,8 @@ class NotificationService: UNNotificationServiceExtension {
             // os_log("[AutomatePushHelper] New message received: %{public}@", log: .default, type: .error, bestAttemptContent.userInfo)
             os_log("[AutomatePushHelper] New message received")
 
-            guard let roomId = bestAttemptContent.userInfo["room_id"] as? String,
-                  let eventId = bestAttemptContent.userInfo["event_id"] as? String else {
-                os_log("[AutomatePushHelper] Room ID or Event ID is missing!")
+            guard let roomId = bestAttemptContent.userInfo["room_id"] as? String else {
+                os_log("[AutomatePushHelper] Room ID is missing!")
                 let emptyContent = UNMutableNotificationContent()
                 contentHandler(emptyContent)
                 return
@@ -36,16 +36,19 @@ class NotificationService: UNNotificationServiceExtension {
                let jsonData = jsonString.data(using: .utf8),
                let jsonMap = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
                let unread = jsonMap["unread"] as? Int {
-                bestAttemptContent.title = String(
-                    localized: "\(unread) unread messages",
-                    comment: "Default notification title"
+                bestAttemptContent.title = String.localizedStringWithFormat(
+                    NSLocalizedString(
+                        "%d unread messages",
+                        comment: "Default notification title"
+                    ),
+                    unread
                 )
                 bestAttemptContent.badge = NSNumber(integerLiteral: unread)
             }
             
             // TODO: Download and decrypt event to display a better body:
-            bestAttemptContent.body = String(
-                localized: "New message - open app to read",
+            bestAttemptContent.body = NSLocalizedString(
+                "New message - open app to read",
                 comment: "Default notification body"
             )
             
