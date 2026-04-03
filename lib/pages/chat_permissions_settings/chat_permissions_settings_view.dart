@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
 import 'package:psygo/services/agent_service.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 
@@ -153,36 +155,51 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final avatarUrl = AgentService.instance.resolveAvatarUri(user);
-    final displayname = AgentService.instance.resolveStrictDisplayName(user);
+    final agentService = AgentService.instance;
+    final matrixLocals = MatrixLocals(L10n.of(context));
     final isMe = user.room.client.userID == user.id;
 
-    return ListTile(
-      leading: Avatar(
-        mxContent: avatarUrl,
-        name: displayname,
-        presenceUserId: user.stateKey,
-      ),
-      title: Text(
-        displayname,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        user.id,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 12,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: canEdit && !isMe
-          ? IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              tooltip: L10n.of(context).chatPermissions,
-              onPressed: onEditRole,
-            )
-          : null,
+    return ValueListenableBuilder<int>(
+      valueListenable: agentService.profileNotifier,
+      builder: (context, _, __) {
+        final displayname = resolveDisplayNameForMatrixUserId(
+          room: user.room,
+          matrixUserId: user.id,
+          matrixLocals: matrixLocals,
+        );
+        final avatarUrl = agentService.resolveAvatarUriByMatrixUserId(
+          user.id,
+          fallbackAvatarUri: user.avatarUrl,
+        );
+
+        return ListTile(
+          leading: Avatar(
+            mxContent: avatarUrl,
+            name: displayname,
+            presenceUserId: user.stateKey,
+          ),
+          title: Text(
+            displayname,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            user.id,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          trailing: canEdit && !isMe
+              ? IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: L10n.of(context).chatPermissions,
+                  onPressed: onEditRole,
+                )
+              : null,
+        );
+      },
     );
   }
 }
