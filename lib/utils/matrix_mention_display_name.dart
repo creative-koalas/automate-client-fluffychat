@@ -20,26 +20,10 @@ String renderMatrixMentionsWithDisplayName({
       return match.group(0) ?? '';
     }
 
-    AgentService.instance.ensureMatrixProfilePresentationById(
-      client: room.client,
+    final displayName = resolveMatrixMentionDisplayName(
+      room: room,
       matrixUserId: matrixUserId,
-      fallbackDisplayName: matrixUserId.localpart,
     );
-
-    if (!room.isDirectChat) {
-      AgentService.instance.ensureGroupDisplayNameByMatrixUserId(matrixUserId);
-    }
-
-    final displayName = !room.isDirectChat
-        ? AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(
-              matrixUserId,
-            ) ??
-            AgentService.instance.tryResolveDisplayNameByMatrixUserId(
-              matrixUserId,
-            )
-        : AgentService.instance.tryResolveDisplayNameByMatrixUserId(
-            matrixUserId,
-          );
     final normalizedDisplayName = displayName?.trim() ?? '';
     if (normalizedDisplayName.isEmpty) {
       return match.group(0) ?? '';
@@ -55,4 +39,56 @@ String renderMatrixMentionsWithDisplayName({
     final prefix = match.group(1) ?? '';
     return '$prefix@$mentionDisplayName';
   });
+}
+
+String? resolveMatrixMentionDisplayName({
+  required Room room,
+  required String? matrixUserId,
+  String? fallbackDisplayName,
+}) {
+  final key = matrixUserId?.trim() ?? '';
+  if (key.isEmpty) {
+    return null;
+  }
+
+  final user = room.unsafeGetUserFromMemoryOrFallback(key);
+  final fallback = _normalizeMentionFallbackDisplayName(
+    matrixUserId: key,
+    user: user,
+    fallbackDisplayName: fallbackDisplayName,
+  );
+  AgentService.instance.ensureMatrixProfilePresentationById(
+    client: room.client,
+    matrixUserId: key,
+    fallbackDisplayName: fallback,
+    fallbackAvatarUri: user.avatarUrl,
+  );
+
+  final displayName = AgentService.instance.resolveDisplayName(
+    user,
+    fallbackDisplayName: fallback,
+  );
+  final normalizedDisplayName = displayName.trim();
+  if (normalizedDisplayName.isEmpty) {
+    return null;
+  }
+  return normalizedDisplayName;
+}
+
+String _normalizeMentionFallbackDisplayName({
+  required String matrixUserId,
+  required User user,
+  String? fallbackDisplayName,
+}) {
+  final normalizedFallback = fallbackDisplayName?.trim() ?? '';
+  if (normalizedFallback.isNotEmpty && normalizedFallback != matrixUserId) {
+    return normalizedFallback;
+  }
+
+  final userDisplayName = user.calcDisplayname().trim();
+  if (userDisplayName.isNotEmpty && userDisplayName != matrixUserId) {
+    return userDisplayName;
+  }
+
+  return matrixUserId.localpart ?? matrixUserId;
 }

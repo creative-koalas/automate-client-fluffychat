@@ -15,6 +15,7 @@ import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_text_tokenizer.dart';
 import 'package:psygo/utils/code_highlight_theme.dart';
 import 'package:psygo/utils/event_checkbox_extension.dart';
+import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/mxc_image.dart';
@@ -201,18 +202,12 @@ class HtmlMessage extends StatelessWidget {
             final nodeText = node.text.trim();
             final fallbackDisplayName =
                 nodeText.isEmpty ? user.calcDisplayname() : nodeText;
-            AgentService.instance.ensureMatrixProfilePresentationById(
-              client: room.client,
-              matrixUserId: matrixId,
-              fallbackDisplayName: fallbackDisplayName,
-              fallbackAvatarUri: user.avatarUrl,
-            );
-            final displayName =
-                AgentService.instance.tryResolveDisplayNameByMatrixUserId(
-                      matrixId,
-                      fallbackDisplayName: fallbackDisplayName,
-                    ) ??
-                    fallbackDisplayName;
+            final displayName = resolveMatrixMentionDisplayName(
+                  room: room,
+                  matrixUserId: matrixId,
+                  fallbackDisplayName: fallbackDisplayName,
+                ) ??
+                fallbackDisplayName;
             final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
               matrixId,
               fallbackAvatarUri: user.avatarUrl,
@@ -658,18 +653,12 @@ class HtmlMessage extends StatelessWidget {
       final fallbackDisplayName = user.calcDisplayname() == matrixId
           ? (matrixId.localpart ?? matrixId)
           : user.calcDisplayname();
-      AgentService.instance.ensureMatrixProfilePresentationById(
-        client: room.client,
-        matrixUserId: matrixId,
-        fallbackDisplayName: fallbackDisplayName,
-        fallbackAvatarUri: user.avatarUrl,
-      );
-      final displayName =
-          AgentService.instance.tryResolveDisplayNameByMatrixUserId(
-                matrixId,
-                fallbackDisplayName: fallbackDisplayName,
-              ) ??
-              fallbackDisplayName;
+      final displayName = resolveMatrixMentionDisplayName(
+            room: room,
+            matrixUserId: matrixId,
+            fallbackDisplayName: fallbackDisplayName,
+          ) ??
+          fallbackDisplayName;
       final avatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
         matrixId,
         fallbackAvatarUri: user.avatarUrl,
