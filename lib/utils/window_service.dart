@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:xdg_status_notifier_item/xdg_status_notifier_item.dart';
 import 'package:path/path.dart' as path;
+import 'package:psygo/core/config.dart';
 import 'package:psygo/utils/platform_infos.dart';
 
 /// 窗口管理服务 - 用于 PC 端窗口样式切换和系统托盘
@@ -13,6 +15,7 @@ class WindowService {
 
   static bool _trayInitialized = false;
   static bool _hiddenToTray = false;
+  static bool _exiting = false;
   static _CloseInterceptor? _closeInterceptor;
   static final SystemTray _systemTray = SystemTray();
   static const String _trayEventLeftUp = 'leftMouseUp';
@@ -67,23 +70,23 @@ class WindowService {
       if (Platform.isLinux) {
         try {
           await _systemTray.initSystemTray(
-            title: 'PsyGo',
+            title: PsygoConfig.appName,
             iconPath: iconPath,
-            toolTip: 'PsyGo',
+            toolTip: PsygoConfig.appName,
           );
         } catch (_) {
           iconPath = 'assets/logo.png';
           await _systemTray.initSystemTray(
-            title: 'PsyGo',
+            title: PsygoConfig.appName,
             iconPath: iconPath,
-            toolTip: 'PsyGo',
+            toolTip: PsygoConfig.appName,
           );
         }
       } else {
         await _systemTray.initSystemTray(
-          title: 'PsyGo',
+          title: PsygoConfig.appName,
           iconPath: iconPath,
-          toolTip: 'PsyGo',
+          toolTip: PsygoConfig.appName,
         );
       }
 
@@ -230,24 +233,36 @@ class WindowService {
   /// 完全退出应用
   static Future<void> exitApp() async {
     if (!PlatformInfos.isDesktop) return;
+    if (_exiting) return;
+    _exiting = true;
+    try {
+      if (Platform.isWindows) {
+        // Windows 快速退出路径：托盘/窗口销毁有时会卡住，直接结束进程。
+        try {
+          await windowManager.setPreventClose(false);
+        } catch (_) {}
+        unawaited(destroySystemTray());
+        unawaited(windowManager.destroy());
+        exit(0);
+      }
 
-    // 1. 先隐藏窗口，给用户即时反馈
-    await windowManager.hide();
+      // 1. 先隐藏窗口，给用户即时反馈
+      await windowManager.hide();
 
-    // 2. 并行执行清理操作
-    await Future.wait([
-      destroySystemTray(),
-      windowManager.setPreventClose(false),
-    ]);
+      // 2. 并行执行清理操作
+      await Future.wait([
+        destroySystemTray(),
+        windowManager.setPreventClose(false),
+      ]);
 
-    // 3. 销毁窗口
-    await windowManager.destroy();
-
-    // 4. 给一点时间让异步操作完成
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // 5. 强制退出进程，确保不残留
-    exit(0);
+      // 3. 销毁窗口
+      await windowManager.destroy();
+      // 4. 强制退出进程，确保不残留
+      exit(0);
+    } catch (_) {
+      _exiting = false;
+      rethrow;
+    }
   }
 
   /// 设置关闭时隐藏到托盘（拦截系统关闭事件）
@@ -507,8 +522,13 @@ class _WindowButtonState extends State<_WindowButton> {
 /// 可拖拽的窗口区域组件
 class WindowDragArea extends StatelessWidget {
   final Widget child;
+  final bool enableDoubleTapMaximize;
 
-  const WindowDragArea({super.key, required this.child});
+  const WindowDragArea({
+    super.key,
+    required this.child,
+    this.enableDoubleTapMaximize = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -517,6 +537,11 @@ class WindowDragArea extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
+      onDoubleTap: enableDoubleTapMaximize
+          ? () {
+              WindowService.toggleMaximize();
+            }
+          : null,
       child: child,
     );
   }

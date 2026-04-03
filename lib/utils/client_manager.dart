@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
 
 import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/custom_http_client.dart';
 import 'package:psygo/utils/custom_image_resizer.dart';
@@ -41,7 +42,7 @@ abstract class ClientManager {
   }
 
   /// 将 Matrix 用户 ID 转换为合法的 clientName
-  /// 例如: @user:server.com -> PsyGo_user_server.com
+  /// 例如: @user:server.com -> APP_NAME_user_server.com
   static String userIdToClientName(String matrixUserId) {
     // 去掉 @ 符号，将 : 替换为 _
     final sanitized = matrixUserId
@@ -172,11 +173,12 @@ abstract class ClientManager {
   static NativeImplementations get nativeImplementations => kIsWeb
       ? const NativeImplementationsDummy()
       : (!kReleaseMode && PlatformInfos.isIOS)
-      ? const NativeImplementationsDummy()
-      : NativeImplementationsIsolate(
-          compute,
-          vodozemacInit: () => vod.init(wasmPath: './assets/assets/vodozemac/'),
-        );
+          ? const NativeImplementationsDummy()
+          : NativeImplementationsIsolate(
+              compute,
+              vodozemacInit: () =>
+                  vod.init(wasmPath: './assets/assets/vodozemac/'),
+            );
 
   static Future<Client> createClient(
     String clientName,
@@ -237,7 +239,7 @@ abstract class ClientManager {
       await NotificationsClient().notify(
         title,
         body: body,
-        appName: 'PsyGo',
+        appName: PsygoConfig.appName,
         hints: [
           NotificationHint.soundName('message-new-instant'),
         ],
@@ -254,7 +256,7 @@ abstract class ClientManager {
         iOS: const DarwinInitializationSettings(),
         windows: Platform.isWindows
             ? WindowsInitializationSettings(
-                appName: 'PsyGo',
+                appName: PsygoConfig.appName,
                 appUserModelId: 'com.psygo.app',
                 guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
                 iconPath: iconUri!.toFilePath(),
@@ -280,7 +282,7 @@ abstract class ClientManager {
                 images: [
                   WindowsImage(
                     iconUri!,
-                    altText: 'PsyGo',
+                    altText: PsygoConfig.appName,
                     placement: WindowsImagePlacement.appLogoOverride,
                   ),
                 ],

@@ -5,17 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/agent.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection_view.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';
 import '../../utils/localized_exception_extension.dart';
 
 class InvitationSelection extends StatefulWidget {
   final String roomId;
-  const InvitationSelection({
-    super.key,
-    required this.roomId,
-  });
+  const InvitationSelection({super.key, required this.roomId});
 
   @override
   InvitationSelectionController createState() =>
@@ -23,13 +22,49 @@ class InvitationSelection extends StatefulWidget {
 }
 
 class InvitationSelectionController extends State<InvitationSelection> {
+  final AgentService _agentService = AgentService.instance;
   TextEditingController controller = TextEditingController();
   late String currentSearchTerm;
   bool loading = false;
   List<Profile> foundProfiles = [];
+  Set<String> memberIds = <String>{};
   Timer? coolDown;
+  StreamSubscription? _roomStateSub;
+  bool _inviteSuccessSnackBarVisible = false;
 
   String? get roomId => widget.roomId;
+
+  Future<void> _refreshMemberIds() async {
+    final room = Matrix.of(context).client.getRoomById(roomId!);
+    if (room == null) return;
+
+    try {
+      final participants = await room.requestParticipants(
+        [...Membership.values]..remove(Membership.leave),
+      );
+      if (!mounted) return;
+      setState(() {
+        memberIds = participants.map((u) => u.id).toSet();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        memberIds = room.getParticipants().map((u) => u.id).toSet();
+      });
+    }
+  }
+
+  bool _isAlreadyInRoomError(Object error) {
+    if (error is! MatrixException) return false;
+    final message = error.errorMessage.toLowerCase();
+    return message.contains('already in the room') ||
+        message.contains('already joined') ||
+        message.contains('already a member') ||
+        message.contains('is in room') ||
+        message.contains('already invited') ||
+        message.contains('已在') ||
+        message.contains('已经在');
+  }
 
   Future<List<User>> getContacts(BuildContext context) async {
     final client = Matrix.of(context).client;
@@ -45,18 +80,140 @@ class InvitationSelectionController extends State<InvitationSelection> {
     return contacts;
   }
 
+  void _showInviteSuccessSnackBar(BuildContext context, String message) {
+    if (_inviteSuccessSnackBarVisible) return;
+    final messenger = ScaffoldMessenger.of(context);
+    _inviteSuccessSnackBarVisible = true;
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: InkWell(
+          onTap: messenger.hideCurrentSnackBar,
+          child: Text(message),
+        ),
+      ),
+    );
+    controller.closed.whenComplete(() {
+      _inviteSuccessSnackBarVisible = false;
+    });
+  }
+
+  bool _looksLikeOwnedAgentMatrixUserId(Client client, String matrixUserId) {
+    final normalizedUserId = matrixUserId.trim();
+    if (normalizedUserId.isEmpty) {
+      return false;
+    }
+
+    final targetDomain = normalizedUserId.domain?.trim().toLowerCase();
+    final currentDomain = client.userID?.domain?.trim().toLowerCase();
+    if (targetDomain == null ||
+        currentDomain == null ||
+        targetDomain != currentDomain) {
+      return false;
+    }
+
+    final localpart = normalizedUserId.localpart?.trim().toLowerCase() ?? '';
+    return localpart.startsWith('agent') ||
+        localpart.contains('agent-') ||
+        localpart.contains('agent_');
+  }
+
+  Future<Agent?> _resolveInviteTargetAgent(
+    Client client,
+    String matrixUserId,
+  ) async {
+    final cached = _agentService.getAgentByMatrixUserId(matrixUserId);
+    if (cached != null) {
+      return cached;
+    }
+
+    if (!_looksLikeOwnedAgentMatrixUserId(client, matrixUserId)) {
+      return null;
+    }
+
+    await _agentService.refresh(forceRefresh: true);
+    return _agentService.getAgentByMatrixUserId(matrixUserId);
+  }
+
+  String _resolveInviteTargetDisplayName({
+    required String matrixUserId,
+    required String fallbackDisplayName,
+    Agent? inviteTargetAgent,
+  }) {
+    final agentDisplayName = inviteTargetAgent?.displayName.trim() ?? '';
+    if (agentDisplayName.isNotEmpty) {
+      return agentDisplayName;
+    }
+
+    final resolved = _agentService
+        .resolveDisplayNameByMatrixUserId(
+          matrixUserId,
+          fallbackDisplayName: fallbackDisplayName,
+        )
+        .trim();
+    if (resolved.isNotEmpty) {
+      return resolved;
+    }
+
+    return matrixUserId.localpart ?? fallbackDisplayName;
+  }
+
   void inviteAction(BuildContext context, String id, String displayname) async {
-    final room = Matrix.of(context).client.getRoomById(roomId!)!;
+    final l10n = L10n.of(context);
+    final client = Matrix.of(context).client;
+    final room = client.getRoomById(roomId!)!;
+    if (!room.canInvite) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.noPermission)));
+      return;
+    }
+    if (memberIds.contains(id)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.userAlreadyInGroup)));
+      return;
+    }
+
+    final inviteTargetAgent = await _resolveInviteTargetAgent(client, id);
+    final isOwnedAgent = inviteTargetAgent?.isActive == true;
+    final isDismissedOwnedAgent = inviteTargetAgent?.isActive == false ||
+        (inviteTargetAgent == null &&
+            _looksLikeOwnedAgentMatrixUserId(client, id));
+    final resolvedDisplayName = _resolveInviteTargetDisplayName(
+      matrixUserId: id,
+      fallbackDisplayName: displayname,
+      inviteTargetAgent: inviteTargetAgent,
+    );
 
     final success = await showFutureLoadingDialog(
       context: context,
-      future: () => room.invite(id),
+      future: () async {
+        if (isDismissedOwnedAgent) {
+          throw l10n.inviteRetiredEmployee(resolvedDisplayName);
+        }
+        try {
+          await room.invite(id);
+        } on MatrixException catch (e) {
+          if (_isAlreadyInRoomError(e)) {
+            throw l10n.userAlreadyInGroup;
+          }
+          if (isOwnedAgent) {
+            throw l10n.inviteFailedTryAgain;
+          }
+          rethrow;
+        }
+      },
     );
     if (success.error == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(L10n.of(context).contactHasBeenInvitedToTheGroup),
-        ),
+      setState(() {
+        memberIds = {...memberIds, id};
+      });
+      _showInviteSuccessSnackBar(
+        context,
+        isOwnedAgent
+            ? l10n.youInvitedUser(resolvedDisplayName)
+            : l10n.contactHasBeenInvitedToTheGroup,
       );
     }
   }
@@ -83,9 +240,9 @@ class InvitationSelectionController extends State<InvitationSelection> {
     try {
       response = await matrix.client.searchUserDirectory(text, limit: 10);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text((e).toLocalizedString(context))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text((e).toLocalizedString(context))));
       return;
     } finally {
       setState(() => loading = false);
@@ -101,6 +258,32 @@ class InvitationSelectionController extends State<InvitationSelection> {
         );
       }
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshMemberIds();
+    _roomStateSub = Matrix.of(context)
+        .client
+        .onSync
+        .stream
+        .where(
+          (syncUpdate) =>
+              syncUpdate.rooms?.join?[roomId]?.timeline?.events?.any(
+                (event) => event.type == EventTypes.RoomMember,
+              ) ??
+              false,
+        )
+        .listen((_) => _refreshMemberIds());
+  }
+
+  @override
+  void dispose() {
+    coolDown?.cancel();
+    controller.dispose();
+    _roomStateSub?.cancel();
+    super.dispose();
   }
 
   @override

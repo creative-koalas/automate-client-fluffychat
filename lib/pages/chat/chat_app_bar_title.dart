@@ -12,8 +12,8 @@ import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/date_time_extension.dart';
-import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/utils/sync_status_localization.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/presence_builder.dart';
@@ -60,19 +60,21 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   void initState() {
     super.initState();
     _initEmployeeStatus();
-    // 监听 AgentService 变化，员工数据加载完成后刷新头像
-    AgentService.instance.agentsNotifier.addListener(_onAgentsChanged);
+    // 监听 AgentService 变化，昵称/头像资料更新后实时刷新标题区。
+    AgentService.instance.agentsNotifier.addListener(_onPresentationChanged);
+    AgentService.instance.profileNotifier.addListener(_onPresentationChanged);
   }
 
   @override
   void dispose() {
-    AgentService.instance.agentsNotifier.removeListener(_onAgentsChanged);
+    AgentService.instance.agentsNotifier.removeListener(_onPresentationChanged);
+    AgentService.instance.profileNotifier.removeListener(_onPresentationChanged);
     _stopPolling();
     _repository.dispose();
     super.dispose();
   }
 
-  void _onAgentsChanged() {
+  void _onPresentationChanged() {
     if (!mounted) return;
     final directChatMatrixID = controller.room.directChatMatrixID;
     if (directChatMatrixID == null) return;
@@ -84,7 +86,11 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
         _employee?.agentId == cachedEmployee.agentId) {
       // 如果是同一员工，更新数据（可能包含新的 avatarUrl）
       setState(() => _employee = cachedEmployee);
+      return;
     }
+
+    // 非员工联系人或群聊昵称解析更新时，也需要触发重建以更新标题/头像。
+    setState(() {});
   }
 
   /// 初始化员工状态
@@ -157,6 +163,8 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   @override
   Widget build(BuildContext context) {
     final room = controller.room;
+    final l10n = L10n.of(context);
+    final roomDisplayName = resolveRoomDisplayName(room: room, l10n: l10n);
     if (controller.selectedEvents.isNotEmpty) {
       return Text(
         controller.selectedEvents.length.toString(),
@@ -209,9 +217,7 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Text(
-                            room.getLocalizedDisplayname(
-                              MatrixLocals(L10n.of(context)),
-                            ),
+                            roomDisplayName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -249,51 +255,44 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   /// 构建头像 - 私聊时显示对方头像，群聊显示房间头像
   Widget _buildAvatar(Room room, BuildContext context) {
     final directChatMatrixID = room.directChatMatrixID;
+    final roomDisplayName = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
 
-    // 如果是私聊，获取对方用户的头像
+    // 如果是私聊，统一走 AgentService 的展示解析，避免与会话列表不一致。
     if (directChatMatrixID != null) {
-      // 优先使用已加载的员工数据（来自轮询 API，数据更新）
-      if (_employee != null &&
-          _employee!.avatarUrl != null &&
-          _employee!.avatarUrl!.isNotEmpty) {
-        final avatarUri =
-            AgentService.instance.parseAvatarUri(_employee!.avatarUrl);
-        if (avatarUri != null) {
-          return Avatar(
-            mxContent: avatarUri,
-            name: _employee!.displayName,
-            size: 32,
-          );
-        }
-      }
-      // 其次从 AgentService 缓存获取员工头像
-      final agentAvatarUri =
-          AgentService.instance.getAgentAvatarUri(directChatMatrixID);
-      if (agentAvatarUri != null) {
-        final agent =
-            AgentService.instance.getAgentByMatrixUserId(directChatMatrixID);
-        return Avatar(
-          mxContent: agentAvatarUri,
-          name: agent!.displayName,
-          size: 32,
-        );
-      }
-      // 非员工或员工没有头像，使用 Matrix 用户头像
+      final agentService = AgentService.instance;
       final user = room.unsafeGetUserFromMemoryOrFallback(directChatMatrixID);
+      agentService.ensureMatrixProfilePresentationById(
+        client: room.client,
+        matrixUserId: directChatMatrixID,
+        fallbackDisplayName: user.displayName ?? user.calcDisplayname(),
+        fallbackAvatarUri: user.avatarUrl,
+      );
+      final resolvedAvatar = agentService.resolveAvatarUriByMatrixUserId(
+        directChatMatrixID,
+        fallbackAvatarUri: user.avatarUrl,
+      );
+      final resolvedName = agentService.resolveDisplayNameByMatrixUserId(
+        directChatMatrixID,
+        fallbackDisplayName: user.calcDisplayname(),
+      );
+      final isEmployee =
+          _employee != null ||
+          agentService.getAgentByMatrixUserId(directChatMatrixID) != null;
       return Avatar(
-        mxContent: user.avatarUrl,
-        name: user.calcDisplayname(),
-        size: 36,
-        borderRadius: BorderRadius.circular(12),
+        mxContent: resolvedAvatar,
+        name: resolvedName,
+        size: isEmployee ? 32 : 36,
+        borderRadius: isEmployee ? null : BorderRadius.circular(12),
       );
     }
 
     // 群聊使用房间头像
     return Avatar(
       mxContent: room.avatar,
-      name: room.getLocalizedDisplayname(
-        MatrixLocals(L10n.of(context)),
-      ),
+      name: roomDisplayName,
       size: 36,
       borderRadius: BorderRadius.circular(12),
     );

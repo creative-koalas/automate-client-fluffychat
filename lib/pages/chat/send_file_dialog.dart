@@ -17,19 +17,28 @@ import 'package:psygo/utils/size_string.dart';
 import '../../utils/resize_video.dart';
 
 class SendFileDialog extends StatefulWidget {
-  final Room room;
+  final List<Room> rooms;
   final List<XFile> files;
   final BuildContext outerContext;
+  final VoidCallback? onSent;
+  final Event? replyEvent;
   final String? threadLastEventId, threadRootEventId;
 
-  const SendFileDialog({
-    required this.room,
+  SendFileDialog({
+    Room? room,
+    List<Room>? rooms,
     required this.files,
     required this.outerContext,
+    this.onSent,
+    required this.replyEvent,
     required this.threadLastEventId,
     required this.threadRootEventId,
     super.key,
-  });
+  })  : assert(
+          room != null || (rooms != null && rooms.isNotEmpty),
+          'Either room or rooms must be provided.',
+        ),
+        rooms = rooms ?? [room!];
 
   @override
   SendFileDialogState createState() => SendFileDialogState();
@@ -169,8 +178,10 @@ class SendFileDialogState extends State<SendFileDialog> {
     final l10n = L10n.of(context);
 
     try {
-      if (!widget.room.otherPartyCanReceiveMessages) {
-        throw OtherPartyCanNotReceiveMessages();
+      for (final room in widget.rooms) {
+        if (!room.otherPartyCanReceiveMessages) {
+          throw OtherPartyCanNotReceiveMessages();
+        }
       }
       scaffoldMessenger.showLoadingSnackBar(l10n.prepareSendingAttachment);
       Navigator.of(context, rootNavigator: false).pop();
@@ -224,23 +235,31 @@ class SendFileDialogState extends State<SendFileDialog> {
         }
 
         final label = _labelTextController.text.trim();
+        final threadRootEventId =
+            widget.rooms.length == 1 ? widget.threadRootEventId : null;
+        final threadLastEventId =
+            widget.rooms.length == 1 ? widget.threadLastEventId : null;
 
         try {
-          await widget.room.sendFileEvent(
-            file,
-            thumbnail: thumbnail,
-            shrinkImageMaxDimension: compress ? 1600 : null,
-            extraContent: label.isEmpty ? null : {'body': label},
-            threadRootEventId: widget.threadRootEventId,
-            threadLastEventId: widget.threadLastEventId,
-          );
+          for (final room in widget.rooms) {
+            await room.sendFileEvent(
+              file,
+              thumbnail: thumbnail,
+              inReplyTo: widget.rooms.length == 1 ? widget.replyEvent : null,
+              shrinkImageMaxDimension: compress ? 1600 : null,
+              extraContent: label.isEmpty ? null : {'body': label},
+              threadRootEventId: threadRootEventId,
+              threadLastEventId: threadLastEventId,
+            );
+          }
         } on MatrixException catch (e) {
           final retryAfterMs = e.retryAfterMs;
           if (e.error != MatrixError.M_LIMIT_EXCEEDED || retryAfterMs == null) {
             rethrow;
           }
-          final retryAfterDuration =
-              Duration(milliseconds: retryAfterMs + 1000);
+          final retryAfterDuration = Duration(
+            milliseconds: retryAfterMs + 1000,
+          );
 
           scaffoldMessenger.showSnackBar(
             SnackBar(
@@ -253,14 +272,20 @@ class SendFileDialogState extends State<SendFileDialog> {
 
           scaffoldMessenger.showLoadingSnackBar(l10n.sendingAttachment);
 
-          await widget.room.sendFileEvent(
-            file,
-            thumbnail: thumbnail,
-            shrinkImageMaxDimension: compress ? 1600 : null,
-            extraContent: label.isEmpty ? null : {'body': label},
-          );
+          for (final room in widget.rooms) {
+            await room.sendFileEvent(
+              file,
+              thumbnail: thumbnail,
+              inReplyTo: widget.rooms.length == 1 ? widget.replyEvent : null,
+              shrinkImageMaxDimension: compress ? 1600 : null,
+              extraContent: label.isEmpty ? null : {'body': label},
+              threadRootEventId: threadRootEventId,
+              threadLastEventId: threadLastEventId,
+            );
+          }
         }
       }
+      widget.onSent?.call();
       scaffoldMessenger.clearSnackBars();
     } catch (e) {
       scaffoldMessenger.clearSnackBars();
@@ -284,8 +309,9 @@ class SendFileDialogState extends State<SendFileDialog> {
   }
 
   Future<String> _calcCombinedFileSize() async {
-    final lengths =
-        await Future.wait(widget.files.map((file) => file.length()));
+    final lengths = await Future.wait(
+      widget.files.map((file) => file.length()),
+    );
     return lengths.fold<double>(0, (p, length) => p + length).sizeString;
   }
 
@@ -302,10 +328,12 @@ class SendFileDialogState extends State<SendFileDialog> {
 
     final isImage = uniqueFileType == 'image';
     final l10n = L10n.of(context);
-    final labelTitle =
-        isImage ? l10n.sendFileImageName : l10n.sendFileDocumentName;
-    final labelHint =
-        isImage ? l10n.sendFileImageNameHint : l10n.sendFileDocumentNameHint;
+    final labelTitle = isImage
+        ? l10n.sendFileImageName
+        : l10n.sendFileDocumentName;
+    final labelHint = isImage
+        ? l10n.sendFileImageNameHint
+        : l10n.sendFileDocumentNameHint;
 
     if (isImage) {
       if (widget.files.length == 1) {
@@ -329,8 +357,10 @@ class SendFileDialogState extends State<SendFileDialog> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 600),
             padding: const EdgeInsets.all(16),
@@ -393,8 +423,9 @@ class SendFileDialogState extends State<SendFileDialog> {
                               children: [
                                 Container(
                                   height: 300,
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 400),
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 400,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.grey[200],
                                     borderRadius: BorderRadius.circular(16),
@@ -407,8 +438,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                                             final bytes = snapshot.data;
                                             if (bytes == null) {
                                               return const Center(
-                                                child: CircularProgressIndicator
-                                                    .adaptive(),
+                                                child:
+                                                    CircularProgressIndicator.adaptive(),
                                               );
                                             }
                                             return Image.memory(
@@ -425,8 +456,8 @@ class SendFileDialogState extends State<SendFileDialog> {
                                               right: 8.0,
                                             ),
                                             child: FutureBuilder(
-                                              future:
-                                                  widget.files[i].readAsBytes(),
+                                              future: widget.files[i]
+                                                  .readAsBytes(),
                                               builder: (context, snapshot) {
                                                 final bytes = snapshot.data;
                                                 if (bytes == null) {
@@ -434,8 +465,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                                                     width: 200,
                                                     child: Center(
                                                       child:
-                                                          CircularProgressIndicator
-                                                              .adaptive(),
+                                                          CircularProgressIndicator.adaptive(),
                                                     ),
                                                   );
                                                 }
@@ -518,13 +548,13 @@ class SendFileDialogState extends State<SendFileDialog> {
                           ),
                           maxLines: 1,
                           maxLength: 255,
-                          buildCounter: (
-                            context, {
-                            required currentLength,
-                            required isFocused,
-                            maxLength,
-                          }) =>
-                              null,
+                          buildCounter:
+                              (
+                                context, {
+                                required currentLength,
+                                required isFocused,
+                                maxLength,
+                              }) => null,
                         ),
                         const SizedBox(height: 12),
                         // 压缩选项
@@ -563,18 +593,18 @@ class SendFileDialogState extends State<SendFileDialog> {
                                         l10n.sendFileCompressMedia,
                                         style: theme.textTheme.titleSmall
                                             ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF2E7D32),
-                                        ),
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF2E7D32),
+                                            ),
                                       ),
                                       const SizedBox(height: 1),
                                       Text(
                                         l10n.sendFileCompressMediaHint,
-                                        style:
-                                            theme.textTheme.bodySmall?.copyWith(
-                                          color: const Color(0xFF2E7D32),
-                                          fontSize: 11,
-                                        ),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: const Color(0xFF2E7D32),
+                                              fontSize: 11,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -671,10 +701,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                           if (bytes == null) {
                             return const CircularProgressIndicator.adaptive();
                           }
-                          return Image.memory(
-                            bytes,
-                            fit: BoxFit.contain,
-                          );
+                          return Image.memory(bytes, fit: BoxFit.contain);
                         },
                       )
                     : PageView.builder(
@@ -691,10 +718,7 @@ class SendFileDialogState extends State<SendFileDialog> {
                             return InteractiveViewer(
                               minScale: 0.5,
                               maxScale: 4.0,
-                              child: Image.memory(
-                                bytes,
-                                fit: BoxFit.contain,
-                              ),
+                              child: Image.memory(bytes, fit: BoxFit.contain),
                             );
                           },
                         ),
@@ -706,11 +730,7 @@ class SendFileDialogState extends State<SendFileDialog> {
               top: 40,
               right: 16,
               child: IconButton(
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 32,
-                ),
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
                 onPressed: () => Navigator.of(context).pop(),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.black.withValues(alpha: 0.6),
@@ -738,9 +758,7 @@ extension on ScaffoldMessengerState {
             const SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator.adaptive(
-                strokeWidth: 2,
-              ),
+              child: CircularProgressIndicator.adaptive(strokeWidth: 2),
             ),
             const SizedBox(width: 16),
             Text(title),

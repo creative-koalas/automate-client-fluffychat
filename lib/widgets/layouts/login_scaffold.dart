@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/agreement_webview_page.dart';
 
 class LoginScaffold extends StatelessWidget {
   final Widget body;
@@ -100,6 +103,34 @@ class _PrivacyButtons extends StatelessWidget {
   final MainAxisAlignment mainAxisAlignment;
   const _PrivacyButtons({required this.mainAxisAlignment});
 
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final l10n = L10n.of(context);
+    final api = context.read<PsygoApiClient>();
+    String? privacyUrl;
+
+    try {
+      final agreements = await api.getAgreements();
+      for (final agreement in agreements) {
+        if (agreement.isPrivacy && agreement.url.trim().isNotEmpty) {
+          privacyUrl = agreement.url.trim();
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('[LoginScaffold] Failed to load privacy agreement URL: $e');
+    }
+
+    if (!context.mounted) return;
+    if (privacyUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.authAgreementLoadFailedPrivacy)),
+      );
+      return;
+    }
+
+    await AgreementWebViewPage.open(context, l10n.authPrivacyPolicy, privacyUrl);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -159,7 +190,9 @@ class _PrivacyButtons extends StatelessWidget {
             ),
             buildButton(
               L10n.of(context).privacy,
-              () => launchUrl(AppConfig.privacyUrl),
+              () {
+                _openPrivacyPolicy(context);
+              },
             ),
             Container(
               width: 4,

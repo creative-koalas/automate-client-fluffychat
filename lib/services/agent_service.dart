@@ -32,6 +32,10 @@ class AgentService {
   final Set<String> _profileLookupInFlight = {};
   final Map<String, DateTime> _profileLookupLastAttemptAt = {};
   static const Duration _profileLookupCooldown = Duration(minutes: 1);
+  final Map<String, String> _groupDisplayNameByMatrixUserId = {};
+  final Set<String> _groupDisplayLookupInFlight = {};
+  final Map<String, DateTime> _groupDisplayLookupLastAttemptAt = {};
+  static const Duration _groupDisplayLookupCooldown = Duration(minutes: 1);
   int _liveStatusWatcherCount = 0;
   Timer? _liveStatusPollingTimer;
   static const Duration _liveStatusPollingInterval = Duration(seconds: 2);
@@ -179,7 +183,7 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示名称
-  /// 优先级：自己的员工名称 > Matrix profile 缓存 > fallback
+  /// 优先级：自己的员工名称 > fallback（房间实时数据）> Matrix profile 缓存
   String? tryResolveDisplayNameByMatrixUserId(
     String? matrixUserId, {
     String? fallbackDisplayName,
@@ -195,16 +199,16 @@ class AgentService {
       return ownName;
     }
 
+    final fallback = _normalizeDisplayNameCandidate(fallbackDisplayName, key);
+    if (fallback != null) {
+      return fallback;
+    }
+
     final remote = _profilePresentationByUserId[key];
     final remoteName =
         _normalizeDisplayNameCandidate(remote?.displayName, key);
     if (remoteName != null) {
       return remoteName;
-    }
-
-    final fallback = _normalizeDisplayNameCandidate(fallbackDisplayName, key);
-    if (fallback != null) {
-      return fallback;
     }
 
     return null;
@@ -233,7 +237,7 @@ class AgentService {
   }
 
   /// 按 Matrix User ID 解析展示头像
-  /// 优先级：自己的员工头像 > Matrix profile 缓存 > fallback
+  /// 优先级：自己的员工头像 > fallback（房间实时数据）> Matrix profile 缓存
   Uri? resolveAvatarUriByMatrixUserId(
     String? matrixUserId, {
     Uri? fallbackAvatarUri,
@@ -249,20 +253,38 @@ class AgentService {
       return ownAvatar;
     }
 
+    if (fallbackAvatarUri != null) {
+      return fallbackAvatarUri;
+    }
+
     final remote = _profilePresentationByUserId[key];
     final remoteAvatar = parseAvatarUri(remote?.avatarUrl);
     if (remoteAvatar != null) {
       return remoteAvatar;
     }
 
-    return fallbackAvatarUri;
+    return null;
   }
 
   /// 解析 User 的展示名称（含远端 profile 覆盖）
-  String resolveDisplayName(User user) {
+  /// 群聊中优先显示 ownerNickname-agentDisplayName（若后端可解析）。
+  String resolveDisplayName(
+    User user, {
+    String? fallbackDisplayName,
+  }) {
+    final matrixUserId = user.id.trim();
+    final fallback = fallbackDisplayName ?? user.calcDisplayname();
+    if (matrixUserId.isNotEmpty && !user.room.isDirectChat) {
+      ensureGroupDisplayNameByMatrixUserId(matrixUserId);
+      final groupDisplayName =
+          tryResolveGroupDisplayNameByMatrixUserId(matrixUserId);
+      if (groupDisplayName != null) {
+        return groupDisplayName;
+      }
+    }
     return resolveDisplayNameByMatrixUserId(
       user.id,
-      fallbackDisplayName: user.calcDisplayname(),
+      fallbackDisplayName: fallback,
     );
   }
 
@@ -423,6 +445,65 @@ class AgentService {
       return null;
     }
     return trimmed;
+  }
+
+  String? tryResolveGroupDisplayNameByMatrixUserId(String? matrixUserId) {
+    final key = matrixUserId?.trim() ?? '';
+    if (key.isEmpty) {
+      return null;
+    }
+    final displayName = _groupDisplayNameByMatrixUserId[key]?.trim() ?? '';
+    if (displayName.isEmpty) {
+      return null;
+    }
+    return displayName;
+  }
+
+  void ensureGroupDisplayNameByMatrixUserId(String? matrixUserId) {
+    final key = matrixUserId?.trim() ?? '';
+    if (key.isEmpty) {
+      return;
+    }
+    if (_groupDisplayNameByMatrixUserId.containsKey(key)) {
+      return;
+    }
+    if (_groupDisplayLookupInFlight.contains(key)) {
+      return;
+    }
+    final now = DateTime.now();
+    final lastAttemptAt = _groupDisplayLookupLastAttemptAt[key];
+    if (lastAttemptAt != null &&
+        now.difference(lastAttemptAt) < _groupDisplayLookupCooldown) {
+      return;
+    }
+    _groupDisplayLookupLastAttemptAt[key] = now;
+    _groupDisplayLookupInFlight.add(key);
+    unawaited(_loadGroupDisplayNameByMatrixUserId(key));
+  }
+
+  Future<void> _loadGroupDisplayNameByMatrixUserId(String matrixUserId) async {
+    try {
+      final mapping = await _repository.getGroupDisplayNamesByMatrixUserIds(
+        <String>[matrixUserId],
+      );
+      final groupDisplayName = (mapping[matrixUserId] ?? '').trim();
+      if (groupDisplayName.isEmpty) {
+        return;
+      }
+      final previous = _groupDisplayNameByMatrixUserId[matrixUserId];
+      if (previous == groupDisplayName) {
+        return;
+      }
+      _groupDisplayNameByMatrixUserId[matrixUserId] = groupDisplayName;
+      _notifyChanged();
+      profileNotifier.value++;
+    } catch (e) {
+      debugPrint(
+        '[AgentService] Group display name lookup failed for $matrixUserId: $e',
+      );
+    } finally {
+      _groupDisplayLookupInFlight.remove(matrixUserId);
+    }
   }
 
   String? _normalizeAvatarUrl(String? avatarUrl) {

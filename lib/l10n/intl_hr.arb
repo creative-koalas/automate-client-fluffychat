@@ -807,7 +807,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "automate": "Psygo",
+    "automate": "PsyGo",
     "@automate": {
         "type": "String",
         "placeholders": {}
@@ -979,7 +979,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} te je pozvao/la u Psygo. \n1. Posjeti strnicu psygoai.com i instaliraj aplikaciju \n2. Registriraj ili prijavi se \n3. Otvori poveznicu poziva: \n {link}",
+    "inviteText": "{username} te je pozvao/la u PsyGo. \n1. Posjeti strnicu psygoai.com i instaliraj aplikaciju \n2. Registriraj ili prijavi se \n3. Otvori poveznicu poziva: \n {link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {
@@ -1141,7 +1141,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "newMessageInPsygo": "💬 Nova poruka u Psygou",
+    "newMessageInPsygo": "💬 Nova poruka u PsyGou",
     "@newMessageInPsygo": {
         "type": "String",
         "placeholders": {}
@@ -1731,7 +1731,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "title": "Psygo",
+    "title": "PsyGo",
     "@title": {
         "description": "Title for the application",
         "type": "String",
@@ -2220,7 +2220,7 @@
     "@dehydrateTor": {},
     "emojis": "Emojiji",
     "@emojis": {},
-    "indexedDbErrorLong": "Spremište poruka nažalost nije standarno uključena u privatnom modusu.\nOtvori stranicu\n - about:config\n - postavi dom.indexedDB.privateBrowsing.enabled na true\nPsygo se inače neće moći pokrenuti.",
+    "indexedDbErrorLong": "Spremište poruka nažalost nije standarno uključena u privatnom modusu.\nOtvori stranicu\n - about:config\n - postavi dom.indexedDB.privateBrowsing.enabled na true\nPsyGo se inače neće moći pokrenuti.",
     "@indexedDbErrorLong": {},
     "storeSecurlyOnThisDevice": "Spremi sigurno na ovom uređaju",
     "@storeSecurlyOnThisDevice": {},
@@ -2414,7 +2414,7 @@
     "@foregroundServiceRunning": {},
     "callingPermissions": "Dozvole za pozivanje",
     "@callingPermissions": {},
-    "callingAccountDetails": "Omogućuje Psygou korištenje izvorne Android aplikacije za pozivanje.",
+    "callingAccountDetails": "Omogućuje PsyGou korištenje izvorne Android aplikacije za pozivanje.",
     "@callingAccountDetails": {},
     "callingAccount": "Račun za pozivanje",
     "@callingAccount": {},
@@ -2437,9 +2437,9 @@
     },
     "enterRoom": "Uđi u sobu",
     "@enterRoom": {},
-    "screenSharingDetail": "Dijeliš svoj ekran u FuffyChatu",
+    "screenSharingDetail": "Dijeliš svoj ekran u PsyGou",
     "@screenSharingDetail": {},
-    "appearOnTopDetails": "Omogućuje prikaz aplikacije ispred drugih (nije potrebno ako je Psygo već postavljen kao račun za pozivanje)",
+    "appearOnTopDetails": "Omogućuje prikaz aplikacije ispred drugih (nije potrebno ako je PsyGo već postavljen kao račun za pozivanje)",
     "@appearOnTopDetails": {},
     "appearOnTop": "Prikaz ispred drugih",
     "@appearOnTop": {},
@@ -2449,7 +2449,7 @@
     "@allSpaces": {},
     "screenSharingTitle": "dijeljenje ekrana",
     "@screenSharingTitle": {},
-    "otherCallingPermissions": "Mikrofon, kamera i druge Psygo dozvole",
+    "otherCallingPermissions": "Mikrofon, kamera i druge PsyGo dozvole",
     "@otherCallingPermissions": {},
     "enterSpace": "Uđi u prostor",
     "@enterSpace": {},

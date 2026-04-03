@@ -18,7 +18,7 @@ class PhoneLoginPage extends StatefulWidget {
   const PhoneLoginPage({super.key});
 
   @override
-  PhoneLoginController createState() => PhoneLoginController();
+  State<PhoneLoginPage> createState() => PhoneLoginController();
 }
 
 class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
@@ -97,26 +97,21 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
 
     final account = accountController.text.trim();
     final password = passwordController.text;
-    if (account.isEmpty) {
-      setState(() => accountError = l10n.pleaseEnterYourUsername);
-      return;
-    }
-    if (password.isEmpty) {
-      setState(() => passwordError = l10n.pleaseEnterYourPassword);
-      return;
-    }
 
     setState(() {
-      accountError = null;
-      passwordError = null;
-      loading = true;
+      accountError = account.isEmpty ? l10n.pleaseEnterYourUsername : null;
+      passwordError = password.isEmpty ? l10n.pleaseEnterYourPassword : null;
     });
 
+    if (accountError != null || passwordError != null) {
+      return;
+    }
+
+    setState(() => loading = true);
+
     try {
-      final authResponse = await backend.accountPasswordLogin(
-        account,
-        password,
-      );
+      final authResponse =
+          await backend.accountPasswordLogin(account, password);
       if (!mounted) return;
       await handlePostLogin(authResponse);
     } catch (e) {
@@ -304,12 +299,15 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     if (_termsUrl == null) {
       await _loadAgreements();
       if (_termsUrl == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.authAgreementLoadFailedTerms)),
         );
         return;
       }
     }
+
+    if (!mounted) return;
     await AgreementWebViewPage.open(
       context,
       l10n.authTermsOfService,
@@ -322,12 +320,15 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     if (_privacyUrl == null) {
       await _loadAgreements();
       if (_privacyUrl == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.authAgreementLoadFailedPrivacy)),
         );
         return;
       }
     }
+
+    if (!mounted) return;
     await AgreementWebViewPage.open(
       context,
       l10n.authPrivacyPolicy,
@@ -343,93 +344,87 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final theme = Theme.of(context);
-            final isDark = theme.brightness == Brightness.dark;
-            final bgColors = isDark
-                ? const [
-                    Color(0xFF0A1628),
-                    Color(0xFF0D2233),
-                    Color(0xFF0F3D3E),
-                  ]
-                : const [
-                    Color(0xFFF0F4F8),
-                    Color(0xFFE8EFF5),
-                    Color(0xFFE0F2F1),
-                  ];
-            final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
-            final accentColor =
-                isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColors = isDark
+        ? const [
+            Color(0xFF0A1628),
+            Color(0xFF0D2233),
+            Color(0xFF0F3D3E),
+          ]
+        : const [
+            Color(0xFFF0F4F8),
+            Color(0xFFE8EFF5),
+            Color(0xFFE0F2F1),
+          ];
+    final textColor = isDark ? Colors.white : const Color(0xFF1A2332);
+    final accentColor =
+        isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
 
-            Widget content = Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: bgColors,
-                ),
-                borderRadius:
-                    PlatformInfos.isDesktop ? BorderRadius.circular(6) : null,
-              ),
-              child: Stack(
-                children: [
-                  _buildGlowingOrbs(isDark),
-                  if (PlatformInfos.isDesktop)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 40,
-                      child: WindowDragArea(
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  if (PlatformInfos.isDesktop)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: WindowControlButtons(
-                        showMaximize: false,
-                        iconColor: isDark
-                            ? Colors.white.withValues(alpha: 0.6)
-                            : Colors.black.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 24,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 480),
-                        child: _buildGlassmorphicCard(
-                          context,
-                          isDark,
-                          textColor,
-                          accentColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-
-            if (PlatformInfos.isDesktop) {
-              content = ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: content,
-              );
-            }
-            return content;
-          },
+    Widget content = Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: bgColors,
         ),
+        borderRadius: PlatformInfos.isDesktop ? BorderRadius.circular(6) : null,
+      ),
+      child: Stack(
+        children: [
+          _buildGlowingOrbs(isDark),
+          if (PlatformInfos.isDesktop)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 40,
+              child: WindowDragArea(
+                enableDoubleTapMaximize: false,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+          if (PlatformInfos.isDesktop)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: WindowControlButtons(
+                showMaximize: false,
+                iconColor: isDark
+                    ? Colors.white.withValues(alpha: 0.6)
+                    : Colors.black.withValues(alpha: 0.4),
+              ),
+            ),
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _buildGlassmorphicCard(
+                  context,
+                  isDark,
+                  textColor,
+                  accentColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (PlatformInfos.isDesktop) {
+      content = ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: content,
       );
+    }
+
+    return Scaffold(body: content);
+  }
 
   Widget _buildGlowingOrbs(bool isDark) {
     final glowColor1 =
@@ -586,6 +581,7 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
               obscurePassword
                   ? Icons.visibility_outlined
                   : Icons.visibility_off_outlined,
+              color: accentColor,
             ),
           ),
           onSubmitted: (_) => loginWithPassword(),

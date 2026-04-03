@@ -9,15 +9,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
+import 'auth_storage_keys.dart';
 import 'config.dart';
 import 'token_refresh_lock.dart';
+import '../utils/auth_device_identity.dart';
 import '../utils/custom_http_client.dart';
 
 /// Token 状态变化事件
 enum TokenEvent {
-  refreshed,    // Token 刷新成功
-  expired,      // Token 过期，需要重新登录
-  loggedOut,    // 用户主动登出或被强制登出
+  refreshed, // Token 刷新成功
+  expired, // Token 过期，需要重新登录
+  loggedOut, // 用户主动登出或被强制登出
 }
 
 /// 统一的 Token 管理器
@@ -30,18 +32,20 @@ class TokenManager {
 
   static const _storage = FlutterSecureStorage();
 
-  // Storage keys（与 PsygoAuthState 保持一致）
-  static const String _primaryKey = 'automate_primary_token';
-  static const String _refreshKey = 'automate_refresh_token';
-  static const String _expiresAtKey = 'automate_expires_at';
-  static const String _userIdKey = 'automate_user_id';
+  // Storage keys（与 PsygoAuthState 保持一致，按环境隔离）
+  static String get _primaryKey => AuthStorageKeys.primary;
+  static String get _refreshKey => AuthStorageKeys.refresh;
+  static String get _expiresAtKey => AuthStorageKeys.expiresAt;
+  static String get _userIdKey => AuthStorageKeys.userId;
 
   // Token 过期前刷新阈值（5 分钟）
   static const Duration _refreshThreshold = Duration(minutes: 5);
 
-  // HTTP client for refresh requests
-  http.Client? _httpClient;
-  http.Client get httpClient => _httpClient ??= CustomHttpClient.createHTTPClient();
+  // Refresh uses one-time token rotation; retries may resend the same
+  // refresh token and cause an invalid-session false positive.
+  http.Client? _refreshHttpClient;
+  http.Client get refreshHttpClient => _refreshHttpClient ??=
+      CustomHttpClient.createHTTPClient(enableRetry: false);
 
   // 事件流控制器
   final _eventController = StreamController<TokenEvent>.broadcast();
@@ -99,6 +103,13 @@ class TokenManager {
     return _storage.read(key: _userIdKey);
   }
 
+  Future<Map<String, String>> _buildDeviceScopedBody(
+    String refreshToken,
+  ) async {
+    final devicePayload = await AuthDeviceIdentity.buildRequestPayload();
+    return {'refresh_token': refreshToken, ...devicePayload};
+  }
+
   /// 刷新 Access Token
   /// 返回 true 表示刷新成功，false 表示失败（需要重新登录）
   Future<bool> refreshAccessToken() async {
@@ -112,18 +123,23 @@ class TokenManager {
 
       try {
         final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/refresh-token');
-        final response = await httpClient.post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'refresh_token': refreshToken}),
-        ).timeout(PsygoConfig.receiveTimeout);
+        final body = await _buildDeviceScopedBody(refreshToken);
+        final response = await refreshHttpClient
+            .post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(body),
+            )
+            .timeout(PsygoConfig.receiveTimeout);
 
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         final code = json['code'] as int? ?? -1;
 
         if (code != 0) {
           final errorMsg = json['message'] as String? ?? 'Token refresh failed';
-          Logs().e('[TokenManager] Token refresh failed: code=$code, msg=$errorMsg');
+          Logs().e(
+            '[TokenManager] Token refresh failed: code=$code, msg=$errorMsg',
+          );
 
           // 10002/10003 表示认证失败，需要重新登录
           if (code == 10002 || code == 10003) {
@@ -138,17 +154,22 @@ class TokenManager {
         final expiresIn = data['expires_in'] as int;
         final newRefreshToken = data['refresh_token'] as String?;
 
-        // 更新 tokens
-        final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-        final writes = <Future<void>>[
-          _storage.write(key: _primaryKey, value: newAccessToken),
-          _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
-        ];
-        // 服务端返回新的 refresh token（一次性）
-        if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
-          writes.add(_storage.write(key: _refreshKey, value: newRefreshToken));
+        if (newRefreshToken == null || newRefreshToken.isEmpty) {
+          Logs().e('[TokenManager] Refresh response missing refresh_token');
+          await clearTokens();
+          _eventController.add(TokenEvent.expired);
+          throw Exception('Refresh response missing refresh token');
         }
-        await Future.wait(writes);
+
+        // Write refresh token first for one-time rotation safety. If app exits
+        // between writes, keeping the new refresh token avoids a stale token.
+        final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
+        await _storage.write(key: _refreshKey, value: newRefreshToken);
+        await _storage.write(key: _primaryKey, value: newAccessToken);
+        await _storage.write(
+          key: _expiresAtKey,
+          value: expiresAt.millisecondsSinceEpoch.toString(),
+        );
 
         Logs().i('[TokenManager] Access token refreshed successfully');
         _eventController.add(TokenEvent.refreshed);
@@ -162,6 +183,48 @@ class TokenManager {
         rethrow;
       }
     });
+  }
+
+  /// 显式登出时，尝试撤销当前设备的服务端会话。
+  ///
+  /// 失败时不阻塞本地退出，避免用户被卡住。
+  Future<void> revokeCurrentDeviceSession() async {
+    final refreshToken = await _storage.read(key: _refreshKey);
+    if (refreshToken == null || refreshToken.isEmpty) {
+      Logs().w('[TokenManager] Skip server logout: no refresh token');
+      return;
+    }
+
+    try {
+      final uri = Uri.parse('${PsygoConfig.baseUrl}/api/auth/logout');
+      final body = await _buildDeviceScopedBody(refreshToken);
+      final response = await refreshHttpClient
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(PsygoConfig.receiveTimeout);
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final code = json['code'] as int? ?? -1;
+      if (response.statusCode != 200 || code != 0) {
+        final message = json['message'] as String? ?? 'logout failed';
+        Logs().w(
+          '[TokenManager] Server logout failed: '
+          'status=${response.statusCode}, code=$code, msg=$message',
+        );
+        return;
+      }
+
+      Logs().i('[TokenManager] Current device session revoked successfully');
+    } catch (e, s) {
+      Logs().w(
+        '[TokenManager] Server logout request failed, continue with local logout',
+        e,
+        s,
+      );
+    }
   }
 
   /// 保存登录后的 tokens
@@ -182,18 +245,30 @@ class TokenManager {
 
     if (expiresIn != null) {
       final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
-      writes.add(_storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()));
+      writes.add(
+        _storage.write(
+          key: _expiresAtKey,
+          value: expiresAt.millisecondsSinceEpoch.toString(),
+        ),
+      );
     }
 
     await Future.wait(writes);
   }
 
   /// 更新 Access Token（刷新后调用）
-  Future<void> updateAccessToken(String accessToken, int expiresIn, {String? refreshToken}) async {
+  Future<void> updateAccessToken(
+    String accessToken,
+    int expiresIn, {
+    String? refreshToken,
+  }) async {
     final expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
     final writes = <Future<void>>[
       _storage.write(key: _primaryKey, value: accessToken),
-      _storage.write(key: _expiresAtKey, value: expiresAt.millisecondsSinceEpoch.toString()),
+      _storage.write(
+        key: _expiresAtKey,
+        value: expiresAt.millisecondsSinceEpoch.toString(),
+      ),
     ];
     if (refreshToken != null && refreshToken.isNotEmpty) {
       writes.add(_storage.write(key: _refreshKey, value: refreshToken));
@@ -220,7 +295,7 @@ class TokenManager {
 
   /// 释放资源
   void dispose() {
-    _httpClient?.close();
+    _refreshHttpClient?.close();
     _eventController.close();
   }
 }

@@ -5,11 +5,11 @@ import 'package:matrix/matrix.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:psygo/backend/api_client.dart';
-import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/app_update_test.dart';
 import 'package:psygo/utils/fluffy_share.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/branded_progress_indicator.dart';
@@ -26,6 +26,37 @@ class SettingsView extends StatelessWidget {
     final updateService = AppUpdateService(api);
     // showNoUpdateHint 为 true 表示没有更新时也提示
     await updateService.checkAndPrompt(context, showNoUpdateHint: true);
+  }
+
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final l10n = L10n.of(context);
+    final api = context.read<PsygoApiClient>();
+    String? privacyUrl;
+
+    try {
+      final agreements = await api.getAgreements();
+      for (final agreement in agreements) {
+        if (agreement.isPrivacy && agreement.url.trim().isNotEmpty) {
+          privacyUrl = agreement.url.trim();
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('[Settings] Failed to load privacy agreement URL: $e');
+    }
+
+    if (!context.mounted) return;
+    if (privacyUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.authAgreementLoadFailedPrivacy)),
+      );
+      return;
+    }
+
+    await launchUrlString(
+      privacyUrl,
+      mode: LaunchMode.inAppBrowserView,
+    );
   }
 
   @override
@@ -297,6 +328,31 @@ class SettingsView extends StatelessWidget {
                         title: Text(L10n.of(context).chat),
                         onTap: () => context.go('/rooms/settings/chat'),
                       ),
+                      if (PlatformInfos.isDesktop) ...[
+                        _buildDivider(theme),
+                        _buildCardListTile(
+                          theme,
+                          icon: Icons.folder_outlined,
+                          title: Text(l10n.downloadLocation),
+                          subtitle: Text(
+                            controller.configuredDownloadSaveDirectory.isEmpty
+                                ? l10n.downloadLocationSystemDefault
+                                : controller.configuredDownloadSaveDirectory,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: controller
+                                  .configuredDownloadSaveDirectory.isNotEmpty
+                              ? IconButton(
+                                  tooltip: l10n.downloadLocationReset,
+                                  onPressed: controller
+                                      .resetDownloadSaveDirectoryAction,
+                                  icon: const Icon(Icons.restart_alt_outlined),
+                                )
+                              : const Icon(Icons.chevron_right_rounded),
+                          onTap: controller.selectDownloadSaveDirectoryAction,
+                        ),
+                      ],
                     ],
                   ),
 
@@ -320,10 +376,7 @@ class SettingsView extends StatelessWidget {
                         title: Text(l10n.settingsPrivacyPolicy),
                         trailing:
                             const Icon(Icons.open_in_new_outlined, size: 20),
-                        onTap: () => launchUrlString(
-                          AppConfig.privacyUrl.toString(),
-                          mode: LaunchMode.inAppBrowserView,
-                        ),
+                        onTap: () => _openPrivacyPolicy(context),
                       ),
                       _buildDivider(theme),
                       Builder(

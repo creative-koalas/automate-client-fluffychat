@@ -1,4 +1,4 @@
-; PsyGo Setup (Admin + Program Files + Chinese + VC++ runtime)
+; App Setup (Admin + Program Files + Chinese + VC++ runtime)
 
 #define MyAppName "PsyGo"
 #ifndef MyAppVersion
@@ -44,11 +44,16 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline
 
-OutputBaseFilename=PsyGo-Setup
+OutputBaseFilename={#MyAppName}-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 SetupLogging=yes
+
+; 升级时关闭正在运行的应用（主窗口关闭会被托盘逻辑拦截，需强制结束进程）
+CloseApplications=force
+CloseApplicationsFilter={#MyAppExeName}
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

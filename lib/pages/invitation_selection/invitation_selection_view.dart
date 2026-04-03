@@ -81,8 +81,10 @@ class InvitationSelectionView extends StatelessWidget {
               stream: room.client.onRoomState.stream
                   .where((update) => update.roomId == room.id),
               builder: (context, snapshot) {
-                final participants =
-                    room.getParticipants().map((user) => user.id).toSet();
+                final participants = {
+                  ...room.getParticipants().map((user) => user.id),
+                  ...controller.memberIds,
+                };
                 return controller.foundProfiles.isNotEmpty
                     ? ListView.builder(
                         physics: const NeverScrollableScrollPhysics(),
@@ -91,6 +93,7 @@ class InvitationSelectionView extends StatelessWidget {
                         itemBuilder: (BuildContext context, int i) =>
                             _InviteContactListTile(
                           profile: controller.foundProfiles[i],
+                          canInvite: room.canInvite,
                           isMember: participants
                               .contains(controller.foundProfiles[i].userId),
                           onTap: () => controller.inviteAction(
@@ -120,6 +123,7 @@ class InvitationSelectionView extends StatelessWidget {
                             itemBuilder: (BuildContext context, int i) =>
                                 _InviteContactListTile(
                               user: contacts[i],
+                              canInvite: room.canInvite,
                               profile: Profile(
                                 avatarUrl: contacts[i].avatarUrl,
                                 displayName: contacts[i].calcDisplayname(),
@@ -147,12 +151,14 @@ class InvitationSelectionView extends StatelessWidget {
 class _InviteContactListTile extends StatelessWidget {
   final Profile profile;
   final User? user;
+  final bool canInvite;
   final bool isMember;
   final void Function() onTap;
 
   const _InviteContactListTile({
     required this.profile,
     this.user,
+    required this.canInvite,
     required this.isMember,
     required this.onTap,
   });
@@ -202,9 +208,17 @@ class _InviteContactListTile extends StatelessWidget {
         ),
       ),
       trailing: TextButton.icon(
-        onPressed: isMember ? null : onTap,
-        label: Text(isMember ? l10n.participant : l10n.invite),
-        icon: Icon(isMember ? Icons.check : Icons.add),
+        onPressed: isMember || !canInvite ? null : onTap,
+        label: Text(
+          isMember
+              ? l10n.participant
+              : (canInvite ? l10n.invite : l10n.noPermission),
+        ),
+        icon: Icon(
+          isMember
+              ? Icons.check
+              : (canInvite ? Icons.add : Icons.block_outlined),
+        ),
       ),
     );
   }

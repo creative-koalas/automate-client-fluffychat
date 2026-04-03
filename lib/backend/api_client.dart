@@ -1,15 +1,15 @@
-import 'dart:math';
-
 import 'package:dio/dio.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/force_update_status.dart';
 import '../models/maintenance_status.dart';
+import '../services/force_update_bus.dart';
 import '../services/maintenance_status_bus.dart';
 import 'auth_state.dart';
 import 'exceptions.dart';
 import '../core/config.dart';
 import '../core/token_manager.dart';
+import '../utils/auth_device_identity.dart';
 import '../utils/custom_http_client.dart';
 
 enum TokenRefreshOutcome {
@@ -31,10 +31,12 @@ class PsygoApiClient {
     return InterceptorsWrapper(
       onResponse: (response, handler) {
         _captureMaintenanceFromResponse(response);
+        _captureForceUpdateFromResponse(response);
         handler.next(response);
       },
       onError: (error, handler) async {
         _captureMaintenanceFromResponse(error.response);
+        _captureForceUpdateFromResponse(error.response);
 
         // 只处理 401 错误
         if (error.response?.statusCode != 401) {
@@ -86,9 +88,6 @@ class PsygoApiClient {
   final PsygoAuthState auth;
   final Dio _dio;
   static const Set<int> _unauthorizedCodes = {10002, 10003};
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static const String _authDeviceIdKey = 'automate_auth_device_id';
-  static const String _hexChars = '0123456789abcdef';
 
   Future<void> _syncAuthState() async {
     await auth.load();
@@ -116,6 +115,21 @@ class PsygoApiClient {
 
     if (status != null) {
       MaintenanceStatusBus.instance.publish(status);
+    }
+  }
+
+  void _captureForceUpdateFromResponse(Response<dynamic>? response) {
+    if (response == null) {
+      return;
+    }
+    final snapshot = ForceUpdateSnapshot.tryParseRequiredPayload(
+      response.data,
+      source: ForceUpdateSnapshot.sourceResponseInterceptor,
+      httpStatus: response.statusCode,
+      fallbackMessage: response.statusMessage,
+    );
+    if (snapshot != null) {
+      ForceUpdateBus.instance.publish(snapshot);
     }
   }
 
@@ -153,44 +167,6 @@ class PsygoApiClient {
     return status;
   }
 
-  String _authDevicePlatform() {
-    if (kIsWeb) return 'web';
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'android';
-      case TargetPlatform.iOS:
-        return 'ios';
-      case TargetPlatform.windows:
-        return 'windows';
-      case TargetPlatform.macOS:
-        return 'macos';
-      case TargetPlatform.linux:
-        return 'linux';
-      case TargetPlatform.fuchsia:
-        return 'fuchsia';
-    }
-  }
-
-  String _randomHex(int length) {
-    final random = Random.secure();
-    final buffer = StringBuffer();
-    for (var i = 0; i < length; i++) {
-      buffer.write(_hexChars[random.nextInt(_hexChars.length)]);
-    }
-    return buffer.toString();
-  }
-
-  Future<String> _getOrCreateAuthDeviceId() async {
-    final existing = (await _secureStorage.read(key: _authDeviceIdKey))?.trim();
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
-    }
-    final generated =
-        '${_authDevicePlatform()}_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}_${_randomHex(12)}';
-    await _secureStorage.write(key: _authDeviceIdKey, value: generated);
-    return generated;
-  }
-
   Future<Response<Map<String, dynamic>>> _requestWithAuthRetry(
     Future<Response<Map<String, dynamic>>> Function(String token) request,
   ) async {
@@ -226,19 +202,15 @@ class PsygoApiClient {
     return response;
   }
 
-  /// 发送短信验证码
+  /// 发送短信验证码。
+  /// 后端应按 `phone + auth_device_id` 做 60 秒限频，避免不同设备互相阻塞。
   Future<void> sendVerificationCode(String phone) async {
     Response<Map<String, dynamic>> res;
     try {
-      final authDeviceID = await _getOrCreateAuthDeviceId();
-      final authDevicePlatform = _authDevicePlatform();
+      final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
       res = await _dio.post<Map<String, dynamic>>(
         '${PsygoConfig.baseUrl}/api/auth/send-sms-code',
-        data: {
-          'phone': phone,
-          'auth_device_id': authDeviceID,
-          'auth_device_platform': authDevicePlatform,
-        },
+        data: {'phone': phone, ...authDevicePayload},
       );
     } on DioException catch (e) {
       debugPrint(
@@ -295,16 +267,10 @@ class PsygoApiClient {
 
   /// 短信验证码登录
   Future<AuthResponse> smsLogin(String phone, String code) async {
-    final authDeviceID = await _getOrCreateAuthDeviceId();
-    final authDevicePlatform = _authDevicePlatform();
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/sms-login',
-      data: {
-        'phone': phone,
-        'code': code,
-        'auth_device_id': authDeviceID,
-        'auth_device_platform': authDevicePlatform,
-      },
+      data: {'phone': phone, 'code': code, ...authDevicePayload},
     );
     return _handleAuthResponse(res, '登录失败');
   }
@@ -331,15 +297,10 @@ class PsygoApiClient {
 
   /// 一键登录（阿里云）
   Future<AuthResponse> oneClickLogin(String accessToken) async {
-    final authDeviceID = await _getOrCreateAuthDeviceId();
-    final authDevicePlatform = _authDevicePlatform();
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/auth/one-click-login',
-      data: {
-        'access_token': accessToken,
-        'auth_device_id': authDeviceID,
-        'auth_device_platform': authDevicePlatform,
-      },
+      data: {'access_token': accessToken, ...authDevicePayload},
     );
     return _handleAuthResponse(res, '登录失败');
   }
@@ -371,16 +332,43 @@ class PsygoApiClient {
       );
     }
 
+    final rawRefreshToken = (respData['refresh_token'] as String?)?.trim();
+    final refreshToken = (rawRefreshToken != null && rawRefreshToken.isNotEmpty)
+        ? rawRefreshToken
+        : null;
+    final hasRefreshToken = refreshToken != null;
+
+    final rawExpiresIn = respData['expires_in'];
+    final expiresIn = rawExpiresIn is int
+        ? rawExpiresIn
+        : (rawExpiresIn is num
+            ? rawExpiresIn.toInt()
+            : int.tryParse(rawExpiresIn?.toString() ?? ''));
+
     final authResponse = AuthResponse(
       token: token,
-      refreshToken: respData['refresh_token'] as String?,
-      expiresIn: respData['expires_in'] as int?,
+      refreshToken: refreshToken,
+      expiresIn: expiresIn,
       userId: userId,
       phone: respData['phone'] as String? ?? '',
       matrixAccessToken: respData['matrix_access_token'] as String?,
       matrixUserId: respData['matrix_user_id'] as String?,
       matrixDeviceId: respData['matrix_device_id'] as String?,
     );
+
+    debugPrint(
+      '[API] Auth login response parsed: '
+      'has_refresh_token=$hasRefreshToken, '
+      'expires_in=${authResponse.expiresIn}, '
+      'platform=${AuthDeviceIdentity.platformName}',
+    );
+
+    if ((authResponse.expiresIn ?? 0) > 0 && authResponse.refreshToken == null) {
+      debugPrint(
+        '[API] Auth response missing refresh_token '
+        '(platform=${AuthDeviceIdentity.platformName}, expires_in=${authResponse.expiresIn})',
+      );
+    }
 
     final rawOnboardingCompleted = respData['onboarding_completed'];
     final onboardingCompleted = rawOnboardingCompleted is bool
@@ -725,6 +713,7 @@ class PsygoApiClient {
   Future<AppVersionResponse> checkAppVersion({
     required String currentVersion,
     required String platform,
+    bool publishForceUpdate = true,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/app/version',
@@ -746,7 +735,21 @@ class PsygoApiClient {
       throw AutomateBackendException('Empty response data');
     }
 
-    return AppVersionResponse.fromJson(respData);
+    final parsed = AppVersionResponse.fromJson(respData);
+    if (publishForceUpdate) {
+      ForceUpdateBus.instance.publish(
+        ForceUpdateSnapshot(
+          required: parsed.forceUpdate,
+          minVersion: parsed.minSupportedVersion,
+          latestVersion: parsed.latestVersion,
+          downloadUrl: parsed.downloadUrl,
+          changelog: parsed.changelog,
+          checkedAt: DateTime.now(),
+          source: ForceUpdateSnapshot.sourceVersionCheck,
+        ),
+      );
+    }
+    return parsed;
   }
 
   /// 获取所有激活的协议列表（公开接口，无需认证）
@@ -1028,23 +1031,27 @@ class UserInfo {
 /// 版本检查响应
 class AppVersionResponse {
   final String latestVersion; // 最新版本号
+  final String minSupportedVersion; // 最低支持版本
   final bool forceUpdate; // 是否强制更新
   final String? downloadUrl; // 下载链接（null 表示已是最新，链接有效期 10 分钟）
   final String? changelog; // 更新日志
 
   AppVersionResponse({
     required this.latestVersion,
+    required this.minSupportedVersion,
     required this.forceUpdate,
     this.downloadUrl,
     this.changelog,
   });
 
-  /// 是否有更新（download_url 不为空才需要更新）
-  bool get hasUpdate => downloadUrl != null && downloadUrl!.isNotEmpty;
+  /// 是否有更新（强制更新即使没有下载链接也视为更新）
+  bool get hasUpdate =>
+      forceUpdate || (downloadUrl != null && downloadUrl!.isNotEmpty);
 
   factory AppVersionResponse.fromJson(Map<String, dynamic> json) {
     return AppVersionResponse(
       latestVersion: json['latest_version'] as String? ?? '',
+      minSupportedVersion: json['min_supported_version'] as String? ?? '',
       forceUpdate: json['force_update'] as bool? ?? false,
       downloadUrl: json['download_url'] as String?,
       changelog: json['changelog'] as String?,

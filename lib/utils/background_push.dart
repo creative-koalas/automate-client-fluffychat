@@ -31,12 +31,14 @@ import 'package:unifiedpush/unifiedpush.dart';
 import 'package:unifiedpush_ui/unifiedpush_ui.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/l10n/l10n_branding.dart';
 import 'package:psygo/main.dart';
 import 'package:psygo/utils/notification_background_handler.dart';
 import 'package:psygo/widgets/fluffy_chat_app.dart';
 import '../config/app_config.dart';
 import '../config/setting_keys.dart';
 import '../widgets/matrix.dart';
+//<GOOGLE_SERVICES>import 'push_helper.dart';
 import 'platform_infos.dart';
 
 //<GOOGLE_SERVICES>import 'package:fcm_shared_isolate/fcm_shared_isolate.dart';
@@ -331,7 +333,7 @@ class BackgroundPush {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (PlatformInfos.isAndroid) {
         onFcmError?.call(
-          l10n!.noGoogleServicesWarning,
+          l10n!.brandedNoGoogleServicesWarning,
           link: Uri.parse(
             AppConfig.enablePushTutorial,
           ),

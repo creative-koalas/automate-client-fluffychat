@@ -13,11 +13,18 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/force_update_status.dart';
 import 'package:psygo/utils/custom_http_client.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/widgets/fluffy_chat_app.dart';
 
 /// 版本跳过存储 key
 const String _skipVersionKey = 'app_update_skip_version';
+
+void _appUpdateFlowLog(String message) {
+  final ts = DateTime.now().toIso8601String();
+  print('[AppUpdateFlow][$ts] $message');
+}
 
 /// 应用更新服务
 class AppUpdateService {
@@ -348,6 +355,164 @@ class AppUpdateService {
     }
   }
 
+  /// 显示强制更新弹窗（由 ForceUpdateGate 调用）
+  Future<void> showForceUpdateDialog({
+    required BuildContext context,
+    required ForceUpdateSnapshot snapshot,
+  }) async {
+    _appUpdateFlowLog(
+      'showForceUpdateDialog() begin: '
+      'snapshotSource=${snapshot.source}, '
+      'snapshotHasUrl=${snapshot.hasDownloadUrl}, '
+      'snapshotLatest=${snapshot.latestVersion}',
+    );
+    if (!context.mounted) {
+      _appUpdateFlowLog('showForceUpdateDialog() abort: context unmounted');
+      return;
+    }
+
+    final currentVersion = await PlatformInfos.getVersion();
+    final platform = _getPlatformName();
+    AppVersionResponse? versionResponse;
+    try {
+      // Keep force-update flow aligned with settings "Check for updates":
+      // always read update metadata from version-check API response.
+      versionResponse = await _apiClient.checkAppVersion(
+        currentVersion: currentVersion,
+        platform: platform,
+      );
+      _appUpdateFlowLog(
+        'version check ok: '
+        'force=${versionResponse.forceUpdate}, '
+        'hasUrl=${(versionResponse.downloadUrl ?? '').trim().isNotEmpty}, '
+        'latest=${versionResponse.latestVersion}',
+      );
+    } catch (e) {
+      // Force-update can be triggered before login by response interceptor.
+      // In that case, fall back to snapshot payload if it already has a link.
+      debugPrint('[AppUpdate] force update version check failed, fallback to snapshot: $e');
+      _appUpdateFlowLog('version check failed, fallback to snapshot: $e');
+    }
+
+    final fromResponse = (versionResponse?.downloadUrl?.trim().isNotEmpty ?? false);
+    final downloadUrl = fromResponse
+        ? versionResponse!.downloadUrl!.trim()
+        : (snapshot.downloadUrl?.trim() ?? '');
+    _appUpdateFlowLog(
+      'resolved download url: '
+      'fromResponse=$fromResponse, empty=${downloadUrl.isEmpty}',
+    );
+    if (downloadUrl.isEmpty) {
+      debugPrint(
+        '[AppUpdate] force update missing download url '
+        '(version=$currentVersion, platform=$platform)',
+      );
+      if (context.mounted) {
+        final isVersionCheckFailed = versionResponse == null;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isVersionCheckFailed
+                  ? L10n.of(context).appUpdateCheckFailed
+                  : L10n.of(context).appUpdateDownloadLinkFailed,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final resolvedDialogContext = await _resolveDialogContext(context);
+    if (resolvedDialogContext == null) {
+      debugPrint(
+        '[AppUpdate] force update dialog skipped: navigator not ready',
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L10n.of(context).appUpdateCheckFailed)),
+        );
+      }
+      return;
+    }
+    _appUpdateFlowLog(
+      'dialog context resolved: source=${resolvedDialogContext.source}, '
+      'useRootNavigator=${resolvedDialogContext.useRootNavigator}',
+    );
+
+    final snapshotVersion = snapshot.latestVersion.trim();
+    final responseVersion = versionResponse?.latestVersion.trim() ?? '';
+    final latestVersion = responseVersion.isNotEmpty
+        ? responseVersion
+        : (snapshotVersion.isNotEmpty ? snapshotVersion : currentVersion);
+    final changelog = versionResponse?.changelog ?? snapshot.changelog;
+
+    await showDialog<bool>(
+      context: resolvedDialogContext.context,
+      barrierDismissible: false,
+      useRootNavigator: resolvedDialogContext.useRootNavigator,
+      builder: (builderContext) => _UpdateDialog(
+        latestVersion: latestVersion,
+        forceUpdate: true,
+        downloadUrl: downloadUrl,
+        changelog: changelog,
+        autoStart: true,
+        refreshDownloadUrl: () => _refreshDownloadUrl(currentVersion, platform),
+      ),
+    );
+    _appUpdateFlowLog('showForceUpdateDialog() dialog dismissed');
+  }
+
+  Future<_DialogContextTarget?> _resolveDialogContext(
+    BuildContext fallbackContext,
+  ) async {
+    for (var i = 0; i < 20; i++) {
+      final rootState = PsygoApp.navigatorKey.currentState;
+      final overlayContext = rootState?.overlay?.context;
+      if (overlayContext != null && overlayContext.mounted) {
+        return _DialogContextTarget(
+          source: 'root_overlay',
+          context: overlayContext,
+          useRootNavigator: false,
+        );
+      }
+
+      final rootContext = PsygoApp.navigatorKey.currentContext;
+      if (rootContext != null && rootContext.mounted) {
+        return _DialogContextTarget(
+          source: 'root_current_context',
+          context: rootContext,
+          useRootNavigator: true,
+        );
+      }
+
+      if (fallbackContext.mounted) {
+        final fallbackNavigator = Navigator.maybeOf(fallbackContext);
+        if (fallbackNavigator != null) {
+          final hasRootNavigator =
+              Navigator.maybeOf(fallbackContext, rootNavigator: true) != null;
+          return _DialogContextTarget(
+            source: 'fallback_context',
+            context: fallbackContext,
+            useRootNavigator: hasRootNavigator,
+          );
+        }
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+
+    final fallbackHasNavigator = fallbackContext.mounted
+        ? Navigator.maybeOf(fallbackContext) != null
+        : false;
+    _appUpdateFlowLog(
+      'resolveDialogContext() failed after retries: '
+      'rootCurrentNull=${PsygoApp.navigatorKey.currentContext == null}, '
+      'rootStateNull=${PsygoApp.navigatorKey.currentState == null}, '
+      'fallbackMounted=${fallbackContext.mounted}, '
+      'fallbackHasNavigator=$fallbackHasNavigator',
+    );
+    return null;
+  }
+
   /// 获取平台名称
   String _getPlatformName() {
     if (kIsWeb) return 'web';
@@ -510,12 +675,25 @@ class AppUpdateService {
   }
 }
 
+class _DialogContextTarget {
+  const _DialogContextTarget({
+    required this.source,
+    required this.context,
+    required this.useRootNavigator,
+  });
+
+  final String source;
+  final BuildContext context;
+  final bool useRootNavigator;
+}
+
 /// 更新弹窗（支持下载进度）
 class _UpdateDialog extends StatefulWidget {
   final String latestVersion;
   final bool forceUpdate;
   final String downloadUrl;
   final String? changelog;
+  final bool autoStart;
   final Future<String?> Function() refreshDownloadUrl; // 刷新下载链接的回调
 
   const _UpdateDialog({
@@ -523,6 +701,7 @@ class _UpdateDialog extends StatefulWidget {
     required this.forceUpdate,
     required this.downloadUrl,
     this.changelog,
+    this.autoStart = false,
     required this.refreshDownloadUrl,
   });
 
@@ -546,11 +725,32 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   bool _allowPop = false; // 是否允许关闭弹窗（只有按钮点击时才设为true）
   late String _currentDownloadUrl; // 当前下载链接（可能会刷新）
   DateTime? _lastProgressUpdate; // 上次更新进度的时间
+  bool _autoStartTriggered = false;
 
   @override
   void initState() {
     super.initState();
     _currentDownloadUrl = widget.downloadUrl;
+    _appUpdateFlowLog(
+      '_UpdateDialog.initState: force=${widget.forceUpdate}, '
+      'autoStart=${widget.autoStart}, urlEmpty=${_currentDownloadUrl.trim().isEmpty}',
+    );
+    if (widget.autoStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _autoStartTriggered) {
+          return;
+        }
+        _autoStartTriggered = true;
+        _appUpdateFlowLog(
+          '_UpdateDialog autoStart triggered: needsInAppDownload=$_needsInAppDownload',
+        );
+        if (_needsInAppDownload) {
+          unawaited(_startDownload());
+          return;
+        }
+        unawaited(_openExternalUrl());
+      });
+    }
   }
 
   @override
@@ -588,6 +788,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 开始下载
   Future<void> _startDownload({bool isRetry = false}) async {
+    _appUpdateFlowLog('_startDownload() begin: isRetry=$isRetry');
     final l10n = L10n.of(context);
     setState(() {
       _state = _UpdateState.downloading;
@@ -632,7 +833,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         _progress = 1.0; // 下载完成后设为 100%
         _downloadedFilePath = filePath;
       });
+      _appUpdateFlowLog('_startDownload() success: filePath=$filePath');
     } catch (e) {
+      _appUpdateFlowLog('_startDownload() failed: $e');
       if (e is DioException && e.type == DioExceptionType.cancel) {
         // 用户取消
         setState(() {
@@ -658,11 +861,13 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 刷新下载链接并重试
   Future<void> _refreshAndRetry() async {
+    _appUpdateFlowLog('_refreshAndRetry() begin');
     final l10n = L10n.of(context);
     try {
       final newUrl = await widget.refreshDownloadUrl();
       if (newUrl != null && newUrl.isNotEmpty) {
         _currentDownloadUrl = newUrl;
+        _appUpdateFlowLog('_refreshAndRetry() got new url, retry download');
         await _startDownload(isRetry: true);
       } else {
         setState(() {
@@ -671,6 +876,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         });
       }
     } catch (e) {
+      _appUpdateFlowLog('_refreshAndRetry() failed: $e');
       setState(() {
         _state = _UpdateState.error;
         _errorMessage = l10n.appUpdateDownloadLinkFailed;
@@ -774,6 +980,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   /// 跳转外部链接（iOS 或下载失败时）
   Future<void> _openExternalUrl() async {
+    _appUpdateFlowLog('_openExternalUrl() begin');
     final l10n = L10n.of(context);
     final uri = Uri.parse(widget.downloadUrl);
     try {
@@ -781,6 +988,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       final opened = canOpen
           ? await launchUrl(uri, mode: LaunchMode.externalApplication)
           : false;
+      _appUpdateFlowLog('_openExternalUrl() result: canOpen=$canOpen, opened=$opened');
 
       if (!opened) {
         if (context.mounted) {
@@ -797,6 +1005,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         Navigator.of(context).pop(true);
       }
     } catch (_) {
+      _appUpdateFlowLog('_openExternalUrl() threw exception');
       if (context.mounted) {
         setState(() {
           _state = _UpdateState.error;

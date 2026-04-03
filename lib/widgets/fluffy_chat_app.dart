@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:psygo/backend/backend.dart';
 import 'package:psygo/core/config.dart';
@@ -14,14 +16,18 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/post_login_navigation.dart';
 import 'package:psygo/utils/permission_service.dart';
+import 'package:psygo/utils/show_scaffold_dialog.dart';
 import 'package:psygo/utils/window_service.dart';
+import 'package:psygo/utils/macos_global_screenshot_hotkey.dart';
 import 'package:psygo/widgets/app_lock.dart';
+import 'package:psygo/widgets/share_scaffold_dialog.dart';
 import 'package:psygo/widgets/theme_builder.dart';
-import 'package:psygo/utils/app_update_service.dart';
 import 'package:psygo/utils/agreement_check_service.dart';
 import 'package:psygo/utils/client_manager.dart';
+import 'package:psygo/services/force_update_controller.dart';
 import 'package:psygo/services/maintenance_status_controller.dart';
 import '../utils/custom_scroll_behaviour.dart';
+import 'force_update_gate.dart';
 import 'maintenance_gate.dart';
 import 'matrix.dart';
 
@@ -60,11 +66,14 @@ class PsygoApp extends StatelessWidget {
     return ThemeBuilder(
       builder: (context, themeMode, primaryColor) => MaterialApp.router(
         debugShowCheckedModeBanner: false,
-        title: 'PsyGo',
+        title: PsygoConfig.appName,
         themeMode: themeMode,
         theme: FluffyThemes.buildTheme(context, Brightness.light, primaryColor),
-        darkTheme:
-            FluffyThemes.buildTheme(context, Brightness.dark, primaryColor),
+        darkTheme: FluffyThemes.buildTheme(
+          context,
+          Brightness.dark,
+          primaryColor,
+        ),
         scrollBehavior: CustomScrollBehavior(),
         localizationsDelegates: L10n.localizationsDelegates,
         supportedLocales: L10n.supportedLocales,
@@ -81,17 +90,30 @@ class PsygoApp extends StatelessWidget {
                   create: (context) => MaintenanceStatusController(
                     context.read<PsygoApiClient>(),
                   )..start(),
-                  child: MaintenanceGate(
-                    child: AppLockWidget(
-                      pincode: pincode,
-                      clients: clients,
-                      child: Matrix(
-                        clients: clients,
-                        store: store,
-                        child: _AutomateAuthGate(
+                  child: ChangeNotifierProvider(
+                    lazy: false,
+                    create: (context) => ForceUpdateController(
+                      context.read<PsygoApiClient>(),
+                      dialogContextProvider: () => PsygoApp
+                          .router
+                          .routerDelegate
+                          .navigatorKey
+                          .currentContext,
+                    )..start(),
+                    child: MaintenanceGate(
+                      child: ForceUpdateGate(
+                        child: AppLockWidget(
+                          pincode: pincode,
                           clients: clients,
-                          store: store,
-                          child: testWidget ?? child,
+                          child: Matrix(
+                            clients: clients,
+                            store: store,
+                            child: _AutomateAuthGate(
+                              clients: clients,
+                              store: store,
+                              child: testWidget ?? child,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -150,8 +172,6 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   static const int _maxResumeRetries = 3; // Max retries on resume
   bool _authCheckInProgress = false;
   bool _authCheckQueued = false;
-  bool _blockedByForceUpdate = false; // Track if blocked by force update
-  bool _updateCheckInProgress = false; // 防止并发触发重复检查
   bool _isLoggingOut = false;
   bool _hasResolvedPostLoginDestination = false;
   bool _isResolvingPostLoginDestination = false;
@@ -165,6 +185,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   DateTime? _lastSyncFailureNoticeAt;
   static const Duration _syncFailureNoticeCooldown = Duration(seconds: 30);
 
+  StreamSubscription<List<SharedMediaFile>>? _shareMediaStreamSubscription;
+  List<SharedMediaFile>? _pendingSharedMedia;
+  bool _shareDialogVisible = false;
+
   // 保存 auth 引用，避免在 dispose 中访问 context
   PsygoAuthState? _authState;
 
@@ -174,11 +198,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 取消同步状态监听
     _syncStatusSubscription?.cancel();
     _syncMonitoringClientName = null;
+    _shareMediaStreamSubscription?.cancel();
     // 移除认证状态监听（使用保存的引用，避免访问 context）
     _authState?.removeListener(_onAuthStateChanged);
     _authState = null;
-    // 停止后台检查服务
-    AppUpdateService.stopBackgroundCheck();
     AgreementCheckService.stopBackgroundCheck();
     super.dispose();
   }
@@ -193,7 +216,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 登出时重置状态并清除 Matrix
     if (!auth.isLoggedIn && _state == _AuthState.authenticated) {
       debugPrint(
-          '[AuthGate] User logged out via auth state change, clearing all auth state');
+        '[AuthGate] User logged out via auth state change, clearing all auth state',
+      );
 
       // 取消同步状态监听
       _syncStatusSubscription?.cancel();
@@ -212,7 +236,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // 检查 Matrix 是否也已登录
       try {
         final matrix = Matrix.of(context);
-        Client? loggedInClient = matrix.clientOrNull;
+        var loggedInClient = matrix.clientOrNull;
         if (loggedInClient == null || !loggedInClient.isLogged()) {
           for (final client in matrix.widget.clients) {
             if (client.isLogged()) {
@@ -223,17 +247,20 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         }
         if (loggedInClient != null && loggedInClient.isLogged()) {
           debugPrint(
-              '[AuthGate] User logged in with Matrix, updating state to authenticated');
+            '[AuthGate] User logged in with Matrix, updating state to authenticated',
+          );
           matrix.setActiveClient(loggedInClient);
           setState(() => _state = _AuthState.authenticated);
           _startAgreementCheckService();
           // 启动同步状态监听，检测持续连接失败
           _startSyncStatusMonitoring(loggedInClient);
           unawaited(_ensurePostLoginDestination());
+          unawaited(_consumePendingSharedMedia());
         } else {
           // Matrix 还没登录完成，稍后再检查
           debugPrint(
-              '[AuthGate] PsyGo logged in but Matrix not yet, will check again');
+            '[AuthGate] ${PsygoConfig.appName} logged in but Matrix not yet, will check again',
+          );
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) _onAuthStateChanged();
           });
@@ -248,6 +275,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(MacosGlobalScreenshotHotkey.initialize());
+    _initReceiveSharingIntent();
 
     // 监听认证状态变化（保存引用以便在 dispose 中使用）
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -269,52 +298,86 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
-  /// 应用启动时初始化更新检查
-  Future<void> _initUpdateCheck() async {
-    if (_updateCheckInProgress) return;
-    _updateCheckInProgress = true;
-    try {
-      final api = context.read<PsygoApiClient>();
+  void _initReceiveSharingIntent() {
+    if (!PlatformInfos.isMobile) return;
 
-      // 获取可用的 context（优先使用 Navigator context，否则使用当前 widget context）
-      BuildContext? getNavigatorContext() {
-        return PsygoApp.navigatorKey.currentContext;
-      }
+    _shareMediaStreamSubscription = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen(_queueSharedMedia, onError: (_, __) {});
 
-      // 获取最佳可用 context
-      // Navigator context 可能在登录完成后才可用，所以先用当前 context
-      BuildContext getAvailableContext() {
-        return getNavigatorContext() ?? context;
-      }
-
-      // 启动后台检查服务
-      AppUpdateService.startBackgroundCheck(api, getAvailableContext);
-
-      // 不再等待 Navigator，直接使用当前 context 执行检查
-      // 当前 context 在 MaterialApp.builder 内，可以正常显示 Dialog
-      if (!mounted) return;
-
-      // 立即执行一次检查
-      final updateService = AppUpdateService(api);
-      final canContinue = await updateService.checkAndPrompt(context);
-
-      // 每次检查都同步阻止状态，避免“已更新但仍被拦截”
-      if (!mounted) return;
-      final shouldBlock = !canContinue;
-      if (_blockedByForceUpdate != shouldBlock) {
-        setState(() {
-          _blockedByForceUpdate = shouldBlock;
-        });
-      } else {
-        _blockedByForceUpdate = shouldBlock;
-      }
-    } catch (e) {
-      debugPrint('[AppUpdate] Init update check failed: $e');
-    } finally {
-      _updateCheckInProgress = false;
-    }
+    ReceiveSharingIntent.instance.getInitialMedia().then(_queueSharedMedia);
   }
 
+  void _queueSharedMedia(List<SharedMediaFile> files) {
+    if (!mounted || files.isEmpty) return;
+    _pendingSharedMedia = files;
+    unawaited(ReceiveSharingIntent.instance.reset());
+    unawaited(_consumePendingSharedMedia());
+  }
+
+  List<ShareItem> _mapSharedMediaToItems(List<SharedMediaFile> files) =>
+      files.map((file) {
+        if ({
+          SharedMediaType.text,
+          SharedMediaType.url,
+        }.contains(file.type)) {
+          return TextShareItem(file.path);
+        }
+        return FileShareItem(
+          XFile(
+            file.path.replaceFirst('file://', ''),
+            mimeType: file.mimeType,
+          ),
+        );
+      }).toList();
+
+  Future<void> _consumePendingSharedMedia() async {
+    if (!mounted ||
+        _state != _AuthState.authenticated ||
+        _shareDialogVisible ||
+        _pendingSharedMedia == null ||
+        _pendingSharedMedia!.isEmpty) {
+      return;
+    }
+
+    final files = List<SharedMediaFile>.from(_pendingSharedMedia!);
+    final currentPath = PsygoApp.router.routeInformationProvider.value.uri.path;
+
+    if (currentPath != '/rooms') {
+      PsygoApp.router.go('/rooms');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_consumePendingSharedMedia());
+      });
+      return;
+    }
+
+    final dialogContext = PsygoApp.navigatorKey.currentContext;
+    if (!mounted || dialogContext == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_consumePendingSharedMedia());
+      });
+      return;
+    }
+
+    final items = _mapSharedMediaToItems(files);
+    _pendingSharedMedia = null;
+    _shareDialogVisible = true;
+    try {
+      await showScaffoldDialog<void>(
+        context: dialogContext,
+        builder: (context) => ShareScaffoldDialog(items: items),
+      );
+    } finally {
+      _shareDialogVisible = false;
+      if (mounted &&
+          _pendingSharedMedia != null &&
+          _pendingSharedMedia!.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(_consumePendingSharedMedia());
+        });
+      }
+    }
+  }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -322,25 +385,21 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 当应用从后台恢复时
     if (state == AppLifecycleState.resumed) {
       debugPrint(
-          '[AuthGate] App resumed from background, state=$_state, hasTriedAuth=$_hasTriedAuth');
+        '[AuthGate] App resumed from background, state=$_state, hasTriedAuth=$_hasTriedAuth',
+      );
+      unawaited(_consumePendingSharedMedia());
 
-      // 应用恢复时检查更新（先检查 App 更新，再检查协议）
-      AppUpdateService.onAppResumed();
-      // 如果当前被强更拦截，恢复到前台时做一次前台检查用于自动解锁
-      if (_blockedByForceUpdate) {
-        unawaited(_initUpdateCheck());
-      }
       // 协议检查（仅已登录用户）
       if (_state == _AuthState.authenticated) {
         AgreementCheckService.onAppResumed();
       }
-
       // iOS FIX: Handle permission approval during auth check
       // When user slowly approves network permissions, SDK initialization may timeout
       // Auto-retry when app resumes after permission approval (with retry limit)
       if (_state == _AuthState.error && _resumeRetryCount < _maxResumeRetries) {
         debugPrint(
-            '[AuthGate] In error state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)');
+          '[AuthGate] In error state, retrying auth check after resume (attempt ${_resumeRetryCount + 1}/$_maxResumeRetries)',
+        );
         _resumeRetryCount++;
 
         setState(() {
@@ -356,7 +415,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       } else if (_resumeRetryCount >= _maxResumeRetries &&
           _state == _AuthState.error) {
         debugPrint(
-            '[AuthGate] Max resume retries reached, showing persistent error');
+          '[AuthGate] Max resume retries reached, showing persistent error',
+        );
       }
     }
   }
@@ -365,7 +425,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (_authCheckInProgress) {
       _authCheckQueued = true;
       debugPrint(
-          '[AuthGate] Auth check already in progress, queued one follow-up run');
+        '[AuthGate] Auth check already in progress, queued one follow-up run',
+      );
       return;
     }
 
@@ -381,7 +442,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       // User will see loading screen instead of error flash
       if (_resumeRetryCount < _maxResumeRetries) {
         debugPrint(
-            '[AuthGate] Error occurred but retries available, staying in checking state');
+          '[AuthGate] Error occurred but retries available, staying in checking state',
+        );
         // Keep state as checking, will be retried on next resume
         return;
       }
@@ -416,16 +478,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
     debugPrint('[AuthGate] Checking auth state...');
 
-    // 在检查登录状态之前先检查更新（只在首次检查时执行）
-    if (!_hasTriedAuth) {
-      await _initUpdateCheck();
-      if (_blockedByForceUpdate) return; // 被强制更新阻止，不继续
-    }
-
     // iOS CRITICAL FIX: Handle retry after stale credentials detected
     if (_needsRetryAfterStaleCredentials) {
       debugPrint(
-          '[AuthGate] Retrying after stale credentials, redirecting to manual login...');
+        '[AuthGate] Retrying after stale credentials, redirecting to manual login...',
+      );
       _needsRetryAfterStaleCredentials = false;
       _redirectToLoginPage();
       return;
@@ -467,7 +524,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     // 2. Token expired but have refresh token -> try to refresh
-    if (auth.isLoggedIn && auth.refreshToken != null) {
+    final refreshToken = auth.refreshToken?.trim();
+    if (auth.isLoggedIn && refreshToken != null && refreshToken.isNotEmpty) {
       debugPrint('[AuthGate] Token expired, attempting refresh...');
       setState(() => _state = _AuthState.refreshing);
 
@@ -497,7 +555,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       }
       if (refreshOutcome == TokenRefreshOutcome.transientFailure) {
         debugPrint(
-            '[AuthGate] Token refresh failed due to transient network error, keep session');
+          '[AuthGate] Token refresh failed due to transient network error, keep session',
+        );
         setState(() {
           _state = _AuthState.error;
           _errorMessage = L10n.of(context).authChatServiceUnavailable;
@@ -505,6 +564,13 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return;
       }
       debugPrint('[AuthGate] Token refresh failed with invalid session');
+    }
+    if (auth.isLoggedIn &&
+        auth.isTokenExpired &&
+        (refreshToken == null || refreshToken.isEmpty)) {
+      debugPrint(
+        '[AuthGate] Token expired but refresh token is missing, fallback to re-login',
+      );
     }
 
     // 3. No valid token -> need to authenticate
@@ -571,12 +637,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   }
 
   Future<void> _requestPushPermissionAndRetryPush(
-      MatrixState matrixState, Client client) async {
+    MatrixState matrixState,
+    Client client,
+  ) async {
     try {
       final granted = await PermissionService.instance.requestPushPermissions();
       if (!granted) {
         debugPrint(
-            '[AuthGate] Notification permission not granted, skip push re-register');
+          '[AuthGate] Notification permission not granted, skip push re-register',
+        );
         return;
       }
       await matrixState.ensureAliyunPushRegistered(client);
@@ -584,7 +653,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       await matrixState.ensureAliyunPushRegistered(client);
     } catch (e) {
       debugPrint(
-          '[AuthGate] Failed to request push permission / retry registration: $e');
+        '[AuthGate] Failed to request push permission / retry registration: $e',
+      );
     }
   }
 
@@ -604,7 +674,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
 
     debugPrint(
-        '[AuthGate] Matrix credentials: userId=$matrixUserId, deviceId=$matrixDeviceId');
+      '[AuthGate] Matrix credentials: userId=$matrixUserId, deviceId=$matrixDeviceId',
+    );
 
     try {
       final matrix = Matrix.of(context);
@@ -645,12 +716,14 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         debugPrint('[AuthGate] Setting homeserver: $homeserverUrl');
 
         debugPrint(
-            '[AuthGate] Attempting Matrix login: matrixUserId=$matrixUserId');
+          '[AuthGate] Attempting Matrix login: matrixUserId=$matrixUserId',
+        );
 
         // Use access_token directly
         await client.init(
           newToken: matrixAccessToken,
           newUserID: matrixUserId,
+          newDeviceID: matrixDeviceId,
           newHomeserver: homeserverUrl,
           newDeviceName: PlatformInfos.clientName,
           // Do not block UI on first sync/load; background sync continues after init.
@@ -658,7 +731,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           waitUntilLoadCompletedLoaded: false,
         );
         debugPrint(
-            '[AuthGate] Matrix login success, deviceID=${client.deviceID}');
+          '[AuthGate] Matrix login success, deviceID=${client.deviceID}',
+        );
 
         // CRITICAL: Ensure client is in the clients list and subscriptions are active
         // client.init(newToken:...) may not trigger onLoginStateChanged event.
@@ -698,7 +772,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // Client is already logged in with correct userID, just proceed
       debugPrint(
-          '[AuthGate] Client already logged in with correct userID=${client.userID}, deviceID=${client.deviceID}');
+        '[AuthGate] Client already logged in with correct userID=${client.userID}, deviceID=${client.deviceID}',
+      );
 
       final addedAlreadyLogged = matrix.ensureClientRegistered(client);
       debugPrint(
@@ -736,13 +811,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       debugPrint('[AuthGate] Stack trace: $stackTrace');
 
       final errorStr = e.toString();
-      final isInvalidToken = errorStr.contains('M_UNKNOWN_TOKEN') ||
+      final isInvalidToken =
+          errorStr.contains('M_UNKNOWN_TOKEN') ||
           errorStr.contains('Invalid access token');
 
       // Token 失效：清除所有状态并跳转到登录页
       if (isInvalidToken) {
         debugPrint(
-            '[AuthGate] Matrix token invalid, clearing all auth state and redirecting to login...');
+          '[AuthGate] Matrix token invalid, clearing all auth state and redirecting to login...',
+        );
         await _clearAllAuthStateAndRedirectToLogin();
         return;
       }
@@ -781,7 +858,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
 
       // 重试后仍然失败：清除状态并跳转登录
       debugPrint(
-          '[AuthGate] Matrix login failed after retry, clearing auth and redirecting to login...');
+        '[AuthGate] Matrix login failed after retry, clearing auth and redirecting to login...',
+      );
       await _clearAllAuthStateAndRedirectToLogin();
     }
   }
@@ -807,8 +885,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
           _redirectRetryCount = 0;
           return;
         }
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _redirectToLoginPage());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _redirectToLoginPage(),
+        );
         return;
       }
 
@@ -864,13 +943,15 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     if (_syncStatusSubscription != null &&
         _syncMonitoringClientName == targetClientName) {
       debugPrint(
-          '[AuthGate] Sync status monitoring already active for $targetClientName, skipping');
+        '[AuthGate] Sync status monitoring already active for $targetClientName, skipping',
+      );
       return;
     }
 
     if (_syncStatusSubscription != null) {
       debugPrint(
-          '[AuthGate] Sync monitor client changed, restarting: $_syncMonitoringClientName -> $targetClientName');
+        '[AuthGate] Sync monitor client changed, restarting: $_syncMonitoringClientName -> $targetClientName',
+      );
       _syncStatusSubscription?.cancel();
       _syncStatusSubscription = null;
     }
@@ -896,7 +977,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         // 避免弱网场景误登出。
         if (_consecutiveSyncErrors >= _maxConsecutiveSyncErrors) {
           debugPrint(
-              '[AuthGate] Max consecutive sync errors reached, keep session and show notice');
+            '[AuthGate] Max consecutive sync errors reached, keep session and show notice',
+          );
           _consecutiveSyncErrors = 0;
           _handlePersistentConnectionFailure();
         }
@@ -1014,7 +1096,8 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     _isLoggingOut = true;
 
     debugPrint(
-        '[AuthGate] Clearing all auth state and redirecting to login...');
+      '[AuthGate] Clearing all auth state and redirecting to login...',
+    );
 
     // 停止后台检查服务
     AgreementCheckService.stopBackgroundCheck();
@@ -1100,69 +1183,11 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
         return _buildErrorScreen();
 
       case _AuthState.needsLogin:
-        // 被强制更新阻止时显示提示
-        if (_blockedByForceUpdate) {
-          return _buildForceUpdateBlockedScreen();
-        }
         return widget.child ?? const SizedBox.shrink();
 
       case _AuthState.authenticated:
-        // 被强制更新阻止时显示提示
-        if (_blockedByForceUpdate) {
-          return _buildForceUpdateBlockedScreen();
-        }
         return widget.child ?? const SizedBox.shrink();
     }
-  }
-
-  /// 强制更新阻止界面
-  Widget _buildForceUpdateBlockedScreen() {
-    final theme = Theme.of(context);
-    final l10n = L10n.of(context);
-
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.system_update_rounded,
-                size: 64,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                l10n.authNeedUpdateTitle,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.authNeedUpdateMessage,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: () async {
-                  // 重新触发更新检查
-                  setState(() {
-                    _blockedByForceUpdate = false;
-                  });
-                  await _initUpdateCheck();
-                },
-                child: Text(l10n.authCheckAgain),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildLoadingScreen(String message) {
@@ -1247,8 +1272,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
       final subtitleColor = isDark
           ? Colors.white.withValues(alpha: 0.7)
           : const Color(0xFF666666);
-      final accentColor =
-          isDark ? const Color(0xFF00FF9F) : const Color(0xFF00A878);
+      final accentColor = isDark
+          ? const Color(0xFF00FF9F)
+          : const Color(0xFF00A878);
       const errorColor = Color(0xFFFF6B6B);
 
       return Scaffold(
@@ -1374,7 +1400,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 14),
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
                               child: Text(
                                 l10n.tryAgain,
                                 style: TextStyle(
@@ -1403,7 +1431,9 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
                           style: TextButton.styleFrom(
                             foregroundColor: accentColor,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 14),
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
                           ),
                           child: Text(l10n.authReLogin),
                         ),
@@ -1435,16 +1465,16 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
               Text(
                 l10n.authLoginFailedTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
                 _errorMessage ?? l10n.authUnknownError,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 32),
               Wrap(

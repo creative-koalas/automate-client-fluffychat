@@ -4,8 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
@@ -122,6 +124,16 @@ class LoginSignupController extends State<LoginSignup>
       return;
     }
 
+    if (!PsygoConfig.hasAliyunOneClickLoginSecret) {
+      context.go('/login/phone');
+      return;
+    }
+
+    // 尝试提前加载协议 URL，授权页下方协议与手机号登录页保持一致
+    if (_termsUrl == null || _privacyUrl == null) {
+      await _loadAgreements();
+    }
+
     setState(() {
       phoneError = null;
       loading = true;
@@ -129,17 +141,14 @@ class LoginSignupController extends State<LoginSignup>
     });
 
     try {
-      // 阿里云控制台获取的密钥
-      // 通过 --dart-define=ALIYUN_SECRET_KEY=your-secret-key 指定
-      const secretKey =
-          String.fromEnvironment('ALIYUN_SECRET_KEY', defaultValue: '');
-
       debugPrint('=== 使用官方 SDK 进行一键登录 ===');
 
       // 执行完整的一键登录流程，获取 fusion_token
       final fusionToken = await OneClickLoginService.performOneClickLogin(
-        secretKey: secretKey,
+        secretKey: PsygoConfig.aliyunOneClickSecretKey,
         timeout: 10000,
+        termsUrl: _termsUrl,
+        privacyUrl: _privacyUrl,
       );
 
       debugPrint('=== 调用后端一键登录 ===');
@@ -154,15 +163,15 @@ class LoginSignupController extends State<LoginSignup>
         await OneClickLoginService.quitLoginPage();
       }
     } on SwitchLoginMethodException {
-      // 用户点击了"其他方式登录"按钮（但按钮已隐藏，理论上不会触发）
-      // 不跳转，只显示错误提示
-      debugPrint('用户选择其他登录方式（不应该发生）');
+      // 用户点击授权页“其他号码登录”，跳转到手机号验证码登录
+      debugPrint('用户选择其他号码登录，跳转手机号验证码登录');
+      _isInAuthFlow = false;
+      await OneClickLoginService.quitLoginPage();
       if (!mounted) return;
       setState(() {
-        _isInAuthFlow = false;
-        phoneError = l10n.authOnlyOneClickSupported;
         loading = false;
       });
+      context.go('/login/phone');
     } catch (e, stackTrace) {
       debugPrint('一键登录错误: $e');
       debugPrint('堆栈: $stackTrace');

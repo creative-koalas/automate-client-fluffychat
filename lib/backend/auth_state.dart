@@ -3,26 +3,33 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../core/auth_storage_keys.dart';
 import '../core/token_manager.dart';
 
 class PsygoAuthState extends ChangeNotifier {
   PsygoAuthState({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage() {
+    : _storage = storage ?? const FlutterSecureStorage() {
     // 监听 TokenManager 事件，保持状态同步
-    _tokenEventSubscription = TokenManager.instance.events.listen(_onTokenEvent);
+    _tokenEventSubscription = TokenManager.instance.events.listen(
+      _onTokenEvent,
+    );
   }
 
   final FlutterSecureStorage _storage;
   StreamSubscription<TokenEvent>? _tokenEventSubscription;
 
-  static const _primaryKey = 'automate_primary_token';
-  static const _refreshKey = 'automate_refresh_token';
-  static const _expiresAtKey = 'automate_expires_at';
-  static const _userIdKey = 'automate_user_id';
-  static const _onboardingCompletedKey = 'automate_onboarding_completed';
-  static const _matrixAccessTokenKey = 'automate_matrix_access_token';
-  static const _matrixUserIdKey = 'automate_matrix_user_id';
-  static const _matrixDeviceIdKey = 'automate_matrix_device_id';
+  static String get _primaryKey => AuthStorageKeys.primary;
+  static String get _refreshKey => AuthStorageKeys.refresh;
+  static String get _expiresAtKey => AuthStorageKeys.expiresAt;
+  static String get _userIdKey => AuthStorageKeys.userId;
+  static String get _onboardingCompletedKey =>
+      AuthStorageKeys.scoped('automate_onboarding_completed');
+  static String get _matrixAccessTokenKey =>
+      AuthStorageKeys.scoped('automate_matrix_access_token');
+  static String get _matrixUserIdKey =>
+      AuthStorageKeys.scoped('automate_matrix_user_id');
+  static String get _matrixDeviceIdKey =>
+      AuthStorageKeys.scoped('automate_matrix_device_id');
 
   // Token refresh threshold (5 minutes before expiry)
   static const Duration _refreshThreshold = Duration(minutes: 5);
@@ -63,7 +70,9 @@ class PsygoAuthState extends ChangeNotifier {
 
   /// Check if we have a valid (non-expired) token
   bool get hasValidToken {
-    return _primaryToken != null && _primaryToken!.isNotEmpty && !isTokenExpired;
+    return _primaryToken != null &&
+        _primaryToken!.isNotEmpty &&
+        !isTokenExpired;
   }
 
   Future<void> load() async {
@@ -74,8 +83,9 @@ class PsygoAuthState extends ChangeNotifier {
         ? DateTime.fromMillisecondsSinceEpoch(int.tryParse(expiresAtStr) ?? 0)
         : null;
     _userId = await _storage.read(key: _userIdKey);
-    final onboardingCompletedStr =
-        await _storage.read(key: _onboardingCompletedKey);
+    final onboardingCompletedStr = await _storage.read(
+      key: _onboardingCompletedKey,
+    );
     _onboardingCompleted = onboardingCompletedStr == null
         ? true
         : onboardingCompletedStr.toLowerCase() == 'true';
@@ -100,11 +110,22 @@ class PsygoAuthState extends ChangeNotifier {
     _userId = userId;
     _onboardingCompleted = onboardingCompleted;
     _loggedIn = true;
+    final hasRefreshToken = refreshToken != null && refreshToken.isNotEmpty;
 
-    // Handle refresh token
-    if (refreshToken != null) {
+    debugPrint(
+      '[AuthState] save login state: '
+      'hasPrimaryToken=${primaryToken.isNotEmpty}, '
+      'hasRefreshToken=$hasRefreshToken, '
+      'expiresIn=$expiresIn',
+    );
+
+    // Handle refresh token (empty string should be treated as missing)
+    if (hasRefreshToken) {
       _refreshToken = refreshToken;
       await _storage.write(key: _refreshKey, value: refreshToken);
+    } else {
+      _refreshToken = null;
+      await _storage.delete(key: _refreshKey);
     }
 
     // Handle token expiry
@@ -117,34 +138,57 @@ class PsygoAuthState extends ChangeNotifier {
     }
 
     // Handle Matrix access token
-    if (matrixAccessToken != null) {
+    if (matrixAccessToken != null && matrixAccessToken.isNotEmpty) {
       _matrixAccessToken = matrixAccessToken;
-      await _storage.write(key: _matrixAccessTokenKey, value: matrixAccessToken);
+      await _storage.write(
+        key: _matrixAccessTokenKey,
+        value: matrixAccessToken,
+      );
+    } else {
+      _matrixAccessToken = null;
+      await _storage.delete(key: _matrixAccessTokenKey);
     }
 
     // Handle Matrix user ID
-    if (matrixUserId != null) {
+    if (matrixUserId != null && matrixUserId.isNotEmpty) {
       _matrixUserId = matrixUserId;
       await _storage.write(key: _matrixUserIdKey, value: matrixUserId);
+    } else {
+      _matrixUserId = null;
+      await _storage.delete(key: _matrixUserIdKey);
     }
 
     // Handle Matrix device ID (CRITICAL for encryption!)
-    if (matrixDeviceId != null) {
+    if (matrixDeviceId != null && matrixDeviceId.isNotEmpty) {
       _matrixDeviceId = matrixDeviceId;
       await _storage.write(key: _matrixDeviceIdKey, value: matrixDeviceId);
+    } else {
+      _matrixDeviceId = null;
+      await _storage.delete(key: _matrixDeviceIdKey);
     }
 
     await _storage.write(key: _primaryKey, value: primaryToken);
     await _storage.write(key: _userIdKey, value: userId);
-    await _storage.write(key: _onboardingCompletedKey, value: onboardingCompleted.toString());
+    await _storage.write(
+      key: _onboardingCompletedKey,
+      value: onboardingCompleted.toString(),
+    );
     notifyListeners();
   }
 
   /// Update access token after refresh
   /// 通过 TokenManager 更新，确保状态一致
-  Future<void> updateAccessToken(String accessToken, int expiresIn, {String? refreshToken}) async {
+  Future<void> updateAccessToken(
+    String accessToken,
+    int expiresIn, {
+    String? refreshToken,
+  }) async {
     // 通过 TokenManager 更新，会触发 refreshed 事件
-    await TokenManager.instance.updateAccessToken(accessToken, expiresIn, refreshToken: refreshToken);
+    await TokenManager.instance.updateAccessToken(
+      accessToken,
+      expiresIn,
+      refreshToken: refreshToken,
+    );
     // 同步更新内存状态（避免等待事件回调）
     _primaryToken = accessToken;
     _expiresAt = DateTime.now().add(Duration(seconds: expiresIn));
@@ -154,8 +198,11 @@ class PsygoAuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markLoggedOut() async {
+  Future<void> markLoggedOut({bool revokeRemoteSession = false}) async {
     _clearInMemoryState();
+    if (revokeRemoteSession) {
+      await TokenManager.instance.revokeCurrentDeviceSession();
+    }
     // 通过 TokenManager 清除 token（会触发 loggedOut 事件）
     // 使用 clearTokens 而非 logout 避免重复触发事件
     await TokenManager.instance.clearTokens();

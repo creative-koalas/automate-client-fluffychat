@@ -90,11 +90,17 @@ class OneClickLoginService {
   /// 执行一键登录（唤起授权页）
   /// [timeout] 超时时间（毫秒），默认 5000ms
   /// 返回包含 token 的 Map，或者错误信息
-  static Future<Map<String, dynamic>> oneClickLogin({int timeout = 5000}) async {
+  static Future<Map<String, dynamic>> oneClickLogin({
+    int timeout = 5000,
+    String? termsUrl,
+    String? privacyUrl,
+  }) async {
     try {
       debugPrint('OneClickLogin: Starting login with timeout: $timeout');
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('oneClickLogin', {
         'timeout': timeout,
+        if (termsUrl != null && termsUrl.isNotEmpty) 'termsUrl': termsUrl,
+        if (privacyUrl != null && privacyUrl.isNotEmpty) 'privacyUrl': privacyUrl,
       });
       debugPrint('OneClickLogin: Login result: $result');
       return Map<String, dynamic>.from(result ?? {});
@@ -129,6 +135,8 @@ class OneClickLoginService {
   static Future<String> performOneClickLogin({
     required String secretKey,
     int timeout = 5000,
+    String? termsUrl,
+    String? privacyUrl,
   }) async {
     // 1. 初始化 SDK
     debugPrint('OneClickLogin: Step 1 - Initializing SDK...');
@@ -157,7 +165,11 @@ class OneClickLoginService {
 
     // 3. 执行登录（唤起授权页）
     debugPrint('OneClickLogin: Step 3 - Performing login (show auth page)...');
-    final loginResult = await oneClickLogin(timeout: timeout);
+    final loginResult = await oneClickLogin(
+      timeout: timeout,
+      termsUrl: termsUrl,
+      privacyUrl: privacyUrl,
+    );
 
     final code = loginResult['code']?.toString();
     if (code == '600000') {

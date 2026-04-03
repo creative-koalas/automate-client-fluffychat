@@ -3,8 +3,11 @@
 
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
 
 #include <memory>
+#include <optional>
+#include <string>
 
 #include "win32_window.h"
 
@@ -23,11 +26,20 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  void RegisterScreenshotChannel();
+  void NotifyGlobalScreenshotHotkey();
+  bool RegisterGlobalScreenshotHotkey();
+  void UnregisterGlobalScreenshotHotkey();
+  std::optional<std::wstring> CaptureScreenBufferToPng() const;
+
   // The project to run.
   flutter::DartProject project_;
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      screenshot_channel_;
+  bool screenshot_hotkey_registered_ = false;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

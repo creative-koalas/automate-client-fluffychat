@@ -52,7 +52,7 @@ enum AppSettings<T> {
     false,
   ),
   // AppConfig-mirrored settings
-  applicationName<String>('com.psygo.application_name', 'Psygo'),
+  applicationName<String>('com.psygo.application_name', 'PsyGo'),
   // homeserver 指向本地 K8s Synapse（运行时从 PsygoConfig.matrixHomeserver 获取）
   // 枚举 defaultValue 必须是编译时常量，所以这里用空字符串占位
   defaultHomeserver<String>('com.psygo.default_homeserver', ''),
@@ -62,6 +62,7 @@ enum AppSettings<T> {
     0xFF5625BA,
   ),
   emojiSuggestionLocale<String>('emoji_suggestion_locale', ''),
+  downloadSaveDirectory<String>('com.psygo.download_save_directory', ''),
   enableSoftLogout<bool>('com.psygo.enable_soft_logout', false);
 
   final String key;
@@ -72,7 +73,9 @@ enum AppSettings<T> {
   static SharedPreferences get store => _store!;
   static SharedPreferences? _store;
 
-  static Future<SharedPreferences> init({loadWebConfigFile = true}) async {
+  static Future<SharedPreferences> init({
+    bool loadWebConfigFile = true,
+  }) async {
     if (AppSettings._store != null) return AppSettings.store;
 
     final store = AppSettings._store = await SharedPreferences.getInstance();

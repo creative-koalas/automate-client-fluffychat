@@ -7,17 +7,19 @@ import 'package:collection/collection.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
+import 'package:provider/provider.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker_view.dart';
 import 'package:psygo/utils/file_selector.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
+import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'package:psygo/widgets/matrix.dart';
 import '../../utils/localized_exception_extension.dart';
 
@@ -197,10 +199,38 @@ class HomeserverPickerController extends State<HomeserverPicker> {
       case MoreLoginActions.importBackup:
         restoreBackup();
       case MoreLoginActions.privacy:
-        launchUrl(AppConfig.privacyUrl);
+        unawaited(_openPrivacyPolicy());
       case MoreLoginActions.about:
         PlatformInfos.showDialog(context);
     }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final l10n = L10n.of(context);
+    final api = context.read<PsygoApiClient>();
+    String? privacyUrl;
+
+    try {
+      final agreements = await api.getAgreements();
+      for (final agreement in agreements) {
+        if (agreement.isPrivacy && agreement.url.trim().isNotEmpty) {
+          privacyUrl = agreement.url.trim();
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('[HomeserverPicker] Failed to load privacy agreement URL: $e');
+    }
+
+    if (!mounted) return;
+    if (privacyUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.authAgreementLoadFailedPrivacy)),
+      );
+      return;
+    }
+
+    await AgreementWebViewPage.open(context, l10n.authPrivacyPolicy, privacyUrl);
   }
 }
 

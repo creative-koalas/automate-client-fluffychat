@@ -23,6 +23,55 @@ class AliyunPushService {
 
   bool _initialized = false;
   String? _deviceId;
+  final Map<String, Future<bool>> _registerPushTasks = {};
+  final Map<String, DateTime> _lastSuccessfulRegisterAt = {};
+  final Map<String, String> _lastSuccessfulPushKeyByUser = {};
+  // Revalidate registration at most once per day for the same push key.
+  static const Duration _registerSuccessCooldown = Duration(hours: 24);
+
+  void clearRegisterPushStateForUser(String matrixUserID) {
+    final userId = matrixUserID.trim();
+    if (userId.isEmpty) return;
+    _registerPushTasks.remove(userId);
+    _lastSuccessfulRegisterAt.remove(userId);
+    _lastSuccessfulPushKeyByUser.remove(userId);
+    _audit('registerPush state cleared user=$userId');
+  }
+
+  void clearRegisterPushStateByPushKey(String pushKey) {
+    final normalizedPushKey = pushKey.trim();
+    if (normalizedPushKey.isEmpty) return;
+    final usersToClear = _lastSuccessfulPushKeyByUser.entries
+        .where((entry) => entry.value == normalizedPushKey)
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    for (final userId in usersToClear) {
+      clearRegisterPushStateForUser(userId);
+    }
+    if (usersToClear.isNotEmpty) {
+      _audit(
+          'registerPush state cleared by pushKey users=${usersToClear.length}');
+    }
+  }
+
+  /// Whether a user should attempt backend/synapse registration now.
+  ///
+  /// Returns false only when we already have a successful registration for the
+  /// current pushKey and it is still within the revalidation interval.
+  bool shouldAttemptRegister(String matrixUserID) {
+    final userId = matrixUserID.trim();
+    if (userId.isEmpty) return false;
+
+    final currentPushKey = pushKey;
+    final lastRegisterAt = _lastSuccessfulRegisterAt[userId];
+    final lastSuccessfulPushKey = _lastSuccessfulPushKeyByUser[userId];
+
+    if (currentPushKey == null || currentPushKey.isEmpty) return true;
+    if (lastRegisterAt == null) return true;
+    if (currentPushKey != lastSuccessfulPushKey) return true;
+
+    return DateTime.now().difference(lastRegisterAt) >= _registerSuccessCooldown;
+  }
 
   /// 获取当前活跃房间 ID 的回调（由 MatrixState 设置）
   String? Function()? activeRoomIdGetter;
@@ -87,8 +136,9 @@ class AliyunPushService {
 
   /// 阿里云推送配置（通过 --dart-define-from-file=env.json 注入）
   static const _androidAppKey = String.fromEnvironment('PUSH_ANDROID_APP_KEY');
-  static const _androidAppSecret =
-      String.fromEnvironment('PUSH_ANDROID_APP_SECRET');
+  static const _androidAppSecret = String.fromEnvironment(
+    'PUSH_ANDROID_APP_SECRET',
+  );
   static const _iosAppKey = String.fromEnvironment('PUSH_IOS_APP_KEY');
   static const _iosAppSecret = String.fromEnvironment('PUSH_IOS_APP_SECRET');
 
@@ -97,6 +147,9 @@ class AliyunPushService {
 
   /// 获取当前平台的 appSecret
   String get _appSecret => Platform.isIOS ? _iosAppSecret : _androidAppSecret;
+
+  bool get _hasSdkCredentials =>
+      _appKey.trim().isNotEmpty && _appSecret.trim().isNotEmpty;
 
   /// 获取设备 ID（推送 token）
   String? get deviceId => _deviceId;
@@ -118,6 +171,14 @@ class AliyunPushService {
 
     if (!Platform.isAndroid && !Platform.isIOS) {
       Logs().d('[AliyunPush] Not a mobile platform, skipping');
+      return false;
+    }
+
+    if (!_hasSdkCredentials) {
+      Logs().w(
+        '[AliyunPush] Missing SDK credentials, skipping initialization',
+      );
+      _audit('init skipped missing credentials');
       return false;
     }
 
@@ -418,7 +479,7 @@ class AliyunPushService {
 
     try {
       // 获取通知标题和内容
-      final title = message['title'] as String? ?? 'PsyGo';
+      final title = message['title'] as String? ?? PsygoConfig.appName;
       final body = message['body'] as String? ??
           message['summary'] as String? ??
           '你收到了一条新消息';
@@ -546,7 +607,7 @@ class AliyunPushService {
       final roomId = payload['room_id'] as String?;
       final eventId = payload['event_id'] as String?;
       final sender = payload['sender'] as String?;
-      final title = payload['title'] as String? ?? 'PsyGo';
+      final title = payload['title'] as String? ?? PsygoConfig.appName;
       final body = payload['body'] as String? ?? '你收到了一条新消息';
       final badge = payload['badge'] as int? ?? 0;
 
@@ -933,7 +994,7 @@ class AliyunPushService {
           pushkey: pushKey,
           kind: 'http',
           appId: _appId,
-          appDisplayName: 'PsyGo',
+          appDisplayName: PsygoConfig.appName,
           deviceDisplayName: Platform.localHostname,
           lang: 'zh-CN',
           data: PusherData(
@@ -973,32 +1034,67 @@ class AliyunPushService {
       return false;
     }
 
+    final inFlight = _registerPushTasks[matrixUserID];
+    if (inFlight != null) {
+      _audit('registerPush join in-flight user=$matrixUserID');
+      return inFlight;
+    }
+
+    final task = _registerPushInternal(client, matrixUserID);
+    _registerPushTasks[matrixUserID] = task;
+    try {
+      return await task;
+    } finally {
+      if (identical(_registerPushTasks[matrixUserID], task)) {
+        _registerPushTasks.remove(matrixUserID);
+      }
+    }
+  }
+
+  Future<bool> _registerPushInternal(Client client, String matrixUserID) async {
+    final currentPushKey = pushKey;
+    final lastRegisterAt = _lastSuccessfulRegisterAt[matrixUserID];
+    final lastSuccessfulPushKey = _lastSuccessfulPushKeyByUser[matrixUserID];
+    if (currentPushKey != null &&
+        lastRegisterAt != null &&
+        DateTime.now().difference(lastRegisterAt) < _registerSuccessCooldown &&
+        currentPushKey == lastSuccessfulPushKey) {
+      _audit(
+          'registerPush skipped recent success user=$matrixUserID pushKey=${_mask(currentPushKey)}');
+      return true;
+    }
+
     _audit('registerPush start user=$matrixUserID');
 
     // Step 1: 注册到后端
-    final pushKey = await registerPusherToBackend(matrixUserID);
-    if (pushKey == null) {
+    final backendPushKey = await registerPusherToBackend(matrixUserID);
+    if (backendPushKey == null) {
       _audit('registerPush abort: backend failed');
       return false;
     }
 
     // Step 2: 注册到 Synapse（失败时重试一次，间隔 2 秒）
-    var synapseOk = await registerPusherToSynapse(client, pushKey);
+    var synapseOk = await registerPusherToSynapse(client, backendPushKey);
     if (!synapseOk) {
       _audit('registerPush synapse failed, retry in 2s');
       await Future.delayed(const Duration(seconds: 2));
-      synapseOk = await registerPusherToSynapse(client, pushKey);
+      synapseOk = await registerPusherToSynapse(client, backendPushKey);
     }
     if (!synapseOk) {
       _audit('registerPush synapse retry also failed');
+      return false;
     }
-    return synapseOk;
+
+    _lastSuccessfulRegisterAt[matrixUserID] = DateTime.now();
+    _lastSuccessfulPushKeyByUser[matrixUserID] = backendPushKey;
+    return true;
   }
 
   /// 注销推送
   ///
   /// [pushKey] 之前注册时返回的 pushkey
   Future<bool> unregisterPush(String pushKey) async {
+    clearRegisterPushStateByPushKey(pushKey);
     try {
       final uri = Uri.parse('${PsygoConfig.baseUrl}/api/push/unregister')
           .replace(queryParameters: {'push_key': pushKey});

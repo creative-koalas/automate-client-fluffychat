@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/repositories/agent_repository.dart';
@@ -15,7 +16,7 @@ import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/custom_hire_dialog.dart';
 import 'package:psygo/widgets/recruit_entry_guide_highlight.dart';
 
-// import 'package:psygo/pages/wallet/wallet_page.dart';
+import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'employees_tab.dart' show EmployeesTab, EmployeesTabState;
 
 /// Team main page
@@ -128,6 +129,9 @@ class TeamPageController extends State<TeamPage> {
   }
 
   Future<bool> _hasReachedRecruitLimit() async {
+    if (!PsygoConfig.isProdEnvironment) {
+      return false;
+    }
     final repository = AgentRepository();
     try {
       final page = await repository.getUserAgents(
@@ -169,6 +173,15 @@ class TeamPageController extends State<TeamPage> {
   }
 
   Future<void> openRecruitMenu(BuildContext context) async {
+    if (_employeesTabKey.currentState?.hasOnboardingEmployees == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(L10n.of(context).loadingPleaseWait),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final reachedLimit = await _hasReachedRecruitLimit();
     if (!mounted) return;
     if (_recruitLimitReached != reachedLimit) {
@@ -349,33 +362,32 @@ class TeamPageView extends StatelessWidget {
         ),
         centerTitle: false,
         elevation: 0,
-        // Wallet entry is temporarily hidden from users.
-        // actions: [
-        //   Container(
-        //     margin: const EdgeInsets.only(right: 12),
-        //     decoration: BoxDecoration(
-        //       color: theme.colorScheme.surfaceContainerHighest
-        //           .withValues(alpha: 0.5),
-        //       borderRadius: BorderRadius.circular(12),
-        //     ),
-        //     child: IconButton(
-        //       icon: Icon(
-        //         Icons.account_balance_wallet_rounded,
-        //         color: theme.colorScheme.primary,
-        //         size: 22,
-        //       ),
-        //       tooltip: l10n.walletTitle,
-        //       onPressed: () {
-        //         Navigator.of(context).push(
-        //           MaterialPageRoute(
-        //             builder: (context) => const WalletPage(),
-        //           ),
-        //         );
-        //       },
-        //     ),
-        //   ),
-        // ],
-        actions: const [],
+        actions: [
+          // Wallet entry hidden by requirement. Keep logic for easy rollback.
+          // Container(
+          //   margin: const EdgeInsets.only(right: 12),
+          //   decoration: BoxDecoration(
+          //     color: theme.colorScheme.surfaceContainerHighest
+          //         .withValues(alpha: 0.5),
+          //     borderRadius: BorderRadius.circular(12),
+          //   ),
+          //   child: IconButton(
+          //     icon: Icon(
+          //       Icons.account_balance_wallet_rounded,
+          //       color: theme.colorScheme.primary,
+          //       size: 22,
+          //     ),
+          //     tooltip: l10n.walletTitle,
+          //     onPressed: () {
+          //       Navigator.of(context).push(
+          //         MaterialPageRoute(
+          //           builder: (context) => const WalletPage(),
+          //         ),
+          //       );
+          //     },
+          //   ),
+          // ),
+        ],
       ),
       body: EmployeesTab(
         key: controller._employeesTabKey,

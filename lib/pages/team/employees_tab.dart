@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -48,10 +49,12 @@ class EmployeesTabState extends State<EmployeesTab>
   // not revert when user navigates away and back during deletion.
   static final ValueNotifier<Set<String>> _offboardingEmployeeIdsNotifier =
       ValueNotifier<Set<String>>(<String>{});
+  // Persist optimistic onboarding cards across Team/Messages page switches on desktop.
+  static final Map<String, Agent> _pendingEmployeesById = <String, Agent>{};
+  static String? _pendingEmployeesOwnerUserId;
 
   final AgentRepository _repository = AgentRepository();
   final ScrollController _scrollController = ScrollController();
-  final Map<String, Agent> _pendingEmployeesById = <String, Agent>{};
 
   List<Agent> _employees = [];
   bool _isLoading = true;
@@ -83,6 +86,15 @@ class EmployeesTabState extends State<EmployeesTab>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _offboardingEmployeeIdsNotifier.addListener(_handleOffboardingStateChanged);
+    debugPrint(
+      '[EmployeesTab] recruitOnboardingLock=${_isRecruitOnboardingLockEnabled} '
+      '(appName=${PsygoConfig.appName}, namespace=${PsygoConfig.k8sNamespace})',
+    );
+    final currentUserId = Matrix.of(context).clientOrNull?.userID ?? '';
+    if (_pendingEmployeesOwnerUserId != currentUserId) {
+      _pendingEmployeesById.clear();
+      _pendingEmployeesOwnerUserId = currentUserId;
+    }
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _isAppInForeground =
         lifecycle == null || lifecycle == AppLifecycleState.resumed;
@@ -144,6 +156,12 @@ class EmployeesTabState extends State<EmployeesTab>
   }
 
   bool _isRecruitLimitReachedFromCurrentState() {
+    if (!PsygoConfig.isProdEnvironment) {
+      return false;
+    }
+    if (_isRecruitOnboardingLockEnabled && _hasOnboardingEmployeesForPolling()) {
+      return true;
+    }
     if (!_isLoading && _hasMore) {
       return true;
     }
@@ -331,6 +349,10 @@ class EmployeesTabState extends State<EmployeesTab>
     return _pendingEmployeesById.keys.any((id) => !loadedIds.contains(id));
   }
 
+  bool get _isRecruitOnboardingLockEnabled {
+    return PsygoConfig.isProdEnvironment;
+  }
+
   /// 启动轮询定时器（如果尚未启动）
   void _startReadyPolling() {
     if (_readyPollingTimer != null && _readyPollingTimer!.isActive) {
@@ -511,6 +533,9 @@ class EmployeesTabState extends State<EmployeesTab>
 
   /// Public method to refresh employee list without loading skeleton.
   Future<void> refreshEmployeeListSilently() => _refreshOnEnter();
+
+  bool get hasOnboardingEmployees =>
+      _isRecruitOnboardingLockEnabled && _hasOnboardingEmployeesForPolling();
 
   /// Add an optimistic onboarding card right after hire request is submitted.
   void addPendingEmployee({
@@ -902,7 +927,7 @@ class EmployeesTabState extends State<EmployeesTab>
 
   Widget _buildBody(BuildContext context, ThemeData theme, L10n l10n) {
     // 加载状态
-    if (_isLoading) {
+    if (_isLoading && _pendingEmployeesById.isEmpty) {
       return ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 5,

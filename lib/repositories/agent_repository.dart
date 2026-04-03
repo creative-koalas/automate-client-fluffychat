@@ -48,6 +48,54 @@ class AgentRepository {
     return AgentPage.fromJson(response.data!);
   }
 
+  /// 批量解析群聊中 Agent 的展示名（ownerNickname-agentDisplayName）
+  ///
+  /// 返回 key=matrix_user_id, value=group_display_name
+  Future<Map<String, String>> getGroupDisplayNamesByMatrixUserIds(
+    List<String> matrixUserIds,
+  ) async {
+    final normalized = matrixUserIds
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (normalized.isEmpty) {
+      return const <String, String>{};
+    }
+
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/api/agents/group-display-names',
+      body: <String, dynamic>{'matrix_user_ids': normalized},
+      fromJsonT: (data) => data as Map<String, dynamic>,
+    );
+
+    final data = response.data;
+    if (data == null) {
+      return const <String, String>{};
+    }
+
+    final rawItems = data['items'];
+    if (rawItems is! List) {
+      return const <String, String>{};
+    }
+
+    final result = <String, String>{};
+    for (final raw in rawItems) {
+      if (raw is! Map) {
+        continue;
+      }
+      final matrixUserId =
+          (raw['matrix_user_id'] ?? '').toString().trim();
+      final groupDisplayName =
+          (raw['group_display_name'] ?? '').toString().trim();
+      if (matrixUserId.isEmpty || groupDisplayName.isEmpty) {
+        continue;
+      }
+      result[matrixUserId] = groupDisplayName;
+    }
+    return result;
+  }
+
   /// 获取 Agent 统计信息
   ///
   /// [agentId] Agent ID

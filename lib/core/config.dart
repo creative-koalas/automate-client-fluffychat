@@ -4,11 +4,45 @@ library;
 /// Psygo 配置
 /// 所有环境相关配置通过 --dart-define-from-file=env.json 注入
 class PsygoConfig {
+  /// APP_NAME 的默认值（当未注入 dart-define 时使用）
+  static const String defaultAppName = 'PsyGo';
+
   /// 应用名称（用于数据库隔离）
-  static const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'Psygo');
+  static const String appName = String.fromEnvironment(
+    'APP_NAME',
+    defaultValue: defaultAppName,
+  );
 
   /// K8s Namespace
-  static const String k8sNamespace = String.fromEnvironment('K8S_NAMESPACE', defaultValue: 'dev');
+  static const String k8sNamespace = String.fromEnvironment(
+    'K8S_NAMESPACE',
+    defaultValue: 'dev',
+  );
+
+  static const List<String> _nonProdAppNameMarkers = [
+    'stg',
+    'stage',
+    'staging',
+    'dev',
+    'test',
+    'qa',
+  ];
+
+  static const Set<String> _prodNamespaces = {'prod', 'production'};
+
+  static bool get isProdEnvironment {
+    final normalizedAppName = appName.trim().toLowerCase();
+    final normalizedNamespace = k8sNamespace.trim().toLowerCase();
+    final isNonProdByAppName = _nonProdAppNameMarkers
+        .any((marker) => normalizedAppName.contains(marker));
+    if (isNonProdByAppName) {
+      return false;
+    }
+    return _prodNamespaces.contains(normalizedNamespace) ||
+        normalizedAppName == 'psygo' ||
+        normalizedAppName.endsWith('_prod') ||
+        normalizedAppName.contains('production');
+  }
 
   /// Psygo Assistant 后端 URL
   static const String baseUrl = String.fromEnvironment(
@@ -18,13 +52,29 @@ class PsygoConfig {
 
   /// User Service 集群内部 URL
   /// Synapse 调用 Push Gateway 用这个（K8s FQDN，Twisted 解析不了短名）
-  static String get internalBaseUrl => 'http://user-service.$k8sNamespace.svc.cluster.local:8080';
+  static String get internalBaseUrl =>
+      'http://user-service.$k8sNamespace.svc.cluster.local:8080';
 
   /// Matrix Synapse Homeserver URL
   static const String matrixHomeserver = String.fromEnvironment(
     'MATRIX_HOMESERVER',
     defaultValue: 'https://development-matrix.psygoai.com',
   );
+
+  /// Onboarding chatbot backend URL
+  static const String chatbotBaseUrl = String.fromEnvironment(
+    'CHATBOT_BASE_URL',
+    defaultValue: 'https://api.psygoai.com/onboarding-chatbot',
+  );
+
+  /// Aliyun one-click login secret key
+  static const String aliyunOneClickSecretKey = String.fromEnvironment(
+    'ALIYUN_SECRET_KEY',
+    defaultValue: '',
+  );
+
+  static bool get hasAliyunOneClickLoginSecret =>
+      aliyunOneClickSecretKey.isNotEmpty;
 
   /// API 版本前缀
   static const String apiPrefix = '/api';
@@ -35,7 +85,8 @@ class PsygoConfig {
   /// DiceBear API 基础 URL（可通过 dart-define 覆盖）
   /// 例如: https://api.dicebear.com/9.x
   static String get dicebearBaseUrl {
-    const explicit = String.fromEnvironment('DICEBEAR_BASE_URL', defaultValue: '');
+    const explicit =
+        String.fromEnvironment('DICEBEAR_BASE_URL', defaultValue: '');
     final raw = explicit.isNotEmpty ? explicit : 'https://api.dicebear.com/9.x';
     return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
   }

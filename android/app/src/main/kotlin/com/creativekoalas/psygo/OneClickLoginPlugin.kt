@@ -95,7 +95,9 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             "oneClickLogin" -> {
                 val timeout = call.argument<Int>("timeout") ?: 5000
-                oneClickLogin(timeout, result)
+                val termsUrl = call.argument<String>("termsUrl")
+                val privacyUrl = call.argument<String>("privacyUrl")
+                oneClickLogin(timeout, result, termsUrl, privacyUrl)
             }
             "checkEnvAvailable" -> {
                 checkEnvAvailable(result)
@@ -106,6 +108,15 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             else -> {
                 result.notImplemented()
             }
+        }
+    }
+
+    private fun resolveAppName(ctx: Context): String {
+        return try {
+            ctx.applicationInfo.loadLabel(ctx.packageManager)?.toString()?.trim().orEmpty()
+                .ifEmpty { "App" }
+        } catch (_: Exception) {
+            "App"
         }
     }
 
@@ -214,7 +225,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    private fun oneClickLogin(timeout: Int, result: Result) {
+    private fun oneClickLogin(timeout: Int, result: Result, termsUrl: String?, privacyUrl: String?) {
         val helper = phoneNumberAuthHelper
         val act = activity
 
@@ -235,6 +246,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
         try {
             pendingResult = result
+            val appName = resolveAppName(act)
 
             // 获取屏幕密度
             val density = act.resources.displayMetrics.density
@@ -294,7 +306,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
                     // ========== Slogan ==========
                     .setSloganHidden(false)
-                    .setSloganText("PsyGo")
+                    .setSloganText(appName)
                     .setSloganTextColor(primaryTextColor)
                     .setSloganTextSize(20)
                     .setSloganOffsetY(sloganOffsetY)
@@ -313,8 +325,12 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setLogBtnOffsetY(logBtnOffsetY)
                     .setLogBtnBackgroundDrawable(act.getDrawable(R.drawable.auth_login_btn))
 
-                    // ========== 其他登录方式（已隐藏，目前只支持一键登录） ==========
-                    .setSwitchAccHidden(true)
+                    // ========== 其他号码登录（位于一键登录按钮下方） ==========
+                    .setSwitchAccHidden(false)
+                    .setSwitchAccText("其他号码登录")
+                    .setSwitchAccTextColor(privacyLinkColor)
+                    .setSwitchAccTextSize(15)
+                    .setSwitchOffsetY(logBtnOffsetY + 66)
 
                     // ========== 隐私协议 ==========
                     .setPrivacyState(false)  // 默认未勾选
@@ -323,9 +339,15 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     .setUncheckedImgDrawable(act.getDrawable(if (isDarkMode) R.drawable.auth_checkbox_unchecked_dark else R.drawable.auth_checkbox_unchecked))
                     .setPrivacyOffsetY_B(80)
                     .setPrivacyTextSize(12)
-                    // 协议名称和链接（使用自定义 Scheme 跳转到 App 内页面，避免 SDK WebView 适配问题）
-                    .setAppPrivacyOne("《用户协议》", "https://psygoai.com/legal/user-agreement.html")
-                    .setAppPrivacyTwo("《隐私政策》", "https://psygoai.com/legal/privacy-policy.html")
+                    // 协议名称和链接（仅使用 Flutter 侧传入 URL）
+                    .apply {
+                        termsUrl?.takeIf { it.isNotBlank() }?.let {
+                            setAppPrivacyOne("《用户协议》", it)
+                        }
+                        privacyUrl?.takeIf { it.isNotBlank() }?.let {
+                            setAppPrivacyTwo("《隐私政策》", it)
+                        }
+                    }
                     .setAppPrivacyColor(secondaryTextColor, privacyLinkColor)
                     .setPrivacyBefore("登录即同意")
                     .setPrivacyEnd("")

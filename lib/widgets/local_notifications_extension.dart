@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:path/path.dart' as path;
 
 import 'package:psygo/config/setting_keys.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/aliyun_push_service.dart';
 import 'package:psygo/utils/client_download_content_extension.dart';
@@ -69,7 +70,7 @@ extension LocalNotificationsExtension on MatrixState {
       final iconUri = _windowsLogoUri();
       initSettings = InitializationSettings(
         windows: WindowsInitializationSettings(
-          appName: 'PsyGo',
+          appName: PsygoConfig.appName,
           appUserModelId: 'com.psygo.app',
           guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
           iconPath: iconUri.toFilePath(),
@@ -106,7 +107,7 @@ extension LocalNotificationsExtension on MatrixState {
         initialized = await initializeWithSettings(
           InitializationSettings(
             windows: WindowsInitializationSettings(
-              appName: 'PsyGo',
+              appName: PsygoConfig.appName,
               appUserModelId: 'com.psygo.app',
               guid: '8af2f2bb-4f08-4ac1-824e-977080f91d42',
             ),
@@ -328,7 +329,7 @@ extension LocalNotificationsExtension on MatrixState {
             title,
             body: body,
             replacesId: replacesId,
-            appName: 'PsyGo',
+            appName: PsygoConfig.appName,
             appIcon: 'psygo',
             actions: notifyActions,
             hints: notifyHints,
@@ -406,7 +407,7 @@ extension LocalNotificationsExtension on MatrixState {
               images: [
                 WindowsImage(
                   iconUri,
-                  altText: 'PsyGo',
+                  altText: PsygoConfig.appName,
                   placement: WindowsImagePlacement.appLogoOverride,
                 ),
               ],

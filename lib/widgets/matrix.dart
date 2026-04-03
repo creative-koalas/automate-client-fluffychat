@@ -344,8 +344,14 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       if (state == LoginState.loggedOut) {
         // 注销推送（防止登出后仍收到推送、防止换号后收到上一个用户的推送）
         if (PlatformInfos.isMobile) {
+          final loggedOutUserId = c.userID;
+          if (loggedOutUserId != null && loggedOutUserId.isNotEmpty) {
+            AliyunPushService.instance
+                .clearRegisterPushStateForUser(loggedOutUserId);
+          }
           final pushKey = AliyunPushService.instance.pushKey;
           if (pushKey != null) {
+            AliyunPushService.instance.clearRegisterPushStateByPushKey(pushKey);
             _pushAudit('unregister start pushKey=$pushKey');
             unawaited(AliyunPushService.instance.unregisterPush(pushKey));
           }
@@ -614,6 +620,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     if (!PlatformInfos.isMobile) return;
     final userID = c.userID;
     if (userID == null || userID.isEmpty) return;
+    if (!AliyunPushService.instance.shouldAttemptRegister(userID)) return;
 
     final inFlightTask = _pushRegistrationTasks[userID];
     if (inFlightTask != null) {
@@ -693,7 +700,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         PlatformInfos.isMobile &&
         !_skipAliyunPushOnCurrentDevice) {
       for (final c in widget.clients) {
-        if (c.isLogged()) {
+        final userID = c.userID;
+        if (c.isLogged() &&
+            userID != null &&
+            userID.isNotEmpty &&
+            AliyunPushService.instance.shouldAttemptRegister(userID)) {
           unawaited(ensureAliyunPushRegistered(c));
         }
       }

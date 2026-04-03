@@ -7,12 +7,13 @@ import 'package:provider/provider.dart';
 
 import 'package:psygo/backend/auth_state.dart';
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
-// import 'package:psygo/pages/wallet/wallet_page.dart';
+import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
@@ -154,9 +155,11 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       if (client == null) return;
       var count = 0;
       for (final room in client.rooms) {
-        if (room.isUnreadOrInvited) {
-          count += room.notificationCount;
-        }
+        final hasUnreadState = room.membership == Membership.invite ||
+            room.isUnread ||
+            room.hasNewMessages;
+        if (!hasUnreadState) continue;
+        count += room.notificationCount > 0 ? room.notificationCount : 1;
       }
       // 更新缓存和状态
       _cachedUnreadCount = count;
@@ -234,6 +237,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   }
 
   Future<bool> _hasReachedRecruitLimit() async {
+    if (!PsygoConfig.isProdEnvironment) {
+      return false;
+    }
     final repository = AgentRepository();
     try {
       final page = await repository.getUserAgents(
@@ -265,6 +271,15 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   }
 
   Future<void> _openRecruitMenu() async {
+    if (_employeesTabKey.currentState?.hasOnboardingEmployees == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(L10n.of(context).loadingPleaseWait),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final reachedLimit = await _hasReachedRecruitLimit();
     if (!mounted) return;
     if (_recruitLimitReached != reachedLimit) {
@@ -677,24 +692,24 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     }
   }
 
-  // Future<void> _openWalletDialog() async {
-  //   await showDialog<void>(
-  //     context: context,
-  //     builder: (context) => Dialog(
-  //       shape: RoundedRectangleBorder(
-  //         borderRadius: BorderRadius.circular(16),
-  //       ),
-  //       child: ClipRRect(
-  //         borderRadius: BorderRadius.circular(16),
-  //         child: const SizedBox(
-  //           width: 420,
-  //           height: 680,
-  //           child: WalletPage(showBackButton: false),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
+  Future<void> _openWalletDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: const SizedBox(
+            width: 420,
+            height: 680,
+            child: WalletPage(showBackButton: false),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildTopNavigation(ThemeData theme, L10n l10n) {
     return LayoutBuilder(
@@ -735,7 +750,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 1),
                         child: Text(
-                          'PsyGo',
+                          PsygoConfig.appName,
                           maxLines: 1,
                           strutStyle: const StrutStyle(
                             height: 1.2,
@@ -792,7 +807,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                     ),
                   ),
                 ),
-                // Wallet entry is temporarily hidden from users.
+                // Wallet entry hidden by requirement. Keep logic for easy rollback.
                 // IconButton(
                 //   tooltip: l10n.walletTitle,
                 //   onPressed: _openWalletDialog,
@@ -801,7 +816,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                 //     visualDensity: VisualDensity.compact,
                 //   ),
                 // ),
-                // const SizedBox(width: 8),
+                const SizedBox(width: 8),
                 SizedBox(
                   width: showProfileText ? 224 : 56,
                   child: _buildAdaptiveHeader(),
