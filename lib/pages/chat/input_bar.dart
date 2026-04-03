@@ -23,6 +23,82 @@ import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
 import 'command_hints.dart';
 
+class _MentionDeleteFormatter extends TextInputFormatter {
+  final Room room;
+  final String mentionEveryone;
+
+  const _MentionDeleteFormatter({
+    required this.room,
+    required this.mentionEveryone,
+  });
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!_isSingleCharacterBackspace(oldValue, newValue) ||
+        _hasActiveComposition(oldValue) ||
+        _hasActiveComposition(newValue)) {
+      return newValue;
+    }
+
+    final deleteRange = findWholeInputMentionDeleteRange(
+      text: oldValue.text,
+      cursorOffset: oldValue.selection.baseOffset,
+      mentionTokens: _knownMentionTokens(),
+    );
+    if (deleteRange == null) {
+      return newValue;
+    }
+
+    final nextText = oldValue.text.replaceRange(
+      deleteRange.start,
+      deleteRange.end,
+      '',
+    );
+    return TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: deleteRange.start),
+      composing: TextRange.empty,
+    );
+  }
+
+  bool _isSingleCharacterBackspace(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!oldValue.selection.isCollapsed ||
+        !newValue.selection.isCollapsed ||
+        oldValue.selection.baseOffset <= 0 ||
+        newValue.text.length != oldValue.text.length - 1 ||
+        newValue.selection.baseOffset != oldValue.selection.baseOffset - 1) {
+      return false;
+    }
+
+    final deleteIndex = newValue.selection.baseOffset;
+    return oldValue.text.substring(0, deleteIndex) ==
+            newValue.text.substring(0, deleteIndex) &&
+        oldValue.text.substring(deleteIndex + 1) ==
+            newValue.text.substring(deleteIndex);
+  }
+
+  bool _hasActiveComposition(TextEditingValue value) =>
+      value.composing.isValid && !value.composing.isCollapsed;
+
+  List<String> _knownMentionTokens() {
+    final tokens = <String>{
+      mentionEveryone,
+      '@room',
+    };
+    for (final participant in room.getParticipants()) {
+      tokens.add(buildInputMentionByUser(room: room, user: participant));
+    }
+    tokens.removeWhere((token) => token.trim().isEmpty);
+    return tokens.toList();
+  }
+}
+
 class InputBar extends StatelessWidget {
   final Room room;
   final int? minLines;
@@ -718,10 +794,19 @@ class InputBar extends StatelessWidget {
       fieldViewBuilder:
           (context, textController, autocompleteFocusNode, onFieldSubmitted) {
         final effectiveTextLengthLimit = _effectiveTextLengthLimit;
+        final mentionEveryone = _normalizedEveryoneMentionLabel(
+          L10n.of(context).mentionEveryone,
+        );
         final textField = TextField(
           controller: textController,
           focusNode: focusNode ?? autocompleteFocusNode,
           readOnly: readOnly,
+          inputFormatters: [
+            _MentionDeleteFormatter(
+              room: room,
+              mentionEveryone: mentionEveryone,
+            ),
+          ],
           contextMenuBuilder: (c, e) =>
               markdownContextBuilder(c, e, textController),
           contentInsertionConfiguration: ContentInsertionConfiguration(
