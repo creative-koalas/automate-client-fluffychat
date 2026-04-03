@@ -3,10 +3,7 @@ import 'package:psygo/services/agent_service.dart';
 
 const int _maximumMentionHashLength = 10000;
 
-String buildInputMentionByUser({
-  required Room room,
-  required User user,
-}) {
+String buildInputMentionByUser({required Room room, required User user}) {
   final normalizedDisplayName = _normalizedDisplayName(
     AgentService.instance.resolveDisplayName(user),
   );
@@ -56,10 +53,7 @@ String replaceInputMentionsWithMatrixIds({
   final mentionToUserId = <String, String>{};
   for (final participant in room.getParticipants()) {
     AgentService.instance.ensureMatrixProfilePresentation(participant);
-    final mention = buildInputMentionByUser(
-      room: room,
-      user: participant,
-    );
+    final mention = buildInputMentionByUser(room: room, user: participant);
     if (mention.isEmpty || mention == participant.id || mention == '@room') {
       continue;
     }

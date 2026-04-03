@@ -12,6 +12,7 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_upload_limits.dart';
+import 'package:psygo/utils/input_mention_query.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/macos_enter_ime_guard.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
@@ -23,6 +24,82 @@ import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
 import 'command_hints.dart';
+
+class _MentionDeleteFormatter extends TextInputFormatter {
+  final Room room;
+  final String mentionEveryone;
+
+  const _MentionDeleteFormatter({
+    required this.room,
+    required this.mentionEveryone,
+  });
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!_isSingleCharacterBackspace(oldValue, newValue) ||
+        _hasActiveComposition(oldValue) ||
+        _hasActiveComposition(newValue)) {
+      return newValue;
+    }
+
+    final deleteRange = findWholeInputMentionDeleteRange(
+      text: oldValue.text,
+      cursorOffset: oldValue.selection.baseOffset,
+      mentionTokens: _knownMentionTokens(),
+    );
+    if (deleteRange == null) {
+      return newValue;
+    }
+
+    final nextText = oldValue.text.replaceRange(
+      deleteRange.start,
+      deleteRange.end,
+      '',
+    );
+    return TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: deleteRange.start),
+      composing: TextRange.empty,
+    );
+  }
+
+  bool _isSingleCharacterBackspace(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!oldValue.selection.isCollapsed ||
+        !newValue.selection.isCollapsed ||
+        oldValue.selection.baseOffset <= 0 ||
+        newValue.text.length != oldValue.text.length - 1 ||
+        newValue.selection.baseOffset != oldValue.selection.baseOffset - 1) {
+      return false;
+    }
+
+    final deleteIndex = newValue.selection.baseOffset;
+    return oldValue.text.substring(0, deleteIndex) ==
+            newValue.text.substring(0, deleteIndex) &&
+        oldValue.text.substring(deleteIndex + 1) ==
+            newValue.text.substring(deleteIndex);
+  }
+
+  bool _hasActiveComposition(TextEditingValue value) =>
+      value.composing.isValid && !value.composing.isCollapsed;
+
+  List<String> _knownMentionTokens() {
+    final tokens = <String>{
+      mentionEveryone,
+      '@room',
+    };
+    for (final participant in room.getParticipants()) {
+      tokens.add(buildInputMentionByUser(room: room, user: participant));
+    }
+    tokens.removeWhere((token) => token.trim().isEmpty);
+    return tokens.toList();
+  }
+}
 
 class InputBar extends StatefulWidget {
   final Room room;
@@ -274,12 +351,15 @@ class _InputBarState extends State<InputBar> {
     }
     if (suggestion['type'] == 'user') {
       insertText = '${suggestion['mention']!} ';
-      final replaced = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@\S*)$'),
-        (Match m) => '${m[1]}$insertText',
+      final mentionQuery = findActiveInputMentionQuery(
+        text: fullText,
+        cursorOffset: safeOffset,
       );
-      startText =
-          replaced == replaceText ? '$replaceText$insertText' : replaced;
+      final mentionStart = mentionQuery?.start ?? safeOffset;
+      final beforeMention = fullText.substring(0, mentionStart);
+      final prefixNeedsSpace = beforeMention.isNotEmpty &&
+          !RegExp(r'\s').hasMatch(beforeMention[beforeMention.length - 1]);
+      startText = '$beforeMention${prefixNeedsSpace ? ' ' : ''}$insertText';
     }
     if (suggestion['type'] == 'room') {
       insertText = '${suggestion['mxid']!} ';
@@ -598,13 +678,14 @@ class _InputBarState extends State<InputBar> {
         }
       }
     }
-    // Trigger mention suggestions immediately after typing '@'.
-    final userMatch = RegExp(r'(?:\s|^)@([-\w]*)$').firstMatch(searchText);
-    // Also match CJK/localized input like @所有人 and plain '@'.
-    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
-    final effectiveMatch = userMatch ?? cjkMentionMatch;
-    if (effectiveMatch != null) {
-      final userSearch = effectiveMatch[1]!.toLowerCase();
+    final mentionQuery = findActiveInputMentionQuery(
+      text: text.text,
+      cursorOffset: text.selection.baseOffset,
+    );
+    final allowInlineMentionSuggestions =
+        !(PlatformInfos.isMobile && room.directChatMatrixID == null);
+    if (mentionQuery != null && allowInlineMentionSuggestions) {
+      final userSearch = mentionQuery.query.toLowerCase();
 
       // Add localized "@everyone" option in group chats
       final isGroupChat = room.directChatMatrixID == null;
@@ -1071,9 +1152,7 @@ class _InputBarState extends State<InputBar> {
     return trimmed.startsWith('@') ? trimmed : '@$trimmed';
   }
 
-  _MentionAutocompleteLayout _mentionAutocompleteLayout(
-    BuildContext context,
-  ) {
+  _MentionAutocompleteLayout _mentionAutocompleteLayout(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final size = mediaQuery.size;
     final availableHeight = size.height -
@@ -1213,10 +1292,19 @@ class _InputBarState extends State<InputBar> {
     KeyEventResult Function(KeyEvent event)? onDesktopKeyEvent,
   }) {
     final effectiveTextLengthLimit = _effectiveTextLengthLimit;
+    final mentionEveryone = _normalizedEveryoneMentionLabel(
+      L10n.of(context).mentionEveryone,
+    );
     final textField = TextField(
       controller: textController,
       focusNode: effectiveFocusNode,
       readOnly: readOnly,
+      inputFormatters: [
+        _MentionDeleteFormatter(
+          room: room,
+          mentionEveryone: mentionEveryone,
+        ),
+      ],
       contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, textController),
       contentInsertionConfiguration: ContentInsertionConfiguration(
         onContentInserted: (KeyboardInsertedContent content) {
@@ -1455,7 +1543,9 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
   late final ScrollController _scrollController = ScrollController();
   int? _lastAutoScrolledHighlightedIndex;
 
-  String _suggestionsSignature(List<Map<String, String?>> suggestions) =>
+  String _suggestionsSignature(
+    List<Map<String, String?>> suggestions,
+  ) =>
       suggestions
           .map(
             (suggestion) =>
