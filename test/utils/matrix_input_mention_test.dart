@@ -96,9 +96,9 @@ void main() {
       );
 
       expect(range, isNotNull);
-      expect(range?.start, 5);
+      expect(range?.start, 6);
       expect(range?.end, text.length);
-      expect(text.replaceRange(range!.start, range.end, ''), 'hello');
+      expect(text.replaceRange(range!.start, range.end, ''), 'hello ');
     });
 
     test('deletes the whole mention when backspacing the trailing space', () {
@@ -110,9 +110,9 @@ void main() {
       );
 
       expect(range, isNotNull);
-      expect(range?.start, 5);
+      expect(range?.start, 6);
       expect(range?.end, text.length);
-      expect(text.replaceRange(range!.start, range.end, ''), 'hello');
+      expect(text.replaceRange(range!.start, range.end, ''), 'hello ');
     });
 
     test('keeps user-typed whitespace before the mention intact', () {

@@ -5,8 +5,6 @@ final RegExp _inputMentionTerminatorPattern = RegExp(
   r'[\s\)\]\}>，。！？、；：,.!?]',
   unicode: true,
 );
-final RegExp _inputMentionWhitespacePattern = RegExp(r'\s', unicode: true);
-
 class InputMentionQuery {
   final int start;
   final int end;
@@ -104,12 +102,8 @@ InputMentionDeleteRange? findWholeInputMentionDeleteRange({
     return null;
   }
 
-  final expandedStart = _expandMentionDeletionStart(
-    text: text,
-    mentionStart: deleteRange.start,
-  );
   return InputMentionDeleteRange(
-    start: expandedStart,
+    start: deleteRange.start,
     end: deleteRange.end,
   );
 }
@@ -136,25 +130,6 @@ InputMentionDeleteRange? _findMentionTokenRangeEndingAt({
 
   return null;
 }
-
-int _expandMentionDeletionStart({
-  required String text,
-  required int mentionStart,
-}) {
-  if (mentionStart <= 0 || text[mentionStart - 1] != ' ') {
-    return mentionStart;
-  }
-  if (mentionStart == 1) {
-    return mentionStart - 1;
-  }
-
-  final previousCharacter = text[mentionStart - 2];
-  if (_inputMentionWhitespacePattern.hasMatch(previousCharacter)) {
-    return mentionStart;
-  }
-  return mentionStart - 1;
-}
-
 int _lastInputMentionTriggerIndex(String text) {
   final asciiIndex = text.lastIndexOf(_asciiMentionTrigger);
   final fullWidthIndex = text.lastIndexOf(_fullWidthMentionTrigger);
