@@ -112,6 +112,13 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       unawaited(_syncRecruitGuideHighlight());
       unawaited(_syncRecruitLimitState());
     });
+    AgentService.instance.agentsNotifier.addListener(_onPresentationChanged);
+    AgentService.instance.profileNotifier.addListener(_onPresentationChanged);
+  }
+
+  void _onPresentationChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _setupSyncListener() {
@@ -127,6 +134,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
   @override
   void dispose() {
+    AgentService.instance.agentsNotifier.removeListener(_onPresentationChanged);
+    AgentService.instance.profileNotifier.removeListener(_onPresentationChanged);
     _syncSubscription?.cancel();
     super.dispose();
   }
@@ -510,8 +519,23 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           localpart = userId.substring(1, userId.indexOf(':'));
         }
         final profile = snapshot.data;
-        final displayName = profile?.displayName ?? localpart;
-        final avatarUrl = profile?.avatarUrl;
+        final fallbackDisplayName = profile?.displayName ?? localpart;
+        final fallbackAvatarUrl = profile?.avatarUrl;
+        final agentService = AgentService.instance;
+        agentService.ensureMatrixProfilePresentationById(
+          client: client,
+          matrixUserId: userId,
+          fallbackDisplayName: fallbackDisplayName,
+          fallbackAvatarUri: fallbackAvatarUrl,
+        );
+        final displayName = agentService.resolveDisplayNameByMatrixUserId(
+          userId,
+          fallbackDisplayName: fallbackDisplayName,
+        );
+        final avatarUrl = agentService.resolveAvatarUriByMatrixUserId(
+          userId,
+          fallbackAvatarUri: fallbackAvatarUrl,
+        );
 
         // 预构建头像组件，避免动画期间重复创建
         final avatar = RepaintBoundary(
