@@ -35,6 +35,36 @@ void main() {
       expect(guard.consumeSkippedSubmit(), isFalse);
     });
 
+    test('does not defer when composing text already contains finalized cjk', () {
+      final guard = MacOsEnterImeGuard();
+
+      final handled = guard.markSubmitToSkipIfComposing(
+        const TextEditingValue(
+          text: '你好世界',
+          selection: TextSelection.collapsed(offset: 4),
+          composing: TextRange(start: 0, end: 4),
+        ),
+      );
+
+      expect(handled, isFalse);
+      expect(guard.consumeSkippedSubmit(), isFalse);
+    });
+
+    test('does not defer when voice input keeps composing around sentence', () {
+      final guard = MacOsEnterImeGuard();
+
+      final handled = guard.markSubmitToSkipIfComposing(
+        const TextEditingValue(
+          text: '帮我总结一下今天的会议内容',
+          selection: TextSelection.collapsed(offset: 13),
+          composing: TextRange(start: 0, end: 13),
+        ),
+      );
+
+      expect(handled, isFalse);
+      expect(guard.consumeSkippedSubmit(), isFalse);
+    });
+
     test('does not keep swallowing the next normal enter after ime commit', () {
       final guard = MacOsEnterImeGuard();
 
