@@ -17,6 +17,7 @@ import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/file_description.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/utils/string_color.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -88,12 +89,18 @@ class Message extends StatelessWidget {
     String displayName,
     bool isWorkingEmployee,
     Color? statusDotColor,
-  }) _resolveSenderPresentation(User user) {
+  }) _resolveSenderPresentation(BuildContext context, User user) {
     final agentService = AgentService.instance;
-    agentService.ensureMatrixProfilePresentation(user);
     final agent = agentService.getAgentByMatrixUserId(user.id);
-    final displayName = agentService.resolveDisplayName(user);
-    final avatarUri = agentService.resolveAvatarUri(user);
+    final displayName = resolveDisplayNameForMatrixUserId(
+      room: user.room,
+      matrixUserId: user.id,
+      matrixLocals: MatrixLocals(L10n.of(context)),
+    );
+    final avatarUri = agentService.resolveAvatarUriByMatrixUserId(
+      user.id,
+      fallbackAvatarUri: user.avatarUrl,
+    );
     final statusDotColor = agent == null
         ? null
         : _employeeWorkStatusColor(agent.computedWorkStatus);
@@ -413,7 +420,10 @@ class Message extends StatelessWidget {
                                           final user = snapshot.data ??
                                               event.senderFromMemoryOrFallback;
                                           final sender =
-                                              _resolveSenderPresentation(user);
+                                              _resolveSenderPresentation(
+                                                context,
+                                                user,
+                                              );
                                           return KeyedSubtree(
                                             key: avatarKey,
                                             child: Avatar(
@@ -457,6 +467,7 @@ class Message extends StatelessWidget {
                                                         .senderFromMemoryOrFallback;
                                                 final sender =
                                                     _resolveSenderPresentation(
+                                                  context,
                                                   user,
                                                 );
                                                 return KeyedSubtree(
@@ -516,6 +527,7 @@ class Message extends StatelessWidget {
                                                                 .senderFromMemoryOrFallback;
                                                         final displayname =
                                                             _resolveSenderPresentation(
+                                                          context,
                                                           user,
                                                         ).displayName;
                                                         return Text(

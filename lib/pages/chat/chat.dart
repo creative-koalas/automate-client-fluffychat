@@ -53,6 +53,7 @@ import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/macos_enter_ime_guard.dart';
+import 'package:psygo/utils/input_mention_query.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -66,6 +67,7 @@ import 'package:psygo/widgets/matrix.dart';
 import 'package:psygo/widgets/share_scaffold_dialog.dart';
 
 import '../../utils/localized_exception_extension.dart';
+import 'mobile_mention_picker_sheet.dart';
 import 'send_file_dialog.dart';
 import 'send_location_dialog.dart';
 
@@ -254,6 +256,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool currentlyTyping = false;
   bool dragging = false;
   final MacOsEnterImeGuard _macOsEnterImeGuard = MacOsEnterImeGuard();
+  Future<void>? _mentionParticipantsLoadFuture;
   late final VoidCallback _agentServiceListener;
   late final Future<void> Function() _macosGlobalScreenshotHandler;
   bool _groupLiveStatusWatcherAttached = false;
@@ -530,6 +533,38 @@ class ChatController extends State<ChatPageWithRoom>
     } finally {
       frame?.image.dispose();
       codec?.dispose();
+    }
+  }
+
+  Future<void> _ensureMentionParticipantsLoaded() {
+    if (room.directChatMatrixID != null || room.participantListComplete) {
+      return Future.value();
+    }
+    return _mentionParticipantsLoadFuture ??=
+        _loadMentionParticipants().whenComplete(() {
+      _mentionParticipantsLoadFuture = null;
+    });
+  }
+
+  Future<void> _loadMentionParticipants() async {
+    try {
+      await room.requestParticipants(
+        const [
+          Membership.join,
+          Membership.invite,
+          Membership.knock,
+        ],
+        true,
+        true,
+      );
+      if (!mounted) return;
+      setState(() {});
+    } catch (error, stackTrace) {
+      Logs().d(
+        'Unable to preload room participants for mention surfaces.',
+        error,
+        stackTrace,
+      );
     }
   }
 
@@ -1066,6 +1101,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (room.directChatMatrixID == null) {
       AgentService.instance.attachLiveStatusWatcher();
       _groupLiveStatusWatcherAttached = true;
+      unawaited(_ensureMentionParticipantsLoaded());
     }
     _syncReadMarkerEventId();
     _captureSessionUnreadAnchor(initial: true);
@@ -1516,6 +1552,8 @@ class ChatController extends State<ChatPageWithRoom>
   PendingScreenshotReview? _pendingScreenshotReview;
   // Default to mention-first in group chats; user can switch via composer menu.
   bool _groupSendShouldPromptMention = true;
+  bool _mobileMentionPickerOpen = false;
+  int? _lastOpenedMobileMentionStart;
 
   List<PendingAttachment> get pendingAttachments =>
       List.unmodifiable(_pendingAttachments);
@@ -1530,6 +1568,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool get isGroupChat => room.directChatMatrixID == null;
   bool get groupSendShouldPromptMention =>
       isGroupChat && _groupSendShouldPromptMention;
+  bool get _usesMobileMentionPicker => PlatformInfos.isMobile && isGroupChat;
 
   void toggleGroupSendMode() {
     if (!isGroupChat) return;
@@ -1937,6 +1976,7 @@ class ChatController extends State<ChatPageWithRoom>
   ///   ''    — 用户选择"直接发送"
   ///   '@xx' — 用户选择了某个成员的 mention 文本
   Future<String?> _showMentionHint() async {
+    await _ensureMentionParticipantsLoaded();
     final selfId = room.client.userID;
 
     // 过滤自己，只列出其他成员
@@ -3144,6 +3184,8 @@ class ChatController extends State<ChatPageWithRoom>
       });
     }
 
+    _maybeOpenMobileMentionPicker(text);
+
     _storeInputTimeoutTimer?.cancel();
     _storeInputTimeoutTimer = Timer(_storeInputTimeout, () async {
       final prefs = Matrix.of(context).store;
@@ -3168,6 +3210,140 @@ class ChatController extends State<ChatPageWithRoom>
         );
       }
     }
+  }
+
+  void _maybeOpenMobileMentionPicker(String text) {
+    if (!_usesMobileMentionPicker || !inputFocus.hasFocus) {
+      return;
+    }
+    if (_mobileMentionPickerOpen) {
+      return;
+    }
+
+    final selection = sendController.selection;
+    if (!selection.isCollapsed || selection.baseOffset < 0) {
+      _lastOpenedMobileMentionStart = null;
+      return;
+    }
+
+    final mentionQuery = findActiveInputMentionQuery(
+      text: text,
+      cursorOffset: selection.baseOffset,
+    );
+    if (mentionQuery == null) {
+      _lastOpenedMobileMentionStart = null;
+      return;
+    }
+    if (mentionQuery.query.isNotEmpty) {
+      _lastOpenedMobileMentionStart = null;
+      return;
+    }
+    if (_lastOpenedMobileMentionStart == mentionQuery.start) {
+      return;
+    }
+
+    _lastOpenedMobileMentionStart = mentionQuery.start;
+    _mobileMentionPickerOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _mobileMentionPickerOpen = false;
+        return;
+      }
+      unawaited(
+        _openMobileMentionPickerSheetForActiveMention(
+          expectedMentionStart: mentionQuery.start,
+        ),
+      );
+    });
+  }
+
+  Future<void> _openMobileMentionPickerSheetForActiveMention({
+    required int expectedMentionStart,
+  }) async {
+    try {
+      await _ensureMentionParticipantsLoaded();
+      if (!mounted) return;
+
+      final selection = sendController.selection;
+      if (!selection.isCollapsed || selection.baseOffset < 0) {
+        _lastOpenedMobileMentionStart = null;
+        return;
+      }
+
+      final mentionQuery = findActiveInputMentionQuery(
+        text: sendController.text,
+        cursorOffset: selection.baseOffset,
+      );
+      if (mentionQuery == null) {
+        _lastOpenedMobileMentionStart = null;
+        return;
+      }
+      if (mentionQuery.start != expectedMentionStart ||
+          mentionQuery.query.isNotEmpty) {
+        return;
+      }
+
+      final selfId = room.client.userID;
+      final participants =
+          room.getParticipants().where((user) => user.id != selfId).toList();
+      if (participants.isEmpty) {
+        _lastOpenedMobileMentionStart = null;
+        return;
+      }
+
+      await _openMobileMentionPickerSheet(
+        mentionQuery: mentionQuery,
+        participants: participants,
+      );
+    } finally {
+      _mobileMentionPickerOpen = false;
+    }
+  }
+
+  Future<void> _openMobileMentionPickerSheet({
+    required InputMentionQuery mentionQuery,
+    required List<User> participants,
+  }) async {
+    final mentions = await showMobileMentionPickerSheet(
+      context: context,
+      room: room,
+      participants: participants,
+      initialQuery: mentionQuery.query,
+    );
+    if (!mounted) return;
+    if (mentions != null && mentions.isNotEmpty) {
+      _replaceMentionQueryWithMentions(
+        mentionQuery: mentionQuery,
+        mentions: mentions,
+      );
+      return;
+    }
+    inputFocus.requestFocus();
+  }
+
+  void _replaceMentionQueryWithMentions({
+    required InputMentionQuery mentionQuery,
+    required List<String> mentions,
+  }) {
+    final value = sendController.value;
+    final text = value.text;
+    final safeStart = mentionQuery.start.clamp(0, text.length);
+    final safeEnd = mentionQuery.end.clamp(safeStart, text.length);
+    final beforeMention = text.substring(0, safeStart);
+    final afterMention = text.substring(safeEnd);
+    final prefixNeedsSpace = beforeMention.isNotEmpty &&
+        !RegExp(r'\s').hasMatch(beforeMention[beforeMention.length - 1]);
+    final insertText = '${prefixNeedsSpace ? ' ' : ''}${mentions.join(' ')} ';
+    final nextText = '$beforeMention$insertText$afterMention';
+    final nextOffset = beforeMention.length + insertText.length;
+
+    sendController.value = value.copyWith(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextOffset),
+      composing: TextRange.empty,
+    );
+    onInputBarChanged(nextText);
+    inputFocus.requestFocus();
   }
 
   String _renderQuickTipOutgoingText(String outgoingText) {

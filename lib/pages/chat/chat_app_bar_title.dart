@@ -77,7 +77,10 @@ class _ChatAppBarTitleState extends State<ChatAppBarTitle> {
   void _onPresentationChanged() {
     if (!mounted) return;
     final directChatMatrixID = controller.room.directChatMatrixID;
-    if (directChatMatrixID == null) return;
+    if (directChatMatrixID == null) {
+      setState(() {});
+      return;
+    }
 
     // AgentService 更新后，尝试从缓存获取最新员工数据
     final cachedEmployee =

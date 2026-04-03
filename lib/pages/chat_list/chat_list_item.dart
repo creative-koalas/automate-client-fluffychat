@@ -13,6 +13,7 @@ import 'package:psygo/utils/matrix_mention_display_name.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/agent_presentation_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/room_status_extension.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/hover_builder.dart';
@@ -72,84 +73,6 @@ class _ChatListItemState extends State<ChatListItem> {
 
   void _onAgentsChanged() {
     if (mounted) setState(() {});
-  }
-
-  String _resolveDisplayNameForMatrixUserId({
-    required String? matrixUserId,
-    required MatrixLocals matrixLocals,
-  }) {
-    final key = matrixUserId?.trim() ?? '';
-    if (key.isEmpty) {
-      return '';
-    }
-    final user = room.unsafeGetUserFromMemoryOrFallback(key);
-    AgentService.instance.ensureMatrixProfilePresentationById(
-      client: room.client,
-      matrixUserId: key,
-      fallbackDisplayName:
-          user.displayName ?? user.calcDisplayname(i18n: matrixLocals),
-      fallbackAvatarUri: user.avatarUrl,
-    );
-    if (!room.isDirectChat) {
-      AgentService.instance.ensureGroupDisplayNameByMatrixUserId(key);
-      final groupDisplayName =
-          AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(key);
-      if (groupDisplayName != null) {
-        return groupDisplayName;
-      }
-    }
-    return AgentService.instance.resolveDisplayNameByMatrixUserId(
-      key,
-      fallbackDisplayName: user.calcDisplayname(i18n: matrixLocals),
-    );
-  }
-
-  String _resolveRoomDisplayName(BuildContext context) {
-    final l10n = L10n.of(context);
-    final matrixLocals = MatrixLocals(l10n);
-    final directChatMatrixId = room.directChatMatrixID;
-
-    if (directChatMatrixId != null) {
-      return _resolveDisplayNameForMatrixUserId(
-        matrixUserId: directChatMatrixId,
-        matrixLocals: matrixLocals,
-      );
-    }
-
-    if (room.name.isNotEmpty) {
-      return room.name;
-    }
-
-    final canonicalAlias = room.canonicalAlias.localpart;
-    if (canonicalAlias != null && canonicalAlias.isNotEmpty) {
-      return canonicalAlias;
-    }
-
-    final heroIds = <String>[...?room.summary.mHeroes];
-
-    final names = <String>[];
-    for (final heroId in heroIds) {
-      if (heroId.isEmpty || heroId == room.client.userID) {
-        continue;
-      }
-      final resolvedName = _resolveDisplayNameForMatrixUserId(
-        matrixUserId: heroId,
-        matrixLocals: matrixLocals,
-      ).trim();
-      if (resolvedName.isNotEmpty) {
-        names.add(resolvedName);
-      }
-    }
-
-    if (names.isNotEmpty) {
-      final joinedNames = names.join(', ');
-      if (room.isAbandonedDMRoom) {
-        return l10n.wasDirectChatDisplayName(joinedNames);
-      }
-      return room.isDirectChat ? joinedNames : l10n.groupWith(joinedNames);
-    }
-
-    return room.getLocalizedDisplayname(matrixLocals);
   }
   bool _usesSenderNamePrefix({
     required Event? lastEvent,
@@ -251,7 +174,10 @@ class _ChatListItemState extends State<ChatListItem> {
     final backgroundColor = activeChat
         ? theme.colorScheme.secondaryContainer
         : null;
-    final displayname = _resolveRoomDisplayName(context);
+    final displayname = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
     final currentFilter = filter;
     if (currentFilter != null &&
         !displayname.toLowerCase().contains(currentFilter)) {
@@ -405,7 +331,8 @@ class _ChatListItemState extends State<ChatListItem> {
                                             directChatMatrixId,
                                           );
                                       final resolvedName =
-                                          _resolveDisplayNameForMatrixUserId(
+                                          resolveDisplayNameForMatrixUserId(
+                                        room: room,
                                         matrixUserId: directChatMatrixId,
                                         matrixLocals: MatrixLocals(
                                           L10n.of(context),
@@ -641,11 +568,11 @@ class _ChatListItemState extends State<ChatListItem> {
                                 maxLines: 1,
                                 softWrap: false,
                               )
-                            : FutureBuilder(
+                            : FutureBuilder<String>(
                                 key: ValueKey(
                                   '${lastEvent?.eventId}_${lastEvent?.type}_${lastEvent?.redacted}',
                                 ),
-                                future: needLastEventSender
+                                future: needLastEventSender && lastEvent != null
                                     ? lastEvent.calcLocalizedBodyWithAgents(
                                         MatrixLocals(L10n.of(context)),
                                         hideReply: true,

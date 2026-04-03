@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
@@ -12,17 +12,96 @@ import 'package:psygo/config/setting_keys.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/chat_upload_limits.dart';
+import 'package:psygo/utils/input_mention_query.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/macos_enter_ime_guard.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
+import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/markdown_context_builder.dart';
 import 'package:psygo/utils/platform_infos.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/matrix.dart';
 import 'command_hints.dart';
 
-class InputBar extends StatelessWidget {
+class _MentionDeleteFormatter extends TextInputFormatter {
+  final Room room;
+  final String mentionEveryone;
+
+  const _MentionDeleteFormatter({
+    required this.room,
+    required this.mentionEveryone,
+  });
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!_isSingleCharacterBackspace(oldValue, newValue) ||
+        _hasActiveComposition(oldValue) ||
+        _hasActiveComposition(newValue)) {
+      return newValue;
+    }
+
+    final deleteRange = findWholeInputMentionDeleteRange(
+      text: oldValue.text,
+      cursorOffset: oldValue.selection.baseOffset,
+      mentionTokens: _knownMentionTokens(),
+    );
+    if (deleteRange == null) {
+      return newValue;
+    }
+
+    final nextText = oldValue.text.replaceRange(
+      deleteRange.start,
+      deleteRange.end,
+      '',
+    );
+    return TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: deleteRange.start),
+      composing: TextRange.empty,
+    );
+  }
+
+  bool _isSingleCharacterBackspace(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!oldValue.selection.isCollapsed ||
+        !newValue.selection.isCollapsed ||
+        oldValue.selection.baseOffset <= 0 ||
+        newValue.text.length != oldValue.text.length - 1 ||
+        newValue.selection.baseOffset != oldValue.selection.baseOffset - 1) {
+      return false;
+    }
+
+    final deleteIndex = newValue.selection.baseOffset;
+    return oldValue.text.substring(0, deleteIndex) ==
+            newValue.text.substring(0, deleteIndex) &&
+        oldValue.text.substring(deleteIndex + 1) ==
+            newValue.text.substring(deleteIndex);
+  }
+
+  bool _hasActiveComposition(TextEditingValue value) =>
+      value.composing.isValid && !value.composing.isCollapsed;
+
+  List<String> _knownMentionTokens() {
+    final tokens = <String>{
+      mentionEveryone,
+      '@room',
+    };
+    for (final participant in room.getParticipants()) {
+      tokens.add(buildInputMentionByUser(room: room, user: participant));
+    }
+    tokens.removeWhere((token) => token.trim().isEmpty);
+    return tokens.toList();
+  }
+}
+
+class InputBar extends StatefulWidget {
   final Room room;
   final int? minLines;
   final int? maxLines;
@@ -60,10 +139,120 @@ class InputBar extends StatelessWidget {
     super.key,
   });
 
+  @override
+  State<InputBar> createState() => _InputBarState();
+
   int get _effectiveTextLengthLimit {
     final configuredLimit = AppSettings.textMessageMaxLength.value;
     final pduLimit = (maxPDUSize / 3).floor();
     return configuredLimit < pduLimit ? configuredLimit : pduLimit;
+  }
+}
+
+class _InputBarState extends State<InputBar> {
+  int _mentionPresentationVersion = 0;
+  final OverlayPortalController _desktopSuggestionsOverlayController =
+      OverlayPortalController();
+  final LayerLink _desktopSuggestionsFieldLink = LayerLink();
+  List<Map<String, String?>> _desktopSuggestions =
+      const <Map<String, String?>>[];
+  int? _desktopHighlightedSuggestionIndex;
+  int _desktopSuggestionsRequestId = 0;
+
+  Room get room => widget.room;
+  int? get minLines => widget.minLines;
+  int? get maxLines => widget.maxLines;
+  TextInputType? get keyboardType => widget.keyboardType;
+  TextInputAction? get textInputAction => widget.textInputAction;
+  ValueChanged<String>? get onSubmitted => widget.onSubmitted;
+  ValueChanged<Uint8List?>? get onSubmitImage => widget.onSubmitImage;
+  ValueChanged<KeyboardInsertedContent>? get onContentInserted =>
+      widget.onContentInserted;
+  FocusNode? get focusNode => widget.focusNode;
+  TextEditingController? get controller => widget.controller;
+  InputDecoration get decoration => widget.decoration;
+  ValueChanged<String>? get onChanged => widget.onChanged;
+  MacOsEnterImeGuard? get macOsEnterImeGuard => widget.macOsEnterImeGuard;
+  bool? get autofocus => widget.autofocus;
+  bool get readOnly => widget.readOnly;
+  List<Emoji> get suggestionEmojis => widget.suggestionEmojis;
+  int get _effectiveTextLengthLimit => widget._effectiveTextLengthLimit;
+  bool get _usesCustomDesktopSuggestions => PlatformInfos.isWindows;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachDesktopInputListeners();
+    AgentService.instance.profileNotifier.addListener(_handleProfileUpdated);
+  }
+
+  @override
+  void didUpdateWidget(covariant InputBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller ||
+        oldWidget.focusNode != widget.focusNode) {
+      _detachDesktopInputListeners(oldWidget);
+      _attachDesktopInputListeners();
+      if (_usesCustomDesktopSuggestions) {
+        unawaited(_refreshDesktopSuggestions());
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _detachDesktopInputListeners(widget);
+    AgentService.instance.profileNotifier.removeListener(_handleProfileUpdated);
+    super.dispose();
+  }
+
+  void _handleProfileUpdated() {
+    if (!mounted) {
+      return;
+    }
+
+    if (_usesCustomDesktopSuggestions) {
+      unawaited(_refreshDesktopSuggestions());
+      return;
+    }
+
+    setState(() {
+      _mentionPresentationVersion++;
+    });
+  }
+
+  void _attachDesktopInputListeners() {
+    if (!_usesCustomDesktopSuggestions) {
+      return;
+    }
+    widget.controller?.addListener(_handleDesktopTextChanged);
+    widget.focusNode?.addListener(_handleDesktopFocusChanged);
+  }
+
+  void _detachDesktopInputListeners(InputBar targetWidget) {
+    if (!_usesCustomDesktopSuggestions) {
+      return;
+    }
+    targetWidget.controller?.removeListener(_handleDesktopTextChanged);
+    targetWidget.focusNode?.removeListener(_handleDesktopFocusChanged);
+  }
+
+  void _handleDesktopTextChanged() {
+    if (!_usesCustomDesktopSuggestions) {
+      return;
+    }
+    unawaited(_refreshDesktopSuggestions());
+  }
+
+  void _handleDesktopFocusChanged() {
+    if (!_usesCustomDesktopSuggestions) {
+      return;
+    }
+    if (focusNode?.hasFocus ?? false) {
+      unawaited(_refreshDesktopSuggestions());
+      return;
+    }
+    _applyDesktopSuggestions(const <Map<String, String?>>[]);
   }
 
   int _resolvedHighlightedSuggestionIndex({
@@ -81,12 +270,38 @@ class InputBar extends StatelessWidget {
     return 0;
   }
 
+  int? _resolvedAutocompleteTextOffset(TextEditingValue value) {
+    final selection = value.selection;
+    if (!selection.isValid) {
+      return null;
+    }
+
+    final selectionEnd = selection.end;
+    if (selectionEnd < 0) {
+      return null;
+    }
+
+    if (!selection.isCollapsed) {
+      final composing = value.composing;
+      final selectionWithinComposing =
+          composing.isValid &&
+              selection.start >= composing.start &&
+              selection.end <= composing.end;
+      if (!selectionWithinComposing) {
+        return null;
+      }
+    }
+
+    return selectionEnd.clamp(0, value.text.length);
+  }
+
   TextEditingValue _suggestionTextEditingValue(
     TextEditingValue value,
     Map<String, String?> suggestion,
   ) {
     final fullText = value.text;
-    final rawOffset = value.selection.baseOffset;
+    final rawOffset = _resolvedAutocompleteTextOffset(value) ??
+        value.selection.end;
     final safeOffset = (rawOffset < 0 || rawOffset > fullText.length)
         ? fullText.length
         : rawOffset;
@@ -136,12 +351,15 @@ class InputBar extends StatelessWidget {
     }
     if (suggestion['type'] == 'user') {
       insertText = '${suggestion['mention']!} ';
-      final replaced = replaceText.replaceAllMapped(
-        RegExp(r'(\s|^)(@\S*)$'),
-        (Match m) => '${m[1]}$insertText',
+      final mentionQuery = findActiveInputMentionQuery(
+        text: fullText,
+        cursorOffset: safeOffset,
       );
-      startText =
-          replaced == replaceText ? '$replaceText$insertText' : replaced;
+      final mentionStart = mentionQuery?.start ?? safeOffset;
+      final beforeMention = fullText.substring(0, mentionStart);
+      final prefixNeedsSpace = beforeMention.isNotEmpty &&
+          !RegExp(r'\s').hasMatch(beforeMention[beforeMention.length - 1]);
+      startText = '$beforeMention${prefixNeedsSpace ? ' ' : ''}$insertText';
     }
     if (suggestion['type'] == 'room') {
       insertText = '${suggestion['mxid']!} ';
@@ -163,7 +381,7 @@ class InputBar extends StatelessWidget {
     required TextEditingController textController,
     required ValueNotifier<int?> highlightedSuggestionIndex,
   }) {
-    final suggestions = getSuggestions(textController.value, context);
+    final suggestions = _buildSuggestions(textController.value, context);
     if (suggestions.isEmpty) {
       highlightedSuggestionIndex.value = null;
       return false;
@@ -194,19 +412,187 @@ class InputBar extends StatelessWidget {
     return true;
   }
 
-  List<Map<String, String?>> getSuggestions(
+  Future<Iterable<Map<String, String?>>> getSuggestions(
+    TextEditingValue text,
+    BuildContext context,
+  ) async {
+    await _warmMentionPresentation(text);
+    return _buildSuggestions(text, context);
+  }
+
+  void _applyDesktopSuggestions(List<Map<String, String?>> suggestions) {
+    final shouldShowSuggestions =
+        _usesCustomDesktopSuggestions &&
+        (focusNode?.hasFocus ?? false) &&
+        !readOnly &&
+        suggestions.isNotEmpty;
+
+    final nextHighlightedIndex = suggestions.isEmpty
+        ? null
+        : _resolvedHighlightedSuggestionIndex(
+            highlightedIndex: _desktopHighlightedSuggestionIndex,
+            suggestionsLength: suggestions.length,
+          );
+
+    if (mounted) {
+      setState(() {
+        _desktopSuggestions = List.unmodifiable(suggestions);
+        _desktopHighlightedSuggestionIndex = nextHighlightedIndex;
+      });
+    }
+
+    if (shouldShowSuggestions) {
+      _desktopSuggestionsOverlayController.show();
+    } else {
+      _desktopSuggestionsOverlayController.hide();
+    }
+  }
+
+  Future<void> _refreshDesktopSuggestions() async {
+    if (!_usesCustomDesktopSuggestions) {
+      return;
+    }
+
+    final textController = controller;
+    final effectiveFocusNode = focusNode;
+    if (!mounted ||
+        textController == null ||
+        effectiveFocusNode == null ||
+        !effectiveFocusNode.hasFocus ||
+        readOnly) {
+      _applyDesktopSuggestions(const <Map<String, String?>>[]);
+      return;
+    }
+
+    final requestId = ++_desktopSuggestionsRequestId;
+    final suggestions = (await getSuggestions(textController.value, context))
+        .toList(growable: false);
+    if (!mounted ||
+        requestId != _desktopSuggestionsRequestId ||
+        controller != textController ||
+        focusNode != effectiveFocusNode) {
+      return;
+    }
+
+    _applyDesktopSuggestions(suggestions);
+  }
+
+  bool _commitDesktopHighlightedSuggestion() {
+    final textController = controller;
+    if (textController == null || _desktopSuggestions.isEmpty) {
+      _desktopHighlightedSuggestionIndex = null;
+      return false;
+    }
+
+    final resolvedIndex = _resolvedHighlightedSuggestionIndex(
+      highlightedIndex: _desktopHighlightedSuggestionIndex,
+      suggestionsLength: _desktopSuggestions.length,
+    );
+    if (resolvedIndex < 0) {
+      _desktopHighlightedSuggestionIndex = null;
+      return false;
+    }
+
+    final nextValue = _suggestionTextEditingValue(
+      textController.value,
+      _desktopSuggestions[resolvedIndex],
+    );
+    if (nextValue.text == textController.text &&
+        nextValue.selection == textController.selection) {
+      _desktopHighlightedSuggestionIndex = null;
+      return false;
+    }
+
+    textController.value = nextValue;
+    _desktopHighlightedSuggestionIndex = null;
+    _desktopSuggestionsOverlayController.hide();
+    onChanged?.call(nextValue.text);
+    return true;
+  }
+
+  void _moveDesktopHighlightedSuggestion(int delta) {
+    if (_desktopSuggestions.isEmpty) {
+      return;
+    }
+    final currentIndex = _resolvedHighlightedSuggestionIndex(
+      highlightedIndex: _desktopHighlightedSuggestionIndex,
+      suggestionsLength: _desktopSuggestions.length,
+    );
+    final nextIndex = (currentIndex + delta).clamp(
+          0,
+          _desktopSuggestions.length - 1,
+        );
+    if (nextIndex == _desktopHighlightedSuggestionIndex) {
+      return;
+    }
+    setState(() {
+      _desktopHighlightedSuggestionIndex = nextIndex;
+    });
+  }
+
+  void _setDesktopHighlightedSuggestion(int? index) {
+    if (index == _desktopHighlightedSuggestionIndex) {
+      return;
+    }
+    setState(() {
+      _desktopHighlightedSuggestionIndex = index;
+    });
+  }
+
+  void _selectDesktopSuggestion(Map<String, String?> suggestion) {
+    final textController = controller;
+    if (textController == null) {
+      return;
+    }
+    final nextValue = _suggestionTextEditingValue(
+      textController.value,
+      suggestion,
+    );
+    if (nextValue.text == textController.text &&
+        nextValue.selection == textController.selection) {
+      return;
+    }
+    textController.value = nextValue;
+    _desktopSuggestionsOverlayController.hide();
+    onChanged?.call(nextValue.text);
+  }
+
+  Future<void> _warmMentionPresentation(TextEditingValue text) async {
+    final textOffset = _resolvedAutocompleteTextOffset(text);
+    if (textOffset == null) {
+      return;
+    }
+
+    final searchText = text.text.substring(0, textOffset);
+    final userMatch = RegExp(r'(?:\s|^)@([-\w]*)$').firstMatch(searchText);
+    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
+    if (userMatch == null && cjkMentionMatch == null) {
+      return;
+    }
+
+    if (room.directChatMatrixID != null) {
+      return;
+    }
+
+    await AgentService.instance.ensureGroupDisplayNamesByMatrixUserIds(
+      room.getParticipants().map((user) => user.id),
+    );
+  }
+
+  List<Map<String, String?>> _buildSuggestions(
     TextEditingValue text,
     BuildContext context,
   ) {
-    if (text.selection.baseOffset != text.selection.extentOffset ||
-        text.selection.baseOffset < 0) {
-      return []; // no entries if there is selected text
+    final textOffset = _resolvedAutocompleteTextOffset(text);
+    if (textOffset == null) {
+      return [];
     }
     final l10n = L10n.of(context);
+    final matrixLocals = MatrixLocals(l10n);
     final mentionEveryone = _normalizedEveryoneMentionLabel(
       l10n.mentionEveryone,
     );
-    final searchText = text.text.substring(0, text.selection.baseOffset);
+    final searchText = text.text.substring(0, textOffset);
     final ret = <Map<String, String?>>[];
     const maxResults = 30;
 
@@ -292,13 +678,14 @@ class InputBar extends StatelessWidget {
         }
       }
     }
-    // Trigger mention suggestions immediately after typing '@'.
-    final userMatch = RegExp(r'(?:\s|^)@([-\w]*)$').firstMatch(searchText);
-    // Also match CJK/localized input like @所有人 and plain '@'.
-    final cjkMentionMatch = RegExp(r'(?:\s|^)@(\S*)$').firstMatch(searchText);
-    final effectiveMatch = userMatch ?? cjkMentionMatch;
-    if (effectiveMatch != null) {
-      final userSearch = effectiveMatch[1]!.toLowerCase();
+    final mentionQuery = findActiveInputMentionQuery(
+      text: text.text,
+      cursorOffset: text.selection.baseOffset,
+    );
+    final allowInlineMentionSuggestions =
+        !(PlatformInfos.isMobile && room.directChatMatrixID == null);
+    if (mentionQuery != null && allowInlineMentionSuggestions) {
+      final userSearch = mentionQuery.query.toLowerCase();
 
       // Add localized "@everyone" option in group chats
       final isGroupChat = room.directChatMatrixID == null;
@@ -339,8 +726,16 @@ class InputBar extends StatelessWidget {
             return powerLevelCompare;
           }
 
-          final displayNameA = AgentService.instance.resolveDisplayName(a);
-          final displayNameB = AgentService.instance.resolveDisplayName(b);
+          final displayNameA = resolveDisplayNameForMatrixUserId(
+            room: room,
+            matrixUserId: a.id,
+            matrixLocals: matrixLocals,
+          );
+          final displayNameB = resolveDisplayNameForMatrixUserId(
+            room: room,
+            matrixUserId: b.id,
+            matrixLocals: matrixLocals,
+          );
           final displayNameCompare = displayNameA.toLowerCase().compareTo(
                 displayNameB.toLowerCase(),
               );
@@ -352,17 +747,35 @@ class InputBar extends StatelessWidget {
         });
 
       for (final user in participants) {
-        AgentService.instance.ensureMatrixProfilePresentation(user);
-        final resolvedDisplayName = AgentService.instance.resolveDisplayName(
-          user,
+        final roomDisplayName = user.calcDisplayname(i18n: matrixLocals);
+        final fallbackDisplayName =
+            user.displayName ?? roomDisplayName;
+        final resolvedDisplayName = resolveDisplayNameForMatrixUserId(
+          room: room,
+          matrixUserId: user.id,
+          matrixLocals: matrixLocals,
         );
-        final resolvedAvatar = AgentService.instance.resolveAvatarUri(user);
+        final resolvedAvatar = AgentService.instance.resolveAvatarUriByMatrixUserId(
+          user.id,
+          fallbackAvatarUri: user.avatarUrl,
+        );
         final mentionText = buildInputMentionByUser(room: room, user: user);
-        if ((resolvedDisplayName.toLowerCase().contains(userSearch) ||
-                slugify(
-                  resolvedDisplayName.toLowerCase(),
-                ).contains(userSearch)) ||
-            user.id.split(':')[0].toLowerCase().contains(userSearch)) {
+        final searchCandidates = <String>{
+          resolvedDisplayName,
+          fallbackDisplayName,
+          roomDisplayName,
+          user.displayName ?? '',
+          user.id.split(':').first,
+        };
+        final matchesSearch = searchCandidates.any((candidate) {
+          final normalizedCandidate = candidate.trim().toLowerCase();
+          if (normalizedCandidate.isEmpty) {
+            return false;
+          }
+          return normalizedCandidate.contains(userSearch) ||
+              slugify(normalizedCandidate).contains(userSearch);
+        });
+        if (matchesSearch) {
           ret.add({
             'type': 'user',
             'mxid': user.id,
@@ -628,6 +1041,107 @@ class InputBar extends StatelessWidget {
     );
   }
 
+  Widget _buildSuggestionsPanel({
+    required BuildContext context,
+    required List<Map<String, String?>> suggestions,
+    required ValueChanged<Map<String, String?>> onSelected,
+    ValueChanged<int?>? onHighlightedIndexChanged,
+    int? highlightedIndex,
+  }) {
+    final theme = Theme.of(context);
+    final overlayLayout = _mentionAutocompleteLayout(context);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        overlayLayout.horizontalInset,
+        0,
+        overlayLayout.horizontalInset,
+        overlayLayout.verticalGap,
+      ),
+      child: Align(
+        alignment: overlayLayout.mobileSheetStyle
+            ? Alignment.bottomCenter
+            : Alignment.bottomLeft,
+        child: SizedBox(
+          width: overlayLayout.maxWidth,
+          child: Material(
+            elevation: theme.appBarTheme.scrolledUnderElevation ?? 8,
+            shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.2),
+            color: theme.colorScheme.surface,
+            borderRadius: overlayLayout.mobileSheetStyle
+                ? BorderRadius.vertical(
+                    top: Radius.circular(overlayLayout.borderRadius),
+                  )
+                : BorderRadius.circular(overlayLayout.borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: overlayLayout.mobileSheetStyle
+                    ? BorderRadius.vertical(
+                        top: Radius.circular(overlayLayout.borderRadius),
+                      )
+                    : BorderRadius.circular(overlayLayout.borderRadius),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.35,
+                  ),
+                ),
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: overlayLayout.maxWidth,
+                  maxHeight: overlayLayout.maxHeight,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (overlayLayout.mobileSheetStyle) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.35,
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Flexible(
+                      child: _AutocompleteOptionsList(
+                        suggestions: suggestions,
+                        onSelected: onSelected,
+                        showSeparators: overlayLayout.mobileSheetStyle,
+                        onHighlightedIndexChanged: onHighlightedIndexChanged,
+                        highlightedIndex: highlightedIndex,
+                        suggestionBuilder: (
+                          context,
+                          suggestion,
+                          onSelected,
+                          client,
+                          highlighted,
+                        ) =>
+                            buildSuggestion(
+                          context,
+                          suggestion,
+                          onSelected,
+                          client,
+                          highlighted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   String insertSuggestion(Map<String, String?> suggestion) {
     return _suggestionTextEditingValue(controller!.value, suggestion).text;
   }
@@ -638,9 +1152,7 @@ class InputBar extends StatelessWidget {
     return trimmed.startsWith('@') ? trimmed : '@$trimmed';
   }
 
-  _MentionAutocompleteLayout _mentionAutocompleteLayout(
-    BuildContext context,
-  ) {
+  _MentionAutocompleteLayout _mentionAutocompleteLayout(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final size = mediaQuery.size;
     final availableHeight = size.height -
@@ -705,236 +1217,296 @@ class InputBar extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final overlayLayout = _mentionAutocompleteLayout(context);
-    final highlightedSuggestionIndex = ValueNotifier<int?>(null);
-    return Autocomplete<Map<String, String?>>(
-      focusNode: focusNode,
-      textEditingController: controller,
-      optionsBuilder: (text) => getSuggestions(text, context),
-      fieldViewBuilder:
-          (context, textController, autocompleteFocusNode, onFieldSubmitted) {
-        final effectiveTextLengthLimit = _effectiveTextLengthLimit;
-        final textField = TextField(
-          controller: textController,
-          focusNode: focusNode ?? autocompleteFocusNode,
-          readOnly: readOnly,
-          contextMenuBuilder: (c, e) =>
-              markdownContextBuilder(c, e, textController),
-          contentInsertionConfiguration: ContentInsertionConfiguration(
-            onContentInserted: (KeyboardInsertedContent content) {
-              if (onContentInserted != null) {
-                onContentInserted!(content);
-                return;
-              }
-              final data = content.data;
-              if (data == null) return;
-              if (data.length > kChatAttachmentMaxUploadBytes) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      FileTooBigMatrixException(
-                        data.length,
-                        kChatAttachmentMaxUploadBytes,
-                      ).toLocalizedString(context),
-                    ),
-                  ),
-                );
-                return;
-              }
+  KeyEventResult _handleDesktopInputKeyEvent(
+    KeyEvent event,
+    TextEditingController textController,
+  ) {
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
 
-              if (onSubmitImage != null) {
-                onSubmitImage!(data);
-                return;
-              }
+    final hasSuggestions = _desktopSuggestions.isNotEmpty &&
+        _desktopSuggestionsOverlayController.isShowing;
+    if (hasSuggestions) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        _moveDesktopHighlightedSuggestion(1);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        _moveDesktopHighlightedSuggestion(-1);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.pageDown) {
+        _moveDesktopHighlightedSuggestion(5);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.pageUp) {
+        _moveDesktopHighlightedSuggestion(-5);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _applyDesktopSuggestions(const <Map<String, String?>>[]);
+        return KeyEventResult.handled;
+      }
+    }
 
-              final file = MatrixFile(
-                mimeType: content.mimeType,
-                bytes: data,
-                name: content.uri.split('/').last,
-              );
-              room.sendFileEvent(file, shrinkImageMaxDimension: 1600);
-            },
-          ),
-          minLines: minLines,
-          maxLines: maxLines,
-          keyboardType: keyboardType!,
-          textInputAction: textInputAction,
-          autofocus: autofocus!,
-          onSubmitted: (text) {
-            if (PlatformInfos.isDesktop && !PlatformInfos.isMacOS) {
-              // Desktop Enter handling is routed through keyboard events so
-              // IME commit actions do not bypass the send-on-enter guard.
-              return;
-            }
-            if (PlatformInfos.isMacOS &&
-                (macOsEnterImeGuard?.consumeSkippedSubmit() ?? false)) {
-              return;
-            }
-            if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
-              final committedSuggestion = _commitHighlightedSuggestion(
-                context: context,
-                textController: textController,
-                highlightedSuggestionIndex: highlightedSuggestionIndex,
-              );
-              if (committedSuggestion) {
-                return;
-              }
-            }
-            // fix for library for now
-            // it sets the types for the callback incorrectly
-            onSubmitted!(text);
-          },
-          maxLength: effectiveTextLengthLimit,
-          maxLengthEnforcement: MaxLengthEnforcement.none,
-          decoration: decoration,
-          onChanged: (text) {
-            // fix for the library for now
-            // it sets the types for the callback incorrectly
-            onChanged!(text);
-          },
-          textCapitalization: TextCapitalization.sentences,
-        );
+    final isPlainEnter =
+        (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+            !HardwareKeyboard.instance.isShiftPressed &&
+            !HardwareKeyboard.instance.isControlPressed &&
+            !HardwareKeyboard.instance.isAltPressed &&
+            !HardwareKeyboard.instance.isMetaPressed;
+    if (!isPlainEnter) {
+      return KeyEventResult.ignored;
+    }
 
-        // PC 端：按 Enter 先确认当前高亮候选，无候选时发送消息。
-        // Shift+Enter 仍然保留为换行。
-        if (PlatformInfos.isDesktop && AppSettings.sendOnEnter.value) {
-          return Focus(
-            onKeyEvent: (node, event) {
-              final isPlainEnter =
-                  (event.logicalKey == LogicalKeyboardKey.enter ||
-                          event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
-                      !HardwareKeyboard.instance.isShiftPressed &&
-                      !HardwareKeyboard.instance.isControlPressed &&
-                      !HardwareKeyboard.instance.isAltPressed &&
-                      !HardwareKeyboard.instance.isMetaPressed;
-              if (event is KeyDownEvent && isPlainEnter) {
-                if (PlatformInfos.isMacOS &&
-                    (macOsEnterImeGuard?.markSubmitToSkipIfComposing(
-                            textController.value) ??
-                        false)) {
-                  return KeyEventResult.ignored;
-                }
+    if (PlatformInfos.isMacOS &&
+        (macOsEnterImeGuard?.markSubmitToSkipIfComposing(
+              textController.value,
+            ) ??
+            false)) {
+      return KeyEventResult.ignored;
+    }
 
-                final committedSuggestion = _commitHighlightedSuggestion(
-                  context: context,
-                  textController: textController,
-                  highlightedSuggestionIndex: highlightedSuggestionIndex,
-                );
-                if (committedSuggestion) {
-                  return KeyEventResult.handled;
-                }
+    if (hasSuggestions && _commitDesktopHighlightedSuggestion()) {
+      return KeyEventResult.handled;
+    }
 
-                final text = textController.text.trim();
-                if (text.isNotEmpty) {
-                  onSubmitted?.call(text);
-                }
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: textField,
-          );
-        }
-        return textField;
-      },
-      optionsViewBuilder: (c, onSelected, s) {
-        final suggestions = s.toList();
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            overlayLayout.horizontalInset,
-            0,
-            overlayLayout.horizontalInset,
-            overlayLayout.verticalGap,
-          ),
-          child: Align(
-            alignment: overlayLayout.mobileSheetStyle
-                ? Alignment.bottomCenter
-                : Alignment.bottomLeft,
-            child: SizedBox(
-              width: overlayLayout.maxWidth,
-              child: Material(
-                elevation: theme.appBarTheme.scrolledUnderElevation ?? 8,
-                shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.2),
-                color: theme.colorScheme.surface,
-                borderRadius: overlayLayout.mobileSheetStyle
-                    ? BorderRadius.vertical(
-                        top: Radius.circular(overlayLayout.borderRadius),
-                      )
-                    : BorderRadius.circular(overlayLayout.borderRadius),
-                clipBehavior: Clip.antiAlias,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: overlayLayout.mobileSheetStyle
-                        ? BorderRadius.vertical(
-                            top: Radius.circular(overlayLayout.borderRadius),
-                          )
-                        : BorderRadius.circular(overlayLayout.borderRadius),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withValues(
-                        alpha: 0.35,
-                      ),
-                    ),
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: overlayLayout.maxWidth,
-                      maxHeight: overlayLayout.maxHeight,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (overlayLayout.mobileSheetStyle) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.35),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                        Flexible(
-                          child: _AutocompleteOptionsList(
-                            suggestions: suggestions,
-                            onSelected: onSelected,
-                            showSeparators: overlayLayout.mobileSheetStyle,
-                            onHighlightedIndexChanged: (index) {
-                              highlightedSuggestionIndex.value = index;
-                            },
-                            suggestionBuilder: (
-                              context,
-                              suggestion,
-                              onSelected,
-                              client,
-                              highlighted,
-                            ) =>
-                                buildSuggestion(
-                              context,
-                              suggestion,
-                              onSelected,
-                              client,
-                              highlighted,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+    if (!AppSettings.sendOnEnter.value) {
+      return KeyEventResult.ignored;
+    }
+
+    final text = textController.text.trim();
+    if (text.isNotEmpty) {
+      onSubmitted?.call(text);
+    }
+    return KeyEventResult.handled;
+  }
+
+  Widget _buildInputTextField(
+    BuildContext context, {
+    required TextEditingController textController,
+    required FocusNode effectiveFocusNode,
+    bool Function()? commitSuggestion,
+    KeyEventResult Function(KeyEvent event)? onDesktopKeyEvent,
+  }) {
+    final effectiveTextLengthLimit = _effectiveTextLengthLimit;
+    final mentionEveryone = _normalizedEveryoneMentionLabel(
+      L10n.of(context).mentionEveryone,
+    );
+    final textField = TextField(
+      controller: textController,
+      focusNode: effectiveFocusNode,
+      readOnly: readOnly,
+      inputFormatters: [
+        _MentionDeleteFormatter(
+          room: room,
+          mentionEveryone: mentionEveryone,
+        ),
+      ],
+      contextMenuBuilder: (c, e) => markdownContextBuilder(c, e, textController),
+      contentInsertionConfiguration: ContentInsertionConfiguration(
+        onContentInserted: (KeyboardInsertedContent content) {
+          if (onContentInserted != null) {
+            onContentInserted!(content);
+            return;
+          }
+          final data = content.data;
+          if (data == null) return;
+          if (data.length > kChatAttachmentMaxUploadBytes) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  FileTooBigMatrixException(
+                    data.length,
+                    kChatAttachmentMaxUploadBytes,
+                  ).toLocalizedString(context),
                 ),
               ),
-            ),
+            );
+            return;
+          }
+
+          if (onSubmitImage != null) {
+            onSubmitImage!(data);
+            return;
+          }
+
+          final file = MatrixFile(
+            mimeType: content.mimeType,
+            bytes: data,
+            name: content.uri.split('/').last,
+          );
+          room.sendFileEvent(file, shrinkImageMaxDimension: 1600);
+        },
+      ),
+      minLines: minLines,
+      maxLines: maxLines,
+      keyboardType: keyboardType!,
+      textInputAction: textInputAction,
+      autofocus: autofocus!,
+      onSubmitted: (text) {
+        if (PlatformInfos.isDesktop && !PlatformInfos.isMacOS) {
+          return;
+        }
+        if (PlatformInfos.isMacOS &&
+            (macOsEnterImeGuard?.consumeSkippedSubmit() ?? false)) {
+          return;
+        }
+        if (PlatformInfos.isDesktop &&
+            commitSuggestion != null &&
+            commitSuggestion()) {
+          return;
+        }
+        onSubmitted?.call(text);
+      },
+      maxLength: effectiveTextLengthLimit,
+      maxLengthEnforcement: MaxLengthEnforcement.none,
+      decoration: decoration,
+      onChanged: (text) => onChanged?.call(text),
+      textCapitalization: TextCapitalization.sentences,
+    );
+
+    if (!PlatformInfos.isDesktop || onDesktopKeyEvent == null) {
+      return textField;
+    }
+
+    return Focus(
+      onKeyEvent: (node, event) => onDesktopKeyEvent(event),
+      child: textField,
+    );
+  }
+
+  Widget _buildDesktopInput(BuildContext context) {
+    final textController = controller;
+    final effectiveFocusNode = focusNode;
+    if (textController == null || effectiveFocusNode == null) {
+      return const SizedBox.shrink();
+    }
+
+    return OverlayPortal(
+      controller: _desktopSuggestionsOverlayController,
+      overlayChildBuilder: (context) {
+        if (_desktopSuggestions.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final overlayLayout = _mentionAutocompleteLayout(context);
+        return CompositedTransformFollower(
+          link: _desktopSuggestionsFieldLink,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.topLeft,
+          followerAnchor: Alignment.bottomLeft,
+          offset: Offset(0, -overlayLayout.verticalGap),
+          child: _buildSuggestionsPanel(
+            context: context,
+            suggestions: _desktopSuggestions,
+            onSelected: _selectDesktopSuggestion,
+            onHighlightedIndexChanged: _setDesktopHighlightedSuggestion,
+            highlightedIndex: _desktopHighlightedSuggestionIndex,
           ),
+        );
+      },
+      child: CompositedTransformTarget(
+        link: _desktopSuggestionsFieldLink,
+        child: _buildInputTextField(
+          context,
+          textController: textController,
+          effectiveFocusNode: effectiveFocusNode,
+          commitSuggestion: _commitDesktopHighlightedSuggestion,
+          onDesktopKeyEvent: (event) =>
+              _handleDesktopInputKeyEvent(event, textController),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRawAutocompleteInput(BuildContext context) {
+    final textController = controller;
+    final effectiveFocusNode = focusNode;
+    if (textController == null || effectiveFocusNode == null) {
+      return const SizedBox.shrink();
+    }
+
+    final highlightedSuggestionIndex = ValueNotifier<int?>(null);
+    return Autocomplete<Map<String, String?>>(
+      key: ValueKey<int>(_mentionPresentationVersion),
+      focusNode: effectiveFocusNode,
+      textEditingController: textController,
+      optionsBuilder: (text) => getSuggestions(text, context),
+      fieldViewBuilder: (
+        context,
+        textController,
+        _,
+        __,
+      ) {
+        return _buildInputTextField(
+          context,
+          textController: textController,
+          effectiveFocusNode: effectiveFocusNode,
+          commitSuggestion: () => _commitHighlightedSuggestion(
+            context: context,
+            textController: textController,
+            highlightedSuggestionIndex: highlightedSuggestionIndex,
+          ),
+          onDesktopKeyEvent: (event) {
+            if (event is! KeyDownEvent || !AppSettings.sendOnEnter.value) {
+              return KeyEventResult.ignored;
+            }
+            final isPlainEnter =
+                (event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey ==
+                            LogicalKeyboardKey.numpadEnter) &&
+                    !HardwareKeyboard.instance.isShiftPressed &&
+                    !HardwareKeyboard.instance.isControlPressed &&
+                    !HardwareKeyboard.instance.isAltPressed &&
+                    !HardwareKeyboard.instance.isMetaPressed;
+            if (!isPlainEnter) {
+              return KeyEventResult.ignored;
+            }
+            if (PlatformInfos.isMacOS &&
+                (macOsEnterImeGuard?.markSubmitToSkipIfComposing(
+                      textController.value,
+                    ) ??
+                    false)) {
+              return KeyEventResult.ignored;
+            }
+            if (_commitHighlightedSuggestion(
+              context: context,
+              textController: textController,
+              highlightedSuggestionIndex: highlightedSuggestionIndex,
+            )) {
+              return KeyEventResult.handled;
+            }
+            final text = textController.text.trim();
+            if (text.isNotEmpty) {
+              onSubmitted?.call(text);
+            }
+            return KeyEventResult.handled;
+          },
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return _buildSuggestionsPanel(
+          context: context,
+          suggestions: options.toList(),
+          onSelected: onSelected,
+          onHighlightedIndexChanged: (index) {
+            highlightedSuggestionIndex.value = index;
+          },
         );
       },
       displayStringForOption: insertSuggestion,
       optionsViewOpenDirection: OptionsViewOpenDirection.up,
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_usesCustomDesktopSuggestions) {
+      return _buildDesktopInput(context);
+    }
+    return _buildRawAutocompleteInput(context);
   }
 }
 
@@ -943,6 +1515,7 @@ class _AutocompleteOptionsList extends StatefulWidget {
   final AutocompleteOnSelected<Map<String, String?>> onSelected;
   final bool showSeparators;
   final ValueChanged<int?>? onHighlightedIndexChanged;
+  final int? highlightedIndex;
   final Widget Function(
     BuildContext context,
     Map<String, String?> suggestion,
@@ -956,6 +1529,7 @@ class _AutocompleteOptionsList extends StatefulWidget {
     required this.onSelected,
     required this.showSeparators,
     this.onHighlightedIndexChanged,
+    this.highlightedIndex,
     required this.suggestionBuilder,
   });
 
@@ -965,10 +1539,13 @@ class _AutocompleteOptionsList extends StatefulWidget {
 }
 
 class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
+  final GlobalKey _scrollViewportKey = GlobalKey();
   late final ScrollController _scrollController = ScrollController();
   int? _lastAutoScrolledHighlightedIndex;
 
-  String _suggestionsSignature(List<Map<String, String?>> suggestions) =>
+  String _suggestionsSignature(
+    List<Map<String, String?>> suggestions,
+  ) =>
       suggestions
           .map(
             (suggestion) =>
@@ -988,31 +1565,46 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
 
   void _scrollHighlightedIntoView(BuildContext itemContext) {
     if (!_scrollController.hasClients) return;
-    final renderObject = itemContext.findRenderObject();
-    if (renderObject == null || !renderObject.attached) return;
-
-    final viewport = RenderAbstractViewport.of(renderObject);
-
-    final position = _scrollController.position;
-    final leading = viewport.getOffsetToReveal(renderObject, 0).offset - 8;
-    final trailing = viewport.getOffsetToReveal(renderObject, 1).offset + 8;
-
-    double? targetOffset;
-    if (leading < position.pixels) {
-      targetOffset = math.max(position.minScrollExtent, leading);
-    } else if (trailing > position.pixels + position.viewportDimension) {
-      targetOffset = math.min(
-        position.maxScrollExtent,
-        trailing - position.viewportDimension,
-      );
+    final itemRenderObject = itemContext.findRenderObject();
+    final viewportRenderObject = _scrollViewportKey.currentContext
+        ?.findRenderObject();
+    if (itemRenderObject is! RenderBox ||
+        viewportRenderObject is! RenderBox ||
+        !itemRenderObject.attached ||
+        !viewportRenderObject.attached) {
+      return;
     }
 
-    if (targetOffset == null || (targetOffset - position.pixels).abs() < 1) {
+    const edgePadding = 8.0;
+    final position = _scrollController.position;
+    final itemTop = itemRenderObject
+        .localToGlobal(Offset.zero, ancestor: viewportRenderObject)
+        .dy;
+    final itemBottom = itemTop + itemRenderObject.size.height;
+    final visibleTop = edgePadding;
+    final visibleBottom = viewportRenderObject.size.height - edgePadding;
+
+    double? targetOffset;
+    if (itemTop < visibleTop) {
+      targetOffset = position.pixels + (itemTop - visibleTop);
+    } else if (itemBottom > visibleBottom) {
+      targetOffset = position.pixels + (itemBottom - visibleBottom);
+    }
+
+    if (targetOffset == null) {
+      return;
+    }
+
+    final clampedTarget = math.max(
+      position.minScrollExtent,
+      math.min(position.maxScrollExtent, targetOffset),
+    );
+    if ((clampedTarget - position.pixels).abs() < 1) {
       return;
     }
 
     _scrollController.animateTo(
-      targetOffset,
+      clampedTarget,
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
     );
@@ -1033,52 +1625,64 @@ class _AutocompleteOptionsListState extends State<_AutocompleteOptionsList> {
       thumbVisibility: showScrollbar,
       interactive: true,
       radius: const Radius.circular(999),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        shrinkWrap: true,
-        itemCount: widget.suggestions.length,
-        itemBuilder: (context, index) => Builder(
-          builder: (itemContext) {
-            final highlighted =
-                AutocompleteHighlightedOption.of(itemContext) == index;
-            if (highlighted && _lastAutoScrolledHighlightedIndex != index) {
-              _lastAutoScrolledHighlightedIndex = index;
-              widget.onHighlightedIndexChanged?.call(index);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!itemContext.mounted) return;
-                _scrollHighlightedIntoView(itemContext);
-              });
-            }
-
-            final child = widget.suggestionBuilder(
-              itemContext,
-              widget.suggestions[index],
-              widget.onSelected,
-              Matrix.of(itemContext).client,
-              highlighted,
-            );
-
-            if (!widget.showSeparators ||
-                index == widget.suggestions.length - 1) {
-              return child;
-            }
-
-            return Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          key: _scrollViewportKey,
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                child,
-                Divider(
-                  height: 1,
-                  indent: 64,
-                  endIndent: 16,
-                  color: Theme.of(
-                    itemContext,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.35),
-                ),
-              ],
-            );
-          },
+              children: List.generate(widget.suggestions.length, (index) {
+                return Builder(
+                  builder: (itemContext) {
+                    final highlighted = widget.highlightedIndex != null
+                        ? widget.highlightedIndex == index
+                        : AutocompleteHighlightedOption.of(itemContext) ==
+                            index;
+                    if (highlighted &&
+                        _lastAutoScrolledHighlightedIndex != index) {
+                      _lastAutoScrolledHighlightedIndex = index;
+                      widget.onHighlightedIndexChanged?.call(index);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!itemContext.mounted) return;
+                        _scrollHighlightedIntoView(itemContext);
+                      });
+                    }
+
+                    final child = widget.suggestionBuilder(
+                      itemContext,
+                      widget.suggestions[index],
+                      widget.onSelected,
+                      Matrix.of(itemContext).client,
+                      highlighted,
+                    );
+
+                    if (!widget.showSeparators ||
+                        index == widget.suggestions.length - 1) {
+                      return child;
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        child,
+                        Divider(
+                          height: 1,
+                          indent: 64,
+                          endIndent: 16,
+                          color: Theme.of(
+                            itemContext,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.35),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );
