@@ -6,7 +6,9 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/agent.dart';
+import 'package:psygo/models/invite_candidate.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection_view.dart';
+import 'package:psygo/repositories/invite_candidate_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -23,10 +25,12 @@ class InvitationSelection extends StatefulWidget {
 
 class InvitationSelectionController extends State<InvitationSelection> {
   final AgentService _agentService = AgentService.instance;
+  final InviteCandidateRepository _inviteCandidateRepository =
+      InviteCandidateRepository();
   TextEditingController controller = TextEditingController();
   late String currentSearchTerm;
   bool loading = false;
-  List<Profile> foundProfiles = [];
+  List<InviteCandidate> foundCandidates = [];
   Set<String> memberIds = <String>{};
   Timer? coolDown;
   StreamSubscription? _roomStateSub;
@@ -66,15 +70,19 @@ class InvitationSelectionController extends State<InvitationSelection> {
         message.contains('已经在');
   }
 
-  Future<List<User>> getContacts(BuildContext context) async {
+  Future<List<InviteCandidate>> getContacts(BuildContext context) async {
     final client = Matrix.of(context).client;
     final contacts = client.rooms
         .where((r) => r.isDirectChat)
-        .map((r) => r.unsafeGetUserFromMemoryOrFallback(r.directChatMatrixID!))
+        .map(
+          (r) => InviteCandidate.fromUser(
+            r.unsafeGetUserFromMemoryOrFallback(r.directChatMatrixID!),
+          ),
+        )
         .toList();
     contacts.sort(
-      (a, b) => a.calcDisplayname().toLowerCase().compareTo(
-            b.calcDisplayname().toLowerCase(),
+      (a, b) => a.displayName.toLowerCase().compareTo(
+            b.displayName.toLowerCase(),
           ),
     );
     return contacts;
@@ -190,7 +198,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
       context: context,
       future: () async {
         if (isDismissedOwnedAgent) {
-          throw l10n.inviteRetiredEmployee(resolvedDisplayName);
+          throw l10n.userLeftTheChat(resolvedDisplayName);
         }
         try {
           await room.invite(id);
@@ -199,7 +207,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
             throw l10n.userAlreadyInGroup;
           }
           if (isOwnedAgent) {
-            throw l10n.inviteFailedTryAgain;
+            throw l10n.tryAgain;
           }
           rethrow;
         }
@@ -229,40 +237,123 @@ class InvitationSelectionController extends State<InvitationSelection> {
   void searchUser(BuildContext context, String text) async {
     coolDown?.cancel();
     if (text.isEmpty) {
-      setState(() => foundProfiles = []);
-    }
-    currentSearchTerm = text;
-    if (currentSearchTerm.isEmpty) return;
-    if (loading) return;
-    setState(() => loading = true);
-    final matrix = Matrix.of(context);
-    SearchUserDirectoryResponse response;
-    try {
-      response = await matrix.client.searchUserDirectory(text, limit: 10);
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text((e).toLocalizedString(context))));
+      setState(() {
+        foundCandidates = [];
+        loading = false;
+      });
+      currentSearchTerm = '';
       return;
-    } finally {
-      setState(() => loading = false);
     }
+    currentSearchTerm = text.trim();
+    if (currentSearchTerm.isEmpty) {
+      setState(() => loading = false);
+      return;
+    }
+    setState(() => loading = true);
+    final client = Matrix.of(context).client;
+    var backendCandidates = const <InviteCandidate>[];
+    var matrixCandidates = const <InviteCandidate>[];
+    Object? firstError;
+    try {
+      backendCandidates =
+          await _inviteCandidateRepository.searchInviteCandidates(
+        query: currentSearchTerm,
+        limit: 20,
+      );
+    } catch (e) {
+      firstError ??= e;
+    }
+    try {
+      matrixCandidates =
+          await _searchMatrixCandidates(client, currentSearchTerm);
+    } catch (e) {
+      firstError ??= e;
+    }
+
+    if (!mounted || currentSearchTerm != text.trim()) {
+      return;
+    }
+
+    if (backendCandidates.isEmpty &&
+        matrixCandidates.isEmpty &&
+        firstError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(firstError.toLocalizedString(context))),
+      );
+    }
+
     setState(() {
-      foundProfiles = List<Profile>.from(response.results);
-      if (text.isValidMatrixId &&
-          foundProfiles.indexWhere((profile) => text == profile.userId) == -1) {
-        setState(
-          () => foundProfiles = [
-            Profile.fromJson({'user_id': text}),
-          ],
-        );
-      }
+      foundCandidates = _mergeCandidates(
+        backendCandidates,
+        matrixCandidates,
+      );
+      loading = false;
     });
+  }
+
+  Future<List<InviteCandidate>> _searchMatrixCandidates(
+    Client client,
+    String text,
+  ) async {
+    final response = await client.searchUserDirectory(text, limit: 10);
+    final candidates = response.results
+        .map(InviteCandidate.fromProfile)
+        .toList(growable: true);
+    if (text.isValidMatrixId &&
+        candidates.every((candidate) => candidate.matrixUserId != text)) {
+      candidates.add(
+        InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
+      );
+    }
+    return _filterRetiredOwnedAgentCandidates(client, candidates);
+  }
+
+  List<InviteCandidate> _filterRetiredOwnedAgentCandidates(
+    Client client,
+    List<InviteCandidate> candidates,
+  ) {
+    return candidates.where((candidate) {
+      final cachedAgent = _agentService.getAgentByMatrixUserId(
+        candidate.matrixUserId,
+      );
+      if (cachedAgent != null) {
+        return cachedAgent.isActive;
+      }
+      if (_looksLikeOwnedAgentMatrixUserId(client, candidate.matrixUserId)) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
+  List<InviteCandidate> _mergeCandidates(
+    List<InviteCandidate> backendCandidates,
+    List<InviteCandidate> matrixCandidates,
+  ) {
+    final merged = <InviteCandidate>[];
+    final seen = <String>{};
+
+    void appendAll(List<InviteCandidate> items) {
+      for (final item in items) {
+        final matrixUserId = item.matrixUserId.trim();
+        if (matrixUserId.isEmpty || seen.contains(matrixUserId)) {
+          continue;
+        }
+        seen.add(matrixUserId);
+        merged.add(item);
+      }
+    }
+
+    appendAll(backendCandidates);
+    appendAll(matrixCandidates);
+    return merged;
   }
 
   @override
   void initState() {
     super.initState();
+    currentSearchTerm = '';
+    unawaited(_agentService.refresh(forceRefresh: true));
     _refreshMemberIds();
     _roomStateSub = Matrix.of(context)
         .client
@@ -283,6 +374,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
     coolDown?.cancel();
     controller.dispose();
     _roomStateSub?.cancel();
+    _inviteCandidateRepository.dispose();
     super.dispose();
   }
 

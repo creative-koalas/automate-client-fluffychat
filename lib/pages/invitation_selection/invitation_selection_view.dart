@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:matrix/matrix.dart';
-
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/invite_candidate.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
-import 'package:psygo/services/agent_service.dart';
-import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -85,27 +82,40 @@ class InvitationSelectionView extends StatelessWidget {
                   ...room.getParticipants().map((user) => user.id),
                   ...controller.memberIds,
                 };
-                return controller.foundProfiles.isNotEmpty
-                    ? ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: controller.foundProfiles.length,
-                        itemBuilder: (BuildContext context, int i) =>
-                            _InviteContactListTile(
-                          profile: controller.foundProfiles[i],
-                          canInvite: room.canInvite,
-                          isMember: participants
-                              .contains(controller.foundProfiles[i].userId),
-                          onTap: () => controller.inviteAction(
-                            context,
-                            controller.foundProfiles[i].userId,
-                            controller.foundProfiles[i].displayName ??
-                                controller.foundProfiles[i].userId.localpart ??
-                                L10n.of(context).user,
-                          ),
-                        ),
-                      )
-                    : FutureBuilder<List<User>>(
+                final isSearchMode =
+                    controller.controller.text.trim().isNotEmpty ||
+                        controller.loading;
+                return isSearchMode
+                    ? controller.foundCandidates.isEmpty && !controller.loading
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Center(
+                              child: Text(
+                                L10n.of(context).noUsersFoundWithQuery(
+                                  controller.controller.text.trim(),
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            itemCount: controller.foundCandidates.length,
+                            itemBuilder: (BuildContext context, int i) =>
+                                _InviteContactListTile(
+                              candidate: controller.foundCandidates[i],
+                              canInvite: room.canInvite,
+                              isMember: participants.contains(
+                                controller.foundCandidates[i].matrixUserId,
+                              ),
+                              onTap: () => controller.inviteAction(
+                                context,
+                                controller.foundCandidates[i].matrixUserId,
+                                controller.foundCandidates[i].displayName,
+                              ),
+                            ),
+                          )
+                    : FutureBuilder<List<InviteCandidate>>(
                         future: controller.getContacts(context),
                         builder: (BuildContext context, snapshot) {
                           if (!snapshot.hasData) {
@@ -122,18 +132,14 @@ class InvitationSelectionView extends StatelessWidget {
                             itemCount: contacts.length,
                             itemBuilder: (BuildContext context, int i) =>
                                 _InviteContactListTile(
-                              user: contacts[i],
+                              candidate: contacts[i],
                               canInvite: room.canInvite,
-                              profile: Profile(
-                                avatarUrl: contacts[i].avatarUrl,
-                                displayName: contacts[i].calcDisplayname(),
-                                userId: contacts[i].id,
-                              ),
-                              isMember: participants.contains(contacts[i].id),
+                              isMember: participants
+                                  .contains(contacts[i].matrixUserId),
                               onTap: () => controller.inviteAction(
                                 context,
-                                contacts[i].id,
-                                contacts[i].calcDisplayname(),
+                                contacts[i].matrixUserId,
+                                contacts[i].displayName,
                               ),
                             ),
                           );
@@ -149,15 +155,13 @@ class InvitationSelectionView extends StatelessWidget {
 }
 
 class _InviteContactListTile extends StatelessWidget {
-  final Profile profile;
-  final User? user;
+  final InviteCandidate candidate;
   final bool canInvite;
   final bool isMember;
   final void Function() onTap;
 
   const _InviteContactListTile({
-    required this.profile,
-    this.user,
+    required this.candidate,
     required this.canInvite,
     required this.isMember,
     required this.onTap,
@@ -167,40 +171,24 @@ class _InviteContactListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
-    final client = Matrix.of(context).client;
-    final directChatRoomId = client.getDirectChatFromUserId(profile.userId);
-    final directChatRoom =
-        directChatRoomId == null ? null : client.getRoomById(directChatRoomId);
-    final roomDisplayName =
-        directChatRoom?.getLocalizedDisplayname(MatrixLocals(l10n)).trim();
-    final agentDisplayName = AgentService.instance
-        .getAgentByMatrixUserId(profile.userId)
-        ?.displayName;
-    final displayName = _resolveDisplayName(
-      l10n,
-      roomDisplayName,
-      agentDisplayName,
-    );
 
     return ListTile(
       leading: Avatar(
-        mxContent: AgentService.instance.getAgentAvatarUri(profile.userId) ??
-            user?.avatarUrl ??
-            profile.avatarUrl,
-        name: displayName,
-        presenceUserId: profile.userId,
+        mxContent: candidate.avatarUrl,
+        name: candidate.displayName,
+        presenceUserId: candidate.matrixUserId,
         onTap: () => UserDialog.show(
           context: context,
-          profile: profile,
+          profile: candidate.toProfile(),
         ),
       ),
       title: Text(
-        displayName,
+        candidate.displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        profile.userId,
+        candidate.secondaryIdentifier,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
@@ -221,41 +209,5 @@ class _InviteContactListTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _resolveDisplayName(
-    L10n l10n,
-    String? roomDisplayName,
-    String? agentDisplayName,
-  ) {
-    final normalizedRoomDisplayName = roomDisplayName?.trim();
-    if (normalizedRoomDisplayName != null &&
-        normalizedRoomDisplayName.isNotEmpty &&
-        normalizedRoomDisplayName != profile.userId) {
-      return normalizedRoomDisplayName;
-    }
-
-    final normalizedAgentDisplayName = agentDisplayName?.trim();
-    if (normalizedAgentDisplayName != null &&
-        normalizedAgentDisplayName.isNotEmpty) {
-      return normalizedAgentDisplayName;
-    }
-
-    final userDisplayName = user?.calcDisplayname();
-    final normalizedUserDisplayName = userDisplayName?.trim();
-    if (normalizedUserDisplayName != null &&
-        normalizedUserDisplayName.isNotEmpty &&
-        normalizedUserDisplayName != profile.userId) {
-      return normalizedUserDisplayName;
-    }
-
-    final profileDisplayName = profile.displayName?.trim();
-    if (profileDisplayName != null &&
-        profileDisplayName.isNotEmpty &&
-        profileDisplayName != profile.userId) {
-      return profileDisplayName;
-    }
-
-    return profile.userId.localpart ?? l10n.user;
   }
 }
