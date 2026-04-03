@@ -33,7 +33,7 @@ class AgentService {
   final Map<String, DateTime> _profileLookupLastAttemptAt = {};
   static const Duration _profileLookupCooldown = Duration(minutes: 1);
   final Map<String, String> _groupDisplayNameByMatrixUserId = {};
-  final Set<String> _groupDisplayLookupInFlight = {};
+  final Map<String, Completer<void>> _groupDisplayLookupCompleters = {};
   final Map<String, DateTime> _groupDisplayLookupLastAttemptAt = {};
   static const Duration _groupDisplayLookupCooldown = Duration(seconds: 5);
   int _liveStatusWatcherCount = 0;
@@ -464,47 +464,80 @@ class AgentService {
     if (key.isEmpty) {
       return;
     }
-    if (_groupDisplayLookupInFlight.contains(key)) {
-      return;
-    }
-    final now = DateTime.now();
-    final lastAttemptAt = _groupDisplayLookupLastAttemptAt[key];
-    if (lastAttemptAt != null &&
-        now.difference(lastAttemptAt) < _groupDisplayLookupCooldown) {
-      return;
-    }
-    _groupDisplayLookupLastAttemptAt[key] = now;
-    _groupDisplayLookupInFlight.add(key);
-    unawaited(_loadGroupDisplayNameByMatrixUserId(key));
+    unawaited(ensureGroupDisplayNamesByMatrixUserIds(<String>[key]));
   }
 
-  Future<void> _loadGroupDisplayNameByMatrixUserId(String matrixUserId) async {
+  Future<void> ensureGroupDisplayNamesByMatrixUserIds(
+    Iterable<String> matrixUserIds,
+  ) async {
+    final now = DateTime.now();
+    final pendingUserIds = <String>[];
+    final inFlightFutures = <Future<void>>[];
+    for (final matrixUserId in matrixUserIds) {
+      final key = matrixUserId.trim();
+      if (key.isEmpty) {
+        continue;
+      }
+      final inFlightCompleter = _groupDisplayLookupCompleters[key];
+      if (inFlightCompleter != null) {
+        inFlightFutures.add(inFlightCompleter.future);
+        continue;
+      }
+      final lastAttemptAt = _groupDisplayLookupLastAttemptAt[key];
+      if (lastAttemptAt != null &&
+          now.difference(lastAttemptAt) < _groupDisplayLookupCooldown) {
+        continue;
+      }
+      _groupDisplayLookupLastAttemptAt[key] = now;
+      _groupDisplayLookupCompleters[key] = Completer<void>();
+      pendingUserIds.add(key);
+    }
+
+    if (pendingUserIds.isEmpty) {
+      if (inFlightFutures.isNotEmpty) {
+        await Future.wait(inFlightFutures);
+      }
+      return;
+    }
+
     try {
       final mapping = await _repository.getGroupDisplayNamesByMatrixUserIds(
-        <String>[matrixUserId],
+        pendingUserIds,
       );
-      final groupDisplayName = (mapping[matrixUserId] ?? '').trim();
-      final previous = _groupDisplayNameByMatrixUserId[matrixUserId];
-      if (groupDisplayName.isEmpty) {
-        if (previous != null) {
-          _groupDisplayNameByMatrixUserId.remove(matrixUserId);
-          _notifyChanged();
-          profileNotifier.value++;
+      var changed = false;
+      for (final matrixUserId in pendingUserIds) {
+        final groupDisplayName = (mapping[matrixUserId] ?? '').trim();
+        final previous = _groupDisplayNameByMatrixUserId[matrixUserId];
+        if (groupDisplayName.isEmpty) {
+          if (previous != null) {
+            _groupDisplayNameByMatrixUserId.remove(matrixUserId);
+            changed = true;
+          }
+          continue;
         }
+        if (previous == groupDisplayName) {
+          continue;
+        }
+        _groupDisplayNameByMatrixUserId[matrixUserId] = groupDisplayName;
+        changed = true;
+      }
+      if (!changed) {
         return;
       }
-      if (previous == groupDisplayName) {
-        return;
-      }
-      _groupDisplayNameByMatrixUserId[matrixUserId] = groupDisplayName;
       _notifyChanged();
       profileNotifier.value++;
     } catch (e) {
       debugPrint(
-        '[AgentService] Group display name lookup failed for $matrixUserId: $e',
+        '[AgentService] Group display name lookup failed for $pendingUserIds: $e',
       );
     } finally {
-      _groupDisplayLookupInFlight.remove(matrixUserId);
+      for (final matrixUserId in pendingUserIds) {
+        _groupDisplayLookupCompleters.remove(matrixUserId)?.complete();
+      }
+    }
+
+    if (inFlightFutures.isNotEmpty) {
+      await Future.wait(inFlightFutures);
     }
   }
 
