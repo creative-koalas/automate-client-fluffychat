@@ -256,6 +256,7 @@ class ChatController extends State<ChatPageWithRoom>
   bool currentlyTyping = false;
   bool dragging = false;
   final MacOsEnterImeGuard _macOsEnterImeGuard = MacOsEnterImeGuard();
+  Future<void>? _mentionParticipantsLoadFuture;
   late final VoidCallback _agentServiceListener;
   late final Future<void> Function() _macosGlobalScreenshotHandler;
   bool _groupLiveStatusWatcherAttached = false;
@@ -532,6 +533,38 @@ class ChatController extends State<ChatPageWithRoom>
     } finally {
       frame?.image.dispose();
       codec?.dispose();
+    }
+  }
+
+  Future<void> _ensureMentionParticipantsLoaded() {
+    if (room.directChatMatrixID != null || room.participantListComplete) {
+      return Future.value();
+    }
+    return _mentionParticipantsLoadFuture ??=
+        _loadMentionParticipants().whenComplete(() {
+      _mentionParticipantsLoadFuture = null;
+    });
+  }
+
+  Future<void> _loadMentionParticipants() async {
+    try {
+      await room.requestParticipants(
+        const [
+          Membership.join,
+          Membership.invite,
+          Membership.knock,
+        ],
+        true,
+        true,
+      );
+      if (!mounted) return;
+      setState(() {});
+    } catch (error, stackTrace) {
+      Logs().d(
+        'Unable to preload room participants for mention surfaces.',
+        error,
+        stackTrace,
+      );
     }
   }
 
@@ -1068,6 +1101,7 @@ class ChatController extends State<ChatPageWithRoom>
     if (room.directChatMatrixID == null) {
       AgentService.instance.attachLiveStatusWatcher();
       _groupLiveStatusWatcherAttached = true;
+      unawaited(_ensureMentionParticipantsLoaded());
     }
     _syncReadMarkerEventId();
     _captureSessionUnreadAnchor(initial: true);
@@ -1942,6 +1976,7 @@ class ChatController extends State<ChatPageWithRoom>
   ///   ''    — 用户选择"直接发送"
   ///   '@xx' — 用户选择了某个成员的 mention 文本
   Future<String?> _showMentionHint() async {
+    await _ensureMentionParticipantsLoaded();
     final selfId = room.client.userID;
 
     // 过滤自己，只列出其他成员
@@ -3207,13 +3242,6 @@ class ChatController extends State<ChatPageWithRoom>
       return;
     }
 
-    final selfId = room.client.userID;
-    final participants =
-        room.getParticipants().where((user) => user.id != selfId).toList();
-    if (participants.isEmpty) {
-      return;
-    }
-
     _lastOpenedMobileMentionStart = mentionQuery.start;
     _mobileMentionPickerOpen = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3222,12 +3250,54 @@ class ChatController extends State<ChatPageWithRoom>
         return;
       }
       unawaited(
-        _openMobileMentionPickerSheet(
-          mentionQuery: mentionQuery,
-          participants: participants,
+        _openMobileMentionPickerSheetForActiveMention(
+          expectedMentionStart: mentionQuery.start,
         ),
       );
     });
+  }
+
+  Future<void> _openMobileMentionPickerSheetForActiveMention({
+    required int expectedMentionStart,
+  }) async {
+    try {
+      await _ensureMentionParticipantsLoaded();
+      if (!mounted) return;
+
+      final selection = sendController.selection;
+      if (!selection.isCollapsed || selection.baseOffset < 0) {
+        _lastOpenedMobileMentionStart = null;
+        return;
+      }
+
+      final mentionQuery = findActiveInputMentionQuery(
+        text: sendController.text,
+        cursorOffset: selection.baseOffset,
+      );
+      if (mentionQuery == null) {
+        _lastOpenedMobileMentionStart = null;
+        return;
+      }
+      if (mentionQuery.start != expectedMentionStart ||
+          mentionQuery.query.isNotEmpty) {
+        return;
+      }
+
+      final selfId = room.client.userID;
+      final participants =
+          room.getParticipants().where((user) => user.id != selfId).toList();
+      if (participants.isEmpty) {
+        _lastOpenedMobileMentionStart = null;
+        return;
+      }
+
+      await _openMobileMentionPickerSheet(
+        mentionQuery: mentionQuery,
+        participants: participants,
+      );
+    } finally {
+      _mobileMentionPickerOpen = false;
+    }
   }
 
   Future<void> _openMobileMentionPickerSheet({
@@ -3241,8 +3311,6 @@ class ChatController extends State<ChatPageWithRoom>
       initialQuery: mentionQuery.query,
     );
     if (!mounted) return;
-
-    _mobileMentionPickerOpen = false;
     if (mentions != null && mentions.isNotEmpty) {
       _replaceMentionQueryWithMentions(
         mentionQuery: mentionQuery,
