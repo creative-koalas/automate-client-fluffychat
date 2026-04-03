@@ -349,7 +349,7 @@ jobs:
           fi
           app_id_suffix_token="$(sanitize_linux_app_id_suffix "$env_app_id_suffix")"
           linux_application_id="com.psygo.app${app_id_suffix_token:+.${app_id_suffix_token}}"
-          display_name="${env_app_name:-Psygo}"
+          display_name="${env_app_name:-PsyGo}"
           binary_name="$package_name"
 
           export PSYGO_LINUX_BINARY_NAME="$binary_name"
@@ -390,8 +390,8 @@ jobs:
             echo "Version: $version_tag"
             echo "Architecture: $arch"
             echo "Priority: optional"
-            echo "Maintainer: Psygo CI"
-            echo "Description: Psygo desktop client"
+            echo "Maintainer: PsyGo CI"
+            echo "Description: PsyGo desktop client"
           } > "$pkg_root/DEBIAN/control"
 
           {
@@ -405,7 +405,7 @@ jobs:
             echo "Version=1.0"
             echo "Name=$display_name"
             echo "GenericName=$display_name"
-            echo "Comment=Psygo desktop client"
+            echo "Comment=PsyGo desktop client"
             echo "Exec=$binary_name"
             echo "Icon=$package_name"
             echo "Terminal=false"

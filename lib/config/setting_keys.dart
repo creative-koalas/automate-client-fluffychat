@@ -52,7 +52,7 @@ enum AppSettings<T> {
     false,
   ),
   // AppConfig-mirrored settings
-  applicationName<String>('com.psygo.application_name', 'Psygo'),
+  applicationName<String>('com.psygo.application_name', 'PsyGo'),
   // homeserver 指向本地 K8s Synapse（运行时从 PsygoConfig.matrixHomeserver 获取）
   // 枚举 defaultValue 必须是编译时常量，所以这里用空字符串占位
   defaultHomeserver<String>('com.psygo.default_homeserver', ''),

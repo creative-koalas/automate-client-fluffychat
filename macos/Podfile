@@ -2,6 +2,8 @@ platform :osx, '12.2'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+# Suppress noisy third-party pod warnings in local/dev builds.
+inhibit_all_warnings!
 
 project 'Runner', {
   'Debug' => :debug,

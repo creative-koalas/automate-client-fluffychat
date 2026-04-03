@@ -111,6 +111,15 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
+    private fun resolveAppName(ctx: Context): String {
+        return try {
+            ctx.applicationInfo.loadLabel(ctx.packageManager)?.toString()?.trim().orEmpty()
+                .ifEmpty { "App" }
+        } catch (_: Exception) {
+            "App"
+        }
+    }
+
     private fun initSdk(secretKey: String, result: Result) {
         val ctx = context
         if (ctx == null) {
@@ -237,6 +246,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
         try {
             pendingResult = result
+            val appName = resolveAppName(act)
 
             // 获取屏幕密度
             val density = act.resources.displayMetrics.density
@@ -296,7 +306,7 @@ class OneClickLoginPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
                     // ========== Slogan ==========
                     .setSloganHidden(false)
-                    .setSloganText("PsyGo")
+                    .setSloganText(appName)
                     .setSloganTextColor(primaryTextColor)
                     .setSloganTextSize(20)
                     .setSloganOffsetY(sloganOffsetY)

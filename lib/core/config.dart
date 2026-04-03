@@ -4,10 +4,13 @@ library;
 /// Psygo 配置
 /// 所有环境相关配置通过 --dart-define-from-file=env.json 注入
 class PsygoConfig {
+  /// APP_NAME 的默认值（当未注入 dart-define 时使用）
+  static const String defaultAppName = 'PsyGo';
+
   /// 应用名称（用于数据库隔离）
   static const String appName = String.fromEnvironment(
     'APP_NAME',
-    defaultValue: 'Psygo',
+    defaultValue: defaultAppName,
   );
 
   /// K8s Namespace

@@ -3319,7 +3319,7 @@
   "@notificationRuleMaster": {},
   "notificationRuleMasterDescription": "Overrides all other rules and disables all notifications.",
   "@notificationRuleMasterDescription": {},
-  "notificationRuleSuppressNotices": "Suppress PsyGod Messages",
+  "notificationRuleSuppressNotices": "Suppress PsyGo Messages",
   "@notificationRuleSuppressNotices": {},
   "notificationRuleSuppressNoticesDescription": "Suppresses notifications from automated clients like bots.",
   "@notificationRuleSuppressNoticesDescription": {},
