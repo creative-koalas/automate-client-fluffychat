@@ -280,16 +280,14 @@ class PsygoApiClient {
     String account,
     String password,
   ) async {
-    final authDeviceID = await _getOrCreateAuthDeviceId();
-    final authDevicePlatform = _authDevicePlatform();
+    final authDevicePayload = await AuthDeviceIdentity.buildRequestPayload();
     final normalizedAccount = account.trim();
     final res = await _dio.post<Map<String, dynamic>>(
       '${PsygoConfig.baseUrl}/api/v1/auth/login',
       data: {
         'account': normalizedAccount,
         'password': password,
-        'auth_device_id': authDeviceID,
-        'auth_device_platform': authDevicePlatform,
+        ...authDevicePayload,
       },
     );
     return _handleAuthResponse(res, '登录失败');
