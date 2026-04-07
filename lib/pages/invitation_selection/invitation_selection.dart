@@ -184,8 +184,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
 
     final inviteTargetAgent = await _resolveInviteTargetAgent(client, id);
     final isOwnedAgent = inviteTargetAgent?.isActive == true;
-    final isDismissedOwnedAgent =
-        inviteTargetAgent?.isActive == false ||
+    final isDismissedOwnedAgent = inviteTargetAgent?.isActive == false ||
         (inviteTargetAgent == null &&
             _looksLikeOwnedAgentMatrixUserId(client, id));
     final resolvedDisplayName = _resolveInviteTargetDisplayName(
@@ -255,10 +254,13 @@ class InvitationSelectionController extends State<InvitationSelection> {
     var localCandidates = const <InviteCandidate>[];
     var matrixCandidates = const <InviteCandidate>[];
     Object? firstError;
+    var backendSearchSucceeded = false;
+    var matrixSearchSucceeded = false;
     localCandidates = await _searchLocalCandidates(currentSearchTerm);
     try {
       backendCandidates = await _inviteCandidateRepository
           .searchInviteCandidates(query: currentSearchTerm, limit: 20);
+      backendSearchSucceeded = true;
     } catch (e) {
       firstError ??= e;
     }
@@ -267,6 +269,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
         client,
         currentSearchTerm,
       );
+      matrixSearchSucceeded = true;
     } catch (e) {
       firstError ??= e;
     }
@@ -280,7 +283,10 @@ class InvitationSelectionController extends State<InvitationSelection> {
       matrixCandidates,
     );
 
-    if (mergedCandidates.isEmpty && firstError != null) {
+    if (mergedCandidates.isEmpty &&
+        firstError != null &&
+        !backendSearchSucceeded &&
+        !matrixSearchSucceeded) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(firstError.toLocalizedString(context))),
       );
@@ -300,22 +306,19 @@ class InvitationSelectionController extends State<InvitationSelection> {
 
     final client = Matrix.of(context).client;
     final contacts = await getContacts(context);
+    final localAgentCandidates = _agentService.agents
+        .where((agent) => agent.isActive)
+        .map(_inviteCandidateFromAgent)
+        .where((candidate) => candidate.matrixUserId.trim().isNotEmpty)
+        .toList(growable: false);
+    final mergedLocalCandidates =
+        _mergeCandidates(contacts, localAgentCandidates);
+
     return _filterRetiredOwnedAgentCandidates(
       client,
-      contacts
-          .where((candidate) {
-            final displayName = candidate.displayName.trim().toLowerCase();
-            final matrixUserId = candidate.matrixUserId.trim().toLowerCase();
-            final secondaryIdentifier = candidate.secondaryIdentifier
-                .trim()
-                .toLowerCase();
-            final nickname = candidate.nickname?.trim().toLowerCase() ?? '';
-
-            return displayName.contains(normalizedQuery) ||
-                matrixUserId.contains(normalizedQuery) ||
-                secondaryIdentifier.contains(normalizedQuery) ||
-                nickname.contains(normalizedQuery);
-          })
+      mergedLocalCandidates
+          .where((candidate) =>
+              _matchesInviteCandidate(candidate, normalizedQuery))
           .toList(growable: false),
     );
   }
@@ -324,40 +327,81 @@ class InvitationSelectionController extends State<InvitationSelection> {
     Client client,
     String text,
   ) async {
-    final response = await client.searchUserDirectory(text, limit: 10);
-    final candidates = response.results
-        .map(InviteCandidate.fromProfile)
-        .toList(growable: true);
-    if (text.isValidMatrixId &&
-        candidates.every((candidate) => candidate.matrixUserId != text)) {
-      candidates.add(
-        InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
-      );
+    try {
+      final response = await client.searchUserDirectory(text, limit: 10);
+      final candidates = response.results
+          .map(InviteCandidate.fromProfile)
+          .toList(growable: true);
+      if (text.isValidMatrixId &&
+          candidates.every((candidate) => candidate.matrixUserId != text)) {
+        candidates.add(
+          InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
+        );
+      }
+      return _filterRetiredOwnedAgentCandidates(client, candidates);
+    } catch (e) {
+      if (text.isValidMatrixId) {
+        return _filterRetiredOwnedAgentCandidates(client, [
+          InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
+        ]);
+      }
+      rethrow;
     }
-    return _filterRetiredOwnedAgentCandidates(client, candidates);
+  }
+
+  InviteCandidate _inviteCandidateFromAgent(Agent agent) {
+    final matrixUserId = agent.matrixUserId?.trim() ?? '';
+    final displayName = agent.displayName.trim().isNotEmpty
+        ? agent.displayName.trim()
+        : (matrixUserId.localpart ?? agent.agentId);
+    return InviteCandidate(
+      kind: InviteCandidateKind.agent,
+      matrixUserId: matrixUserId,
+      displayName: displayName,
+      avatarUrl: _agentService.parseAvatarUri(agent.avatarUrl),
+      agentId: agent.agentId,
+      isActive: agent.isActive,
+    );
+  }
+
+  bool _matchesInviteCandidate(
+    InviteCandidate candidate,
+    String normalizedQuery,
+  ) {
+    final displayName = candidate.displayName.trim().toLowerCase();
+    final matrixUserId = candidate.matrixUserId.trim().toLowerCase();
+    final matrixLocalpart =
+        candidate.matrixUserId.localpart?.trim().toLowerCase() ?? '';
+    final secondaryIdentifier =
+        candidate.secondaryIdentifier.trim().toLowerCase();
+    final nickname = candidate.nickname?.trim().toLowerCase() ?? '';
+
+    return displayName.contains(normalizedQuery) ||
+        matrixUserId.contains(normalizedQuery) ||
+        matrixLocalpart.contains(normalizedQuery) ||
+        secondaryIdentifier.contains(normalizedQuery) ||
+        nickname.contains(normalizedQuery);
   }
 
   List<InviteCandidate> _filterRetiredOwnedAgentCandidates(
     Client client,
     List<InviteCandidate> candidates,
   ) {
-    return candidates
-        .where((candidate) {
-          final cachedAgent = _agentService.getAgentByMatrixUserId(
-            candidate.matrixUserId,
-          );
-          if (cachedAgent != null) {
-            return cachedAgent.isActive;
-          }
-          if (_looksLikeOwnedAgentMatrixUserId(
-            client,
-            candidate.matrixUserId,
-          )) {
-            return false;
-          }
-          return true;
-        })
-        .toList(growable: false);
+    return candidates.where((candidate) {
+      final cachedAgent = _agentService.getAgentByMatrixUserId(
+        candidate.matrixUserId,
+      );
+      if (cachedAgent != null) {
+        return cachedAgent.isActive;
+      }
+      if (_looksLikeOwnedAgentMatrixUserId(
+        client,
+        candidate.matrixUserId,
+      )) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
   }
 
   List<InviteCandidate> _mergeCandidates(
@@ -389,7 +433,10 @@ class InvitationSelectionController extends State<InvitationSelection> {
     currentSearchTerm = '';
     unawaited(_agentService.refresh(forceRefresh: true));
     _refreshMemberIds();
-    _roomStateSub = Matrix.of(context).client.onSync.stream
+    _roomStateSub = Matrix.of(context)
+        .client
+        .onSync
+        .stream
         .where(
           (syncUpdate) =>
               syncUpdate.rooms?.join?[roomId]?.timeline?.events?.any(
