@@ -182,6 +182,7 @@ abstract class AppRoutes {
           shouldUseDesktopLayout
               ? DesktopLayout(
                   activeChat: state.pathParameters['roomid'],
+                  eventId: state.uri.queryParameters['event'],
                   initialPage: locationPath.startsWith('/rooms/team')
                       ? DesktopPageIndex.employees
                       : DesktopPageIndex.messages,

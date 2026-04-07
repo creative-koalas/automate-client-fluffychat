@@ -42,11 +42,13 @@ enum DesktopPageIndex {
 /// 只用于桌面端，不影响移动端
 class DesktopLayout extends StatefulWidget {
   final String? activeChat;
+  final String? eventId;
   final DesktopPageIndex initialPage;
 
   const DesktopLayout({
     super.key,
     this.activeChat,
+    this.eventId,
     this.initialPage = DesktopPageIndex.messages,
   });
 
@@ -749,7 +751,10 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                     // 聊天详情
                     Expanded(
                       child: widget.activeChat != null
-                          ? ChatPage(roomId: widget.activeChat!)
+                          ? ChatPage(
+                              roomId: widget.activeChat!,
+                              eventId: widget.eventId,
+                            )
                           : const EmptyPage(),
                     ),
                   ],
