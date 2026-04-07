@@ -3304,6 +3304,8 @@ class ChatController extends State<ChatPageWithRoom>
     required InputMentionQuery mentionQuery,
     required List<User> participants,
   }) async {
+    inputFocus.unfocus();
+
     final mentions = await showMobileMentionPickerSheet(
       context: context,
       room: room,

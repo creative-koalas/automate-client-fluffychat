@@ -56,15 +56,6 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
   final Set<String> _selectedKeys = <String>{};
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _searchFocusNode.requestFocus();
-    });
-  }
-
-  @override
   void dispose() {
     _searchController
       ..removeListener(_handleSearchChanged)
@@ -236,10 +227,7 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
               child: Row(
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.cancel),
-                  ),
+                  const SizedBox(width: 72),
                   Expanded(
                     child: Text(
                       l10n.mentionHintTitle,
@@ -253,12 +241,13 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
                     width: 72,
                     child: _multiSelectEnabled
                         ? TextButton(
-                            onPressed: _selectedKeys.isEmpty
-                                ? null
-                                : _confirmSelection,
-                            child: Text(l10n.confirm),
+                            onPressed: () => _toggleMultiSelect(false),
+                            child: Text(l10n.cancel),
                           )
-                        : const SizedBox.shrink(),
+                        : TextButton(
+                            onPressed: () => _toggleMultiSelect(true),
+                            child: Text(_multiSelectLabel(context)),
+                          ),
                   ),
                 ],
               ),
@@ -279,34 +268,6 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
                     borderRadius: BorderRadius.circular(18),
                   ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  FilterChip(
-                    selected: _multiSelectEnabled,
-                    onSelected: _toggleMultiSelect,
-                    avatar: Icon(
-                      _multiSelectEnabled
-                          ? Icons.check_box_rounded
-                          : Icons.check_box_outline_blank_rounded,
-                      size: 18,
-                    ),
-                    label: Text(_multiSelectLabel(context)),
-                  ),
-                  if (_multiSelectEnabled && _selectedKeys.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_selectedKeys.length}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
               ),
             ),
             Expanded(
