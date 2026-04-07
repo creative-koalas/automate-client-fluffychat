@@ -205,6 +205,7 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
   final onKeyVerificationRequestSub = <String, StreamSubscription>{};
   final onNotification = <String, StreamSubscription>{};
   final onTimelineEventSub = <String, StreamSubscription<Event>>{};
+  final onSyncBadgeSub = <String, StreamSubscription>{};
   final Set<String> _desktopNotifiedEventIds = <String>{};
   static const int _desktopNotificationCacheLimit = 200;
   final onLoginStateChanged = <String, StreamSubscription<LoginState>>{};
@@ -406,6 +407,10 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       }
     });
     onUiaRequest[name] ??= c.onUiaRequest.stream.listen(uiaRequestHandler);
+    onSyncBadgeSub[name] ??= c.onSync.stream.listen((_) {
+      if (!PlatformInfos.isDesktop) return;
+      unawaited(_syncDesktopUnreadBadgeCount(c));
+    });
     if (PlatformInfos.isWeb) {
       unawaited(
         c.onSync.stream.first.then((_) {
@@ -450,6 +455,21 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     onNotification.remove(name);
     onTimelineEventSub[name]?.cancel();
     onTimelineEventSub.remove(name);
+    onSyncBadgeSub[name]?.cancel();
+    onSyncBadgeSub.remove(name);
+  }
+
+  Future<void> _syncDesktopUnreadBadgeCount(Client c) async {
+    if (!PlatformInfos.isDesktop) return;
+    var count = 0;
+    for (final room in c.rooms) {
+      final hasUnreadState = room.membership == Membership.invite ||
+          room.isUnread ||
+          room.hasNewMessages;
+      if (!hasUnreadState) continue;
+      count += room.notificationCount > 0 ? room.notificationCount : 1;
+    }
+    unawaited(WindowService.syncUnreadBadgeCount(count));
   }
 
   static const Set<String> _desktopNotifyEventTypes = {
@@ -735,6 +755,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
       sub.cancel();
     }
     for (final sub in onTimelineEventSub.values) {
+      sub.cancel();
+    }
+    for (final sub in onSyncBadgeSub.values) {
       sub.cancel();
     }
     client.httpClient.close();

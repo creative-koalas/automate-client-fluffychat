@@ -154,15 +154,25 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       final client = Matrix.of(context).clientOrNull;
       if (client == null) return;
       var count = 0;
+      final roomDebug = <String>[];
       for (final room in client.rooms) {
         final hasUnreadState = room.membership == Membership.invite ||
             room.isUnread ||
             room.hasNewMessages;
         if (!hasUnreadState) continue;
-        count += room.notificationCount > 0 ? room.notificationCount : 1;
+        final roomCount =
+            room.notificationCount > 0 ? room.notificationCount : 1;
+        count += roomCount;
+        roomDebug.add(
+          '${room.id}|direct=${room.directChatMatrixID != null}|notif=${room.notificationCount}|isUnread=${room.isUnread}|hasNew=${room.hasNewMessages}|counted=$roomCount',
+        );
       }
+      debugPrint(
+        '[DesktopLayout] unread total=$count rooms=${roomDebug.join(' || ')}',
+      );
       // 更新缓存和状态
       _cachedUnreadCount = count;
+      unawaited(WindowService.syncUnreadBadgeCount(count));
       if (_unreadCount != count) {
         setState(() => _unreadCount = count);
       }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_new_badger/flutter_new_badger.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:xdg_status_notifier_item/xdg_status_notifier_item.dart';
@@ -18,6 +19,7 @@ class WindowService {
   static bool _exiting = false;
   static _CloseInterceptor? _closeInterceptor;
   static final SystemTray _systemTray = SystemTray();
+  static final AppWindow _appWindow = AppWindow();
   static const String _trayEventLeftUp = 'leftMouseUp';
   static const String _trayEventLeftDoubleClick = 'leftMouseDblClk';
   static const String _trayEventRightUp = 'rightMouseUp';
@@ -48,7 +50,8 @@ class WindowService {
           return;
         } catch (e) {
           debugPrint(
-              '[WindowService] Linux SNI tray init failed, fallback to appindicator: $e');
+            '[WindowService] Linux SNI tray init failed, fallback to appindicator: $e',
+          );
           try {
             await _linuxTrayClient?.close();
           } catch (_) {}
@@ -105,11 +108,11 @@ class WindowService {
 
       _systemTray.registerSystemTrayEventHandler((eventName) {
         if (eventName == _trayEventLeftDoubleClick) {
-          showWindow();
+          unawaited(showWindow());
         } else if (eventName == _trayEventRightUp) {
-          _systemTray.popUpContextMenu();
+          unawaited(_systemTray.popUpContextMenu());
         } else if (eventName == _trayEventLeftUp && !Platform.isWindows) {
-          showWindow();
+          unawaited(showWindow());
         }
       });
       _linuxTrayViaSni = false;
@@ -139,7 +142,7 @@ class WindowService {
 
   static Future<void> _initLinuxTray() async {
     final iconPath = _linuxTrayIconPath();
-    final bool forceShowOnMenu = _isGnomeDesktop();
+    final forceShowOnMenu = _isGnomeDesktop();
     final menu = DBusMenuItem(
       onAboutToShow: () async {
         if (forceShowOnMenu) {
@@ -190,7 +193,7 @@ class WindowService {
   }
 
   static void _scheduleLinuxTrayShowWindow() {
-    final int token = ++_linuxTrayShowToken;
+    final token = ++_linuxTrayShowToken;
     Future.delayed(_linuxTrayLeftClickDelay, () async {
       if (token != _linuxTrayShowToken) {
         return;
@@ -219,6 +222,10 @@ class WindowService {
   static Future<void> showWindow() async {
     if (!PlatformInfos.isDesktop) return;
     _hiddenToTray = false;
+    if (Platform.isMacOS) {
+      await _appWindow.show();
+      await windowManager.restore();
+    }
     await windowManager.show();
     await windowManager.focus();
   }
@@ -228,6 +235,28 @@ class WindowService {
     if (!PlatformInfos.isDesktop) return;
     _hiddenToTray = true;
     await windowManager.hide();
+  }
+
+  static Future<void> syncUnreadBadgeCount(int count) async {
+    if (!PlatformInfos.isDesktop) return;
+
+    if (Platform.isMacOS) {
+      debugPrint('[WindowService] syncUnreadBadgeCount macOS count=$count');
+      try {
+        await FlutterNewBadger.setBadge(count);
+      } catch (_) {}
+
+      if (_trayInitialized) {
+        final trayTitle = count > 0 ? ' ${count > 99 ? '99+' : count}' : '';
+        debugPrint(
+          '[WindowService] syncUnreadBadgeCount trayTitle="$trayTitle" initialized=$_trayInitialized',
+        );
+        try {
+          await _systemTray.setTitle(trayTitle);
+        } catch (_) {}
+      }
+      return;
+    }
   }
 
   /// 完全退出应用

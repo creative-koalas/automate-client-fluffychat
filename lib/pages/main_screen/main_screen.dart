@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
 import 'package:psygo/pages/team/team_page.dart';
+import 'package:psygo/utils/window_service.dart';
 import 'package:psygo/widgets/matrix.dart';
 
 /// Main screen container for Messages and Team pages
@@ -28,7 +30,8 @@ class _MainScreenState extends State<MainScreen> {
   late PageController _pageController;
   int _currentPage = 0;
 
-  // 与 PC 顶部导航保持一致：消息未读总数（按 room.notificationCount 累加）
+  // 与 PC 顶部导航保持一致：房间只要进入 unread/new-messages 状态，
+  // 即使 notificationCount 为 0 也至少记 1，用于系统角标同步。
   static int _cachedUnreadCount = 0;
   int _unreadCount = 0;
   StreamSubscription? _syncSubscription;
@@ -63,12 +66,24 @@ class _MainScreenState extends State<MainScreen> {
       final client = Matrix.of(context).clientOrNull;
       if (client == null) return;
       var count = 0;
+      final roomDebug = <String>[];
       for (final room in client.rooms) {
-        if (room.isUnreadOrInvited) {
-          count += room.notificationCount;
-        }
+        final hasUnreadState = room.membership == Membership.invite ||
+            room.isUnread ||
+            room.hasNewMessages;
+        if (!hasUnreadState) continue;
+        final roomCount =
+            room.notificationCount > 0 ? room.notificationCount : 1;
+        count += roomCount;
+        roomDebug.add(
+          '${room.id}|direct=${room.directChatMatrixID != null}|notif=${room.notificationCount}|isUnread=${room.isUnread}|hasNew=${room.hasNewMessages}|counted=$roomCount',
+        );
       }
+      debugPrint(
+        '[MainScreen] unread total=$count rooms=${roomDebug.join(' || ')}',
+      );
       _cachedUnreadCount = count;
+      unawaited(WindowService.syncUnreadBadgeCount(count));
       if (_unreadCount != count) {
         setState(() => _unreadCount = count);
       }
@@ -266,10 +281,12 @@ class _NavItem extends StatelessWidget {
               highlightColor: theme.colorScheme.primary.withValues(alpha: 0.08),
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal:
-                      isSelected ? FluffyThemes.spacing24 : FluffyThemes.spacing16,
-                  vertical:
-                      isSelected ? FluffyThemes.spacing12 : FluffyThemes.spacing8,
+                  horizontal: isSelected
+                      ? FluffyThemes.spacing24
+                      : FluffyThemes.spacing16,
+                  vertical: isSelected
+                      ? FluffyThemes.spacing12
+                      : FluffyThemes.spacing8,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
