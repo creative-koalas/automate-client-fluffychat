@@ -830,8 +830,11 @@ class InputBar extends StatelessWidget {
                 final text = textController.text.trim();
                 if (text.isNotEmpty) {
                   onSubmitted?.call(text);
+                  return KeyEventResult.handled;
                 }
-                return KeyEventResult.handled;
+                // Let platform-level dictation / voice input tools keep using
+                // Enter when there is nothing for the composer to submit.
+                return KeyEventResult.ignored;
               }
               return KeyEventResult.ignored;
             },

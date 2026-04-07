@@ -53,6 +53,7 @@ import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/filtered_timeline_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:psygo/utils/macos_enter_ime_guard.dart';
+import 'package:psygo/utils/macos_voice_input_clipboard_bridge.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -253,7 +254,9 @@ class ChatController extends State<ChatPageWithRoom>
   Timer? _scrollToEventHighlightResetTimer;
   bool currentlyTyping = false;
   bool dragging = false;
+  String? _lastObservedSendControllerText;
   final MacOsEnterImeGuard _macOsEnterImeGuard = MacOsEnterImeGuard();
+  late final MacOsVoiceInputClipboardBridge _macOsVoiceInputClipboardBridge;
   late final VoidCallback _agentServiceListener;
   late final Future<void> Function() _macosGlobalScreenshotHandler;
   bool _groupLiveStatusWatcherAttached = false;
@@ -1044,6 +1047,14 @@ class ChatController extends State<ChatPageWithRoom>
       );
     }
     inputFocus = FocusNode(onKeyEvent: _customEnterKeyHandling);
+    sendController.addListener(_handleSendControllerChanged);
+    _lastObservedSendControllerText = sendController.text;
+    _macOsVoiceInputClipboardBridge = MacOsVoiceInputClipboardBridge(
+      readClipboardText: () async =>
+          (await Clipboard.getData(Clipboard.kTextPlain))?.text,
+      readComposerValue: () => sendController.value,
+      writeComposerValue: (value) => sendController.value = value,
+    );
 
     _agentServiceListener = () {
       if (!mounted) return;
@@ -1500,8 +1511,10 @@ class ChatController extends State<ChatPageWithRoom>
     timeline?.cancelSubscriptions();
     timeline = null;
     inputFocus.removeListener(_inputFocusListener);
+    sendController.removeListener(_handleSendControllerChanged);
     onFocusSub?.cancel();
     _globalScreenshotHotkeySub?.cancel();
+    _macOsVoiceInputClipboardBridge.stop();
     sendController.dispose();
     _scrollToEventHighlightResetTimer?.cancel();
     _disposePendingAttachments();
@@ -2590,6 +2603,13 @@ class ChatController extends State<ChatPageWithRoom>
   }
 
   void _inputFocusListener() {
+    if (PlatformInfos.isMacOS) {
+      if (inputFocus.hasFocus) {
+        _macOsVoiceInputClipboardBridge.start();
+      } else {
+        _macOsVoiceInputClipboardBridge.stop();
+      }
+    }
     if (showEmojiPicker && inputFocus.hasFocus) {
       setState(() => showEmojiPicker = false);
     }
@@ -3137,7 +3157,17 @@ class ChatController extends State<ChatPageWithRoom>
   Timer? _storeInputTimeoutTimer;
   static const Duration _storeInputTimeout = Duration(milliseconds: 500);
 
+  void _handleSendControllerChanged() {
+    final text = sendController.text;
+    if (_lastObservedSendControllerText == text) {
+      return;
+    }
+    _lastObservedSendControllerText = text;
+    onInputBarChanged(text);
+  }
+
   void onInputBarChanged(String text) {
+    _lastObservedSendControllerText = text;
     if (_inputTextIsEmpty != text.isEmpty) {
       setState(() {
         _inputTextIsEmpty = text.isEmpty;
