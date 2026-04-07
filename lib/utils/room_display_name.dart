@@ -7,7 +7,8 @@ import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
 String resolveDisplayNameForMatrixUserId({
   required Room room,
   required String? matrixUserId,
-  required MatrixLocals matrixLocals,
+  required MatrixLocalizations matrixLocals,
+  bool allowGroupDisplayName = true,
 }) {
   final key = matrixUserId?.trim() ?? '';
   if (key.isEmpty) {
@@ -21,7 +22,7 @@ String resolveDisplayNameForMatrixUserId({
         user.displayName ?? user.calcDisplayname(i18n: matrixLocals),
     fallbackAvatarUri: user.avatarUrl,
   );
-  if (!room.isDirectChat) {
+  if (allowGroupDisplayName && !room.isDirectChat) {
     AgentService.instance.ensureGroupDisplayNameByMatrixUserId(key);
     final groupDisplayName =
         AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(key);
@@ -35,12 +36,41 @@ String resolveDisplayNameForMatrixUserId({
   );
 }
 
-String resolveRoomDisplayName({
-  required Room room,
-  required L10n l10n,
+bool shouldUseGroupDisplayNameForUnnamedRoomMembers({
+  required int memberCount,
+  required bool isDirectChat,
+  required bool isAbandonedDMRoom,
 }) {
-  final matrixLocals = MatrixLocals(l10n);
+  if (isDirectChat || isAbandonedDMRoom) {
+    return false;
+  }
+  return memberCount != 1;
+}
 
+String? resolveRoomDisplayNameFromMemberNames({
+  required List<String> memberNames,
+  required bool isDirectChat,
+  required bool isAbandonedDMRoom,
+  required MatrixLocalizations matrixLocals,
+}) {
+  if (memberNames.isEmpty) {
+    return null;
+  }
+
+  final joinedNames = memberNames.join(', ');
+  if (isAbandonedDMRoom) {
+    return matrixLocals.wasDirectChatDisplayName(joinedNames);
+  }
+  if (isDirectChat || memberNames.length == 1) {
+    return joinedNames;
+  }
+  return matrixLocals.groupWith(joinedNames);
+}
+
+String resolveRoomDisplayNameWithMatrixLocals({
+  required Room room,
+  required MatrixLocalizations matrixLocals,
+}) {
   if (room.name.isNotEmpty) {
     return room.name;
   }
@@ -56,28 +86,48 @@ String resolveRoomDisplayName({
     heroIds.add(directChatMatrixId);
   }
 
+  final visibleHeroIds = heroIds
+      .where((heroId) => heroId.isNotEmpty && heroId != room.client.userID)
+      .toList(growable: false);
+  final useGroupDisplayName = shouldUseGroupDisplayNameForUnnamedRoomMembers(
+    memberCount: visibleHeroIds.length,
+    isDirectChat: room.isDirectChat,
+    isAbandonedDMRoom: room.isAbandonedDMRoom,
+  );
+
   final names = <String>[];
-  for (final heroId in heroIds) {
-    if (heroId.isEmpty || heroId == room.client.userID) {
-      continue;
-    }
+  for (final heroId in visibleHeroIds) {
     final resolvedName = resolveDisplayNameForMatrixUserId(
       room: room,
       matrixUserId: heroId,
       matrixLocals: matrixLocals,
+      allowGroupDisplayName: useGroupDisplayName,
     ).trim();
     if (resolvedName.isNotEmpty) {
       names.add(resolvedName);
     }
   }
 
-  if (names.isNotEmpty) {
-    final joinedNames = names.join(', ');
-    if (room.isAbandonedDMRoom) {
-      return l10n.wasDirectChatDisplayName(joinedNames);
-    }
-    return room.isDirectChat ? joinedNames : l10n.groupWith(joinedNames);
+  final resolvedFromMembers = resolveRoomDisplayNameFromMemberNames(
+    memberNames: names,
+    isDirectChat: room.isDirectChat,
+    isAbandonedDMRoom: room.isAbandonedDMRoom,
+    matrixLocals: matrixLocals,
+  );
+  if (resolvedFromMembers != null) {
+    return resolvedFromMembers;
   }
 
   return room.getLocalizedDisplayname(matrixLocals);
+}
+
+String resolveRoomDisplayName({
+  required Room room,
+  required L10n l10n,
+}) {
+  final matrixLocals = MatrixLocals(l10n);
+  return resolveRoomDisplayNameWithMatrixLocals(
+    room: room,
+    matrixLocals: matrixLocals,
+  );
 }
