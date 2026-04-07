@@ -3460,7 +3460,10 @@ class ChatController extends State<ChatPageWithRoom>
     }.toList()
       ..sort((a, b) => b.length.compareTo(a.length));
 
-    var normalized = text;
+    var normalized = normalizeInputMentionSpacing(
+      text: text,
+      mentionTokens: aliases,
+    );
     for (final alias in aliases) {
       if (alias == '@room') continue;
       final pattern = RegExp(

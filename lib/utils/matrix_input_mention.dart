@@ -2,6 +2,7 @@ import 'package:matrix/matrix.dart';
 import 'package:psygo/services/agent_service.dart';
 
 const int _maximumMentionHashLength = 10000;
+const String _mentionBoundaryPunctuation = '()[]{}<>,.!?，。！？、；：';
 
 String buildInputMentionByUser({
   required Room room,
@@ -70,9 +71,12 @@ String replaceInputMentionsWithMatrixIds({
     return text;
   }
 
-  var converted = text;
   final entries = mentionToUserId.entries.toList()
     ..sort((a, b) => b.key.length.compareTo(a.key.length));
+  var converted = normalizeInputMentionSpacing(
+    text: text,
+    mentionTokens: entries.map((entry) => entry.key),
+  );
 
   for (final entry in entries) {
     final pattern = RegExp(
@@ -88,10 +92,71 @@ String replaceInputMentionsWithMatrixIds({
   return converted;
 }
 
+String normalizeInputMentionSpacing({
+  required String text,
+  required Iterable<String> mentionTokens,
+}) {
+  if (text.isEmpty || !text.contains('@')) {
+    return text;
+  }
+
+  final mentions = mentionTokens
+      .where((token) => token.isNotEmpty && token.startsWith('@'))
+      .toSet()
+      .toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  if (mentions.isEmpty) {
+    return text;
+  }
+
+  final buffer = StringBuffer();
+  String? lastOutputChar;
+  var cursor = 0;
+
+  while (cursor < text.length) {
+    String? matchedMention;
+    if (text[cursor] == '@' &&
+        (lastOutputChar == null || _isMentionBoundaryChar(lastOutputChar))) {
+      for (final mention in mentions) {
+        if (text.startsWith(mention, cursor)) {
+          matchedMention = mention;
+          break;
+        }
+      }
+    }
+
+    if (matchedMention == null) {
+      final char = text[cursor];
+      buffer.write(char);
+      lastOutputChar = char;
+      cursor += 1;
+      continue;
+    }
+
+    buffer.write(matchedMention);
+    lastOutputChar = matchedMention[matchedMention.length - 1];
+    cursor += matchedMention.length;
+
+    if (cursor < text.length && !_isMentionBoundaryChar(text[cursor])) {
+      buffer.write(' ');
+      lastOutputChar = ' ';
+    }
+  }
+
+  return buffer.toString();
+}
+
 String _mentionHash(String input) =>
     (input.codeUnits.fold<int>(0, (acc, unit) => acc + unit) %
             _maximumMentionHashLength)
         .toString();
+
+bool _isMentionBoundaryChar(String char) {
+  if (char.trim().isEmpty) {
+    return true;
+  }
+  return _mentionBoundaryPunctuation.contains(char);
+}
 
 String? _normalizedDisplayName(String? raw) {
   var name = raw?.trim() ?? '';
