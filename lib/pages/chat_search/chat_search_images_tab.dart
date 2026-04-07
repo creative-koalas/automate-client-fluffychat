@@ -7,7 +7,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/pages/chat/events/video_player.dart';
 import 'package:psygo/pages/image_viewer/image_viewer.dart';
-import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 
 class ChatSearchImagesTab extends StatelessWidget {
@@ -28,6 +28,10 @@ class ChatSearchImagesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(AppConfig.borderRadius / 2);
+    final roomDisplayName = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
     return StreamBuilder(
       stream: searchStream,
       builder: (context, snapshot) {
@@ -41,9 +45,7 @@ class ChatSearchImagesTab extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 L10n.of(context).searchIn(
-                  room.getLocalizedDisplayname(
-                    MatrixLocals(L10n.of(context)),
-                  ),
+                  roomDisplayName,
                 ),
               ),
             ],

@@ -6,7 +6,7 @@ import 'package:psygo/pages/chat_search/chat_search_files_tab.dart';
 import 'package:psygo/pages/chat_search/chat_search_images_tab.dart';
 import 'package:psygo/pages/chat_search/chat_search_message_tab.dart';
 import 'package:psygo/pages/chat_search/chat_search_page.dart';
-import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/room_display_name.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 
 class ChatSearchView extends StatelessWidget {
@@ -30,6 +30,10 @@ class ChatSearchView extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
+    final roomDisplayName = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -37,7 +41,7 @@ class ChatSearchView extends StatelessWidget {
         titleSpacing: 0,
         title: Text(
           L10n.of(context).searchIn(
-            room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
+            roomDisplayName,
           ),
         ),
       ),

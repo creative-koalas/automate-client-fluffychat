@@ -32,6 +32,11 @@ class ChatSearchMessageTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final roomDisplayName = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
+
     return StreamBuilder(
       key: ValueKey(searchQuery),
       stream: searchStream,
@@ -45,9 +50,7 @@ class ChatSearchMessageTab extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 L10n.of(context).searchIn(
-                  room.getLocalizedDisplayname(
-                    MatrixLocals(L10n.of(context)),
-                  ),
+                  roomDisplayName,
                 ),
               ),
             ],

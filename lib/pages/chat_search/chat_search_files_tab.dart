@@ -6,7 +6,7 @@ import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/date_time_extension.dart';
 import 'package:psygo/utils/matrix_sdk_extensions/event_extension.dart';
-import 'package:psygo/utils/matrix_sdk_extensions/matrix_locals.dart';
+import 'package:psygo/utils/room_display_name.dart';
 
 class ChatSearchFilesTab extends StatelessWidget {
   final Room room;
@@ -25,6 +25,10 @@ class ChatSearchFilesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final roomDisplayName = resolveRoomDisplayName(
+      room: room,
+      l10n: L10n.of(context),
+    );
     return StreamBuilder(
       stream: searchStream,
       builder: (context, snapshot) {
@@ -38,9 +42,7 @@ class ChatSearchFilesTab extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 L10n.of(context).searchIn(
-                  room.getLocalizedDisplayname(
-                    MatrixLocals(L10n.of(context)),
-                  ),
+                  roomDisplayName,
                 ),
               ),
             ],
