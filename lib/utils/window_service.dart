@@ -362,6 +362,17 @@ class WindowService {
     return await windowManager.isMaximized();
   }
 
+  static Future<bool> isFullScreen() async {
+    if (!PlatformInfos.isDesktop) return false;
+    return await windowManager.isFullScreen();
+  }
+
+  static Future<void> toggleFullScreen() async {
+    if (!PlatformInfos.isDesktop) return;
+    final isFullScreen = await windowManager.isFullScreen();
+    await windowManager.setFullScreen(!isFullScreen);
+  }
+
   /// 设置自定义窗口大小
   static Future<void> setCustomSize(Size size) async {
     if (!PlatformInfos.isDesktop) return;
@@ -398,11 +409,12 @@ class WindowControlButtons extends StatefulWidget {
 class _WindowControlButtonsState extends State<WindowControlButtons>
     with WindowListener {
   bool _isMaximized = false;
+  bool _isFullScreen = false;
 
   @override
   void initState() {
     super.initState();
-    _initMaximizedState();
+    _initWindowState();
     windowManager.addListener(this);
   }
 
@@ -412,10 +424,14 @@ class _WindowControlButtonsState extends State<WindowControlButtons>
     super.dispose();
   }
 
-  Future<void> _initMaximizedState() async {
+  Future<void> _initWindowState() async {
     final isMaximized = await WindowService.isMaximized();
+    final isFullScreen = await WindowService.isFullScreen();
     if (mounted) {
-      setState(() => _isMaximized = isMaximized);
+      setState(() {
+        _isMaximized = isMaximized;
+        _isFullScreen = isFullScreen;
+      });
     }
   }
 
@@ -427,6 +443,16 @@ class _WindowControlButtonsState extends State<WindowControlButtons>
   @override
   void onWindowUnmaximize() {
     setState(() => _isMaximized = false);
+  }
+
+  @override
+  void onWindowEnterFullScreen() {
+    setState(() => _isFullScreen = true);
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    setState(() => _isFullScreen = false);
   }
 
   @override
@@ -453,10 +479,20 @@ class _WindowControlButtonsState extends State<WindowControlButtons>
           ),
         if (widget.showMaximize)
           _WindowButton(
-            icon: _isMaximized ? Icons.filter_none : Icons.crop_square,
-            iconColor: widget.iconColor ?? defaultIconColor,
+            icon: PlatformInfos.isMacOS
+                ? (_isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen)
+                : (_isMaximized ? Icons.filter_none : Icons.crop_square),
+            iconSize: PlatformInfos.isMacOS ? 20 : 16,
+            iconColor: PlatformInfos.isMacOS
+                ? (widget.iconColor ??
+                    (isDark
+                        ? Colors.white.withValues(alpha: 0.86)
+                        : Colors.black.withValues(alpha: 0.72)))
+                : (widget.iconColor ?? defaultIconColor),
             hoverColor: widget.hoverColor ?? defaultHoverColor,
-            onPressed: WindowService.toggleMaximize,
+            onPressed: PlatformInfos.isMacOS
+                ? WindowService.toggleFullScreen
+                : WindowService.toggleMaximize,
           ),
         _WindowButton(
           icon: Icons.close,
@@ -472,6 +508,7 @@ class _WindowControlButtonsState extends State<WindowControlButtons>
 
 class _WindowButton extends StatefulWidget {
   final IconData icon;
+  final double iconSize;
   final Color iconColor;
   final Color hoverColor;
   final Color? hoverIconColor;
@@ -479,6 +516,7 @@ class _WindowButton extends StatefulWidget {
 
   const _WindowButton({
     required this.icon,
+    this.iconSize = 16,
     required this.iconColor,
     required this.hoverColor,
     this.hoverIconColor,
@@ -508,7 +546,7 @@ class _WindowButtonState extends State<_WindowButton> {
           ),
           child: Icon(
             widget.icon,
-            size: 16,
+            size: widget.iconSize,
             color: _isHovered && widget.hoverIconColor != null
                 ? widget.hoverIconColor
                 : widget.iconColor,
