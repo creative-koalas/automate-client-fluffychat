@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +18,7 @@ import 'package:psygo/pages/chat/recording_view_model.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
+import 'package:psygo/widgets/horizontal_wheel_scroll_view.dart';
 import 'package:psygo/widgets/matrix.dart';
 import '../../config/themes.dart';
 import 'chat.dart';
@@ -753,12 +755,20 @@ class _InputQuickTipsBar extends StatelessWidget {
     if (tips.isEmpty) return const SizedBox.shrink();
 
     if (PlatformInfos.isDesktop) {
+      final desktopQuickTipsScrollBehavior = ScrollConfiguration.of(context)
+          .copyWith(
+            dragDevices: const {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.trackpad,
+              PointerDeviceKind.mouse,
+            },
+          );
       return SizedBox(
         height: 40,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            return HorizontalWheelScrollView(
+              scrollBehavior: desktopQuickTipsScrollBehavior,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: Align(

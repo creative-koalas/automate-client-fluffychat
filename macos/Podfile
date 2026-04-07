@@ -47,4 +47,62 @@ post_install do |installer|
       end
     end
   end
+
+  # App Store Connect validation is strict about framework symlink layout.
+  # Ensure embedded frameworks use:
+  #   Resources -> Versions/Current/Resources
+  # Some native-asset frameworks may use Versions/A directly, which gets rejected.
+  runner_project_path = File.join(__dir__, 'Runner.xcodeproj')
+  if File.exist?(runner_project_path)
+    runner_project = Xcodeproj::Project.open(runner_project_path)
+    runner_target = runner_project.targets.find { |t| t.name == 'Runner' }
+    if runner_target
+      phase_name = 'Normalize Embedded Framework Symlinks'
+      phase = runner_target.shell_script_build_phases.find { |p| p.name == phase_name }
+      phase ||= runner_target.new_shell_script_build_phase(phase_name)
+
+      phase.shell_script = <<~SCRIPT
+        set -euo pipefail
+
+        APP_FRAMEWORKS_DIR="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
+        if [ ! -d "${APP_FRAMEWORKS_DIR}" ]; then
+          exit 0
+        fi
+
+        find "${APP_FRAMEWORKS_DIR}" -maxdepth 1 -type d -name "*.framework" | while read -r FRAMEWORK_DIR; do
+          VERSIONS_DIR="${FRAMEWORK_DIR}/Versions"
+          [ -d "${VERSIONS_DIR}" ] || continue
+
+          if [ ! -L "${VERSIONS_DIR}/Current" ]; then
+            if [ -d "${VERSIONS_DIR}/A" ]; then
+              ln -sfn "A" "${VERSIONS_DIR}/Current"
+            else
+              continue
+            fi
+          fi
+
+          RES_LINK="${FRAMEWORK_DIR}/Resources"
+          if [ -e "${RES_LINK}" ] && [ ! -L "${RES_LINK}" ]; then
+            rm -rf "${RES_LINK}"
+          fi
+          ln -sfn "Versions/Current/Resources" "${RES_LINK}"
+        done
+      SCRIPT
+      phase.show_env_vars_in_log = '0'
+      phase.input_paths = ['${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}']
+      phase.output_paths = []
+
+      embed_pods_phase = runner_target.shell_script_build_phases.find do |p|
+        p.name == '[CP] Embed Pods Frameworks'
+      end
+      if embed_pods_phase
+        runner_target.build_phases.delete(phase)
+        embed_index = runner_target.build_phases.index(embed_pods_phase)
+        runner_target.build_phases.insert(embed_index + 1, phase)
+      end
+
+      runner_project.save
+      puts "✅ 已配置 Framework symlink 规范化脚本"
+    end
+  end
 end

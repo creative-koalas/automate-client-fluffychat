@@ -5,6 +5,7 @@ import 'package:psygo/l10n/l10n.dart';
 
 import '../core/config.dart';
 import 'custom_network_image.dart';
+import 'horizontal_wheel_scroll_view.dart';
 
 /// DiceBear 头像风格
 enum DiceBearStyle {
@@ -278,8 +279,7 @@ class _DiceBearAvatarPickerState extends State<DiceBearAvatarPicker> {
         // 风格选择
         SizedBox(
           height: 32,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          child: HorizontalWheelScrollView(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: DiceBearStyle.values.asMap().entries.map((entry) {

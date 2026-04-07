@@ -11,6 +11,7 @@ import 'package:psygo/core/config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/one_click_login.dart';
 import 'package:psygo/pages/login_signup/login_flow_mixin.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/widgets/agreement_webview_page.dart';
 import 'login_signup_view.dart';
@@ -91,10 +92,15 @@ class LoginSignupController extends State<LoginSignup>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 当 app 从后台恢复时，如果正在授权流程中，关闭可能残留的授权页面
-    if (state == AppLifecycleState.resumed && _isInAuthFlow) {
+    // iOS 一键登录授权页在展示/切回前台时可能触发生命周期切换。
+    // 这里如果直接关页，会导致授权页刚出来就被主动销毁，表现为“一键登录用不了”。
+    // 保留 Android 的兜底逻辑，iOS 交给 SDK 自己管理页面生命周期。
+    if (state == AppLifecycleState.resumed &&
+        _isInAuthFlow &&
+        !PlatformInfos.isIOS) {
       debugPrint(
-          'App resumed during auth flow, closing auth page to prevent black screen');
+        'App resumed during auth flow, closing auth page to prevent black screen',
+      );
       OneClickLoginService.quitLoginPage();
       setState(() {
         _isInAuthFlow = false;
@@ -232,7 +238,10 @@ class LoginSignupController extends State<LoginSignup>
       }
     }
     await AgreementWebViewPage.open(
-        context, l10n.authTermsOfService, _termsUrl!);
+      context,
+      l10n.authTermsOfService,
+      _termsUrl!,
+    );
   }
 
   void showPrivacyPolicy() async {
@@ -248,7 +257,10 @@ class LoginSignupController extends State<LoginSignup>
       }
     }
     await AgreementWebViewPage.open(
-        context, l10n.authPrivacyPolicy, _privacyUrl!);
+      context,
+      l10n.authPrivacyPolicy,
+      _privacyUrl!,
+    );
   }
 
   @override

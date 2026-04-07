@@ -4,6 +4,7 @@ import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/themes.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/string_color.dart';
 import 'package:psygo/widgets/mxc_image.dart';
 import 'package:psygo/widgets/presence_builder.dart';
@@ -129,11 +130,20 @@ class Avatar extends StatelessWidget {
               client: client,
               borderRadius: borderRadius,
               key: ValueKey(mxContent.toString()),
-              cacheKey: '${mxContent}_$size',
+              cacheKey: PlatformInfos.isMacOS
+                  ? '${mxContent}_${size}_avatar_full_macos'
+                  : '${mxContent}_${size}_avatar_crop',
               uri: noPic ? null : mxContent,
               fit: BoxFit.cover,
               width: size,
               height: size,
+              // Full-size avatars on macOS avoid the softness difference
+              // between list thumbnails and the full-screen viewer.
+              isThumbnail: !PlatformInfos.isMacOS,
+              // Avatars are always rendered into a square box. Request a cropped
+              // square thumbnail from the homeserver so Flutter does not upscale
+              // a smaller "scaled" thumbnail on desktop retina displays.
+              thumbnailMethod: ThumbnailMethod.crop,
               placeholder: (_) => noPic
                   ? Container(
                       decoration: BoxDecoration(

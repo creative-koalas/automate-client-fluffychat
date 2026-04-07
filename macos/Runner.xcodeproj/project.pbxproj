@@ -241,6 +241,7 @@
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				398DB7935F037BD70850381E /* [CP] Embed Pods Frameworks */,
+				FBED48A19A0B2A9377B5B417 /* Normalize Embedded Framework Symlinks */,
 			);
 			buildRules = (
 			);
@@ -419,6 +420,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		FBED48A19A0B2A9377B5B417 /* Normalize Embedded Framework Symlinks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}",
+			);
+			name = "Normalize Embedded Framework Symlinks";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\n\nAPP_FRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nif [ ! -d \"${APP_FRAMEWORKS_DIR}\" ]; then\n  exit 0\nfi\n\nfind \"${APP_FRAMEWORKS_DIR}\" -maxdepth 1 -type d -name \"*.framework\" | while read -r FRAMEWORK_DIR; do\n  VERSIONS_DIR=\"${FRAMEWORK_DIR}/Versions\"\n  [ -d \"${VERSIONS_DIR}\" ] || continue\n\n  if [ ! -L \"${VERSIONS_DIR}/Current\" ]; then\n    if [ -d \"${VERSIONS_DIR}/A\" ]; then\n      ln -sfn \"A\" \"${VERSIONS_DIR}/Current\"\n    else\n      continue\n    fi\n  fi\n\n  RES_LINK=\"${FRAMEWORK_DIR}/Resources\"\n  if [ -e \"${RES_LINK}\" ] && [ ! -L \"${RES_LINK}\" ]; then\n    rm -rf \"${RES_LINK}\"\n  fi\n  ln -sfn \"Versions/Current/Resources\" \"${RES_LINK}\"\ndone\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */

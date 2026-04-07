@@ -40,6 +40,10 @@ class _CaptureScreenshotIntent extends Intent {
   const _CaptureScreenshotIntent();
 }
 
+class _ClearSelectedEventsIntent extends Intent {
+  const _ClearSelectedEventsIntent();
+}
+
 class ChatView extends StatelessWidget {
   final ChatController controller;
 
@@ -521,6 +525,20 @@ class ChatView extends StatelessWidget {
         controller.selectedEvents.isEmpty &&
         controller.room.isAbandonedDMRoom != true;
     final scrollUpBannerEventId = controller.scrollUpBannerEventId;
+    final shortcuts = <ShortcutActivator, Intent>{};
+    if (PlatformInfos.isMacOS) {
+      shortcuts[
+              const SingleActivator(
+                LogicalKeyboardKey.keyS,
+                meta: true,
+                alt: true,
+              )] =
+          const _CaptureScreenshotIntent();
+    }
+    if (controller.selectedEvents.isNotEmpty) {
+      shortcuts[const SingleActivator(LogicalKeyboardKey.escape)] =
+          const _ClearSelectedEventsIntent();
+    }
 
     final accountConfig = Matrix.of(context).client.applicationAccountConfig;
 
@@ -543,12 +561,7 @@ class ChatView extends StatelessWidget {
         }
       },
       child: Shortcuts(
-        shortcuts: PlatformInfos.isMacOS
-            ? const <ShortcutActivator, Intent>{
-                SingleActivator(LogicalKeyboardKey.keyS, meta: true, alt: true):
-                    _CaptureScreenshotIntent(),
-              }
-            : const <ShortcutActivator, Intent>{},
+        shortcuts: shortcuts,
         child: Actions(
           actions: <Type, Action<Intent>>{
             _CaptureScreenshotIntent: CallbackAction<_CaptureScreenshotIntent>(
@@ -557,6 +570,13 @@ class ChatView extends StatelessWidget {
                 return null;
               },
             ),
+            _ClearSelectedEventsIntent:
+                CallbackAction<_ClearSelectedEventsIntent>(
+                  onInvoke: (_) {
+                    controller.clearSelectedEvents();
+                    return null;
+                  },
+                ),
           },
           child: StreamBuilder(
             stream: controller.room.client.onRoomState.stream

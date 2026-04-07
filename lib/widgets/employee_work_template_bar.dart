@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:psygo/widgets/horizontal_wheel_scroll_view.dart';
 
 class EmployeeWorkTemplateItem {
   final IconData icon;
@@ -136,17 +138,26 @@ class EmployeeWorkTemplateBar extends StatelessWidget {
               else
                 SizedBox(
                   height: 84,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: templates.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      final template = templates[index];
-                      return _EmployeeWorkTemplateCard(
-                        template: template,
-                        onTap: () => onTemplateTap(template),
-                      );
-                    },
+                  child: HorizontalWheelScrollView(
+                    scrollBehavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: const {
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.trackpad,
+                        PointerDeviceKind.mouse,
+                      },
+                    ),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < templates.length; i++) ...[
+                          _EmployeeWorkTemplateCard(
+                            template: templates[i],
+                            onTap: () => onTemplateTap(templates[i]),
+                          ),
+                          if (i != templates.length - 1)
+                            const SizedBox(width: 10),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
             ],

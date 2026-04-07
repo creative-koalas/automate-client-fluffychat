@@ -111,6 +111,12 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
     if (phone.isEmpty) {
       return l10n.authPhoneRequired;
     }
+    if (SmsLoginOverride.shouldBypassPhoneValidation(
+      phone: phone,
+      namespace: PsygoConfig.k8sNamespace,
+    )) {
+      return null;
+    }
     if (!phone.isPhoneNumber) {
       return l10n.authPhoneInvalid;
     }
@@ -531,7 +537,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       }
     }
     await AgreementWebViewPage.open(
-        context, l10n.authTermsOfService, _termsUrl!);
+      context,
+      l10n.authTermsOfService,
+      _termsUrl!,
+    );
   }
 
   void showPrivacyPolicy() async {
@@ -547,7 +556,10 @@ class PhoneLoginController extends State<PhoneLoginPage> with LoginFlowMixin {
       }
     }
     await AgreementWebViewPage.open(
-        context, l10n.authPrivacyPolicy, _privacyUrl!);
+      context,
+      l10n.authPrivacyPolicy,
+      _privacyUrl!,
+    );
   }
 
   @override

@@ -13,6 +13,13 @@ abstract final class SmsLoginOverride {
         normalizePhone(phone) == prodTestPhone;
   }
 
+  static bool shouldBypassPhoneValidation({
+    required String phone,
+    required String namespace,
+  }) {
+    return shouldSkipSmsSend(phone: phone, namespace: namespace);
+  }
+
   static String resolveLoginCode({
     required String phone,
     required String inputCode,

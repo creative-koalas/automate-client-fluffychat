@@ -16,6 +16,8 @@ class WindowService {
   static bool _trayInitialized = false;
   static bool _hiddenToTray = false;
   static bool _exiting = false;
+  static int _trayUnreadCount = 0;
+  static String _trayIconPath = '';
   static _CloseInterceptor? _closeInterceptor;
   static final SystemTray _systemTray = SystemTray();
   static const String _trayEventLeftUp = 'leftMouseUp';
@@ -48,7 +50,8 @@ class WindowService {
           return;
         } catch (e) {
           debugPrint(
-              '[WindowService] Linux SNI tray init failed, fallback to appindicator: $e');
+            '[WindowService] Linux SNI tray init failed, fallback to appindicator: $e',
+          );
           try {
             await _linuxTrayClient?.close();
           } catch (_) {}
@@ -66,25 +69,27 @@ class WindowService {
       } else {
         iconPath = 'assets/logo.png';
       }
+      _trayIconPath = iconPath;
 
       if (Platform.isLinux) {
         try {
           await _systemTray.initSystemTray(
-            title: PsygoConfig.appName,
+            title: _trayTitle(),
             iconPath: iconPath,
             toolTip: PsygoConfig.appName,
           );
         } catch (_) {
           iconPath = 'assets/logo.png';
+          _trayIconPath = iconPath;
           await _systemTray.initSystemTray(
-            title: PsygoConfig.appName,
+            title: _trayTitle(),
             iconPath: iconPath,
             toolTip: PsygoConfig.appName,
           );
         }
       } else {
         await _systemTray.initSystemTray(
-          title: PsygoConfig.appName,
+          title: _trayTitle(),
           iconPath: iconPath,
           toolTip: PsygoConfig.appName,
         );
@@ -114,6 +119,7 @@ class WindowService {
       });
       _linuxTrayViaSni = false;
       _trayInitialized = true;
+      await _refreshTrayPresentation();
       debugPrint('[WindowService] System tray initialized');
     } catch (e) {
       debugPrint('[WindowService] Failed to init system tray: $e');
@@ -135,11 +141,42 @@ class WindowService {
     await _systemTray.setSystemTrayInfo(iconPath: '');
     _linuxTrayViaSni = false;
     _trayInitialized = false;
+    _trayIconPath = '';
+  }
+
+  static String _trayTitle() {
+    if (!Platform.isMacOS) {
+      return PsygoConfig.appName;
+    }
+    if (_trayUnreadCount <= 0) {
+      return '';
+    }
+    return _trayUnreadCount > 99 ? '99+' : _trayUnreadCount.toString();
+  }
+
+  static Future<void> _refreshTrayPresentation() async {
+    if (!_trayInitialized) return;
+    if (_linuxTrayViaSni) return;
+    if (_trayIconPath.isEmpty) return;
+    await _systemTray.setSystemTrayInfo(
+      iconPath: _trayIconPath,
+      title: _trayTitle(),
+      toolTip: PsygoConfig.appName,
+    );
+  }
+
+  /// 更新托盘未读数字（macOS 会显示在图标右侧，其他平台仅保留应用名）。
+  static Future<void> updateTrayUnreadCount(int count) async {
+    if (!PlatformInfos.isDesktop) return;
+    final normalized = count < 0 ? 0 : count;
+    if (_trayUnreadCount == normalized) return;
+    _trayUnreadCount = normalized;
+    await _refreshTrayPresentation();
   }
 
   static Future<void> _initLinuxTray() async {
     final iconPath = _linuxTrayIconPath();
-    final bool forceShowOnMenu = _isGnomeDesktop();
+    final forceShowOnMenu = _isGnomeDesktop();
     final menu = DBusMenuItem(
       onAboutToShow: () async {
         if (forceShowOnMenu) {
@@ -190,7 +227,7 @@ class WindowService {
   }
 
   static void _scheduleLinuxTrayShowWindow() {
-    final int token = ++_linuxTrayShowToken;
+    final token = ++_linuxTrayShowToken;
     Future.delayed(_linuxTrayLeftClickDelay, () async {
       if (token != _linuxTrayShowToken) {
         return;
@@ -300,6 +337,7 @@ class WindowService {
 
     // 初始化系统托盘
     await initSystemTray();
+    await updateTrayUnreadCount(_trayUnreadCount);
 
     debugPrint('[WindowService] switchToMainWindow completed');
   }
@@ -324,6 +362,7 @@ class WindowService {
     // 登录窗口也使用系统托盘
     await setCloseToTray();
     await initSystemTray();
+    await updateTrayUnreadCount(0);
 
     debugPrint('[WindowService] switchToLoginWindow completed');
   }
