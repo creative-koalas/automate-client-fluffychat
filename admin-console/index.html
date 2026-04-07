@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PsyGo 管理台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-copy">
+            <div class="brand-mark">PG</div>
+            <div>
+              <p class="eyebrow">PsyGo Admin Console</p>
+              <h1>用户管理台</h1>
+            </div>
+          </div>
+          <button id="theme-toggle" class="ghost-button theme-toggle" type="button" title="切换主题">
+            <svg class="icon-sun" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
+              <line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="4.22" y1="19.78" x2="6.34" y2="17.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="17.66" y1="6.34" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div id="header-session-meta" class="brand-actions hidden">
+            <div class="session-badge">
+              <span id="header-session-role">admin</span>
+              <strong id="header-session-username">admin</strong>
+            </div>
+            <button id="logout-btn" class="ghost-button danger" type="button">
+              退出
+            </button>
+          </div>
+        </div>
+
+        <section id="session-card" class="card stack hidden web-hidden">
+          <div class="section-head">
+            <h2>当前会话</h2>
+          </div>
+          <dl class="meta-list">
+            <div>
+              <dt>管理员</dt>
+              <dd id="session-username">-</dd>
+            </div>
+            <div>
+              <dt>角色</dt>
+              <dd id="session-role">-</dd>
+            </div>
+            <div>
+              <dt>Access Token 到期</dt>
+              <dd id="session-expiry">-</dd>
+            </div>
+          </dl>
+          <button id="force-refresh-btn" class="secondary-button" type="button">
+            立即刷新 Token
+          </button>
+        </section>
+      </aside>
+
+      <main class="content">
+        <div id="banner" class="banner hidden" style="display:none"></div>
+        <pre id="banner-detail" class="banner-detail hidden" style="display:none"></pre>
+
+        <section id="login-panel" class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Admin Login</p>
+              <h2>管理员登录</h2>
+            </div>
+          </div>
+          <form id="login-form" class="grid-form">
+            <input
+              id="api-base-url"
+              name="apiBaseUrl"
+              type="hidden"
+              value="http://61.136.165.161:30181/api/v1"
+            />
+            <label class="field">
+              <span>用户名</span>
+              <input
+                id="login-username"
+                name="username"
+                type="text"
+                placeholder="请输入管理员用户名"
+                autocomplete="username"
+                required
+              />
+            </label>
+            <label class="field">
+              <span>密码</span>
+              <div class="password-input">
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                />
+                <button
+                  class="password-toggle"
+                  type="button"
+                  data-toggle-password="login-password"
+                  aria-label="显示密码"
+                  title="显示密码"
+                >
+                  <span class="eye-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" class="eye-open">
+                      <path
+                        d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.8"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3.2"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                      />
+                    </svg>
+                    <svg viewBox="0 0 24 24" class="eye-closed">
+                      <path
+                        d="M3 4.5 21 19.5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-width="1.8"
+                      />
+                      <path
+                        d="M9.9 6.2A11.6 11.6 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.7 17.7 0 0 1-4.1 4.6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.8"
+                      />
+                      <path
+                        d="M6.3 8.1A17.8 17.8 0 0 0 1.5 12s3.8 6.5 10.5 6.5c1.2 0 2.4-.2 3.4-.6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.8"
+                      />
+                    </svg>
+                  </span>
+                </button>
+              </div>
+            </label>
+            <div class="actions">
+              <button id="login-submit" class="primary-button" type="submit">
+                登录
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section id="console-panel" class="hidden stack-lg">
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">User Provisioning</p>
+                <h2>创建单个用户</h2>
+              </div>
+            </div>
+            <form id="create-user-form" class="grid-form three-columns">
+              <label class="field">
+                <span>用户名</span>
+                <input
+                  id="create-account"
+                  name="account"
+                  type="text"
+                  placeholder="student001"
+                  required
+                />
+              </label>
+              <label class="field">
+                <span>密码</span>
+                <div class="password-input">
+                  <input
+                    id="create-password"
+                    name="password"
+                    type="password"
+                    placeholder="Student@123456"
+                    required
+                  />
+                  <button
+                    class="password-toggle"
+                    type="button"
+                    data-toggle-password="create-password"
+                    aria-label="显示密码"
+                    title="显示密码"
+                  >
+                    <span class="eye-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" class="eye-open">
+                        <path
+                          d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.8"
+                        />
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="3.2"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                        />
+                      </svg>
+                      <svg viewBox="0 0 24 24" class="eye-closed">
+                        <path
+                          d="M3 4.5 21 19.5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-width="1.8"
+                        />
+                        <path
+                          d="M9.9 6.2A11.6 11.6 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.7 17.7 0 0 1-4.1 4.6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.8"
+                        />
+                        <path
+                          d="M6.3 8.1A17.8 17.8 0 0 0 1.5 12s3.8 6.5 10.5 6.5c1.2 0 2.4-.2 3.4-.6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.8"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+              </label>
+              <label class="field">
+                <span>确认密码</span>
+                <div class="password-input">
+                  <input
+                    id="create-confirm-password"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Student@123456"
+                    required
+                  />
+                  <button
+                    class="password-toggle"
+                    type="button"
+                    data-toggle-password="create-confirm-password"
+                    aria-label="显示密码"
+                    title="显示密码"
+                  >
+                    <span class="eye-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" class="eye-open">
+                        <path
+                          d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.8"
+                        />
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="3.2"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                        />
+                      </svg>
+                      <svg viewBox="0 0 24 24" class="eye-closed">
+                        <path
+                          d="M3 4.5 21 19.5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-width="1.8"
+                        />
+                        <path
+                          d="M9.9 6.2A11.6 11.6 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.7 17.7 0 0 1-4.1 4.6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.8"
+                        />
+                        <path
+                          d="M6.3 8.1A17.8 17.8 0 0 0 1.5 12s3.8 6.5 10.5 6.5c1.2 0 2.4-.2 3.4-.6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.8"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+              </label>
+              <div class="actions">
+                <button class="primary-button" type="submit">创建用户</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Bulk Provisioning</p>
+                <h2>Excel 批量导入用户</h2>
+              </div>
+            </div>
+            <form id="bulk-create-form" class="stack">
+              <label class="field">
+                <span>Excel 文件</span>
+                <input
+                  id="bulk-users-file"
+                  class="sr-only"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  required
+                />
+                <label for="bulk-users-file" class="file-picker">
+                  <span class="file-picker-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M14 3H7.8A2.8 2.8 0 0 0 5 5.8v12.4A2.8 2.8 0 0 0 7.8 21h8.4a2.8 2.8 0 0 0 2.8-2.8V8Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linejoin="round"
+                        stroke-width="1.7"
+                      />
+                      <path
+                        d="M14 3v5h5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linejoin="round"
+                        stroke-width="1.7"
+                      />
+                      <path
+                        d="M9 14.5h6M9 11.5h4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-width="1.7"
+                      />
+                    </svg>
+                  </span>
+                  <span class="file-picker-copy">
+                    <strong id="bulk-file-name">选择 Excel 文件</strong>
+                    <small id="bulk-file-meta">支持 .xlsx / .xls</small>
+                  </span>
+                </label>
+              </label>
+              <p class="hint">
+                只支持 `.xlsx` / `.xls`。系统会读取前两列：第一列账号，第二列密码。
+              </p>
+              <div class="actions">
+                <button class="primary-button" type="submit">上传导入</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">User Directory</p>
+                <h2>用户列表</h2>
+              </div>
+              <div class="toolbar">
+                <button id="refresh-users-btn" class="ghost-button" type="button">
+                  刷新列表
+                </button>
+              </div>
+            </div>
+
+            <div id="batch-actions" class="batch-actions hidden">
+              <span id="selected-count">已选择 0 项</span>
+              <button id="batch-enable-btn" class="ghost-button" type="button">启用</button>
+              <button id="batch-disable-btn" class="ghost-button" type="button">禁用</button>
+            </div>
+
+            <form id="search-form" class="search-bar">
+              <label class="field grow">
+                <span>搜索用户名</span>
+                <input
+                  id="search-account"
+                  type="search"
+                  placeholder="输入 account 关键字"
+                  autocomplete="off"
+                />
+              </label>
+              <label class="field compact">
+                <span>每页条数</span>
+                <select id="page-size">
+                  <option value="10">10</option>
+                  <option value="20" selected>20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </label>
+              <div class="actions">
+                <button class="secondary-button" type="submit">查询</button>
+              </div>
+            </form>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="checkbox-col">
+                      <input type="checkbox" id="select-all" />
+                    </th>
+                    <th>用户名</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>最后修改</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="users-tbody">
+                  <tr>
+                    <td colspan="6" class="empty-cell">请先登录。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination">
+              <button id="prev-page-btn" class="ghost-button" type="button">
+                上一页
+              </button>
+              <p id="pagination-summary">-</p>
+              <button id="next-page-btn" class="ghost-button" type="button">
+                下一页
+              </button>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="toast-dialog" class="dialog toast-dialog">
+      <div class="toast-content">
+        <p id="toast-message" class="toast-message"></p>
+        <pre id="toast-detail" class="toast-detail hidden"></pre>
+        <button id="toast-close" class="primary-button" type="button">确定</button>
+      </div>
+    </dialog>
+
+    <dialog id="password-dialog" class="dialog">
+      <form id="password-dialog-form" method="dialog" class="stack">
+        <div>
+          <p class="eyebrow">Reset Password</p>
+          <h2 id="password-dialog-title">重置密码</h2>
+        </div>
+        <label class="field">
+          <span>新密码</span>
+          <div class="password-input">
+            <input id="reset-password" type="password" required />
+            <button
+              class="password-toggle"
+              type="button"
+              data-toggle-password="reset-password"
+              aria-label="显示密码"
+              title="显示密码"
+            >
+              <span class="eye-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="eye-open">
+                  <path
+                    d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3.2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  />
+                </svg>
+                <svg viewBox="0 0 24 24" class="eye-closed">
+                  <path
+                    d="M3 4.5 21 19.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-width="1.8"
+                  />
+                  <path
+                    d="M9.9 6.2A11.6 11.6 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.7 17.7 0 0 1-4.1 4.6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                  <path
+                    d="M6.3 8.1A17.8 17.8 0 0 0 1.5 12s3.8 6.5 10.5 6.5c1.2 0 2.4-.2 3.4-.6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </label>
+        <label class="field">
+          <span>确认新密码</span>
+          <div class="password-input">
+            <input id="reset-confirm-password" type="password" required />
+            <button
+              class="password-toggle"
+              type="button"
+              data-toggle-password="reset-confirm-password"
+              aria-label="显示密码"
+              title="显示密码"
+            >
+              <span class="eye-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="eye-open">
+                  <path
+                    d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3.2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  />
+                </svg>
+                <svg viewBox="0 0 24 24" class="eye-closed">
+                  <path
+                    d="M3 4.5 21 19.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-width="1.8"
+                  />
+                  <path
+                    d="M9.9 6.2A11.6 11.6 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.7 17.7 0 0 1-4.1 4.6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                  <path
+                    d="M6.3 8.1A17.8 17.8 0 0 0 1.5 12s3.8 6.5 10.5 6.5c1.2 0 2.4-.2 3.4-.6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </label>
+        <div class="actions split">
+          <button id="password-dialog-cancel" class="ghost-button" type="button">
+            取消
+          </button>
+          <button class="primary-button" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
