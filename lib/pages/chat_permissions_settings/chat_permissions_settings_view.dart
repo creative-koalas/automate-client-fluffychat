@@ -191,11 +191,14 @@ class _MemberTile extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          onTap: canEdit && !isMe ? onEditRole : null,
           trailing: canEdit && !isMe
-              ? IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: L10n.of(context).chatPermissions,
-                  onPressed: onEditRole,
+              ? IgnorePointer(
+                  child: IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: L10n.of(context).chatPermissions,
+                    onPressed: () {},
+                  ),
                 )
               : null,
         );
