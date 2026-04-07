@@ -15,13 +15,12 @@ class InvitationSelectionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final room =
-        Matrix.of(context).client.getRoomById(controller.widget.roomId);
+    final room = Matrix.of(
+      context,
+    ).client.getRoomById(controller.widget.roomId);
     if (room == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(L10n.of(context).oopsSomethingWentWrong),
-        ),
+        appBar: AppBar(title: Text(L10n.of(context).oopsSomethingWentWrong)),
         body: Center(
           child: Text(L10n.of(context).youAreNoLongerParticipatingInThisChat),
         ),
@@ -43,6 +42,7 @@ class InvitationSelectionView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
+                controller: controller.controller,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   filled: true,
@@ -72,11 +72,13 @@ class InvitationSelectionView extends StatelessWidget {
                       : const Icon(Icons.search_outlined),
                 ),
                 onChanged: controller.searchUserWithCoolDown,
+                onSubmitted: (value) => controller.searchUser(context, value),
               ),
             ),
             StreamBuilder<Object>(
-              stream: room.client.onRoomState.stream
-                  .where((update) => update.roomId == room.id),
+              stream: room.client.onRoomState.stream.where(
+                (update) => update.roomId == room.id,
+              ),
               builder: (context, snapshot) {
                 final participants = {
                   ...room.getParticipants().map((user) => user.id),
@@ -84,37 +86,41 @@ class InvitationSelectionView extends StatelessWidget {
                 };
                 final isSearchMode =
                     controller.controller.text.trim().isNotEmpty ||
-                        controller.loading;
+                    controller.loading;
                 return isSearchMode
                     ? controller.foundCandidates.isEmpty && !controller.loading
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: Text(
-                                L10n.of(context).noUsersFoundWithQuery(
-                                  controller.controller.text.trim(),
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 32),
+                              child: Center(
+                                child: Text(
+                                  L10n.of(context).noUsersFoundWithQuery(
+                                    controller.controller.text.trim(),
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        : ListView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: controller.foundCandidates.length,
-                            itemBuilder: (BuildContext context, int i) =>
-                                _InviteContactListTile(
-                              candidate: controller.foundCandidates[i],
-                              canInvite: room.canInvite,
-                              isMember: participants.contains(
-                                controller.foundCandidates[i].matrixUserId,
-                              ),
-                              onTap: () => controller.inviteAction(
-                                context,
-                                controller.foundCandidates[i].matrixUserId,
-                                controller.foundCandidates[i].displayName,
-                              ),
-                            ),
-                          )
+                            )
+                          : ListView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              itemCount: controller.foundCandidates.length,
+                              itemBuilder: (BuildContext context, int i) =>
+                                  _InviteContactListTile(
+                                    candidate: controller.foundCandidates[i],
+                                    canInvite: room.canInvite,
+                                    isMember: participants.contains(
+                                      controller
+                                          .foundCandidates[i]
+                                          .matrixUserId,
+                                    ),
+                                    onTap: () => controller.inviteAction(
+                                      context,
+                                      controller
+                                          .foundCandidates[i]
+                                          .matrixUserId,
+                                      controller.foundCandidates[i].displayName,
+                                    ),
+                                  ),
+                            )
                     : FutureBuilder<List<InviteCandidate>>(
                         future: controller.getContacts(context),
                         builder: (BuildContext context, snapshot) {
@@ -132,16 +138,17 @@ class InvitationSelectionView extends StatelessWidget {
                             itemCount: contacts.length,
                             itemBuilder: (BuildContext context, int i) =>
                                 _InviteContactListTile(
-                              candidate: contacts[i],
-                              canInvite: room.canInvite,
-                              isMember: participants
-                                  .contains(contacts[i].matrixUserId),
-                              onTap: () => controller.inviteAction(
-                                context,
-                                contacts[i].matrixUserId,
-                                contacts[i].displayName,
-                              ),
-                            ),
+                                  candidate: contacts[i],
+                                  canInvite: room.canInvite,
+                                  isMember: participants.contains(
+                                    contacts[i].matrixUserId,
+                                  ),
+                                  onTap: () => controller.inviteAction(
+                                    context,
+                                    contacts[i].matrixUserId,
+                                    contacts[i].displayName,
+                                  ),
+                                ),
                           );
                         },
                       );
@@ -177,10 +184,8 @@ class _InviteContactListTile extends StatelessWidget {
         mxContent: candidate.avatarUrl,
         name: candidate.displayName,
         presenceUserId: candidate.matrixUserId,
-        onTap: () => UserDialog.show(
-          context: context,
-          profile: candidate.toProfile(),
-        ),
+        onTap: () =>
+            UserDialog.show(context: context, profile: candidate.toProfile()),
       ),
       title: Text(
         candidate.displayName,
@@ -191,9 +196,7 @@ class _InviteContactListTile extends StatelessWidget {
         candidate.secondaryIdentifier,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: theme.colorScheme.secondary,
-        ),
+        style: TextStyle(color: theme.colorScheme.secondary),
       ),
       trailing: TextButton.icon(
         onPressed: isMember || !canInvite ? null : onTap,

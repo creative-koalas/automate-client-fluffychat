@@ -81,9 +81,8 @@ class InvitationSelectionController extends State<InvitationSelection> {
         )
         .toList();
     contacts.sort(
-      (a, b) => a.displayName.toLowerCase().compareTo(
-            b.displayName.toLowerCase(),
-          ),
+      (a, b) =>
+          a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
     );
     return contacts;
   }
@@ -185,7 +184,8 @@ class InvitationSelectionController extends State<InvitationSelection> {
 
     final inviteTargetAgent = await _resolveInviteTargetAgent(client, id);
     final isOwnedAgent = inviteTargetAgent?.isActive == true;
-    final isDismissedOwnedAgent = inviteTargetAgent?.isActive == false ||
+    final isDismissedOwnedAgent =
+        inviteTargetAgent?.isActive == false ||
         (inviteTargetAgent == null &&
             _looksLikeOwnedAgentMatrixUserId(client, id));
     final resolvedDisplayName = _resolveInviteTargetDisplayName(
@@ -252,20 +252,21 @@ class InvitationSelectionController extends State<InvitationSelection> {
     setState(() => loading = true);
     final client = Matrix.of(context).client;
     var backendCandidates = const <InviteCandidate>[];
+    var localCandidates = const <InviteCandidate>[];
     var matrixCandidates = const <InviteCandidate>[];
     Object? firstError;
+    localCandidates = await _searchLocalCandidates(currentSearchTerm);
     try {
-      backendCandidates =
-          await _inviteCandidateRepository.searchInviteCandidates(
-        query: currentSearchTerm,
-        limit: 20,
-      );
+      backendCandidates = await _inviteCandidateRepository
+          .searchInviteCandidates(query: currentSearchTerm, limit: 20);
     } catch (e) {
       firstError ??= e;
     }
     try {
-      matrixCandidates =
-          await _searchMatrixCandidates(client, currentSearchTerm);
+      matrixCandidates = await _searchMatrixCandidates(
+        client,
+        currentSearchTerm,
+      );
     } catch (e) {
       firstError ??= e;
     }
@@ -274,21 +275,49 @@ class InvitationSelectionController extends State<InvitationSelection> {
       return;
     }
 
-    if (backendCandidates.isEmpty &&
-        matrixCandidates.isEmpty &&
-        firstError != null) {
+    final mergedCandidates = _mergeCandidates(
+      _mergeCandidates(backendCandidates, localCandidates),
+      matrixCandidates,
+    );
+
+    if (mergedCandidates.isEmpty && firstError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(firstError.toLocalizedString(context))),
       );
     }
 
     setState(() {
-      foundCandidates = _mergeCandidates(
-        backendCandidates,
-        matrixCandidates,
-      );
+      foundCandidates = mergedCandidates;
       loading = false;
     });
+  }
+
+  Future<List<InviteCandidate>> _searchLocalCandidates(String text) async {
+    final normalizedQuery = text.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const <InviteCandidate>[];
+    }
+
+    final client = Matrix.of(context).client;
+    final contacts = await getContacts(context);
+    return _filterRetiredOwnedAgentCandidates(
+      client,
+      contacts
+          .where((candidate) {
+            final displayName = candidate.displayName.trim().toLowerCase();
+            final matrixUserId = candidate.matrixUserId.trim().toLowerCase();
+            final secondaryIdentifier = candidate.secondaryIdentifier
+                .trim()
+                .toLowerCase();
+            final nickname = candidate.nickname?.trim().toLowerCase() ?? '';
+
+            return displayName.contains(normalizedQuery) ||
+                matrixUserId.contains(normalizedQuery) ||
+                secondaryIdentifier.contains(normalizedQuery) ||
+                nickname.contains(normalizedQuery);
+          })
+          .toList(growable: false),
+    );
   }
 
   Future<List<InviteCandidate>> _searchMatrixCandidates(
@@ -312,18 +341,23 @@ class InvitationSelectionController extends State<InvitationSelection> {
     Client client,
     List<InviteCandidate> candidates,
   ) {
-    return candidates.where((candidate) {
-      final cachedAgent = _agentService.getAgentByMatrixUserId(
-        candidate.matrixUserId,
-      );
-      if (cachedAgent != null) {
-        return cachedAgent.isActive;
-      }
-      if (_looksLikeOwnedAgentMatrixUserId(client, candidate.matrixUserId)) {
-        return false;
-      }
-      return true;
-    }).toList(growable: false);
+    return candidates
+        .where((candidate) {
+          final cachedAgent = _agentService.getAgentByMatrixUserId(
+            candidate.matrixUserId,
+          );
+          if (cachedAgent != null) {
+            return cachedAgent.isActive;
+          }
+          if (_looksLikeOwnedAgentMatrixUserId(
+            client,
+            candidate.matrixUserId,
+          )) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   List<InviteCandidate> _mergeCandidates(
@@ -355,10 +389,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
     currentSearchTerm = '';
     unawaited(_agentService.refresh(forceRefresh: true));
     _refreshMemberIds();
-    _roomStateSub = Matrix.of(context)
-        .client
-        .onSync
-        .stream
+    _roomStateSub = Matrix.of(context).client.onSync.stream
         .where(
           (syncUpdate) =>
               syncUpdate.rooms?.join?[roomId]?.timeline?.events?.any(

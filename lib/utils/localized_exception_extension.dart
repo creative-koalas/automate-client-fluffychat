@@ -8,6 +8,7 @@ import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/backend/exceptions.dart';
+import 'package:psygo/core/api_client.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/other_party_can_receive.dart';
 import 'uia_request_manager.dart';
@@ -102,6 +103,9 @@ extension LocalizedExceptionExtension on Object {
           return verifyCodeMessage;
         }
       }
+      return L10n.of(context).serverError;
+    }
+    if (this is ApiException) {
       return L10n.of(context).serverError;
     }
     if (this is MatrixException) {
