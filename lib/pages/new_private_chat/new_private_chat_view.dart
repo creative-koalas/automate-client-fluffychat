@@ -5,6 +5,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/backend/api_client.dart';
 import 'package:psygo/pages/new_private_chat/new_private_chat.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -23,7 +24,6 @@ class NewPrivateChatView extends StatelessWidget {
     final theme = Theme.of(context);
 
     final searchResponse = controller.searchResponse;
-    final userId = Matrix.of(context).client.userID!;
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
@@ -118,7 +118,6 @@ class NewPrivateChatView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // TODO: Implement share invite link feature
                           ListTile(
                             leading: CircleAvatar(
                               backgroundColor:
@@ -168,49 +167,108 @@ class NewPrivateChatView extends StatelessWidget {
                               onTap: controller.openScannerAction,
                             ),
                           Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 64.0,
-                                vertical: 24.0,
-                              ),
-                              child: Material(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppConfig.borderRadius,
+                            child: FutureBuilder<ContactInviteCreateResult>(
+                              future: controller.getContactInvite(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState !=
+                                    ConnectionState.done) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 64.0,
+                                      vertical: 24.0,
+                                    ),
+                                    child: SizedBox(
+                                      height: 200,
+                                      child: Center(
+                                        child:
+                                            CircularProgressIndicator.adaptive(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                if (snapshot.hasError || !snapshot.hasData) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32.0,
+                                      vertical: 24.0,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          (snapshot.error ??
+                                                  L10n.of(context).serverError)
+                                              .toLocalizedString(context),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: theme.colorScheme.error,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        OutlinedButton.icon(
+                                          onPressed:
+                                              controller.resetContactInvite,
+                                          icon: const Icon(
+                                            Icons.refresh_outlined,
+                                          ),
+                                          label: Text(
+                                            L10n.of(context).tryAgain,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                final inviteUrl = snapshot.data!.inviteUrl;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 64.0,
+                                    vertical: 24.0,
                                   ),
-                                  side: BorderSide(
-                                    width: 3,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                                color: Colors.transparent,
-                                clipBehavior: Clip.hardEdge,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(
-                                    AppConfig.borderRadius,
-                                  ),
-                                  onTap: () => showQrCodeViewer(
-                                    context,
-                                    userId,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: ConstrainedBox(
-                                      constraints:
-                                          const BoxConstraints(maxWidth: 200),
-                                      child: PrettyQrView.data(
-                                        data: 'https://matrix.to/#/$userId',
-                                        decoration: PrettyQrDecoration(
-                                          shape: PrettyQrSmoothSymbol(
-                                            roundFactor: 1,
-                                            color: theme.colorScheme.primary,
+                                  child: Material(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppConfig.borderRadius,
+                                      ),
+                                      side: BorderSide(
+                                        width: 3,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                    color: Colors.transparent,
+                                    clipBehavior: Clip.hardEdge,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(
+                                        AppConfig.borderRadius,
+                                      ),
+                                      onTap: () => showQrCodeViewer(
+                                        context,
+                                        inviteUrl,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 200,
+                                          ),
+                                          child: PrettyQrView.data(
+                                            data: inviteUrl,
+                                            decoration: PrettyQrDecoration(
+                                              shape: PrettyQrSmoothSymbol(
+                                                roundFactor: 1,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
                           ),
                         ],

@@ -20,24 +20,14 @@ import 'package:psygo/widgets/adaptive_dialogs/show_text_input_dialog.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/future_loading_dialog.dart';
 import '../../config/setting_keys.dart';
+import '../../utils/contact_invite_link.dart';
 import '../../utils/url_launcher.dart';
 import '../../widgets/matrix.dart';
 import '../bootstrap/bootstrap_dialog.dart';
 
-enum PopupMenuAction {
-  settings,
-  invite,
-  newGroup,
-  setStatus,
-  archive,
-}
+enum PopupMenuAction { settings, invite, newGroup, setStatus, archive }
 
-enum ActiveFilter {
-  allChats,
-  messages,
-  groups,
-  unread,
-}
+enum ActiveFilter { allChats, messages, groups, unread }
 
 extension LocalizedActiveFilter on ActiveFilter {
   String toLocalizedString(BuildContext context) {
@@ -94,9 +84,7 @@ class ChatListController extends State<ChatList>
 
     if (room.membership == Membership.ban) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(L10n.of(context).youHaveBeenBannedFromThisChat),
-        ),
+        SnackBar(content: Text(L10n.of(context).youHaveBeenBannedFromThisChat)),
       );
       return;
     }
@@ -190,8 +178,9 @@ class ChatListController extends State<ChatList>
 
       if (searchQuery.isValidMatrixId &&
           searchQuery.sigil == '#' &&
-          roomSearchResult.chunk
-                  .any((room) => room.canonicalAlias == searchQuery) ==
+          roomSearchResult.chunk.any(
+                (room) => room.canonicalAlias == searchQuery,
+              ) ==
               false) {
         final response = await client.getRoomIdByAlias(searchQuery);
         final roomId = response.roomId;
@@ -214,13 +203,9 @@ class ChatListController extends State<ChatList>
       );
     } catch (e, s) {
       Logs().w('Searching has crashed', e, s);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toLocalizedString(context),
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toLocalizedString(context))));
     }
     if (!isSearchMode) return;
     setState(() {
@@ -348,8 +333,9 @@ class ChatListController extends State<ChatList>
             .clamp(220.0, 9999.0)
             .toDouble();
         final targetWidth = isDesktop ? 560.0 : 420.0;
-        final dialogWidth =
-            availableWidth < targetWidth ? availableWidth : targetWidth;
+        final dialogWidth = availableWidth < targetWidth
+            ? availableWidth
+            : targetWidth;
         final maxDialogHeight = (screenSize.height - verticalInset * 2)
             .clamp(220.0, isDesktop ? 640.0 : 560.0)
             .toDouble();
@@ -366,10 +352,7 @@ class ChatListController extends State<ChatList>
           content: SizedBox(
             width: dialogWidth,
             child: SingleChildScrollView(
-              child: Text(
-                announcement.body,
-                style: theme.textTheme.bodyMedium,
-              ),
+              child: Text(announcement.body, style: theme.textTheme.bodyMedium),
             ),
           ),
           actions: [
@@ -388,6 +371,11 @@ class ChatListController extends State<ChatList>
 
   void _processIncomingUris(Uri? uri) async {
     if (uri == null) return;
+    final contactInviteToken = ContactInviteLink.extractTokenFromUri(uri);
+    if (contactInviteToken != null) {
+      context.go(ContactInviteLink.routeForToken(contactInviteToken));
+      return;
+    }
     context.go('/rooms');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UrlLauncher(context, uri.toString()).openMatrixToUrl();
@@ -398,17 +386,18 @@ class ChatListController extends State<ChatList>
     if (!PlatformInfos.isMobile) return;
 
     // For receiving shared Uris
-    _intentUriStreamSubscription =
-        AppLinks().uriLinkStream.listen(_processIncomingUris);
+    _intentUriStreamSubscription = AppLinks().uriLinkStream.listen(
+      _processIncomingUris,
+    );
 
     if (PlatformInfos.isAndroid) {
       final shortcuts = FlutterShortcuts();
       shortcuts.initialize().then(
-            (_) => shortcuts.listenAction((action) {
-              if (!mounted) return;
-              UrlLauncher(context, action).launchUrl();
-            }),
-          );
+        (_) => shortcuts.listenAction((action) {
+          if (!mounted) return;
+          UrlLauncher(context, action).launchUrl();
+        }),
+      );
     }
   }
 
@@ -424,8 +413,9 @@ class ChatListController extends State<ChatList>
     _hackyWebRTCFixForWeb();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) {
-        searchServer =
-            Matrix.of(context).store.getString(_serverStoreNamespace);
+        searchServer = Matrix.of(
+          context,
+        ).store.getString(_serverStoreNamespace);
         // 已使用阿里云推送（AliyunPushService），禁用原有 BackgroundPush 避免重复推送
         // Matrix.of(context).backgroundPush?.setupPush();
         UpdateNotifier.showUpdateSnackBar();
@@ -457,10 +447,7 @@ class ChatListController extends State<ChatList>
     super.dispose();
   }
 
-  void chatContextAction(
-    Room room,
-    BuildContext posContext,
-  ) async {
+  void chatContextAction(Room room, BuildContext posContext) async {
     final overlay =
         Overlay.of(posContext).context.findRenderObject() as RenderBox;
 
@@ -477,8 +464,9 @@ class ChatListController extends State<ChatList>
       Offset.zero & overlay.size,
     );
 
-    final displayname =
-        room.getLocalizedDisplayname(MatrixLocals(L10n.of(context)));
+    final displayname = room.getLocalizedDisplayname(
+      MatrixLocals(L10n.of(context)),
+    );
 
     final action = await showMenu<ChatContextAction>(
       context: posContext,
@@ -490,16 +478,14 @@ class ChatListController extends State<ChatList>
             mainAxisSize: MainAxisSize.min,
             spacing: 12.0,
             children: [
-              Avatar(
-                mxContent: room.avatar,
-                name: displayname,
-              ),
+              Avatar(mxContent: room.avatar, name: displayname),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 128),
                 child: Text(
                   displayname,
-                  style:
-                      TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -579,9 +565,7 @@ class ChatListController extends State<ChatList>
                 room.membership == Membership.invite
                     ? L10n.of(context).delete
                     : L10n.of(context).leaveChat,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
           ),
@@ -718,8 +702,9 @@ class ChatListController extends State<ChatList>
     await client.accountDataLoading;
     await client.userDeviceKeysLoading;
     if (client.prevBatch == null) {
-      await client.onSyncStatus.stream
-          .firstWhere((status) => status.status == SyncStatus.finished);
+      await client.onSyncStatus.stream.firstWhere(
+        (status) => status.status == SyncStatus.finished,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -766,17 +751,6 @@ class ChatListController extends State<ChatList>
   Future<void> dehydrate() => Matrix.of(context).dehydrateAction(context);
 }
 
-enum InviteActions {
-  accept,
-  decline,
-  block,
-}
+enum InviteActions { accept, decline, block }
 
-enum ChatContextAction {
-  open,
-  favorite,
-  markUnread,
-  mute,
-  leave,
-  block,
-}
+enum ChatContextAction { open, favorite, markUnread, mute, leave, block }

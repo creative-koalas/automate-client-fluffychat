@@ -1,9 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 import '../repositories/agent_repository.dart';
+import 'contact_invite_link.dart';
 
 /// Resolve post-login destination based on whether the user has any employees.
 Future<String> resolvePostLoginDestination() async {
+  final pendingInviteToken = await ContactInviteLink.takePendingToken();
+  if (pendingInviteToken != null && pendingInviteToken.isNotEmpty) {
+    return ContactInviteLink.routeForToken(pendingInviteToken);
+  }
+
   final repository = AgentRepository();
   try {
     final page = await repository.getUserAgents(limit: 1, forceRefresh: true);

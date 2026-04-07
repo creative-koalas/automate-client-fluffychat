@@ -32,6 +32,7 @@ class NewPrivateChatController extends State<NewPrivateChat> {
   final FocusNode textFieldFocus = FocusNode();
 
   Future<List<Profile>>? searchResponse;
+  Future<ContactInviteCreateResult>? _contactInviteFuture;
 
   Timer? _searchCoolDown;
 
@@ -69,7 +70,55 @@ class NewPrivateChatController extends State<NewPrivateChat> {
     return profiles;
   }
 
-  void inviteAction() => FluffyShare.shareInviteLink(context);
+  Future<ContactInviteCreateResult> getContactInvite() {
+    return _contactInviteFuture ??= _createContactInvite();
+  }
+
+  Future<ContactInviteCreateResult> _createContactInvite() async {
+    final apiClient = context.read<PsygoApiClient>();
+    try {
+      return await apiClient.createContactInvite(
+        source: 'share_link',
+        metadata: {
+          'entrypoint': 'new_private_chat',
+          'client_platform': _clientPlatformLabel(),
+        },
+      );
+    } catch (e) {
+      _contactInviteFuture = null;
+      rethrow;
+    }
+  }
+
+  void resetContactInvite() {
+    setState(() {
+      _contactInviteFuture = null;
+    });
+  }
+
+  void inviteAction() async {
+    try {
+      final invite = await getContactInvite();
+      if (!mounted) return;
+      final client = Matrix.of(context).client;
+      final ownProfile = await client.fetchOwnProfile();
+      if (!mounted) return;
+      await FluffyShare.share(
+        FluffyShare.buildInviteLinkText(
+          context,
+          inviterName: ownProfile.displayName ?? client.userID!,
+          inviteUrl: invite.inviteUrl,
+        ),
+        context,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showTapDismissSnackBar(
+        context,
+        friendlyBackendErrorMessage(e, L10n.of(context)),
+      );
+    }
+  }
 
   void showInvitationCodeAction() async {
     final apiClient = context.read<PsygoApiClient>();
@@ -86,8 +135,10 @@ class NewPrivateChatController extends State<NewPrivateChat> {
               : (info.currentInvitees / info.maxInvitees).clamp(0.0, 1.0);
 
           return AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -100,12 +151,19 @@ class NewPrivateChatController extends State<NewPrivateChat> {
                     color: const Color(0xFFE8F5E9),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.card_giftcard_rounded, color: Color(0xFF4CAF50), size: 18),
+                  child: const Icon(
+                    Icons.card_giftcard_rounded,
+                    color: Color(0xFF4CAF50),
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text(
                   L10n.of(context).myInvitationCode,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -114,11 +172,18 @@ class NewPrivateChatController extends State<NewPrivateChat> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Color.lerp(colorScheme.surface, const Color(0xFFE8F5E9), 0.78),
+                    color: Color.lerp(
+                      colorScheme.surface,
+                      const Color(0xFFE8F5E9),
+                      0.78,
+                    ),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.25)),
+                    border: Border.all(
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -141,7 +206,9 @@ class NewPrivateChatController extends State<NewPrivateChat> {
                           foregroundColor: const Color(0xFF4CAF50),
                         ),
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: info.invitationCode));
+                          Clipboard.setData(
+                            ClipboardData(text: info.invitationCode),
+                          );
                           showTapDismissSnackBar(
                             dialogCtx,
                             L10n.of(context).invitationCodeCopied,
@@ -154,7 +221,8 @@ class NewPrivateChatController extends State<NewPrivateChat> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  L10n.of(context).invitedProgress(info.currentInvitees, info.maxInvitees),
+                  L10n.of(context)
+                      .invitedProgress(info.currentInvitees, info.maxInvitees),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -169,7 +237,8 @@ class NewPrivateChatController extends State<NewPrivateChat> {
                     minHeight: 6,
                     value: progress,
                     backgroundColor: colorScheme.surfaceContainerHighest,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
                   ),
                 ),
                 if (info.isFull)
@@ -178,7 +247,11 @@ class NewPrivateChatController extends State<NewPrivateChat> {
                     child: Text(
                       L10n.of(context).invitationQuotaFull,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
               ],
@@ -192,7 +265,10 @@ class NewPrivateChatController extends State<NewPrivateChat> {
                     foregroundColor: const Color(0xFF4CAF50),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text(L10n.of(context).close, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  child: Text(
+                    L10n.of(context).close,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -222,7 +298,7 @@ class NewPrivateChatController extends State<NewPrivateChat> {
     await showAdaptiveBottomSheet(
       context: context,
       builder: (_) => QrScannerModal(
-        onScan: (link) => UrlLauncher(context, link).openMatrixToUrl(),
+        onScan: (link) => UrlLauncher(context, link).launchUrl(),
       ),
     );
   }
@@ -252,4 +328,14 @@ class NewPrivateChatController extends State<NewPrivateChat> {
 
   @override
   Widget build(BuildContext context) => NewPrivateChatView(this);
+
+  String _clientPlatformLabel() {
+    if (PlatformInfos.isIOS) return 'ios';
+    if (PlatformInfos.isAndroid) return 'android';
+    if (PlatformInfos.isMacOS) return 'macos';
+    if (PlatformInfos.isWindows) return 'windows';
+    if (PlatformInfos.isLinux) return 'linux';
+    if (PlatformInfos.isWeb) return 'web';
+    return 'unknown';
+  }
 }

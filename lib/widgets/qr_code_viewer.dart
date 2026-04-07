@@ -15,25 +15,37 @@ import '../config/themes.dart';
 
 Future<void> showQrCodeViewer(
   BuildContext context,
-  String content,
-) =>
+  String data, {
+  String? displayText,
+  String? fileName,
+}) =>
     showDialog(
       context: context,
-      builder: (context) => QrCodeViewer(content: content),
+      builder: (context) => QrCodeViewer(
+        data: data,
+        displayText: displayText,
+        fileName: fileName,
+      ),
     );
 
 class QrCodeViewer extends StatelessWidget {
-  final String content;
+  final String data;
+  final String? displayText;
+  final String? fileName;
 
-  const QrCodeViewer({required this.content, super.key});
+  const QrCodeViewer({
+    required this.data,
+    this.displayText,
+    this.fileName,
+    super.key,
+  });
 
   void _save(BuildContext context) async {
     final imageResult = await showFutureLoadingDialog(
       context: context,
       future: () async {
-        final inviteLink = 'https://matrix.to/#/$content';
         final image = QRImage(
-          inviteLink,
+          data,
           size: 256,
           radius: 1,
         ).generate();
@@ -46,7 +58,7 @@ class QrCodeViewer extends StatelessWidget {
 
     MatrixImageFile(
       bytes: bytes,
-      name: 'QR_Code_$content.png',
+      name: fileName ?? 'QR_Code.png',
       mimeType: 'image/png',
     ).save(context);
   }
@@ -54,7 +66,6 @@ class QrCodeViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final inviteLink = 'https://matrix.to/#/$content';
     return Scaffold(
       backgroundColor: Colors.black.withAlpha(128),
       extendBodyBehindAppBar: true,
@@ -77,7 +88,7 @@ class QrCodeViewer extends StatelessWidget {
             ),
             icon: Icon(Icons.adaptive.share_outlined),
             onPressed: () => FluffyShare.share(
-              inviteLink,
+              data,
               context,
             ),
             color: Colors.white,
@@ -111,7 +122,7 @@ class QrCodeViewer extends StatelessWidget {
                 constraints:
                     const BoxConstraints(maxWidth: FluffyThemes.columnWidth),
                 child: PrettyQrView.data(
-                  data: inviteLink,
+                  data: data,
                   decoration: PrettyQrDecoration(
                     shape: PrettyQrSmoothSymbol(
                       roundFactor: 1,
@@ -122,7 +133,7 @@ class QrCodeViewer extends StatelessWidget {
               ),
               const SizedBox(height: 8.0),
               SelectableText(
-                content,
+                displayText ?? data,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: theme.colorScheme.onPrimaryContainer,

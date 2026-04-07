@@ -13,6 +13,7 @@ import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/pages/chat_members/chat_members.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
 import 'package:psygo/pages/chat_search/chat_search_page.dart';
+import 'package:psygo/pages/contact_invite/contact_invite.dart';
 import 'package:psygo/pages/device_settings/device_settings.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
@@ -49,8 +50,9 @@ abstract class AppRoutes {
     BuildContext context,
     GoRouterState state,
   ) {
-    final isLoggedIn =
-        Matrix.of(context).widget.clients.any((client) => client.isLogged());
+    final isLoggedIn = Matrix.of(
+      context,
+    ).widget.clients.any((client) => client.isLogged());
     if (isLoggedIn) return null;
 
     // Mobile: Let AuthGate handle login, don't redirect
@@ -67,23 +69,17 @@ abstract class AppRoutes {
       // This prevents race condition where GoRouter redirects before AuthGate can navigate
       redirect: (context, state) =>
           Matrix.of(context).widget.clients.any((client) => client.isLogged())
-              ? '/rooms'
-              : null, // Let AuthGate handle unauthenticated state
+          ? '/rooms'
+          : null, // Let AuthGate handle unauthenticated state
       // Empty page builder - AuthGate will show loading/login UI, not this page
-      pageBuilder: (context, state) => defaultPageBuilder(
-        context,
-        state,
-        const EmptyPage(),
-      ),
+      pageBuilder: (context, state) =>
+          defaultPageBuilder(context, state, const EmptyPage()),
     ),
     // 直接使用手机号登录页面作为登录入口
     GoRoute(
       path: '/login-signup',
-      pageBuilder: (context, state) => defaultPageBuilder(
-        context,
-        state,
-        const PhoneLoginPage(),
-      ),
+      pageBuilder: (context, state) =>
+          defaultPageBuilder(context, state, const PhoneLoginPage()),
       redirect: loggedInRedirect,
     ),
     GoRoute(
@@ -91,10 +87,9 @@ abstract class AppRoutes {
       // 重定向到新版登录页面，不让用户看到旧版页面
       redirect: (context, state) {
         // 如果已登录，跳转到主页
-        if (Matrix.of(context)
-            .widget
-            .clients
-            .any((client) => client.isLogged())) {
+        if (Matrix.of(
+          context,
+        ).widget.clients.any((client) => client.isLogged())) {
           return '/rooms';
         }
         // 未登录: Web 跳转到 /login-signup, Mobile 跳转到根路径让 AuthGate 处理
@@ -110,10 +105,9 @@ abstract class AppRoutes {
           path: 'login',
           // 同样重定向到新版登录
           redirect: (context, state) {
-            if (Matrix.of(context)
-                .widget
-                .clients
-                .any((client) => client.isLogged())) {
+            if (Matrix.of(
+              context,
+            ).widget.clients.any((client) => client.isLogged())) {
               return '/rooms';
             }
             // Web 跳转到 /login-signup, Mobile 跳转到根路径让 AuthGate 处理
@@ -129,18 +123,20 @@ abstract class AppRoutes {
     ),
     GoRoute(
       path: '/logs',
-      pageBuilder: (context, state) => defaultPageBuilder(
-        context,
-        state,
-        const LogViewer(),
-      ),
+      pageBuilder: (context, state) =>
+          defaultPageBuilder(context, state, const LogViewer()),
     ),
     GoRoute(
       path: '/configs',
+      pageBuilder: (context, state) =>
+          defaultPageBuilder(context, state, const ConfigViewer()),
+    ),
+    GoRoute(
+      path: '/invite/:token',
       pageBuilder: (context, state) => defaultPageBuilder(
         context,
         state,
-        const ConfigViewer(),
+        ContactInvitePage(token: state.pathParameters['token']!),
       ),
     ),
     ShellRoute(
@@ -161,7 +157,7 @@ abstract class AppRoutes {
           '/details',
           '/search',
           '/invite',
-          '/encryption'
+          '/encryption',
         ];
         final excludedSubPathMarkers = [
           '/details/',
@@ -169,7 +165,8 @@ abstract class AppRoutes {
           '/invite/',
           '/encryption/',
         ];
-        final shouldUseDesktopLayout = FluffyThemes.isColumnMode(context) &&
+        final shouldUseDesktopLayout =
+            FluffyThemes.isColumnMode(context) &&
             !excludedPaths.any((p) => path.startsWith(p)) &&
             !excludedSuffixes.any(
               (s) => path.endsWith(s) || locationPath.endsWith(s),
@@ -217,20 +214,14 @@ abstract class AppRoutes {
             ),
             GoRoute(
               path: 'newprivatechat',
-              pageBuilder: (context, state) => defaultPageBuilder(
-                context,
-                state,
-                const NewPrivateChat(),
-              ),
+              pageBuilder: (context, state) =>
+                  defaultPageBuilder(context, state, const NewPrivateChat()),
               redirect: loggedOutRedirect,
             ),
             GoRoute(
               path: 'newgroup',
-              pageBuilder: (context, state) => defaultPageBuilder(
-                context,
-                state,
-                const NewGroup(),
-              ),
+              pageBuilder: (context, state) =>
+                  defaultPageBuilder(context, state, const NewGroup()),
               redirect: loggedOutRedirect,
             ),
             ShellRoute(
@@ -334,9 +325,7 @@ abstract class AppRoutes {
                   pageBuilder: (context, state) => defaultPageBuilder(
                     context,
                     state,
-                    ChatSearchPage(
-                      roomId: state.pathParameters['roomid']!,
-                    ),
+                    ChatSearchPage(roomId: state.pathParameters['roomid']!),
                   ),
                   redirect: loggedOutRedirect,
                 ),
@@ -356,9 +345,7 @@ abstract class AppRoutes {
                   pageBuilder: (context, state) => defaultPageBuilder(
                     context,
                     state,
-                    ChatDetails(
-                      roomId: state.pathParameters['roomid']!,
-                    ),
+                    ChatDetails(roomId: state.pathParameters['roomid']!),
                   ),
                   routes: [
                     GoRoute(
@@ -418,23 +405,21 @@ abstract class AppRoutes {
     BuildContext context,
     GoRouterState state,
     Widget child,
-  ) =>
-      NoTransitionPage(
-        key: state.pageKey,
-        restorationId: state.pageKey.value,
-        child: child,
-      );
+  ) => NoTransitionPage(
+    key: state.pageKey,
+    restorationId: state.pageKey.value,
+    child: child,
+  );
 
   static Page defaultPageBuilder(
     BuildContext context,
     GoRouterState state,
     Widget child,
-  ) =>
-      FluffyThemes.isColumnMode(context)
-          ? noTransitionPageBuilder(context, state, child)
-          : MaterialPage(
-              key: state.pageKey,
-              restorationId: state.pageKey.value,
-              child: child,
-            );
+  ) => FluffyThemes.isColumnMode(context)
+      ? noTransitionPageBuilder(context, state, child)
+      : MaterialPage(
+          key: state.pageKey,
+          restorationId: state.pageKey.value,
+          child: child,
+        );
 }
