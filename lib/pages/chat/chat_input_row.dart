@@ -482,8 +482,7 @@ class ChatInputRow extends StatelessWidget {
                               keyboardType: TextInputType.multiline,
                               textInputAction:
                                   AppSettings.sendOnEnter.value == true &&
-                                          (PlatformInfos.isMobile ||
-                                              PlatformInfos.isMacOS)
+                                          PlatformInfos.isMobile
                                       ? TextInputAction.send
                                       : null,
                               onSubmitted: controller.onInputBarSubmitted,
