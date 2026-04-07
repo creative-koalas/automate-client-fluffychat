@@ -167,8 +167,15 @@ class _MessageSearchResultListTile extends StatelessWidget {
         builder: (context, snapshot) {
           final user = snapshot.data ?? event.senderFromMemoryOrFallback;
           final sender = _resolveSenderPresentation(context, user);
+          void navigateToEvent() => context.go(
+                '/${Uri(
+                  pathSegments: ['rooms', room.id],
+                  queryParameters: {'event': event.eventId},
+                )}',
+              );
 
           return ListTile(
+            onTap: navigateToEvent,
             title: Row(
               children: [
                 Avatar(
@@ -212,15 +219,12 @@ class _MessageSearchResultListTile extends StatelessWidget {
               maxLines: 7,
               overflow: TextOverflow.ellipsis,
             ),
-            trailing: IconButton(
-              icon: const Icon(
-                Icons.chevron_right_outlined,
-              ),
-              onPressed: () => context.go(
-                '/${Uri(
-                  pathSegments: ['rooms', room.id],
-                  queryParameters: {'event': event.eventId},
-                )}',
+            trailing: IgnorePointer(
+              child: IconButton(
+                icon: const Icon(
+                  Icons.chevron_right_outlined,
+                ),
+                onPressed: () {},
               ),
             ),
           );
