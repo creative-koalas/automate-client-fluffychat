@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:matrix/matrix.dart';
 import 'package:slugify/slugify.dart';
@@ -6,13 +7,17 @@ import 'package:slugify/slugify.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/utils/matrix_input_mention.dart';
+import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/widgets/avatar.dart';
+
+enum _MentionPickerPresentation { sheet, dialog }
 
 Future<List<String>?> showMobileMentionPickerSheet({
   required BuildContext context,
   required Room room,
   required List<User> participants,
   String initialQuery = '',
+  bool allowSendDirectly = false,
 }) {
   return showModalBottomSheet<List<String>>(
     context: context,
@@ -22,32 +27,64 @@ Future<List<String>?> showMobileMentionPickerSheet({
     backgroundColor: Colors.transparent,
     builder: (context) => FractionallySizedBox(
       heightFactor: 0.75,
-      child: _MobileMentionPickerSheet(
+      child: _MentionPickerPanel(
         room: room,
         participants: participants,
         initialQuery: initialQuery,
+        allowSendDirectly: allowSendDirectly,
+        presentation: _MentionPickerPresentation.sheet,
       ),
     ),
   );
 }
 
-class _MobileMentionPickerSheet extends StatefulWidget {
+Future<List<String>?> showMentionPickerDialog({
+  required BuildContext context,
+  required Room room,
+  required List<User> participants,
+  String initialQuery = '',
+  bool allowSendDirectly = false,
+}) {
+  return showDialog<List<String>>(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
+        child: _MentionPickerPanel(
+          room: room,
+          participants: participants,
+          initialQuery: initialQuery,
+          allowSendDirectly: allowSendDirectly,
+          presentation: _MentionPickerPresentation.dialog,
+        ),
+      ),
+    ),
+  );
+}
+
+class _MentionPickerPanel extends StatefulWidget {
   final Room room;
   final List<User> participants;
   final String initialQuery;
+  final bool allowSendDirectly;
+  final _MentionPickerPresentation presentation;
 
-  const _MobileMentionPickerSheet({
+  const _MentionPickerPanel({
     required this.room,
     required this.participants,
     required this.initialQuery,
+    this.allowSendDirectly = false,
+    required this.presentation,
   });
 
   @override
-  State<_MobileMentionPickerSheet> createState() =>
-      _MobileMentionPickerSheetState();
+  State<_MentionPickerPanel> createState() => _MentionPickerPanelState();
 }
 
-class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
+class _MentionPickerPanelState extends State<_MentionPickerPanel> {
   late final TextEditingController _searchController = TextEditingController(
     text: widget.initialQuery,
   )..addListener(_handleSearchChanged);
@@ -91,6 +128,24 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
       return;
     }
     Navigator.of(context).pop(mentions);
+  }
+
+  void _sendDirectly() {
+    Navigator.of(context).pop(const <String>[]);
+  }
+
+  bool get _isDesktopDialog =>
+      widget.presentation == _MentionPickerPresentation.dialog &&
+      PlatformInfos.isDesktop;
+
+  void _triggerPrimaryAction() {
+    if (_multiSelectEnabled) {
+      _confirmSelection();
+      return;
+    }
+    if (widget.allowSendDirectly) {
+      _sendDirectly();
+    }
   }
 
   List<String> _selectedMentions() {
@@ -203,16 +258,16 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
     final candidates = _buildCandidates(l10n);
-
-    return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Material(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
+    final isSheet = widget.presentation == _MentionPickerPresentation.sheet;
+    final content = Material(
+      color: theme.colorScheme.surface,
+      borderRadius: isSheet
+          ? const BorderRadius.vertical(top: Radius.circular(28))
+          : BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          if (isSheet) ...[
             const SizedBox(height: 10),
             Container(
               width: 40,
@@ -223,148 +278,191 @@ class _MobileMentionPickerSheetState extends State<_MobileMentionPickerSheet> {
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-              child: Row(
-                children: [
-                  const SizedBox(width: 72),
-                  Expanded(
-                    child: Text(
-                      l10n.mentionHintTitle,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 72,
-                    child: _multiSelectEnabled
-                        ? TextButton(
-                            onPressed: () => _toggleMultiSelect(false),
-                            child: Text(l10n.cancel),
-                          )
-                        : TextButton(
-                            onPressed: () => _toggleMultiSelect(true),
-                            child: Text(_multiSelectLabel(context)),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: theme.colorScheme.secondaryContainer,
-                  hintText: l10n.search,
-                  prefixIcon: const Icon(Icons.search_outlined),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: candidates.isEmpty
-                  ? Center(
-                      child: Text(
-                        l10n.nothingFound,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                      itemCount: candidates.length,
-                      separatorBuilder: (context, index) => Divider(
-                        height: 1,
-                        indent: 72,
-                        endIndent: 16,
-                        color: theme.colorScheme.outlineVariant.withValues(
-                          alpha: 0.3,
-                        ),
-                      ),
-                      itemBuilder: (context, index) {
-                        final candidate = candidates[index];
-                        final selected = _selectedKeys.contains(candidate.key);
-                        return ListTile(
-                          selected: selected,
-                          selectedTileColor:
-                              theme.colorScheme.primaryContainer.withValues(
-                            alpha: 0.35,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          leading: candidate.isEveryone
-                              ? CircleAvatar(
-                                  backgroundColor:
-                                      theme.colorScheme.primaryContainer,
-                                  child: Icon(
-                                    Icons.groups_rounded,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                  ),
-                                )
-                              : Avatar(
-                                  mxContent: candidate.avatarUri,
-                                  name: candidate.title,
-                                  client: widget.room.client,
-                                ),
-                          title: Text(
-                            candidate.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: candidate.subtitle == null
-                              ? null
-                              : Text(
-                                  candidate.subtitle!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                          trailing: _multiSelectEnabled
-                              ? Checkbox.adaptive(
-                                  value: selected,
-                                  onChanged: (_) => _toggleCandidate(candidate),
-                                )
-                              : const Icon(Icons.chevron_right_rounded),
-                          onTap: () {
-                            if (_multiSelectEnabled) {
-                              _toggleCandidate(candidate);
-                              return;
-                            }
-                            Navigator.of(context).pop([candidate.mention]);
-                          },
-                        );
-                      },
-                    ),
-            ),
-            if (_multiSelectEnabled)
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed:
-                          _selectedKeys.isEmpty ? null : _confirmSelection,
-                      child: Text(l10n.confirm),
-                    ),
-                  ),
-                ),
-              ),
           ],
-        ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, isSheet ? 10 : 16, 16, 4),
+            child: Row(
+              children: [
+                const SizedBox(width: 72),
+                Expanded(
+                  child: Text(
+                    l10n.mentionHintTitle,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 72,
+                  child: _multiSelectEnabled
+                      ? TextButton(
+                          onPressed: () => _toggleMultiSelect(false),
+                          child: Text(l10n.cancel),
+                        )
+                      : TextButton(
+                          onPressed: () => _toggleMultiSelect(true),
+                          child: Text(_multiSelectLabel(context)),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              textInputAction: TextInputAction.search,
+              onSubmitted:
+                  _isDesktopDialog ? (_) => _triggerPrimaryAction() : null,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: theme.colorScheme.secondaryContainer,
+                hintText: l10n.search,
+                prefixIcon: const Icon(Icons.search_outlined),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: candidates.isEmpty
+                ? Center(
+                    child: Text(
+                      l10n.nothingFound,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                    itemCount: candidates.length,
+                    separatorBuilder: (context, index) => Divider(
+                      height: 1,
+                      indent: 72,
+                      endIndent: 16,
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.3,
+                      ),
+                    ),
+                    itemBuilder: (context, index) {
+                      final candidate = candidates[index];
+                      final selected = _selectedKeys.contains(candidate.key);
+                      return ListTile(
+                        selected: selected,
+                        selectedTileColor:
+                            theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.35,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        leading: candidate.isEveryone
+                            ? CircleAvatar(
+                                backgroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                child: Icon(
+                                  Icons.groups_rounded,
+                                  color:
+                                      theme.colorScheme.onPrimaryContainer,
+                                ),
+                              )
+                            : Avatar(
+                                mxContent: candidate.avatarUri,
+                                name: candidate.title,
+                                client: widget.room.client,
+                              ),
+                        title: Text(
+                          candidate.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: candidate.subtitle == null
+                            ? null
+                            : Text(
+                                candidate.subtitle!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                        trailing: _multiSelectEnabled
+                            ? Checkbox.adaptive(
+                                value: selected,
+                                onChanged: (_) => _toggleCandidate(candidate),
+                              )
+                            : const Icon(Icons.chevron_right_rounded),
+                        onTap: () {
+                          if (_multiSelectEnabled) {
+                            _toggleCandidate(candidate);
+                            return;
+                          }
+                          Navigator.of(context).pop([candidate.mention]);
+                        },
+                      );
+                    },
+                  ),
+          ),
+          if (_multiSelectEnabled || widget.allowSendDirectly)
+            _buildFooter(context, l10n, isSheet),
+        ],
       ),
     );
+
+    if (!isSheet) {
+      if (!_isDesktopDialog) {
+        return content;
+      }
+      return CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          LogicalKeySet(LogicalKeyboardKey.enter): _triggerPrimaryAction,
+          LogicalKeySet(LogicalKeyboardKey.numpadEnter): _triggerPrimaryAction,
+        },
+        child: content,
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: content,
+    );
+  }
+
+  Widget _buildFooter(BuildContext context, L10n l10n, bool isSheet) {
+    Widget child = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_multiSelectEnabled)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _selectedKeys.isEmpty ? null : _confirmSelection,
+                autofocus: _isDesktopDialog,
+                child: Text(l10n.confirm),
+              ),
+            ),
+          if (widget.allowSendDirectly && !_multiSelectEnabled)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _sendDirectly,
+                autofocus: _isDesktopDialog,
+                child: Text(l10n.sendDirectly),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (isSheet) {
+      child = SafeArea(top: false, child: child);
+    }
+
+    return child;
   }
 }
 

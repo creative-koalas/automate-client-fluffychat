@@ -37,7 +37,6 @@ import 'package:psygo/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:psygo/pages/chat_details/chat_details.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/services/agent_service.dart';
-import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/services/chat_room_guide_service.dart';
 import 'package:psygo/services/employee_work_template_service.dart';
 import 'package:psygo/services/employee_work_template_visibility_service.dart';
@@ -1940,11 +1939,11 @@ class ChatController extends State<ChatPageWithRoom>
         (promptMentionIfMissing ?? _groupSendShouldPromptMention);
     // 群聊中，消息不含 @ 时按发送模式弹出 mention 提示
     if (shouldPromptMention && !trimmedText.contains('@')) {
-      final mention = await _showMentionHint();
-      if (mention == null) return; // 用户取消
-      if (mention.isNotEmpty) {
+      final mentions = await _showMentionHint();
+      if (mentions == null) return; // 用户取消
+      if (mentions.isNotEmpty) {
         // 用户选择了成员，插入 @mention 到消息最前面
-        sendController.text = '$mention ${sendController.text}';
+        sendController.text = '${mentions.join(' ')} ${sendController.text}';
         sendController.selection = TextSelection.collapsed(
           offset: sendController.text.length,
         );
@@ -1953,7 +1952,7 @@ class ChatController extends State<ChatPageWithRoom>
           return;
         }
       }
-      // mention 为空字符串表示"直接发送"
+      // mentions 为空列表表示"直接发送"
     }
 
     var outgoingText = replaceInputMentionsWithMatrixIds(
@@ -1986,9 +1985,9 @@ class ChatController extends State<ChatPageWithRoom>
   /// 群聊发送时弹出 mention 提示。
   /// 返回值：
   ///   null  — 用户取消（不发送）
-  ///   ''    — 用户选择"直接发送"
-  ///   '@xx' — 用户选择了某个成员的 mention 文本
-  Future<String?> _showMentionHint() async {
+  ///   []    — 用户选择"直接发送"
+  ///   [..]  — 用户选择了一个或多个 mention 文本
+  Future<List<String>?> _showMentionHint() async {
     await _ensureMentionParticipantsLoaded();
     final selfId = room.client.userID;
 
@@ -1996,7 +1995,7 @@ class ChatController extends State<ChatPageWithRoom>
     final participants =
         room.getParticipants().where((u) => u.id != selfId).toList();
 
-    if (participants.isEmpty) return '';
+    if (participants.isEmpty) return const <String>[];
 
     if (PlatformInfos.isDesktop) {
       return _showMentionHintDialog(participants);
@@ -2004,182 +2003,22 @@ class ChatController extends State<ChatPageWithRoom>
     return _showMentionHintBottomSheet(participants);
   }
 
-  Future<String?> _showMentionHintDialog(List<User> participants) {
-    final l10n = L10n.of(context);
-    final theme = Theme.of(context);
-
-    return showDialog<String>(
+  Future<List<String>?> _showMentionHintDialog(List<User> participants) {
+    return showMentionPickerDialog(
       context: context,
-      builder: (context) {
-        void sendDirectly() => Navigator.of(context).pop('');
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 480),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 标题
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                  child: Text(
-                    l10n.mentionHintTitle,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                // 成员列表
-                Flexible(child: _buildParticipantList(participants, theme)),
-                // 底部按钮
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(l10n.cancel),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          autofocus: true,
-                          onPressed: sendDirectly,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(l10n.sendDirectly),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      room: room,
+      participants: participants,
+      allowSendDirectly: true,
     );
   }
 
-  Future<String?> _showMentionHintBottomSheet(List<User> participants) {
-    final l10n = L10n.of(context);
-    final theme = Theme.of(context);
-
-    return showModalBottomSheet<String>(
+  Future<List<String>?> _showMentionHintBottomSheet(List<User> participants) {
+    inputFocus.unfocus();
+    return showMobileMentionPickerSheet(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: false,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 拖拽指示器
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.4,
-                    ),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              // 标题
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Text(
-                  l10n.mentionHintTitle,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              // 成员列表
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.4,
-                ),
-                child: _buildParticipantList(participants, theme),
-              ),
-              // 直接发送按钮
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(''),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(l10n.sendDirectly),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildParticipantList(List<User> participants, ThemeData theme) {
-    final l10n = L10n.of(context);
-    final mentionEveryone = _normalizedEveryoneMentionLabel(
-      l10n.mentionEveryone,
-    );
-    // +1 for the localized "@everyone" entry at the top
-    return ListView.builder(
-      shrinkWrap: true,
-      itemCount: participants.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: Icon(
-                Icons.groups,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-            ),
-            title: Text(mentionEveryone),
-            onTap: () => Navigator.of(context).pop(mentionEveryone),
-          );
-        }
-        final user = participants[index - 1];
-        AgentService.instance.ensureMatrixProfilePresentation(user);
-        final displayName = AgentService.instance.resolveDisplayName(user);
-        final avatarUri = AgentService.instance.resolveAvatarUri(user);
-        final mention = buildInputMentionByUser(room: room, user: user);
-        return ListTile(
-          leading: Avatar(mxContent: avatarUri, name: displayName),
-          title: Text(displayName),
-          onTap: () => Navigator.of(context).pop(mention),
-        );
-      },
+      room: room,
+      participants: participants,
+      allowSendDirectly: true,
     );
   }
 
