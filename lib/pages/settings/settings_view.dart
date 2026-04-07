@@ -130,42 +130,43 @@ class SettingsView extends StatelessWidget {
                         child: Row(
                           children: [
                             // 头像带装饰环
-                            GestureDetector(
-                              onTap: controller.setAvatarAction,
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          theme.colorScheme.primary,
-                                          theme.colorScheme.tertiary,
-                                        ],
-                                      ),
-                                    ),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(3),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: controller.setAvatarAction,
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: theme.colorScheme.surface,
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            theme.colorScheme.primary,
+                                            theme.colorScheme.tertiary,
+                                          ],
+                                        ),
                                       ),
-                                      child: Avatar(
-                                        mxContent: avatar,
-                                        name: displayname,
-                                        size: Avatar.defaultSize * 2,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: theme.colorScheme.surface,
+                                        ),
+                                        child: Avatar(
+                                          mxContent: avatar,
+                                          name: displayname,
+                                          size: Avatar.defaultSize * 2,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  // 编辑图标
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
+                                    // 编辑图标
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
                                       child: Container(
                                         padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
@@ -187,8 +188,8 @@ class SettingsView extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -198,36 +199,40 @@ class SettingsView extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   // 显示昵称（点击可编辑）
-                                  GestureDetector(
-                                    onTap: controller.setDisplaynameAction,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            displayname,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w700,
-                                              color:
-                                                  theme.colorScheme.onSurface,
-                                              letterSpacing: -0.3,
+                                  MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: controller.setDisplaynameAction,
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                displayname,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: theme
+                                                      .colorScheme.onSurface,
+                                                  letterSpacing: -0.3,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            const SizedBox(width: 6),
+                                            Icon(
+                                              Icons.edit_rounded,
+                                              size: 16,
+                                              color: theme
+                                                  .colorScheme.onSurface
+                                                  .withValues(alpha: 0.5),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 6),
-                                        MouseRegion(
-                                          cursor: SystemMouseCursors.click,
-                                          child: Icon(
-                                            Icons.edit_rounded,
-                                            size: 16,
-                                            color: theme.colorScheme.onSurface
-                                                .withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
