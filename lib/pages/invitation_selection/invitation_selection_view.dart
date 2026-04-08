@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/models/agent.dart';
 import 'package:psygo/models/invite_candidate.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
+import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/layouts/max_width_body.dart';
 import 'package:psygo/widgets/matrix.dart';
@@ -43,6 +45,7 @@ class InvitationSelectionView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
+                controller: controller.controller,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   filled: true,
@@ -74,78 +77,82 @@ class InvitationSelectionView extends StatelessWidget {
                 onChanged: controller.searchUserWithCoolDown,
               ),
             ),
-            StreamBuilder<Object>(
-              stream: room.client.onRoomState.stream
-                  .where((update) => update.roomId == room.id),
-              builder: (context, snapshot) {
-                final participants = {
-                  ...room.getParticipants().map((user) => user.id),
-                  ...controller.memberIds,
-                };
-                final isSearchMode =
-                    controller.controller.text.trim().isNotEmpty ||
-                        controller.loading;
-                return isSearchMode
-                    ? controller.foundCandidates.isEmpty && !controller.loading
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: Text(
-                                L10n.of(context).noUsersFoundWithQuery(
-                                  controller.controller.text.trim(),
+            ValueListenableBuilder<List<Agent>>(
+              valueListenable: AgentService.instance.agentsNotifier,
+              builder: (context, _, __) => StreamBuilder<Object>(
+                stream: room.client.onRoomState.stream
+                    .where((update) => update.roomId == room.id),
+                builder: (context, snapshot) {
+                  final participants = {
+                    ...room.getParticipants().map((user) => user.id),
+                    ...controller.memberIds,
+                  };
+                  final isSearchMode =
+                      controller.currentSearchTerm.isNotEmpty ||
+                          controller.loading;
+                  return isSearchMode
+                      ? controller.foundCandidates.isEmpty &&
+                              !controller.loading
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 32),
+                              child: Center(
+                                child: Text(
+                                  L10n.of(context).noUsersFoundWithQuery(
+                                    controller.currentSearchTerm,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        : ListView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: controller.foundCandidates.length,
-                            itemBuilder: (BuildContext context, int i) =>
-                                _InviteContactListTile(
-                              candidate: controller.foundCandidates[i],
-                              canInvite: room.canInvite,
-                              isMember: participants.contains(
-                                controller.foundCandidates[i].matrixUserId,
+                            )
+                          : ListView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              itemCount: controller.foundCandidates.length,
+                              itemBuilder: (BuildContext context, int i) =>
+                                  _InviteContactListTile(
+                                candidate: controller.foundCandidates[i],
+                                canInvite: room.canInvite,
+                                isMember: participants.contains(
+                                  controller.foundCandidates[i].matrixUserId,
+                                ),
+                                onTap: () => controller.inviteAction(
+                                  context,
+                                  controller.foundCandidates[i].matrixUserId,
+                                  controller.foundCandidates[i].displayName,
+                                ),
                               ),
-                              onTap: () => controller.inviteAction(
-                                context,
-                                controller.foundCandidates[i].matrixUserId,
-                                controller.foundCandidates[i].displayName,
-                              ),
-                            ),
-                          )
-                    : FutureBuilder<List<InviteCandidate>>(
-                        future: controller.getContacts(context),
-                        builder: (BuildContext context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const Center(
-                              child: CircularProgressIndicator.adaptive(
-                                strokeWidth: 2,
+                            )
+                      : FutureBuilder<List<InviteCandidate>>(
+                          future: controller.getContacts(context),
+                          builder: (BuildContext context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator.adaptive(
+                                  strokeWidth: 2,
+                                ),
+                              );
+                            }
+                            final contacts = snapshot.data!;
+                            return ListView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              itemCount: contacts.length,
+                              itemBuilder: (BuildContext context, int i) =>
+                                  _InviteContactListTile(
+                                candidate: contacts[i],
+                                canInvite: room.canInvite,
+                                isMember: participants
+                                    .contains(contacts[i].matrixUserId),
+                                onTap: () => controller.inviteAction(
+                                  context,
+                                  contacts[i].matrixUserId,
+                                  contacts[i].displayName,
+                                ),
                               ),
                             );
-                          }
-                          final contacts = snapshot.data!;
-                          return ListView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: contacts.length,
-                            itemBuilder: (BuildContext context, int i) =>
-                                _InviteContactListTile(
-                              candidate: contacts[i],
-                              canInvite: room.canInvite,
-                              isMember: participants
-                                  .contains(contacts[i].matrixUserId),
-                              onTap: () => controller.inviteAction(
-                                context,
-                                contacts[i].matrixUserId,
-                                contacts[i].displayName,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-              },
+                          },
+                        );
+                },
+              ),
             ),
           ],
         ),
@@ -167,15 +174,62 @@ class _InviteContactListTile extends StatelessWidget {
     required this.onTap,
   });
 
+  String? _matrixLocalpart() {
+    var normalizedValue = candidate.matrixUserId.trim();
+    if (normalizedValue.isEmpty) {
+      return null;
+    }
+    if (normalizedValue.startsWith('@')) {
+      normalizedValue = normalizedValue.substring(1);
+    }
+    final separatorIndex = normalizedValue.indexOf(':');
+    if (separatorIndex >= 0) {
+      normalizedValue = normalizedValue.substring(0, separatorIndex);
+    }
+    normalizedValue = normalizedValue.trim();
+    return normalizedValue.isEmpty ? null : normalizedValue;
+  }
+
+  String? _meaningfulDisplayLabel(String? value) {
+    final normalizedValue = value?.trim();
+    if (normalizedValue == null || normalizedValue.isEmpty) {
+      return null;
+    }
+    final localpart = _matrixLocalpart();
+    if (normalizedValue == candidate.matrixUserId ||
+        (localpart != null &&
+            localpart.isNotEmpty &&
+            normalizedValue == localpart)) {
+      return null;
+    }
+    return normalizedValue;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final agentService = AgentService.instance;
+    final resolvedDisplayName = agentService
+        .resolveDisplayNameByMatrixUserId(
+          candidate.matrixUserId,
+          fallbackDisplayName: candidate.displayName,
+        )
+        .trim();
+    final displayName = _meaningfulDisplayLabel(candidate.nickname) ??
+        _meaningfulDisplayLabel(candidate.displayName) ??
+        (resolvedDisplayName.isNotEmpty
+            ? resolvedDisplayName
+            : (_matrixLocalpart() ?? candidate.matrixUserId));
+    final avatarUri = agentService.resolveAvatarUriByMatrixUserId(
+      candidate.matrixUserId,
+      fallbackAvatarUri: candidate.avatarUrl,
+    );
 
     return ListTile(
       leading: Avatar(
-        mxContent: candidate.avatarUrl,
-        name: candidate.displayName,
+        mxContent: avatarUri,
+        name: displayName,
         presenceUserId: candidate.matrixUserId,
         onTap: () => UserDialog.show(
           context: context,
@@ -183,7 +237,7 @@ class _InviteContactListTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        candidate.displayName,
+        displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

@@ -28,13 +28,14 @@ class InvitationSelectionController extends State<InvitationSelection> {
   final InviteCandidateRepository _inviteCandidateRepository =
       InviteCandidateRepository();
   TextEditingController controller = TextEditingController();
-  late String currentSearchTerm;
+  String currentSearchTerm = '';
   bool loading = false;
   List<InviteCandidate> foundCandidates = [];
   Set<String> memberIds = <String>{};
   Timer? coolDown;
   StreamSubscription? _roomStateSub;
   bool _inviteSuccessSnackBarVisible = false;
+  int _searchRequestVersion = 0;
 
   String? get roomId => widget.roomId;
 
@@ -73,17 +74,22 @@ class InvitationSelectionController extends State<InvitationSelection> {
   Future<List<InviteCandidate>> getContacts(BuildContext context) async {
     final client = Matrix.of(context).client;
     final contacts = client.rooms
-        .where((r) => r.isDirectChat)
+        .where(
+          (r) => r.isDirectChat && (r.directChatMatrixID?.isNotEmpty ?? false),
+        )
         .map(
-          (r) => InviteCandidate.fromUser(
+          (r) => _buildCandidateFromUser(
             r.unsafeGetUserFromMemoryOrFallback(r.directChatMatrixID!),
           ),
         )
+        .where(
+          (candidate) => candidate.matrixUserId.trim().isNotEmpty,
+        )
         .toList();
     contacts.sort(
-      (a, b) => a.displayName.toLowerCase().compareTo(
-            b.displayName.toLowerCase(),
-          ),
+      (a, b) => _candidateSortName(a).compareTo(
+        _candidateSortName(b),
+      ),
     );
     return contacts;
   }
@@ -166,6 +172,278 @@ class InvitationSelectionController extends State<InvitationSelection> {
     return matrixUserId.localpart ?? fallbackDisplayName;
   }
 
+  InviteCandidate _buildCandidateFromUser(User user) {
+    final matrixUserId = user.id.trim();
+    final agent = _agentService.getAgentByMatrixUserId(matrixUserId);
+    final fallbackDisplayName = user.displayName ?? user.calcDisplayname();
+    return _decorateCandidate(
+      InviteCandidate(
+        kind: agent != null
+            ? InviteCandidateKind.agent
+            : InviteCandidateKind.matrix,
+        matrixUserId: matrixUserId,
+        displayName: fallbackDisplayName.trim().isNotEmpty
+            ? fallbackDisplayName.trim()
+            : (matrixUserId.localpart ?? matrixUserId),
+        avatarUrl: user.avatarUrl,
+        agentId: agent?.agentId,
+        nickname: user.displayName?.trim(),
+        isActive: agent?.isActive ?? true,
+      ),
+    );
+  }
+
+  InviteCandidate _buildCandidateFromAgent(Agent agent) {
+    final matrixUserId = agent.matrixUserId?.trim() ?? '';
+    return _decorateCandidate(
+      InviteCandidate(
+        kind: InviteCandidateKind.agent,
+        matrixUserId: matrixUserId,
+        displayName: agent.displayName.trim().isNotEmpty
+            ? agent.displayName.trim()
+            : (agent.agentId.trim().isNotEmpty
+                ? agent.agentId.trim()
+                : (matrixUserId.localpart ?? matrixUserId)),
+        avatarUrl: _agentService.parseAvatarUri(agent.avatarUrl),
+        agentId: agent.agentId.trim().isNotEmpty ? agent.agentId.trim() : null,
+        nickname: agent.displayName.trim().isNotEmpty
+            ? agent.displayName.trim()
+            : null,
+        isActive: agent.isActive,
+      ),
+    );
+  }
+
+  InviteCandidate _decorateCandidate(InviteCandidate candidate) {
+    final matrixUserId = candidate.matrixUserId.trim();
+    if (matrixUserId.isEmpty) {
+      return candidate;
+    }
+
+    final agent = _agentService.getAgentByMatrixUserId(matrixUserId);
+    final preferredDisplayName =
+        _meaningfulDisplayLabel(candidate.nickname, matrixUserId) ??
+            _meaningfulDisplayLabel(candidate.displayName, matrixUserId);
+    final resolvedDisplayName = preferredDisplayName ??
+        _agentService
+            .resolveDisplayNameByMatrixUserId(
+              matrixUserId,
+              fallbackDisplayName: _preferNonEmpty(
+                candidate.nickname,
+                candidate.displayName,
+              ),
+            )
+            .trim();
+    final normalizedDisplayName = resolvedDisplayName.isNotEmpty
+        ? resolvedDisplayName
+        : (matrixUserId.localpart ?? matrixUserId);
+
+    return candidate.copyWith(
+      kind: agent != null ? InviteCandidateKind.agent : candidate.kind,
+      displayName: normalizedDisplayName,
+      avatarUrl: _agentService.resolveAvatarUriByMatrixUserId(
+        matrixUserId,
+        fallbackAvatarUri: candidate.avatarUrl,
+      ),
+      agentId: _preferNonEmpty(candidate.agentId, agent?.agentId),
+      nickname: _preferNonEmpty(
+        _meaningfulDisplayLabel(candidate.nickname, matrixUserId),
+        _preferNonEmpty(
+          _meaningfulDisplayLabel(candidate.displayName, matrixUserId),
+          _meaningfulDisplayLabel(agent?.displayName, matrixUserId),
+        ),
+      ),
+      isActive: candidate.isActive && (agent?.isActive ?? true),
+    );
+  }
+
+  InviteCandidate _mergeCandidate(
+    InviteCandidate primary,
+    InviteCandidate secondary,
+  ) {
+    return _decorateCandidate(
+      primary.copyWith(
+        kind: primary.kind != InviteCandidateKind.matrix
+            ? primary.kind
+            : secondary.kind,
+        displayName:
+            _preferNonEmpty(primary.displayName, secondary.displayName),
+        avatarUrl: primary.avatarUrl ?? secondary.avatarUrl,
+        userId: _preferNonEmpty(primary.userId, secondary.userId),
+        agentId: _preferNonEmpty(primary.agentId, secondary.agentId),
+        nickname: _preferNonEmpty(primary.nickname, secondary.nickname),
+        isActive: primary.isActive && secondary.isActive,
+      ),
+    );
+  }
+
+  String? _preferNonEmpty(String? primary, String? secondary) {
+    final normalizedPrimary = primary?.trim();
+    if (normalizedPrimary != null && normalizedPrimary.isNotEmpty) {
+      return normalizedPrimary;
+    }
+    final normalizedSecondary = secondary?.trim();
+    if (normalizedSecondary != null && normalizedSecondary.isNotEmpty) {
+      return normalizedSecondary;
+    }
+    return null;
+  }
+
+  String? _meaningfulDisplayLabel(String? value, String matrixUserId) {
+    final normalizedValue = value?.trim();
+    if (normalizedValue == null || normalizedValue.isEmpty) {
+      return null;
+    }
+    final localpart = matrixUserId.localpart?.trim();
+    if (normalizedValue == matrixUserId ||
+        (localpart != null &&
+            localpart.isNotEmpty &&
+            normalizedValue == localpart)) {
+      return null;
+    }
+    return normalizedValue;
+  }
+
+  String _candidateSortName(InviteCandidate candidate) {
+    final matrixUserId = candidate.matrixUserId.trim();
+    final preferredName =
+        _meaningfulDisplayLabel(candidate.nickname, matrixUserId) ??
+            _meaningfulDisplayLabel(candidate.displayName, matrixUserId);
+    return (preferredName ?? matrixUserId.localpart ?? matrixUserId)
+        .trim()
+        .toLowerCase();
+  }
+
+  List<InviteCandidate> _searchLocalCandidates(Client client, String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const <InviteCandidate>[];
+    }
+
+    final results = <InviteCandidate>[];
+    final seen = <String>{};
+
+    void addCandidate(InviteCandidate candidate) {
+      final matrixUserId = candidate.matrixUserId.trim();
+      if (matrixUserId.isEmpty ||
+          seen.contains(matrixUserId) ||
+          !_matchesCandidateQuery(candidate, normalizedQuery)) {
+        return;
+      }
+      seen.add(matrixUserId);
+      results.add(_decorateCandidate(candidate));
+    }
+
+    for (final room in client.rooms) {
+      if (!room.isDirectChat ||
+          (room.directChatMatrixID?.isNotEmpty ?? false) == false) {
+        continue;
+      }
+      addCandidate(
+        _buildCandidateFromUser(
+          room.unsafeGetUserFromMemoryOrFallback(room.directChatMatrixID!),
+        ),
+      );
+    }
+
+    for (final agent in _agentService.agents) {
+      if (!agent.isActive) {
+        continue;
+      }
+      final candidate = _buildCandidateFromAgent(agent);
+      if (candidate.matrixUserId.trim().isEmpty) {
+        continue;
+      }
+      addCandidate(candidate);
+    }
+
+    results.sort(
+      (a, b) => _compareCandidatesByQuery(
+        normalizedQuery,
+        a,
+        b,
+      ),
+    );
+    return results;
+  }
+
+  bool _matchesCandidateQuery(
+    InviteCandidate candidate,
+    String normalizedQuery,
+  ) {
+    final searchFields = <String>[
+      candidate.displayName,
+      candidate.nickname ?? '',
+      candidate.agentId ?? '',
+      candidate.userId ?? '',
+      candidate.secondaryIdentifier,
+      candidate.matrixUserId,
+    ];
+
+    return searchFields.any(
+      (field) => field.trim().toLowerCase().contains(normalizedQuery),
+    );
+  }
+
+  int _compareCandidatesByQuery(
+    String normalizedQuery,
+    InviteCandidate left,
+    InviteCandidate right,
+  ) {
+    final leftRank = _candidateRank(normalizedQuery, left);
+    final rightRank = _candidateRank(normalizedQuery, right);
+    if (leftRank != rightRank) {
+      return leftRank.compareTo(rightRank);
+    }
+
+    final leftName = _candidateSortName(left);
+    final rightName = _candidateSortName(right);
+    if (leftName != rightName) {
+      return leftName.compareTo(rightName);
+    }
+
+    return left.matrixUserId.trim().toLowerCase().compareTo(
+          right.matrixUserId.trim().toLowerCase(),
+        );
+  }
+
+  int _candidateRank(String normalizedQuery, InviteCandidate candidate) {
+    final primaryId =
+        _preferNonEmpty(candidate.userId, candidate.agentId)?.toLowerCase() ??
+            '';
+    final displayName = candidate.displayName.trim().toLowerCase();
+    final nickname = candidate.nickname?.trim().toLowerCase() ?? '';
+    final matrixUserId = candidate.matrixUserId.trim().toLowerCase();
+
+    switch (true) {
+      case true when primaryId == normalizedQuery:
+        return 0;
+      case true
+          when displayName == normalizedQuery || nickname == normalizedQuery:
+        return 1;
+      case true when matrixUserId == normalizedQuery:
+        return 2;
+      case true when primaryId.startsWith(normalizedQuery):
+        return 3;
+      case true
+          when displayName.startsWith(normalizedQuery) ||
+              nickname.startsWith(normalizedQuery):
+        return 4;
+      case true when matrixUserId.startsWith(normalizedQuery):
+        return 5;
+      case true when primaryId.contains(normalizedQuery):
+        return 6;
+      case true
+          when displayName.contains(normalizedQuery) ||
+              nickname.contains(normalizedQuery):
+        return 7;
+      case true when matrixUserId.contains(normalizedQuery):
+        return 8;
+      default:
+        return 99;
+    }
+  }
+
   void inviteAction(BuildContext context, String id, String displayname) async {
     final l10n = L10n.of(context);
     final client = Matrix.of(context).client;
@@ -236,45 +514,59 @@ class InvitationSelectionController extends State<InvitationSelection> {
 
   void searchUser(BuildContext context, String text) async {
     coolDown?.cancel();
-    if (text.isEmpty) {
+    final normalizedText = text.trim();
+    final requestVersion = ++_searchRequestVersion;
+    currentSearchTerm = normalizedText;
+
+    if (normalizedText.isEmpty) {
+      if (!mounted) return;
       setState(() {
         foundCandidates = [];
         loading = false;
       });
-      currentSearchTerm = '';
       return;
     }
-    currentSearchTerm = text.trim();
-    if (currentSearchTerm.isEmpty) {
-      setState(() => loading = false);
-      return;
-    }
+
+    if (!mounted) return;
     setState(() => loading = true);
+
     final client = Matrix.of(context).client;
+    final localCandidates = _searchLocalCandidates(client, normalizedText);
     var backendCandidates = const <InviteCandidate>[];
     var matrixCandidates = const <InviteCandidate>[];
     Object? firstError;
     try {
       backendCandidates =
           await _inviteCandidateRepository.searchInviteCandidates(
-        query: currentSearchTerm,
+        query: normalizedText,
         limit: 20,
       );
     } catch (e) {
       firstError ??= e;
     }
     try {
-      matrixCandidates =
-          await _searchMatrixCandidates(client, currentSearchTerm);
+      matrixCandidates = await _searchMatrixCandidates(client, normalizedText);
     } catch (e) {
       firstError ??= e;
     }
 
-    if (!mounted || currentSearchTerm != text.trim()) {
+    if (!mounted ||
+        requestVersion != _searchRequestVersion ||
+        currentSearchTerm != normalizedText) {
       return;
     }
 
+    final mergedCandidates = _mergeCandidates(
+      backendCandidates,
+      localCandidates,
+      matrixCandidates,
+    ).toList(growable: true)
+      ..sort(
+        (left, right) => _compareCandidatesByQuery(normalizedText, left, right),
+      );
+
     if (backendCandidates.isEmpty &&
+        localCandidates.isEmpty &&
         matrixCandidates.isEmpty &&
         firstError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -283,10 +575,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
     }
 
     setState(() {
-      foundCandidates = _mergeCandidates(
-        backendCandidates,
-        matrixCandidates,
-      );
+      foundCandidates = mergedCandidates;
       loading = false;
     });
   }
@@ -298,11 +587,14 @@ class InvitationSelectionController extends State<InvitationSelection> {
     final response = await client.searchUserDirectory(text, limit: 10);
     final candidates = response.results
         .map(InviteCandidate.fromProfile)
+        .map(_decorateCandidate)
         .toList(growable: true);
     if (text.isValidMatrixId &&
         candidates.every((candidate) => candidate.matrixUserId != text)) {
       candidates.add(
-        InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
+        _decorateCandidate(
+          InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
+        ),
       );
     }
     return _filterRetiredOwnedAgentCandidates(client, candidates);
@@ -328,31 +620,34 @@ class InvitationSelectionController extends State<InvitationSelection> {
 
   List<InviteCandidate> _mergeCandidates(
     List<InviteCandidate> backendCandidates,
+    List<InviteCandidate> localCandidates,
     List<InviteCandidate> matrixCandidates,
   ) {
-    final merged = <InviteCandidate>[];
-    final seen = <String>{};
+    final merged = <String, InviteCandidate>{};
 
     void appendAll(List<InviteCandidate> items) {
       for (final item in items) {
-        final matrixUserId = item.matrixUserId.trim();
-        if (matrixUserId.isEmpty || seen.contains(matrixUserId)) {
+        final normalizedItem = _decorateCandidate(item);
+        final matrixUserId = normalizedItem.matrixUserId.trim();
+        if (matrixUserId.isEmpty || !normalizedItem.isActive) {
           continue;
         }
-        seen.add(matrixUserId);
-        merged.add(item);
+        final existing = merged[matrixUserId];
+        merged[matrixUserId] = existing == null
+            ? normalizedItem
+            : _mergeCandidate(existing, normalizedItem);
       }
     }
 
     appendAll(backendCandidates);
+    appendAll(localCandidates);
     appendAll(matrixCandidates);
-    return merged;
+    return merged.values.toList(growable: false);
   }
 
   @override
   void initState() {
     super.initState();
-    currentSearchTerm = '';
     unawaited(_agentService.refresh(forceRefresh: true));
     _refreshMemberIds();
     _roomStateSub = Matrix.of(context)
@@ -371,6 +666,7 @@ class InvitationSelectionController extends State<InvitationSelection> {
 
   @override
   void dispose() {
+    _searchRequestVersion++;
     coolDown?.cancel();
     controller.dispose();
     _roomStateSub?.cancel();

@@ -27,10 +27,34 @@ class InviteCandidate {
     this.isActive = true,
   });
 
+  InviteCandidate copyWith({
+    InviteCandidateKind? kind,
+    String? matrixUserId,
+    String? displayName,
+    Uri? avatarUrl,
+    bool clearAvatarUrl = false,
+    String? userId,
+    String? agentId,
+    String? nickname,
+    bool? isActive,
+  }) {
+    return InviteCandidate(
+      kind: kind ?? this.kind,
+      matrixUserId: matrixUserId ?? this.matrixUserId,
+      displayName: displayName ?? this.displayName,
+      avatarUrl: clearAvatarUrl ? null : (avatarUrl ?? this.avatarUrl),
+      userId: userId ?? this.userId,
+      agentId: agentId ?? this.agentId,
+      nickname: nickname ?? this.nickname,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   factory InviteCandidate.fromJson(Map<String, dynamic> json) {
     final rawKind = (json['kind'] as String? ?? '').trim().toLowerCase();
     final matrixUserId = (json['matrix_user_id'] as String? ?? '').trim();
     final displayName = (json['display_name'] as String? ?? '').trim();
+    final nickname = (json['nickname'] as String?)?.trim();
     final rawAvatarUrl = (json['avatar_url'] as String? ?? '').trim();
     return InviteCandidate(
       kind: switch (rawKind) {
@@ -41,11 +65,13 @@ class InviteCandidate {
       matrixUserId: matrixUserId,
       displayName: displayName.isNotEmpty
           ? displayName
-          : (matrixUserId.localpart ?? matrixUserId),
+          : ((nickname?.isNotEmpty ?? false)
+              ? nickname!
+              : (matrixUserId.localpart ?? matrixUserId)),
       avatarUrl: rawAvatarUrl.isEmpty ? null : Uri.tryParse(rawAvatarUrl),
       userId: (json['user_id'] as String?)?.trim(),
       agentId: (json['agent_id'] as String?)?.trim(),
-      nickname: (json['nickname'] as String?)?.trim(),
+      nickname: nickname,
       isActive: json['is_active'] as bool? ?? true,
     );
   }
