@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
 import 'package:matrix/matrix.dart';
 
 import 'package:psygo/l10n/l10n.dart';
@@ -37,6 +36,18 @@ class InvitationSelectionController extends State<InvitationSelection> {
   bool _inviteSuccessSnackBarVisible = false;
 
   String? get roomId => widget.roomId;
+
+  void _onAgentPresentationChanged() {
+    if (!mounted) return;
+    final client = Matrix.of(context).client;
+    setState(() {
+      if (foundCandidates.isNotEmpty) {
+        foundCandidates = foundCandidates
+            .map((candidate) => _hydrateInviteCandidate(client, candidate))
+            .toList(growable: false);
+      }
+    });
+  }
 
   Future<void> _refreshMemberIds() async {
     final room = Matrix.of(context).client.getRoomById(roomId!);
@@ -75,8 +86,11 @@ class InvitationSelectionController extends State<InvitationSelection> {
     final contacts = client.rooms
         .where((r) => r.isDirectChat)
         .map(
-          (r) => InviteCandidate.fromUser(
-            r.unsafeGetUserFromMemoryOrFallback(r.directChatMatrixID!),
+          (r) => _hydrateInviteCandidate(
+            client,
+            InviteCandidate.fromUser(
+              r.unsafeGetUserFromMemoryOrFallback(r.directChatMatrixID!),
+            ),
           ),
         )
         .toList();
@@ -165,10 +179,59 @@ class InvitationSelectionController extends State<InvitationSelection> {
     return matrixUserId.localpart ?? fallbackDisplayName;
   }
 
-  void inviteAction(BuildContext context, String id, String displayname) async {
+  String? _trimToNull(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  InviteCandidate _hydrateInviteCandidate(
+    Client client,
+    InviteCandidate candidate,
+  ) {
+    final matrixUserId = candidate.matrixUserId.trim();
+    if (matrixUserId.isEmpty) {
+      return candidate;
+    }
+
+    _agentService.ensureMatrixProfilePresentationById(
+      client: client,
+      matrixUserId: matrixUserId,
+      fallbackDisplayName:
+          _trimToNull(candidate.nickname) ?? candidate.displayName,
+      fallbackAvatarUri: candidate.avatarUrl,
+    );
+
+    final agent = _agentService.getAgentByMatrixUserId(matrixUserId);
+    final fallbackDisplayName =
+        _trimToNull(candidate.nickname) ?? candidate.displayName;
+    final resolvedDisplayName = _agentService.resolveDisplayNameByMatrixUserId(
+      matrixUserId,
+      fallbackDisplayName: fallbackDisplayName,
+    );
+    final resolvedAvatarUrl = _agentService.resolveAvatarUriByMatrixUserId(
+      matrixUserId,
+      fallbackAvatarUri: candidate.avatarUrl,
+    );
+
+    return InviteCandidate(
+      kind: agent == null ? candidate.kind : InviteCandidateKind.agent,
+      matrixUserId: matrixUserId,
+      displayName: resolvedDisplayName,
+      avatarUrl: resolvedAvatarUrl,
+      userId: candidate.userId,
+      agentId: _trimToNull(agent?.agentId) ?? _trimToNull(candidate.agentId),
+      nickname:
+          _trimToNull(agent?.displayName) ?? _trimToNull(candidate.nickname),
+      isActive: agent?.isActive ?? candidate.isActive,
+    );
+  }
+
+  void inviteAction(BuildContext context, InviteCandidate candidate) async {
     final l10n = L10n.of(context);
     final client = Matrix.of(context).client;
     final room = client.getRoomById(roomId!)!;
+    final id = candidate.matrixUserId;
+    final displayname = candidate.displayName;
     if (!room.canInvite) {
       ScaffoldMessenger.of(
         context,
@@ -259,6 +322,9 @@ class InvitationSelectionController extends State<InvitationSelection> {
     try {
       backendCandidates = await _inviteCandidateRepository
           .searchInviteCandidates(query: currentSearchTerm, limit: 20);
+      backendCandidates = backendCandidates
+          .map((candidate) => _hydrateInviteCandidate(client, candidate))
+          .toList(growable: false);
     } catch (e) {
       firstError ??= e;
     }
@@ -334,7 +400,12 @@ class InvitationSelectionController extends State<InvitationSelection> {
         InviteCandidate.fromProfile(Profile.fromJson({'user_id': text})),
       );
     }
-    return _filterRetiredOwnedAgentCandidates(client, candidates);
+    return _filterRetiredOwnedAgentCandidates(
+      client,
+      candidates
+          .map((candidate) => _hydrateInviteCandidate(client, candidate))
+          .toList(growable: false),
+    );
   }
 
   List<InviteCandidate> _filterRetiredOwnedAgentCandidates(
@@ -387,6 +458,8 @@ class InvitationSelectionController extends State<InvitationSelection> {
   void initState() {
     super.initState();
     currentSearchTerm = '';
+    _agentService.agentsNotifier.addListener(_onAgentPresentationChanged);
+    _agentService.profileNotifier.addListener(_onAgentPresentationChanged);
     unawaited(_agentService.refresh(forceRefresh: true));
     _refreshMemberIds();
     _roomStateSub = Matrix.of(context).client.onSync.stream
@@ -405,6 +478,8 @@ class InvitationSelectionController extends State<InvitationSelection> {
     coolDown?.cancel();
     controller.dispose();
     _roomStateSub?.cancel();
+    _agentService.agentsNotifier.removeListener(_onAgentPresentationChanged);
+    _agentService.profileNotifier.removeListener(_onAgentPresentationChanged);
     _inviteCandidateRepository.dispose();
     super.dispose();
   }

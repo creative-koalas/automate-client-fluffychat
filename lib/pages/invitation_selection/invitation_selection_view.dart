@@ -114,10 +114,7 @@ class InvitationSelectionView extends StatelessWidget {
                                     ),
                                     onTap: () => controller.inviteAction(
                                       context,
-                                      controller
-                                          .foundCandidates[i]
-                                          .matrixUserId,
-                                      controller.foundCandidates[i].displayName,
+                                      controller.foundCandidates[i],
                                     ),
                                   ),
                             )
@@ -145,8 +142,7 @@ class InvitationSelectionView extends StatelessWidget {
                                   ),
                                   onTap: () => controller.inviteAction(
                                     context,
-                                    contacts[i].matrixUserId,
-                                    contacts[i].displayName,
+                                    contacts[i],
                                   ),
                                 ),
                           );

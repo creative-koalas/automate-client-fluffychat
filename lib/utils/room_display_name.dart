@@ -24,8 +24,8 @@ String resolveDisplayNameForMatrixUserId({
   );
   if (allowGroupDisplayName && !room.isDirectChat) {
     AgentService.instance.ensureGroupDisplayNameByMatrixUserId(key);
-    final groupDisplayName =
-        AgentService.instance.tryResolveGroupDisplayNameByMatrixUserId(key);
+    final groupDisplayName = AgentService.instance
+        .tryResolveGroupDisplayNameByMatrixUserId(key);
     if (groupDisplayName != null) {
       return groupDisplayName;
     }
@@ -121,13 +121,9 @@ String resolveRoomDisplayNameWithMatrixLocals({
   return room.getLocalizedDisplayname(matrixLocals);
 }
 
-String resolveRoomDisplayName({
-  required Room room,
-  required L10n l10n,
-}) {
-  final matrixLocals = MatrixLocals(l10n);
+String resolveRoomDisplayName({required Room room, required L10n l10n}) {
   return resolveRoomDisplayNameWithMatrixLocals(
     room: room,
-    matrixLocals: matrixLocals,
+    matrixLocals: MatrixLocals(l10n),
   );
 }
