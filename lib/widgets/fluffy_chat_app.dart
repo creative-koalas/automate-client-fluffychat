@@ -859,7 +859,10 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
     _isResolvingPostLoginDestination = true;
     try {
-      final destination = await resolvePostLoginDestination();
+      final matrixClient = Matrix.of(context).clientOrNull;
+      final destination = await resolvePostLoginDestination(
+        matrixClient: matrixClient,
+      );
       if (!mounted) return;
       final router = PsygoApp.router;
       final currentPath = router.routeInformationProvider.value.uri.path;
