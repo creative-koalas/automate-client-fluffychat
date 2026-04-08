@@ -14,6 +14,7 @@ import 'package:psygo/pages/chat_members/chat_members.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
 import 'package:psygo/pages/chat_search/chat_search_page.dart';
 import 'package:psygo/pages/contact_invite/contact_invite.dart';
+import 'package:psygo/pages/contact_invite/share_invite_link_page.dart';
 import 'package:psygo/pages/device_settings/device_settings.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
@@ -69,8 +70,8 @@ abstract class AppRoutes {
       // This prevents race condition where GoRouter redirects before AuthGate can navigate
       redirect: (context, state) =>
           Matrix.of(context).widget.clients.any((client) => client.isLogged())
-          ? '/rooms'
-          : null, // Let AuthGate handle unauthenticated state
+              ? '/rooms'
+              : null, // Let AuthGate handle unauthenticated state
       // Empty page builder - AuthGate will show loading/login UI, not this page
       pageBuilder: (context, state) =>
           defaultPageBuilder(context, state, const EmptyPage()),
@@ -151,6 +152,7 @@ abstract class AppRoutes {
           '/rooms/settings',
           '/rooms/newgroup',
           '/rooms/newprivatechat',
+          ShareInviteLinkPage.routePath,
         ];
         // 聊天详情和搜索页面的子路由也需要排除
         final excludedSuffixes = [
@@ -165,8 +167,7 @@ abstract class AppRoutes {
           '/invite/',
           '/encryption/',
         ];
-        final shouldUseDesktopLayout =
-            FluffyThemes.isColumnMode(context) &&
+        final shouldUseDesktopLayout = FluffyThemes.isColumnMode(context) &&
             !excludedPaths.any((p) => path.startsWith(p)) &&
             !excludedSuffixes.any(
               (s) => path.endsWith(s) || locationPath.endsWith(s),
@@ -216,6 +217,15 @@ abstract class AppRoutes {
               path: 'newprivatechat',
               pageBuilder: (context, state) =>
                   defaultPageBuilder(context, state, const NewPrivateChat()),
+              redirect: loggedOutRedirect,
+            ),
+            GoRoute(
+              path: 'share-invite-link',
+              pageBuilder: (context, state) => defaultPageBuilder(
+                context,
+                state,
+                const ShareInviteLinkPage(),
+              ),
               redirect: loggedOutRedirect,
             ),
             GoRoute(
@@ -405,21 +415,23 @@ abstract class AppRoutes {
     BuildContext context,
     GoRouterState state,
     Widget child,
-  ) => NoTransitionPage(
-    key: state.pageKey,
-    restorationId: state.pageKey.value,
-    child: child,
-  );
+  ) =>
+      NoTransitionPage(
+        key: state.pageKey,
+        restorationId: state.pageKey.value,
+        child: child,
+      );
 
   static Page defaultPageBuilder(
     BuildContext context,
     GoRouterState state,
     Widget child,
-  ) => FluffyThemes.isColumnMode(context)
-      ? noTransitionPageBuilder(context, state, child)
-      : MaterialPage(
-          key: state.pageKey,
-          restorationId: state.pageKey.value,
-          child: child,
-        );
+  ) =>
+      FluffyThemes.isColumnMode(context)
+          ? noTransitionPageBuilder(context, state, child)
+          : MaterialPage(
+              key: state.pageKey,
+              restorationId: state.pageKey.value,
+              child: child,
+            );
 }

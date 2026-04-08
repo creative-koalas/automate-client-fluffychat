@@ -5,9 +5,9 @@ import 'package:matrix/matrix.dart';
 
 import 'package:psygo/config/themes.dart';
 import 'package:psygo/l10n/l10n.dart';
+import 'package:psygo/pages/contact_invite/share_invite_link_page.dart';
 import 'package:psygo/widgets/avatar.dart';
 import 'package:psygo/widgets/matrix.dart';
-import '../../utils/fluffy_share.dart';
 import 'chat_list.dart';
 
 class ClientChooserButton extends StatelessWidget {
@@ -126,7 +126,7 @@ class ClientChooserButton extends StatelessWidget {
           context.go('/rooms/newgroup');
           break;
         case SettingsAction.invite:
-          FluffyShare.shareInviteLink(context);
+          context.go(ShareInviteLinkPage.routePath);
           break;
         case SettingsAction.settings:
           context.go('/rooms/settings');
