@@ -51,6 +51,11 @@ String friendlyBackendErrorMessage(Object error, L10n l10n) {
     return l10n.authMatrixCredentialsMissing;
   }
 
+  // 联系人邀请链路优先透传后端异常，避免被通用文案覆盖。
+  if (message.isNotEmpty && _shouldPreserveContactInviteMessage(lower)) {
+    return message;
+  }
+
   // 网络与连接异常
   if (error is DioException) {
     if (_isNetworkDioError(error) || _hasAny(lower, const ['timeout', 'network'])) {
@@ -98,6 +103,27 @@ bool _hasAny(String source, List<String> patterns) {
     if (source.contains(pattern)) return true;
   }
   return false;
+}
+
+bool _shouldPreserveContactInviteMessage(String message) {
+  return _hasAny(message, const [
+    'contact invite',
+    '邀请链接',
+    '邀请信息',
+    '接受邀请',
+    '完成邀请',
+    'create contact invite failed',
+    'preview contact invite failed',
+    'claim contact invite failed',
+    'complete contact invite failed',
+    'failed to create contact invite',
+    'failed to load contact invite',
+    'failed to claim contact invite',
+    'failed to complete contact invite',
+    'accepted_room_id',
+    'accepted room id',
+    'token is required',
+  ]);
 }
 
 bool _isNetworkDioError(DioException e) {
