@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show RenderParagraph;
 
 import 'package:collection/collection.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
@@ -769,8 +768,8 @@ class _CollapsibleHtmlText extends StatefulWidget {
 }
 
 class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
-  static const int _collapseTriggerMaxLines = 80;
-  static const int _collapsedPreviewMaxLines = 2;
+  static const int _collapseTriggerMaxLines = 40;
+  static const int _collapsedPreviewMaxLines = 8;
   static const LinearGradient _collapsedFadeGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -778,7 +777,7 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
     colors: [Colors.black, Colors.black, Colors.transparent],
   );
 
-  final GlobalKey _lineThresholdTextKey = GlobalKey();
+  final GlobalKey _measuredContentKey = GlobalKey();
   bool _isExpanded = false;
   bool _isOverflowing = false;
   double? _lastMeasuredWidth;
@@ -808,21 +807,30 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
       _overflowCheckScheduled = false;
       if (!mounted) return;
 
-      final renderObject =
-          _lineThresholdTextKey.currentContext?.findRenderObject();
-      final didOverflow =
-          renderObject is RenderParagraph && renderObject.didExceedMaxLines;
+      final contentHeight = _measuredContentKey.currentContext?.size?.height;
+      if (contentHeight == null) return;
+      final triggerHeight =
+          _estimatedLineHeight(context) * _collapseTriggerMaxLines;
+      final didOverflow = contentHeight > triggerHeight;
       if (didOverflow != _isOverflowing) {
         setState(() => _isOverflowing = didOverflow);
       }
     });
   }
 
+  double _estimatedLineHeight(BuildContext context) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'A', style: widget.textStyle),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      maxLines: 1,
+    )..layout();
+    return painter.preferredLineHeight;
+  }
+
   Widget _buildText(
     BuildContext context, {
-    required int? maxLines,
     Key? key,
-    TextOverflow overflow = TextOverflow.visible,
   }) {
     return RichText(
       text: TextSpan(
@@ -833,9 +841,17 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
       textScaler: MediaQuery.textScalerOf(context),
       textDirection: Directionality.of(context),
       selectionRegistrar: SelectionContainer.maybeOf(context),
-      maxLines: maxLines,
-      overflow: overflow,
       selectionColor: widget.selectionColor,
+    );
+  }
+
+  Widget _buildCollapsedPreview(BuildContext context, double previewHeight) {
+    return ClipRect(
+      child: SizedBox(
+        width: double.infinity,
+        height: previewHeight,
+        child: _buildText(context),
+      ),
     );
   }
 
@@ -844,23 +860,27 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
     return LayoutBuilder(
       builder: (context, constraints) {
         _scheduleOverflowCheck(constraints);
+        final previewHeight =
+            _estimatedLineHeight(context) * _collapsedPreviewMaxLines;
 
+        // Measure the already-rendered rich text so markdown formatting
+        // contributes to the visual height instead of relying on outer
+        // RichText maxLines, which is inaccurate for WidgetSpan-heavy markdown.
         final measurementText = Offstage(
           offstage: true,
-          child: _buildText(
-            context,
-            key: _lineThresholdTextKey,
-            maxLines: _collapseTriggerMaxLines,
-            overflow: TextOverflow.clip,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            child: _buildText(
+              context,
+              key: _measuredContentKey,
+            ),
           ),
         );
 
         final collapsed = _isOverflowing && !_isExpanded;
-        var text = _buildText(
-          context,
-          maxLines: collapsed ? _collapsedPreviewMaxLines : null,
-          overflow: collapsed ? TextOverflow.clip : TextOverflow.visible,
-        );
+        var text = collapsed
+            ? _buildCollapsedPreview(context, previewHeight)
+            : _buildText(context);
         if (collapsed && _isOverflowing) {
           text = ShaderMask(
             blendMode: BlendMode.dstIn,
