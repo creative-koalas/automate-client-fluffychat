@@ -769,7 +769,8 @@ class _CollapsibleHtmlText extends StatefulWidget {
 }
 
 class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
-  static const int _collapsedMaxLines = 80;
+  static const int _collapseTriggerMaxLines = 80;
+  static const int _collapsedPreviewMaxLines = 4;
   static const LinearGradient _collapsedFadeGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -777,7 +778,7 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
     colors: [Colors.black, Colors.black, Colors.transparent],
   );
 
-  final GlobalKey _collapsedTextKey = GlobalKey();
+  final GlobalKey _lineThresholdTextKey = GlobalKey();
   bool _isExpanded = false;
   bool _isOverflowing = false;
   double? _lastMeasuredWidth;
@@ -796,7 +797,6 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
   }
 
   void _scheduleOverflowCheck(BoxConstraints constraints) {
-    if (_isExpanded) return;
     final maxWidth = constraints.maxWidth;
     if (!maxWidth.isFinite) return;
     if (_overflowCheckScheduled && _lastMeasuredWidth == maxWidth) return;
@@ -806,9 +806,10 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
     _overflowCheckScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _overflowCheckScheduled = false;
-      if (!mounted || _isExpanded) return;
+      if (!mounted) return;
 
-      final renderObject = _collapsedTextKey.currentContext?.findRenderObject();
+      final renderObject =
+          _lineThresholdTextKey.currentContext?.findRenderObject();
       final didOverflow =
           renderObject is RenderParagraph && renderObject.didExceedMaxLines;
       if (didOverflow != _isOverflowing) {
@@ -817,18 +818,23 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
     });
   }
 
-  Widget _buildText(BuildContext context, {required bool collapsed}) {
+  Widget _buildText(
+    BuildContext context, {
+    required int? maxLines,
+    Key? key,
+    TextOverflow overflow = TextOverflow.visible,
+  }) {
     return RichText(
       text: TextSpan(
         style: widget.textStyle,
         children: [widget.textSpan],
       ),
-      key: collapsed ? _collapsedTextKey : null,
+      key: key,
       textScaler: MediaQuery.textScalerOf(context),
       textDirection: Directionality.of(context),
       selectionRegistrar: SelectionContainer.maybeOf(context),
-      maxLines: collapsed ? _collapsedMaxLines : null,
-      overflow: collapsed ? TextOverflow.clip : TextOverflow.visible,
+      maxLines: maxLines,
+      overflow: overflow,
       selectionColor: widget.selectionColor,
     );
   }
@@ -837,12 +843,24 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (!_isExpanded) {
-          _scheduleOverflowCheck(constraints);
-        }
+        _scheduleOverflowCheck(constraints);
 
-        final collapsed = !_isExpanded;
-        Widget text = _buildText(context, collapsed: collapsed);
+        final measurementText = Offstage(
+          offstage: true,
+          child: _buildText(
+            context,
+            key: _lineThresholdTextKey,
+            maxLines: _collapseTriggerMaxLines,
+            overflow: TextOverflow.clip,
+          ),
+        );
+
+        final collapsed = _isOverflowing && !_isExpanded;
+        var text = _buildText(
+          context,
+          maxLines: collapsed ? _collapsedPreviewMaxLines : null,
+          overflow: collapsed ? TextOverflow.clip : TextOverflow.visible,
+        );
         if (collapsed && _isOverflowing) {
           text = ShaderMask(
             blendMode: BlendMode.dstIn,
@@ -853,58 +871,67 @@ class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
         }
 
         if (!_isOverflowing) {
-          return text;
+          return Stack(
+            children: [
+              measurementText,
+              text,
+            ],
+          );
         }
 
-        return AnimatedSize(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              text,
-              if (_isOverflowing)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () => setState(() => _isExpanded = !_isExpanded),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _isExpanded
-                                  ? widget.collapseLabel
-                                  : widget.expandLabel,
-                              style: widget.textStyle.copyWith(
-                                color: widget.actionColor,
-                                fontWeight: FontWeight.w600,
+        return Stack(
+          children: [
+            measurementText,
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  text,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () => setState(() => _isExpanded = !_isExpanded),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _isExpanded
+                                    ? widget.collapseLabel
+                                    : widget.expandLabel,
+                                style: widget.textStyle.copyWith(
+                                  color: widget.actionColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 2),
-                            Icon(
-                              _isExpanded
-                                  ? Icons.keyboard_arrow_up_rounded
-                                  : Icons.keyboard_arrow_down_rounded,
-                              size: 18,
-                              color: widget.actionColor,
-                            ),
-                          ],
+                              const SizedBox(width: 2),
+                              Icon(
+                                _isExpanded
+                                    ? Icons.keyboard_arrow_up_rounded
+                                    : Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                                color: widget.actionColor,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
