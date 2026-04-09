@@ -93,7 +93,21 @@
                <action android:name="android.intent.action.VIEW" />
                <category android:name="android.intent.category.DEFAULT" />
                <category android:name="android.intent.category.BROWSABLE" />
-               <data android:scheme="psygo" android:host="chat" />
+                <data android:scheme="psygo" android:host="chat" />
+               <data android:scheme="psygo" android:host="invite" />
+               <data android:scheme="com.psygo" android:host="chat" />
+               <data android:scheme="com.psygo" android:host="invite" />
+            </intent-filter>
+
+            <!-- App can open https://psygoai.com/invite/... links -->
+            <intent-filter android:autoVerify="true">
+               <action android:name="android.intent.action.VIEW" />
+               <category android:name="android.intent.category.DEFAULT" />
+               <category android:name="android.intent.category.BROWSABLE" />
+               <data
+                   android:scheme="https"
+                   android:host="psygoai.com"
+                   android:pathPrefix="/invite/" />
             </intent-filter>
 
             <!-- App can receive shared text -->

@@ -1,3 +1,4 @@
+import '../config/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ContactInviteLink {
@@ -5,6 +6,12 @@ class ContactInviteLink {
 
   static String routeForToken(String token) =>
       '/invite/${Uri.encodeComponent(token)}';
+
+  static String httpsUrlForToken(String token) =>
+      '${AppConfig.contactInviteUniversalLinkPrefix}${Uri.encodeComponent(token)}';
+
+  static String customSchemeUrlForToken(String token) =>
+      '${AppConfig.contactInviteCustomLinkPrefix}${Uri.encodeComponent(token)}';
 
   static String? extractTokenFromUrlString(String? url) {
     final raw = url?.trim();

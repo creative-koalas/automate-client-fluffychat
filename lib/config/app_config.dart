@@ -13,8 +13,16 @@ abstract class AppConfig {
   static const bool hideTypingUsernames = false;
 
   static const String inviteLinkPrefix = 'https://matrix.to/#/';
-  static const String deepLinkPrefix = 'com.psygo://chat/';
+  static const String deepLinkPrefix = 'psygo://chat/';
   static const String schemePrefix = 'matrix:';
+  static const String contactInviteBaseUrl = 'https://psygoai.com';
+  static const String contactInvitePathPrefix = '/invite/';
+  static const String contactInviteUniversalLinkPrefix =
+      '$contactInviteBaseUrl$contactInvitePathPrefix';
+  static const String contactInviteCustomScheme = 'psygo';
+  static const String contactInviteCustomLinkPrefix =
+      '$contactInviteCustomScheme://invite/';
+  static const String contactInviteDownloadUrl = 'https://psygoai.com';
   static const String pushNotificationsChannelId = 'psygo_push';
   static const String pushNotificationsAppId = 'com.psygo.app';
   static const double borderRadius = 18.0;
@@ -28,7 +36,7 @@ abstract class AppConfig {
   static const String startChatTutorial =
       'https://fluffy.chat/faq/#how_do_i_find_other_users';
   static const String appId = 'com.psygo.Psygo';
-  static const String appOpenUrlScheme = 'com.psygo';
+  static const String appOpenUrlScheme = 'psygo';
 
   static const String sourceCodeUrl =
       'https://github.com/creative-koalas/automate-client-fluffychat';

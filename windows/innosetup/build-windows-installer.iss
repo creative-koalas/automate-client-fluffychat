@@ -74,6 +74,12 @@ Source: "{#VCRedistSource}"; DestDir: "{tmp}"; DestName: "{#VCRedistFileName}"; 
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; AppUserModelID: "com.psygo.app"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; AppUserModelID: "com.psygo.app"
 
+[Registry]
+Root: HKCR; Subkey: "psygo"; ValueType: string; ValueName: ""; ValueData: "URL:PsyGo Protocol"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "psygo"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "psygo\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "psygo\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Flags: uninsdeletekey
+
 [Run]
 ; IMPORTANT: run the file *by its temp filename*, not the original source path
 Filename: "{tmp}\{#VCRedistFileName}"; Parameters: "/install /quiet /norestart"; \

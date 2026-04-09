@@ -2,8 +2,9 @@
 Type=Application
 Name=PsyGo
 Comment=Your AI-powered automation assistant
-Exec=psygo
+Exec=psygo %u
 Icon=psygo
 Categories=Network;InstantMessaging;Chat;
+MimeType=x-scheme-handler/psygo;
 Terminal=false
 StartupWMClass=psygo

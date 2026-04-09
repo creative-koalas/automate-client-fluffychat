@@ -1,11 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:psygo/backend/backend.dart';
+import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/contact_invite_link.dart';
 import 'package:psygo/utils/platform_infos.dart';
@@ -61,6 +65,10 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
 
   Future<void> _handlePrimaryAction() async {
     final auth = context.read<PsygoAuthState>();
+    if (PlatformInfos.isWeb && !auth.isLoggedIn) {
+      await _openInviteInApp();
+      return;
+    }
     if (!auth.isLoggedIn) {
       await ContactInviteLink.rememberPendingToken(widget.token);
       PsygoApp.router.go(PlatformInfos.isMobile ? '/' : '/login-signup');
@@ -82,6 +90,7 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
             inviter: result.inviter == null
                 ? _preview?.inviter
                 : ContactInviteInviterPreview(
+                    userId: result.inviter!.userId,
                     displayName: result.inviter!.displayName,
                     avatarUrl: result.inviter!.avatarUrl,
                   ),
@@ -170,6 +179,126 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
     );
   }
 
+  Future<void> _openInviteInApp() async {
+    final launched = await launchUrlString(
+      ContactInviteLink.customSchemeUrlForToken(widget.token),
+      mode: LaunchMode.externalApplication,
+    );
+    if (launched || !mounted) {
+      return;
+    }
+    _showSnackBar(
+      _localizedCopy(
+        zh: '未检测到已安装的 App，请先下载 PsyGo 后重新打开这个邀请链接。',
+        en: 'We could not detect the app. Please install PsyGo first, then reopen this invite link.',
+      ),
+    );
+  }
+
+  Future<void> _openDownloadPage() async {
+    final launched = await launchUrlString(
+      _downloadUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    if (launched || !mounted) {
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: _downloadUrl));
+    if (!mounted) {
+      return;
+    }
+    _showSnackBar(L10n.of(context).copiedToClipboard);
+  }
+
+  String get _downloadUrl {
+    final uri = Uri.parse(AppConfig.contactInviteDownloadUrl);
+    return uri.replace(
+      queryParameters: <String, String>{
+        'source': 'contact_invite',
+        'platform': _landingPlatform.name,
+        'token': widget.token,
+      },
+    ).toString();
+  }
+
+  _InviteLandingPlatform get _landingPlatform {
+    if (!PlatformInfos.isWeb) {
+      if (PlatformInfos.isIOS) return _InviteLandingPlatform.ios;
+      if (PlatformInfos.isAndroid) return _InviteLandingPlatform.android;
+      if (PlatformInfos.isMacOS) return _InviteLandingPlatform.macos;
+      if (PlatformInfos.isWindows) return _InviteLandingPlatform.windows;
+      if (PlatformInfos.isLinux) return _InviteLandingPlatform.linux;
+      return _InviteLandingPlatform.unknown;
+    }
+
+    final userAgent = html.window.navigator.userAgent.toLowerCase();
+    if (userAgent.contains('iphone') ||
+        userAgent.contains('ipad') ||
+        userAgent.contains('ipod')) {
+      return _InviteLandingPlatform.ios;
+    }
+    if (userAgent.contains('android')) {
+      return _InviteLandingPlatform.android;
+    }
+    if (userAgent.contains('macintosh') || userAgent.contains('mac os x')) {
+      return _InviteLandingPlatform.macos;
+    }
+    if (userAgent.contains('windows')) {
+      return _InviteLandingPlatform.windows;
+    }
+    if (userAgent.contains('linux')) {
+      return _InviteLandingPlatform.linux;
+    }
+    return _InviteLandingPlatform.unknown;
+  }
+
+  String get _downloadButtonLabel {
+    switch (_landingPlatform) {
+      case _InviteLandingPlatform.ios:
+        return _localizedCopy(
+          zh: '下载 iPhone/iPad 版',
+          en: 'Download for iPhone/iPad',
+        );
+      case _InviteLandingPlatform.android:
+        return _localizedCopy(zh: '下载 Android 版', en: 'Download for Android');
+      case _InviteLandingPlatform.macos:
+        return _localizedCopy(zh: '下载 macOS 版', en: 'Download for macOS');
+      case _InviteLandingPlatform.windows:
+        return _localizedCopy(zh: '下载 Windows 版', en: 'Download for Windows');
+      case _InviteLandingPlatform.linux:
+        return _localizedCopy(zh: '下载 Linux 版', en: 'Download for Linux');
+      case _InviteLandingPlatform.unknown:
+        return _localizedCopy(zh: '下载 PsyGo', en: 'Download PsyGo');
+    }
+  }
+
+  String get _webLandingHint {
+    switch (_landingPlatform) {
+      case _InviteLandingPlatform.ios:
+      case _InviteLandingPlatform.android:
+        return _localizedCopy(
+          zh: '如果你已经安装 PsyGo，请点“打开 App”。如果还没安装，请先下载，安装完成后重新打开这个邀请链接。',
+          en: 'If PsyGo is already installed, tap “Open App”. Otherwise, install it first and reopen this invite link once setup is complete.',
+        );
+      case _InviteLandingPlatform.macos:
+      case _InviteLandingPlatform.windows:
+      case _InviteLandingPlatform.linux:
+      case _InviteLandingPlatform.unknown:
+        return _localizedCopy(
+          zh: '你可以先在桌面端安装 PsyGo，安装完成后再次打开这个邀请链接，或在移动设备上继续。',
+          en: 'Install PsyGo on your desktop first, then reopen this invite link, or continue on a mobile device instead.',
+        );
+    }
+  }
+
+  Uri? get _inviterAvatarUri {
+    final raw = _preview?.inviter?.avatarUrl.trim() ?? '';
+    if (raw.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse(raw);
+  }
+
   String _localizedCopy({required String zh, required String en}) {
     final languageCode = Localizations.localeOf(context).languageCode;
     return languageCode.startsWith('zh') ? zh : en;
@@ -226,6 +355,9 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
       return false;
     }
     final isLoggedIn = context.read<PsygoAuthState>().isLoggedIn;
+    if (PlatformInfos.isWeb && !isLoggedIn) {
+      return preview.status == 'active';
+    }
     if (!isLoggedIn) {
       return preview.status == 'active';
     }
@@ -234,6 +366,9 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
 
   String get _primaryButtonLabel {
     final l10n = L10n.of(context);
+    if (PlatformInfos.isWeb && !context.read<PsygoAuthState>().isLoggedIn) {
+      return _localizedCopy(zh: '打开 App', en: 'Open App');
+    }
     if (!context.read<PsygoAuthState>().isLoggedIn) {
       return l10n.login;
     }
@@ -248,6 +383,8 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
     final displayName = _preview?.inviter?.displayName;
+    final isLoggedIn = context.watch<PsygoAuthState>().isLoggedIn;
+    final showWebLandingActions = PlatformInfos.isWeb && !isLoggedIn;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.invite)),
@@ -265,6 +402,7 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Avatar(
+                        mxContent: _inviterAvatarUri,
                         name:
                             displayName?.isNotEmpty == true ? displayName : 'P',
                         size: 88,
@@ -285,6 +423,16 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      if (showWebLandingActions) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _webLandingHint,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       if (_canAct)
                         ElevatedButton(
@@ -298,6 +446,15 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
                                 )
                               : Text(_primaryButtonLabel),
                         ),
+                      if (showWebLandingActions &&
+                          _preview?.status == 'active') ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _openDownloadPage,
+                          icon: const Icon(Icons.download_rounded),
+                          label: Text(_downloadButtonLabel),
+                        ),
+                      ],
                     ],
                   ),
           ),
@@ -305,4 +462,13 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
       ),
     );
   }
+}
+
+enum _InviteLandingPlatform {
+  ios,
+  android,
+  macos,
+  windows,
+  linux,
+  unknown,
 }

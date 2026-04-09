@@ -1295,16 +1295,19 @@ class ContactInviteCreateResult {
 }
 
 class ContactInviteInviterPreview {
+  final String userId;
   final String displayName;
   final String avatarUrl;
 
   ContactInviteInviterPreview({
+    required this.userId,
     required this.displayName,
     required this.avatarUrl,
   });
 
   factory ContactInviteInviterPreview.fromJson(Map<String, dynamic> json) {
     return ContactInviteInviterPreview(
+      userId: json['user_id'] as String? ?? '',
       displayName: json['display_name'] as String? ?? '',
       avatarUrl: json['avatar_url'] as String? ?? '',
     );
@@ -1335,11 +1338,13 @@ class ContactInvitePreview {
 }
 
 class ContactInviteInviterClaim {
+  final String userId;
   final String displayName;
   final String avatarUrl;
   final String matrixUserId;
 
   ContactInviteInviterClaim({
+    required this.userId,
     required this.displayName,
     required this.avatarUrl,
     required this.matrixUserId,
@@ -1347,6 +1352,7 @@ class ContactInviteInviterClaim {
 
   factory ContactInviteInviterClaim.fromJson(Map<String, dynamic> json) {
     return ContactInviteInviterClaim(
+      userId: json['user_id'] as String? ?? '',
       displayName: json['display_name'] as String? ?? '',
       avatarUrl: json['avatar_url'] as String? ?? '',
       matrixUserId: json['matrix_user_id'] as String? ?? '',

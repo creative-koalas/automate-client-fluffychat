@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "YPR7656QK3.com.creativekoalas.psygo"
+        ],
+        "components": [
+          {
+            "/": "/invite/*"
+          }
+        ]
+      }
+    ]
+  }
+}

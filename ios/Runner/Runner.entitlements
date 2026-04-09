@@ -8,5 +8,9 @@
 	<array>
 		<string>group.com.creativekoalas.psygo.app</string>
 	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:psygoai.com</string>
+	</array>
 </dict>
 </plist>

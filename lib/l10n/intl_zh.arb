@@ -970,7 +970,7 @@
         "type": "String",
         "placeholders": {}
     },
-    "inviteText": "{username} 邀请你使用 PsyGo。 \n1. 安装 PsyGo：https://psygoai.com \n2. 注册或登录 \n3. 打开邀请链接：\n {link}",
+    "inviteText": "{username} 邀请你加入 PsyGo！\n点击链接添加好友（7 天内有效）：\n{link}",
     "@inviteText": {
         "type": "String",
         "placeholders": {

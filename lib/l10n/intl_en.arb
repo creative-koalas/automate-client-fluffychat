@@ -1204,7 +1204,7 @@
     "type": "String",
     "placeholders": {}
   },
-  "inviteText": "{username} invited you to PsyGo.\n1. Visit psygoai.com and install the app \n2. Sign up or sign in \n3. Open the invite link: \n {link}",
+  "inviteText": "{username} invited you to join PsyGo!\nTap the link to connect (valid for 7 days):\n{link}",
   "@inviteText": {
     "type": "String",
     "placeholders": {

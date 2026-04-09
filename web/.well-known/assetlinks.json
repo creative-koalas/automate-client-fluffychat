@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.creativekoalas.psygo",
+      "sha256_cert_fingerprints": [
+        "25:27:FF:6E:9F:4B:CD:98:21:F4:A4:34:B8:8E:16:35:83:2B:6D:26:0C:79:23:C1:B7:51:5B:01:EB:09:28:8B"
+      ]
+    }
+  }
+]
