@@ -770,7 +770,7 @@ class _CollapsibleHtmlText extends StatefulWidget {
 
 class _CollapsibleHtmlTextState extends State<_CollapsibleHtmlText> {
   static const int _collapseTriggerMaxLines = 80;
-  static const int _collapsedPreviewMaxLines = 4;
+  static const int _collapsedPreviewMaxLines = 2;
   static const LinearGradient _collapsedFadeGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
