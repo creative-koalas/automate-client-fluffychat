@@ -6,6 +6,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:provider/provider.dart';
 
 import 'package:psygo/backend/api_client.dart';
+import 'package:psygo/backend/exceptions.dart';
 import 'package:psygo/config/app_config.dart';
 import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/utils/backend_error_message.dart';
@@ -36,14 +37,28 @@ class _ShareInviteLinkPageState extends State<ShareInviteLinkPage> {
   Future<ContactInviteCreateResult> _createContactInvite() async {
     final apiClient = context.read<PsygoApiClient>();
     try {
-      return await apiClient.createContactInvite(
-        source: 'share_link',
-        metadata: {
-          'entrypoint': 'share_invite_link_page',
-          'client_platform': _clientPlatformLabel(),
-        },
+      debugPrint('[ContactInvite] createContactInvite start');
+      final invite = await apiClient
+          .createContactInvite(
+            source: 'share_link',
+            metadata: {
+              'entrypoint': 'share_invite_link_page',
+              'client_platform': _clientPlatformLabel(),
+            },
+          )
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () => throw AutomateBackendException(
+              '创建邀请链接超时，请稍后重试',
+            ),
+          );
+      debugPrint(
+        '[ContactInvite] createContactInvite success '
+        'expires_at=${invite.expiresAt.toIso8601String()}',
       );
+      return invite;
     } catch (e) {
+      debugPrint('[ContactInvite] createContactInvite failed: $e');
       _contactInviteFuture = null;
       rethrow;
     }

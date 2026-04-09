@@ -17,6 +17,9 @@ enum TokenRefreshOutcome { success, transientFailure, invalidSession }
 class PsygoApiClient {
   PsygoApiClient(this.auth, {Dio? dio})
       : _dio = dio ?? CustomHttpClient.createDio() {
+    _dio.options.connectTimeout = PsygoConfig.connectTimeout;
+    _dio.options.receiveTimeout = PsygoConfig.receiveTimeout;
+    _dio.options.sendTimeout = PsygoConfig.connectTimeout;
     // 设置默认请求头
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.interceptors.add(_buildAuthInterceptor());
