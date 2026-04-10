@@ -12,13 +12,13 @@ import 'package:psygo/l10n/l10n.dart';
 import 'package:psygo/models/hire_result.dart';
 import 'package:psygo/pages/chat/chat.dart';
 import 'package:psygo/pages/chat_list/chat_list.dart';
-import 'package:psygo/pages/contact_invite/share_invite_link_page.dart';
 import 'package:psygo/pages/team/employees_tab.dart';
 import 'package:psygo/pages/wallet/wallet_page.dart';
 import 'package:psygo/repositories/agent_repository.dart';
 import 'package:psygo/repositories/agent_template_repository.dart';
 import 'package:psygo/services/agent_service.dart';
 import 'package:psygo/services/recruit_guide_service.dart';
+import 'package:psygo/utils/fluffy_share.dart';
 import 'package:psygo/utils/localized_exception_extension.dart';
 import 'package:psygo/utils/platform_infos.dart';
 import 'package:psygo/utils/window_service.dart';
@@ -435,7 +435,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           context.go('/rooms/newgroup');
           break;
         case _SettingsAction.invite:
-          context.go(ShareInviteLinkPage.routePath);
+          FluffyShare.shareInviteLink(context);
           break;
         case _SettingsAction.settings:
           context.go('/rooms/settings');

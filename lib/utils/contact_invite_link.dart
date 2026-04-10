@@ -7,6 +7,9 @@ class ContactInviteLink {
   static String routeForToken(String token) =>
       '/invite/${Uri.encodeComponent(token)}';
 
+  static bool isInviteRoute(String? path) =>
+      path != null && path.startsWith('/invite/');
+
   static String httpsUrlForToken(String token) =>
       '${AppConfig.contactInviteUniversalLinkPrefix}${Uri.encodeComponent(token)}';
 
@@ -46,13 +49,33 @@ class ContactInviteLink {
     await prefs.setString(_pendingTokenKey, token);
   }
 
-  static Future<String?> takePendingToken() async {
+  static Future<String?> peekPendingToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_pendingTokenKey);
     if (token != null && token.isNotEmpty) {
-      await prefs.remove(_pendingTokenKey);
       return token;
     }
     return null;
+  }
+
+  static Future<String?> takePendingToken() async {
+    final token = await peekPendingToken();
+    if (token != null && token.isNotEmpty) {
+      await clearPendingToken();
+      return token;
+    }
+    return null;
+  }
+
+  static Future<void> clearPendingToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingTokenKey);
+  }
+
+  static Future<void> clearPendingTokenIfMatches(String token) async {
+    final pendingToken = await peekPendingToken();
+    if (pendingToken == token) {
+      await clearPendingToken();
+    }
   }
 }

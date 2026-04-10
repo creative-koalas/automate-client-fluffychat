@@ -208,6 +208,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
   DateTime? _lastSyncFailureNoticeAt;
   static const Duration _syncFailureNoticeCooldown = Duration(seconds: 30);
 
+  StreamSubscription<Uri>? _inviteLinkStreamSubscription;
   StreamSubscription<List<SharedMediaFile>>? _shareMediaStreamSubscription;
   List<SharedMediaFile>? _pendingSharedMedia;
   bool _shareDialogVisible = false;
@@ -221,6 +222,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     // 取消同步状态监听
     _syncStatusSubscription?.cancel();
     _syncMonitoringClientName = null;
+    _inviteLinkStreamSubscription?.cancel();
     _shareMediaStreamSubscription?.cancel();
     // 移除认证状态监听（使用保存的引用，避免访问 context）
     _authState?.removeListener(_onAuthStateChanged);
@@ -304,7 +306,7 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     WidgetsBinding.instance.addObserver(this);
     unawaited(MacosGlobalScreenshotHotkey.initialize());
     _initReceiveSharingIntent();
-    unawaited(_captureInitialInviteLink());
+    _initInviteLinkHandling();
 
     // 监听认证状态变化（保存引用以便在 dispose 中使用）
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -326,21 +328,48 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     });
   }
 
-  Future<void> _captureInitialInviteLink() async {
+  void _initInviteLinkHandling() {
+    if (kIsWeb || !PlatformInfos.isMobile) {
+      return;
+    }
+    final appLinks = AppLinks();
+    _inviteLinkStreamSubscription = appLinks.uriLinkStream.listen(
+      (uri) => unawaited(_handleInviteLinkUri(uri)),
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('[AuthGate] Invite link stream error: $error');
+        debugPrint('$stackTrace');
+      },
+    );
+    unawaited(_captureInitialInviteLink(appLinks));
+  }
+
+  Future<void> _captureInitialInviteLink([AppLinks? appLinks]) async {
     if (kIsWeb || PsygoApp.gotInitialLink) {
       return;
     }
     PsygoApp.gotInitialLink = true;
     try {
-      final uri = await AppLinks().getInitialLink();
-      final token =
-          uri == null ? null : ContactInviteLink.extractTokenFromUri(uri);
-      if (token == null || token.isEmpty) {
-        return;
-      }
-      await ContactInviteLink.rememberPendingToken(token);
+      final uri = await (appLinks ?? AppLinks()).getInitialLink();
+      await _handleInviteLinkUri(uri);
     } catch (e) {
       debugPrint('[AuthGate] Failed to capture initial invite link: $e');
+    }
+  }
+
+  Future<void> _handleInviteLinkUri(Uri? uri) async {
+    final token =
+        uri == null ? null : ContactInviteLink.extractTokenFromUri(uri);
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    await ContactInviteLink.rememberPendingToken(token);
+    if (!mounted) return;
+    _hasResolvedPostLoginDestination = false;
+    final isMatrixLoggedIn = Matrix.of(
+      context,
+    ).widget.clients.any((client) => client.isLogged());
+    if (isMatrixLoggedIn) {
+      await _ensurePostLoginDestination();
     }
   }
 
@@ -872,10 +901,12 @@ class _AutomateAuthGateState extends State<_AutomateAuthGate>
     }
     _isResolvingPostLoginDestination = true;
     try {
-      final destination = await resolvePostLoginDestination();
-      if (!mounted) return;
       final router = PsygoApp.router;
       final currentPath = router.routeInformationProvider.value.uri.path;
+      final destination = await resolvePostLoginDestination(
+        currentPath: currentPath,
+      );
+      if (!mounted) return;
       debugPrint(
         '[AuthGate] Post-login destination resolved: $destination, current: $currentPath',
       );

@@ -1,6 +1,7 @@
 import java.util.Properties
 import java.io.FileInputStream
 import java.util.Base64
+import java.net.URI
 
 // 从 dart-define 读取环境变量
 fun getDartDefine(key: String): String? {
@@ -46,6 +47,19 @@ fun normalizeAndroidApplicationIdSuffix(raw: String?): String {
 
     logger.warn("Ignoring invalid APP_ID_SUFFIX value for Android applicationId: $trimmed")
     return ""
+}
+
+fun extractHostFromUrl(raw: String?): String {
+    val fallback = "development-api.psygoai.com"
+    val trimmed = raw?.trim().orEmpty()
+    if (trimmed.isEmpty()) {
+        return fallback
+    }
+    return try {
+        URI(trimmed).host?.takeIf { it.isNotBlank() } ?: fallback
+    } catch (e: Exception) {
+        fallback
+    }
 }
 
 plugins {
@@ -122,6 +136,8 @@ android {
     val appIdSuffix = normalizeAndroidApplicationIdSuffix(getDartDefine("APP_ID_SUFFIX"))
     // 从 dart-define 读取 app 名称
     val appName = getDartDefine("APP_NAME") ?: "PsyGo"
+    val apiBaseUrl = getDartDefine("API_BASE_URL") ?: "https://development-api.psygoai.com/assistant"
+    val contactInviteHost = extractHostFromUrl(apiBaseUrl)
     val vivoAppId = getDartDefine("VIVO_APP_ID") ?: ""
     val vivoApiKey = getDartDefine("VIVO_API_KEY") ?: ""
     val xiaomiAppId = getDartDefine("XIAOMI_APP_ID") ?: ""
@@ -139,6 +155,7 @@ android {
 
         // 注入 app 名称到 manifest
         manifestPlaceholders["appName"] = appName
+        manifestPlaceholders["contactInviteHost"] = contactInviteHost
         manifestPlaceholders["VIVO_APP_ID"] = vivoAppId
         manifestPlaceholders["VIVO_API_KEY"] = vivoApiKey
         manifestPlaceholders["XIAOMI_APP_ID"] = xiaomiAppId

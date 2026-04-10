@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import '../core/config.dart';
+
 abstract class AppConfig {
   // Const and final configuration values (immutable)
   static const Color primaryColor = Color(0xFF5625BA);
@@ -15,14 +17,14 @@ abstract class AppConfig {
   static const String inviteLinkPrefix = 'https://matrix.to/#/';
   static const String deepLinkPrefix = 'psygo://chat/';
   static const String schemePrefix = 'matrix:';
-  static const String contactInviteBaseUrl = 'https://psygoai.com';
   static const String contactInvitePathPrefix = '/invite/';
-  static const String contactInviteUniversalLinkPrefix =
+  static String get contactInviteBaseUrl => _originFromBaseUrl(PsygoConfig.baseUrl);
+  static String get contactInviteUniversalLinkPrefix =>
       '$contactInviteBaseUrl$contactInvitePathPrefix';
   static const String contactInviteCustomScheme = 'psygo';
   static const String contactInviteCustomLinkPrefix =
       '$contactInviteCustomScheme://invite/';
-  static const String contactInviteDownloadUrl = 'https://psygoai.com';
+  static String get contactInviteDownloadUrl => contactInviteBaseUrl;
   static const String pushNotificationsChannelId = 'psygo_push';
   static const String pushNotificationsAppId = 'com.psygo.app';
   static const double borderRadius = 18.0;
@@ -66,4 +68,17 @@ abstract class AppConfig {
 
   static const String mainIsolatePortName = 'main_isolate';
   static const String pushIsolatePortName = 'push_isolate';
+
+  static String _originFromBaseUrl(String rawBaseUrl) {
+    final raw = rawBaseUrl.trim();
+    final uri = Uri.tryParse(raw);
+    if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty) {
+      return raw.replaceFirst(RegExp(r'/+$'), '');
+    }
+    return Uri(
+      scheme: uri.scheme,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+    ).toString().replaceFirst(RegExp(r'/+$'), '');
+  }
 }

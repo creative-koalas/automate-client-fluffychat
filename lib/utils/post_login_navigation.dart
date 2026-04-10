@@ -4,8 +4,12 @@ import '../repositories/agent_repository.dart';
 import 'contact_invite_link.dart';
 
 /// Resolve post-login destination based on whether the user has any employees.
-Future<String> resolvePostLoginDestination() async {
-  final pendingInviteToken = await ContactInviteLink.takePendingToken();
+Future<String> resolvePostLoginDestination({String? currentPath}) async {
+  if (ContactInviteLink.isInviteRoute(currentPath)) {
+    return currentPath!;
+  }
+
+  final pendingInviteToken = await ContactInviteLink.peekPendingToken();
   if (pendingInviteToken != null && pendingInviteToken.isNotEmpty) {
     return ContactInviteLink.routeForToken(pendingInviteToken);
   }

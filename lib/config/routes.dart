@@ -14,7 +14,6 @@ import 'package:psygo/pages/chat_members/chat_members.dart';
 import 'package:psygo/pages/chat_permissions_settings/chat_permissions_settings.dart';
 import 'package:psygo/pages/chat_search/chat_search_page.dart';
 import 'package:psygo/pages/contact_invite/contact_invite.dart';
-import 'package:psygo/pages/contact_invite/share_invite_link_page.dart';
 import 'package:psygo/pages/device_settings/device_settings.dart';
 import 'package:psygo/pages/homeserver_picker/homeserver_picker.dart';
 import 'package:psygo/pages/invitation_selection/invitation_selection.dart';
@@ -152,7 +151,6 @@ abstract class AppRoutes {
           '/rooms/settings',
           '/rooms/newgroup',
           '/rooms/newprivatechat',
-          ShareInviteLinkPage.routePath,
         ];
         // 聊天详情和搜索页面的子路由也需要排除
         final excludedSuffixes = [
@@ -217,15 +215,6 @@ abstract class AppRoutes {
               path: 'newprivatechat',
               pageBuilder: (context, state) =>
                   defaultPageBuilder(context, state, const NewPrivateChat()),
-              redirect: loggedOutRedirect,
-            ),
-            GoRoute(
-              path: 'share-invite-link',
-              pageBuilder: (context, state) => defaultPageBuilder(
-                context,
-                state,
-                const ShareInviteLinkPage(),
-              ),
               redirect: loggedOutRedirect,
             ),
             GoRoute(

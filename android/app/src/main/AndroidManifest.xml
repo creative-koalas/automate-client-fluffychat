@@ -59,6 +59,9 @@
             android:turnScreenOn="true"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -99,14 +102,14 @@
                <data android:scheme="com.psygo" android:host="invite" />
             </intent-filter>
 
-            <!-- App can open https://psygoai.com/invite/... links -->
+            <!-- App can open https://<current-api-host>/invite/... links -->
             <intent-filter android:autoVerify="true">
                <action android:name="android.intent.action.VIEW" />
                <category android:name="android.intent.category.DEFAULT" />
                <category android:name="android.intent.category.BROWSABLE" />
                <data
                    android:scheme="https"
-                   android:host="psygoai.com"
+                   android:host="${contactInviteHost}"
                    android:pathPrefix="/invite/" />
             </intent-filter>
 

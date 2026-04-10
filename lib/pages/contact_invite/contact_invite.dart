@@ -29,12 +29,14 @@ class ContactInvitePage extends StatefulWidget {
 class _ContactInvitePageState extends State<ContactInvitePage> {
   ContactInvitePreview? _preview;
   String? _errorMessage;
+  String? _actionErrorMessage;
   bool _loadingPreview = true;
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
+    unawaited(ContactInviteLink.clearPendingTokenIfMatches(widget.token));
     unawaited(_loadPreview());
   }
 
@@ -50,7 +52,10 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
       if (!mounted) {
         return;
       }
-      setState(() => _preview = preview);
+      setState(() {
+        _preview = preview;
+        _actionErrorMessage = null;
+      });
     } catch (e) {
       if (!mounted) {
         return;
@@ -75,7 +80,10 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
       return;
     }
 
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _actionErrorMessage = null;
+    });
     try {
       final api = context.read<PsygoApiClient>();
       final result = await api.claimContactInvite(widget.token);
@@ -133,6 +141,7 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
       if (!mounted) {
         return;
       }
+      setState(() => _actionErrorMessage = e.toString());
       _showSnackBar(e.toString());
     } finally {
       if (mounted) {
@@ -446,6 +455,16 @@ class _ContactInvitePageState extends State<ContactInvitePage> {
                                 )
                               : Text(_primaryButtonLabel),
                         ),
+                      if (_actionErrorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        SelectableText(
+                          _actionErrorMessage!,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
                       if (showWebLandingActions &&
                           _preview?.status == 'active') ...[
                         const SizedBox(height: 12),

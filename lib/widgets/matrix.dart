@@ -182,7 +182,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
             _registerSubs(_loginClientCandidate!.clientName);
             _loginClientCandidate = null;
             unawaited(() async {
-              final destination = await resolvePostLoginDestination();
+              final destination = await resolvePostLoginDestination(
+                currentPath: PsygoApp.router.routeInformationProvider.value.uri.path,
+              );
               PsygoApp.router.go(destination);
             }());
           });
@@ -396,7 +398,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
         // Web/Desktop: Redirect to /login-signup for manual login
         if (state == LoginState.loggedIn) {
           unawaited(() async {
-            final destination = await resolvePostLoginDestination();
+            final destination = await resolvePostLoginDestination(
+              currentPath: PsygoApp.router.routeInformationProvider.value.uri.path,
+            );
             PsygoApp.router.go(destination);
           }());
         } else {

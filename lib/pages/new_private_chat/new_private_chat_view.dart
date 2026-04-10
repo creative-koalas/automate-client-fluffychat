@@ -123,7 +123,7 @@ class NewPrivateChatView extends StatelessWidget {
                               child: Icon(Icons.adaptive.share_outlined),
                             ),
                             title: Text(L10n.of(context).shareInviteLink),
-                            onTap: controller.openInvitePage,
+                            onTap: controller.inviteAction,
                           ),
                           // Hidden on purpose: don't expose invitation code entry
                           // in "New Chat" page for end users.

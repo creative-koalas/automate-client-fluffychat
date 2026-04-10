@@ -80,7 +80,9 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
         if (PlatformInfos.isDesktop) {
           await WindowService.switchToMainWindow();
         }
-        final destination = await resolvePostLoginDestination();
+        final destination = await resolvePostLoginDestination(
+          currentPath: PsygoApp.router.routeInformationProvider.value.uri.path,
+        );
         PsygoApp.router.go(destination);
         return true;
       }
@@ -137,7 +139,9 @@ mixin LoginFlowMixin<T extends StatefulWidget> on State<T> {
       }
 
       // 导航到主页面（无员工时进入员工列表）
-      final destination = await resolvePostLoginDestination();
+      final destination = await resolvePostLoginDestination(
+        currentPath: PsygoApp.router.routeInformationProvider.value.uri.path,
+      );
       debugPrint(
         '[LoginFlow] Matrix login success, navigating to $destination',
       );
